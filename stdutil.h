@@ -16,6 +16,7 @@
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
 #define MAX(x , y)  (((x) > (y)) ? (x) : (y))
 #define INRANGE(min,max,x) MAX(min,MIN(max,x))
+#define  CLAMP_TO(l, h, v) (clampToVerify (__FILE__, __LINE__, l, h, v))
 
 //#define DEBUG_MB 1
 
@@ -62,20 +63,32 @@
 /*===========================================================================*/
 /* Generic FUNCTIONS */
 /*===========================================================================*/
-float atof_m(const char *s);
-void *malloc_m (size_t size);
-void free_m(void *p);
-void systemReset (void);
-uint32_t revbit(uint32_t data);
-void my_assert_func (const char* file, const int line, 
-		     const char *cond);
-int32_t abs32 (int32_t x);
-float lerpf (const float x, const float y, const float w) ;
-uint32_t lerpu32 (const uint32_t x, const uint32_t y, const float w) ;
-static inline bool_t isInRangef (float x, float min, float max) {
-  return (x >= min) && (x <= max);
-}
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+  float atof_m(const char *s);
+  void *malloc_m (size_t size);
+  void free_m(void *p);
+  void systemReset (void);
+  uint32_t revbit(uint32_t data);
+  void my_assert_func (const char* file, const int line, 
+		       const char *cond);
+  int32_t abs32 (int32_t x);
+  float lerpf (const float x, const float y, const float w) ;
+  uint32_t lerpu32 (const uint32_t x, const uint32_t y, const float w) ;
+  uint32_t lerpu32Fraction (const uint32_t x, const uint32_t y, const uint32_t numerator, 
+			    const uint32_t denumerator) ;
+  float clampToVerify (const char* file, const int line, float l, float h, float v);
+  static inline bool_t isInRangef (float x, float min, float max) {
+    return (x >= min) && (x <= max);
+  }
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif // __STD_UTIL_H__

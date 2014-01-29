@@ -3,11 +3,7 @@
 #include "ch.h"
 #include "printf.h"
 #include "globalVar.h"
-
-
-#define assert(__e) ((__e) ? (void)0 : my_assert_func (__FILE__, __LINE__, \
-                                                       __ASSERT_FUNC, #__e))
-
+#include "stdutil.h"
 
 
 static float powi(int x, int y);   
@@ -106,8 +102,14 @@ uint32_t revbit (uint32_t value)
 void my_assert_func (const char* file, const int line, 
 		     const char *cond)
 {
+#if HAL_USE_SERIAL_USB || defined CONSOLE_DEV_SD
   chprintf (chp, "assert failed : file %s: line %d : %s\r\n",
-	    file, line, cond);
+    file, line, cond);
+#else
+  (void) file;
+  (void) line;
+  (void) cond;
+#endif
 }
 
 int32_t abs32(int32_t x)
@@ -127,4 +129,28 @@ uint32_t lerpu32 (const uint32_t x, const uint32_t y, const float w)
   } else {
     return x - (uint32_t) (w * (x-y));
   }
+}
+
+uint32_t lerpu32Fraction (const uint32_t x, const uint32_t y, const uint32_t numerator, 
+			    const uint32_t denumerator) 
+{
+  if (y>x) {
+    return x + (uint32_t) ((numerator * (y-x))/denumerator);
+  } else {
+    return x - (uint32_t) ((numerator * (x-y)/denumerator));
+  }
+}
+
+float clampToVerify (const char* file, const int line, float l, float h, float v)
+{
+#if HAL_USE_SERIAL_USB || defined CONSOLE_DEV_SD
+  if ((v<l) || (v>h)) {
+    chprintf (chp, "clampToVerify failed : file %s: line %d : %f not in [%f .. %f]\r\n",
+	      file, line, v, l, h);
+  }
+#else
+  (void) file;
+  (void) line;
+#endif
+  return  (MAX(MIN(v,h),l));
 }
