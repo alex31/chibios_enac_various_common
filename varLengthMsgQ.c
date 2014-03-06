@@ -127,16 +127,26 @@ int32_t 	varLenMsgQueuePush(VarLenMsgQueue* que, const void* msg, const size_t m
 
 int32_t 	varLenMsgQueuePop(VarLenMsgQueue* que, void* msg, const size_t msgLen)
 {
-  uint32_t retVal;
+  return varLenMsgQueuePopTimeout (que, msg, msgLen, TIME_INFINITE);
+}
+
+
+int32_t 	varLenMsgQueuePopTimeout (VarLenMsgQueue* que, void* msg, 
+					  const size_t msgLen, const systime_t  time)
+{
+  int32_t retVal, status;
   MsgPtrLen mpl;
 
-  if (chMBFetch (&que->mb, &mpl.msgPtrLen, TIME_INFINITE) != RDY_OK) {
-    retVal = ERROR_MAILBOX_FAIL;
+  if ((status = chMBFetch (&que->mb, &mpl.msgPtrLen, time) != RDY_OK)) {
+    if (status == RDY_TIMEOUT)
+      retVal = ERROR_MAILBOX_TIMEOUT;
+    else
+      retVal = ERROR_MAILBOX_FAIL;
     goto unlockAndExit;
   }
-
+  
   varLenMsgQueueLock (que);
-
+  
   if (mpl.ptr != ringBufferGetReadPointer(&que->circBuf)) {
     // OUT OF BAND CONDITION
     pushSparseChunkMap (que, mpl);
@@ -180,7 +190,7 @@ int32_t 	varLenMsgQueuePop(VarLenMsgQueue* que, void* msg, const size_t msgLen)
 // a mecanism should be provided which will discard chunk if circular buffer rollback on this chunk
 int32_t	varLenMsgQueueReserveChunk (VarLenMsgQueue* que, ChunkBuffer *cbuf, const size_t msgLen)
 {
-  uint32_t retVal = msgLen;
+  int32_t retVal = msgLen;
   varLenMsgQueueLock(que);
 
  // if there is not enough room, return 

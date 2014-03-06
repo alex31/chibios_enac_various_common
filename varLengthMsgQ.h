@@ -37,7 +37,8 @@ BUGS : static init of ccm ram array not done by gcc init stub
 
 #define ERROR_MAILBOX_FULL -10
 #define ERROR_MAILBOX_FAIL -11
-#define ERROR_CHUNKBUFFER_INVALID -12
+#define ERROR_MAILBOX_TIMEOUT -12
+#define ERROR_CHUNKBUFFER_INVALID -20
 
 typedef enum  {VarLenMsgQueue_REGULAR, VarLenMsgQueue_OUT_OF_BAND} VarLenMsgQueueUrgency;
 
@@ -148,6 +149,17 @@ int32_t 	varLenMsgQueuePush     (VarLenMsgQueue* que, const void* msg,
  */
 int32_t 	varLenMsgQueuePop      (VarLenMsgQueue* que, void* msg, 
 					const size_t msgLen);
+
+/*
+  goal : pop a message. blocking, but with timeout parameter
+         
+  parameters : queue object, pointer on buffer, buffer length
+	       timeout value
+  return value:  if > 0 : number of actually copied bytes on buffer
+                 if < 0 : error status (see errors at begining of this header file)
+ */
+int32_t 	varLenMsgQueuePopTimeout (VarLenMsgQueue* que, void* msg, 
+					  const size_t msgLen, const systime_t  time);
 
 
 
