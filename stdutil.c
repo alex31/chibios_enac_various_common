@@ -91,6 +91,16 @@ void systemReset(void)
   while(1);
 }
 
+/* to lower consumption until reset */
+void systemDeepSleep (void)
+{
+  chSysLock();
+  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+  PWR->CR |= (PWR_CR_PDDS | PWR_CR_LPDS | PWR_CR_CSBF | PWR_CR_CWUF);
+  __WFE();
+}
+
+
 uint32_t revbit (uint32_t value)
 {
   uint32_t result=0;

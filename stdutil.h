@@ -73,6 +73,7 @@ extern "C" {
   void *malloc_m (size_t size);
   void free_m(void *p);
   void systemReset (void);
+  void systemDeepSleep (void);
   uint32_t revbit(uint32_t data);
   void my_assert_func (const char* file, const int line, 
 		       const char *cond);
