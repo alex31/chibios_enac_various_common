@@ -287,8 +287,13 @@ int32_t	varLenMsgQueueSendChunk (VarLenMsgQueue* que, const ChunkBuffer *cbuf,
   return retVal;
 }
 
-
 ChunkBufferRO	varLenMsgQueuePopChunk (VarLenMsgQueue* que)
+{
+  return varLenMsgQueuePopChunkTimeout (que,  TIME_INFINITE);
+}
+
+
+ChunkBufferRO	varLenMsgQueuePopChunkTimeout (VarLenMsgQueue* que, const systime_t  time)
 {
   MsgPtrLen mpl ;
   static const ChunkBufferRO cbroNull =  {.blen=0, .bptr = 0};
@@ -297,7 +302,7 @@ ChunkBufferRO	varLenMsgQueuePopChunk (VarLenMsgQueue* que)
   if (que->useZeroCopyApi == FALSE) 
     return cbroNull;
       
-  if (chMBFetch (&que->mb, &mpl.msgPtrLen, TIME_INFINITE) == RDY_OK) {
+  if (chMBFetch (&que->mb, &mpl.msgPtrLen, time) == RDY_OK) {
     const ChunkBufferRO cbro =  {.blen=mpl.len, .bptr = ringBufferGetAddrOfElem(&que->circBuf, mpl.ptr)};
     return cbro;
   } else {

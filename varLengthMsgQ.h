@@ -200,11 +200,23 @@ int32_t		varLenMsgQueueSendChunk (VarLenMsgQueue* que, const ChunkBuffer *cbuf,
 ChunkBufferRO	varLenMsgQueuePopChunk (VarLenMsgQueue* que);
 
 /*
+  goal : (zero copy api) 
+  get a message to be processed without copy (blocking)
+         
+  parameters : queue object
+	       timeout (or TIME_IMMEDIATE or TIME_INFINITE)
+  return value: ChunkBufferRO (read only) object containing pointer and length of message
+		special content .blen=0, .bptr = 0 meen excedeed timout, or  
+		queue is not declared zero copy compliant
+ */
+ChunkBufferRO	varLenMsgQueuePopChunkTimeout (VarLenMsgQueue* que, const systime_t  time);
+
+/*
   goal : (zero copy api)
   free memory of a precedently given message by PopChunk
          
-  parameters : queue object, ChunkBufferRO pointer
-  return value: 
+  parameters : queue object
+  return value: ChunkBufferRO pointer
  */
 void		varLenMsgQueueFreeChunk (VarLenMsgQueue* que, const ChunkBufferRO *cbuf);
 
