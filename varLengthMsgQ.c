@@ -137,6 +137,8 @@ int32_t 	varLenMsgQueuePopTimeout (VarLenMsgQueue* que, void* msg,
   int32_t retVal, status;
   MsgPtrLen mpl;
 
+  varLenMsgQueueLock (que);
+
   if ((status = chMBFetch (&que->mb, &mpl.msgPtrLen, time) != RDY_OK)) {
     if (status == RDY_TIMEOUT)
       retVal = ERROR_MAILBOX_TIMEOUT;
@@ -145,7 +147,6 @@ int32_t 	varLenMsgQueuePopTimeout (VarLenMsgQueue* que, void* msg,
     goto unlockAndExit;
   }
   
-  varLenMsgQueueLock (que);
   
   if (mpl.ptr != ringBufferGetReadPointer(&que->circBuf)) {
     // OUT OF BAND CONDITION
