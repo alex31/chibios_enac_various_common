@@ -66,7 +66,8 @@ msg_t i2cGetIO_PCF8574 (I2CDriver *i2cd, uint8_t *ioVal);
 #endif
 
 #ifdef I2C_USE_ADS7828
-msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, uint8_t bitmask, float *percent);
+msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, uint8_t adrOffset, 
+			     uint8_t bitmask, float *percent);
 #endif
 
 

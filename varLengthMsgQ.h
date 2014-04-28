@@ -16,15 +16,15 @@ arg6 : attribute (mainly to put large circular buffer in ccm ram)
 
 TODO: (30/10/2013) In buffer reservation mode, if a thread reserve a chunk : (varLenMsgQueueReserveChunk)
       and does not push it (varLenMsgQueueSendChunk), the circular buffer will be filled,
-      and the entire queue will be stuck. A mecanism should be provided in this case to 
+      and the entire queue will be stuck. A mecanism should be provided in this case to
       invalidate the chunk so that it will be discarded when sent (varLenMsgQueueSendChunk), and
       unlock the circular buffer so that the entire queue will not be stuck. To achive that,
       a small (number of simultaneous thread which send message with reserve api) table of
       current reserved chunk sould be included in struct VarLenMsgQueue.
 
-      (31/10/2013) optimisation: varLenMsgQueuePushForZeroCopy has to be rewritten to avoid calls to 
+      (31/10/2013) optimisation: varLenMsgQueuePushForZeroCopy has to be rewritten to avoid calls to
       reserveChunk/sendChunk API.
-      
+
 
 BUGS : static init of ccm ram array not done by gcc init stub
 
@@ -39,13 +39,14 @@ BUGS : static init of ccm ram array not done by gcc init stub
 #define ERROR_MAILBOX_FAIL -11
 #define ERROR_MAILBOX_TIMEOUT -12
 #define ERROR_CHUNKBUFFER_INVALID -20
+#define ERROR_ZEROCOPY_NOT_ENABLED -30
 
 typedef enum  {VarLenMsgQueue_REGULAR, VarLenMsgQueue_OUT_OF_BAND} VarLenMsgQueueUrgency;
 
 #define _MAILBOX_BUFFER(name, size, attrib)				\
   static msg_t __ ## name ## _mailboxBufferInternal[size] attrib = {0};
 
-//= {[0 ... size-1] = 0} 
+//= {[0 ... size-1] = 0}
 #define _SPARSECHUNK_MAP_BUFFER(name, size, attrib)				\
   static MsgPtrLen  __ ## name ## _sparseChunkMapBuffer[size] attrib = {[0 ... size-1] = {.msgPtrLen = 0}};
 
@@ -95,7 +96,7 @@ void		varLenMsgDynamicInit   (VarLenMsgQueue* que);
 
 /*
   goal : test if queue is full
-         
+
   parameters : queue object
   return value: TRUE if queue if full, FALSE otherwise
  */
@@ -103,62 +104,62 @@ bool_t		varLenMsgQueueIsFull   (VarLenMsgQueue* que);
 
 /*
   goal : test if queue is empty
-         
+
   parameters : queue object
   return value:  TRUE if queue if empty, FALSE otherwise
  */
 bool_t 		varLenMsgQueueIsEmpty  (VarLenMsgQueue* que);
 
 /*
-  goal :  return used size in circular buffer, 
+  goal :  return used size in circular buffer,
          does take into account used mailbox slots
-         
+
   parameters : queue object
-  return value: size in byte of used memory 
+  return value: size in byte of used memory
  */
 int32_t 	varLenMsgQueueUsedSize (VarLenMsgQueue* que);
 
 /*
-  goal : return free size in circular buffer, 
+  goal : return free size in circular buffer,
          does take into account used mailbox slots
-         
+
   parameters : queue object
-  return value: size in byte of free memory 
+  return value: size in byte of free memory
  */
 int32_t 	varLenMsgQueueFreeSize (VarLenMsgQueue* que);
 
 /*
-  goal : push a new nessage of msgLen bytes. non blocking, 
+  goal : push a new nessage of msgLen bytes. non blocking,
          if push is not possible, return error status
-         
-  parameters : queue object, pointer on buffer, message length, 
+
+  parameters : queue object, pointer on buffer, message length,
                urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
   return value: if > 0 : number of bytes actually sent
                 if < 0 : error status (see errors at begining of this header file)
  */
-int32_t 	varLenMsgQueuePush     (VarLenMsgQueue* que, const void* msg, 
+int32_t 	varLenMsgQueuePush     (VarLenMsgQueue* que, const void* msg,
 					const size_t msgLen,
 					const VarLenMsgQueueUrgency urgency);
 
 /*
-  goal : pop a message. blocking 
-         
+  goal : pop a message. blocking
+
   parameters : queue object, pointer on buffer, buffer length
   return value:  if > 0 : number of actually copied bytes on buffer
                  if < 0 : error status (see errors at begining of this header file)
  */
-int32_t 	varLenMsgQueuePop      (VarLenMsgQueue* que, void* msg, 
+int32_t 	varLenMsgQueuePop      (VarLenMsgQueue* que, void* msg,
 					const size_t msgLen);
 
 /*
   goal : pop a message. blocking, but with timeout parameter
-         
+
   parameters : queue object, pointer on buffer, buffer length
 	       timeout value
   return value:  if > 0 : number of actually copied bytes on buffer
                  if < 0 : error status (see errors at begining of this header file)
  */
-int32_t 	varLenMsgQueuePopTimeout (VarLenMsgQueue* que, void* msg, 
+int32_t 	varLenMsgQueuePopTimeout (VarLenMsgQueue* que, void* msg,
 					  const size_t msgLen, const systime_t  time);
 
 
@@ -168,19 +169,19 @@ int32_t 	varLenMsgQueuePopTimeout (VarLenMsgQueue* que, void* msg,
   bugs : see BUGS section at begining of this header
   goal : (zero copy api)
          reserve a chunk of memory on the circular buffer to be filled eventually
-         
+
   parameters : queue object, pointer to ChunkBuffer object, reserved buffer length
   return value: if > 0 : requested length
                 if < 0 : error status (see errors at begining of this header file)
  */
-int32_t		varLenMsgQueueReserveChunk (VarLenMsgQueue* que, 
+int32_t		varLenMsgQueueReserveChunk (VarLenMsgQueue* que,
 					    ChunkBuffer *cbuf, const size_t msgLen);
 
 /*
   bugs : see BUGS section at begining of this header
   goal : (zero copy api)
          send a chunk of memory prevoiously reserved and filled as a message
-         
+
   parameters : queue object, pointer to ChunkBuffer object,
                urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
   return value: if > 0 : requested length
@@ -191,32 +192,37 @@ int32_t		varLenMsgQueueSendChunk (VarLenMsgQueue* que, const ChunkBuffer *cbuf,
 
 
 /*
-  goal : (zero copy api) 
+  goal : (zero copy api)
   get a message to be processed without copy (blocking)
-         
-  parameters : queue object
-  return value: ChunkBufferRO (read only) object containing pointer and length of message
+
+  parameters : INOUT queue object
+	       OUT ChunkBufferRO
+  return value: if > 0 : length od received msg
+                if < 0 : error status (see errors at begining of this header file)
  */
-ChunkBufferRO	varLenMsgQueuePopChunk (VarLenMsgQueue* que);
+uint32_t	varLenMsgQueuePopChunk (VarLenMsgQueue* que, ChunkBufferRO *cbro);
 
 /*
-  goal : (zero copy api) 
+  goal : (zero copy api)
   get a message to be processed without copy (blocking)
-         
-  parameters : queue object
-	       timeout (or TIME_IMMEDIATE or TIME_INFINITE)
-  return value: ChunkBufferRO (read only) object containing pointer and length of message
-		special content .blen=0, .bptr = 0 meen excedeed timout, or  
-		queue is not declared zero copy compliant
+
+  parameters : INOUT queue object
+	       OUT ChunkBufferRO
+	       IN  timeout (or TIME_IMMEDIATE or TIME_INFINITE)
+  return value: if > 0 : length od received msg
+                if < 0 : error status (see errors at begining of this header file)
+
  */
-ChunkBufferRO	varLenMsgQueuePopChunkTimeout (VarLenMsgQueue* que, const systime_t  time);
+uint32_t	varLenMsgQueuePopChunkTimeout (VarLenMsgQueue* que, ChunkBufferRO *cbro,
+					       const systime_t  time);
+
 
 /*
   goal : (zero copy api)
   free memory of a precedently given message by PopChunk
-         
-  parameters : queue object
-  return value: ChunkBufferRO pointer
+
+  parameters : INOUT queue object
+               IN    ChunkBufferRO pointer
  */
 void		varLenMsgQueueFreeChunk (VarLenMsgQueue* que, const ChunkBufferRO *cbuf);
 
@@ -224,7 +230,7 @@ void		varLenMsgQueueFreeChunk (VarLenMsgQueue* que, const ChunkBufferRO *cbuf);
 
 /*
   goal : helper function to fix queue : verify that a empty queue is in coherent state
-         
+
   parameters : queue object
   return value: TRUE if OK, FALSE if ERROR
  */
@@ -232,7 +238,7 @@ bool_t		varLenMsgQueueTestIntegrityIfEmpty(VarLenMsgQueue* que);
 
 /*
   goal : give literal message from a status error code
-         
+
   parameters : status error code
   return value: pointer to const message
  */
@@ -241,12 +247,12 @@ const char*     varLenMsgQueueError (int32_t messIndex);
 
 
 /*
-#                 _ __           _                    _                   
-#                | '_ \         (_)                  | |                  
-#                | |_) |  _ __   _   __   __   __ _  | |_     ___         
-#                | .__/  | '__| | |  \ \ / /  / _` | | __|   / _ \        
-#                | |     | |    | |   \ V /  | (_| | \ |_   |  __/        
-#                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|        
+#                 _ __           _                    _
+#                | '_ \         (_)                  | |
+#                | |_) |  _ __   _   __   __   __ _  | |_     ___
+#                | .__/  | '__| | |  \ \ / /  / _` | | __|   / _ \
+#                | |     | |    | |   \ V /  | (_| | \ |_   |  __/
+#                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|
 */
 
 typedef union {

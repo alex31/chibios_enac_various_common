@@ -20,7 +20,7 @@
 
 //#define DEBUG_MB 1
 
-#if defined TRACE && defined CONSOLE_DEV_SD 
+#if defined TRACE 
 #include "printf.h"
 #define DebugTrace(...) {{chprintf (chp, __VA_ARGS__); chprintf (chp, "\r\n");}}
 #else

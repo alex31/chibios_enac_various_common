@@ -667,16 +667,18 @@ msg_t i2cGetIO_PCF8574 (I2CDriver *i2cd, uint8_t *ioVal)
 
 
 #ifdef I2C_USE_ADS7828
-const uint8_t adcAdr =  0x48;
+const uint8_t adcAdrBase =  0x48;
 const uint8_t chanSel[] = {0x80, 0xC0, 0x90, 0xD0, 0xA0, 0xE0, 0xB0, 0xF0};
 const uint8_t powerDown = 0x04;
-msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, uint8_t bitmask, float *percent)
+msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, uint8_t adrOffset, 
+			     uint8_t bitmask, float *percent)
 {
   msg_t status = RDY_OK;
   uint8_t rawVal[2];
   //  uint8_t zeroSizeArray[0];
   uint8_t fcount=0;
- 
+  const uint8_t adcAdr = adcAdrBase+adrOffset;
+
   i2cAcquireBus(i2cd);
   for (uint8_t i=0; i<8; i++) {
     if (bitmask & (1 << i)) {
