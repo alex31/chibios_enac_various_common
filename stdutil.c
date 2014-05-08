@@ -6,6 +6,7 @@
 #include "stdutil.h"
 
 
+
 static float powi(int x, int y);   
        
 float atof_m(const char *s)   

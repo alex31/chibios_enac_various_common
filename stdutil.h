@@ -57,10 +57,8 @@
 #define RotLnb(x,shift,nbits) ((x << shift) | (x >> (nbits - shift)))
 #define RotRnb(x,shift,nbits) ((x >> shift) | (x << (nbits - shift)))
 
-
-#ifndef assert
+#undef assert
 #define assert(__e) ((__e) ? (void)0 : my_assert_func (__FILE__, __LINE__, #__e))
-#endif
 
 
 /*===========================================================================*/
