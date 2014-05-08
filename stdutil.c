@@ -122,11 +122,6 @@ void my_assert_func (const char* file, const int line,
 #endif
 }
 
-int32_t abs32(int32_t x)
-{
-  return (x > 0) ? x : -x;
-}
-
 float lerpf (const float x, const float y, const float w) 
 {
   return x + (w * (y-x));
