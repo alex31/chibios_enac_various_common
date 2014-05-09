@@ -197,7 +197,7 @@ int32_t		varLenMsgQueueSendChunk (VarLenMsgQueue* que, const ChunkBuffer *cbuf,
 
   parameters : INOUT queue object
 	       OUT ChunkBufferRO
-  return value: if > 0 : length od received msg
+  return value: if > 0 : length of received msg
                 if < 0 : error status (see errors at begining of this header file)
  */
 uint32_t	varLenMsgQueuePopChunk (VarLenMsgQueue* que, ChunkBufferRO *cbro);

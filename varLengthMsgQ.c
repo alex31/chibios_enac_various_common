@@ -3,12 +3,12 @@
 #include "varLengthMsgQ.h"
 #include <string.h>
 
-#ifdef DEBUG_LIB
+#ifdef DEBUG_VARLEN_MSGQ
 #include "stdutil.h"
 #include "globalVar.h"
 #else
 #define DebugTrace(...)
-#endif // DEBUG_LIB
+#endif //  DEBUG_VARLEN_MSGQ
 
 
 

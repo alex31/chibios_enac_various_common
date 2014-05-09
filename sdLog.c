@@ -351,8 +351,8 @@ static msg_t thdSdLog(void *arg)
   chRegSetThreadName("thdSdLog");
   while (!chThdShouldTerminate()) {
     //     if ((retLen = varLenMsgQueuePop (&messagesQueue, lm, LOG_MESSAGE_PREBUF_LEN)) > 0) {
-    const ChunkBufferRO cbro = varLenMsgQueuePopChunk (&messagesQueue);
-    const int32_t retLen = cbro.blen;
+    ChunkBufferRO cbro;
+    const int32_t retLen = varLenMsgQueuePopChunk (&messagesQueue, &cbro);
     if (retLen > 0) {
       const LogMessage *lm = (LogMessage *) cbro.bptr;
       if (lm->fileObject == NULL) {
