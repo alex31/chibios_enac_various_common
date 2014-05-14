@@ -83,6 +83,59 @@ static inline void bb_peri_set_bit(volatile void * const address,
     *bb_perip(address, bit) = val;
 }
 
+/**
+ * @brief Set a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type) 
+ * @param bit Bit in gpio to write to
+ */
+static inline void bb_palSetPad   (GPIO_TypeDef *gpio,
+                                   const uint32_t bit) {
+   bb_peri_set_bit(&(gpio->ODR), bit, 1); 
+}
+
+/**
+ * @brief Write a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type) 
+ * @param bit Bit in gpio to write to
+ */
+static inline void bb_palWritePad   (GPIO_TypeDef *gpio,
+				     const uint32_t bit,
+				     const uint32_t val) {
+   bb_peri_set_bit(&(gpio->ODR), bit, val); 
+}
+
+/**
+ * @brief Clear a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type) 
+ * @param bit Bit in gpio to write to
+ */
+static inline void bb_palClearPad   (GPIO_TypeDef *gpio,
+                                   const uint32_t bit) {
+  bb_peri_set_bit(&(gpio->ODR), bit, 0); 
+}
+
+/**
+ * @brief Toggle a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type) 
+ * @param bit Bit in gpio to write to
+ */
+static inline void bb_palTogglePad   (GPIO_TypeDef *gpio,
+                                   const uint32_t bit) {
+  bb_peri_set_bit(&(gpio->ODR), bit, !bb_peri_get_bit(&(gpio->IDR), bit)); 
+}
+
+/**
+ * @brief Read a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type) 
+ * @param bit Bit in gpio to write to
+ */
+static inline uint32_t bb_palReadPad   (GPIO_TypeDef *gpio,
+					const uint32_t bit) {
+  return bb_peri_get_bit(&(gpio->IDR), bit); 
+}
+
+
+
 static inline volatile uint32_t* __bb_addr(volatile void * const address,
                                          const uint32_t bit,
                                          const uint32_t bb_base,

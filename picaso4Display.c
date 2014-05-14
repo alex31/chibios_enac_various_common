@@ -270,6 +270,7 @@ void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
   const char* endPtr = &(buffer[strnlen(buffer, sizeof (buffer)) -1]);
   // replace escape color sequence by color command for respective backend
   // ESC c 0 à 9 : couleur index of background and foreground
+  // replace escape n by carriage return, line feed
   for (curBuf=buffer;curBuf<endPtr && lastLoop == FALSE;) {
     token = index (curBuf, 27);
     if (token == NULL) {
@@ -286,10 +287,14 @@ void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
     
     if (lastLoop == FALSE) {
       // next two char a color coding scheme
-      if (tolower((uint32_t) (*token++)) == 'c') { 
-	const int32_t colorIndex = INRANGE(0, COLOR_TABLE_SIZE-1, *token - '0');
+      if (tolower((uint32_t) (*token)) == 'c') { 
+	const int32_t colorIndex = INRANGE(0, COLOR_TABLE_SIZE-1, *++token - '0');
 	oledUseColorIndex (oledConfig, colorIndex);
 	//	DebugTrace ("useColorIndex %d", colorIndex);
+	curBuf=token+1;
+      } else if (tolower((uint32_t) (*token)) == 'n') { 	
+	//	DebugTrace ("carriage return");
+	oledGotoXY (oledConfig, 0, oledConfig->curYpos+1);
 	curBuf=token+1;
       }
     }

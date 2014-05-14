@@ -2,11 +2,13 @@
 #include <ch.h>
 #include <hal.h>
 #include <chrtclib.h>
+#include <stdlib.h>
 
 
 static struct tm utime;
 static uint32_t weekDay (void);
-
+static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const uint32_t year);
+static uint32_t getDstOffset (void);
 
 void setHour (uint32_t val)
 {
@@ -64,7 +66,9 @@ void setWeekDay (uint32_t val)
 uint32_t getHour (void)
 {
   rtcGetTimeTm (&RTCD1, &utime);
-  return utime.tm_hour;
+  mktime(&utime);
+  
+  return (utime.tm_hour+getDstOffset()) % 24;
 }
 uint32_t getMinute (void)
 {
@@ -111,11 +115,48 @@ static uint32_t weekDay (void)
   const uint32_t month = getMonth();
   const uint32_t year = getYear();
   
-  return  (day                                                      
+  return weekDayOfDate (day, month, year);
+}
+
+static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const uint32_t year)
+{
+  return  (day+1                                                    
     + ((153 * (month + 12 * ((14 - month) / 12) - 3) + 2) / 5) 
     + (365 * (year + 4800 - ((14 - month) / 12)))              
     + ((year + 4800 - ((14 - month) / 12)) / 4)                
     - ((year + 4800 - ((14 - month) / 12)) / 100)              
     + ((year + 4800 - ((14 - month) / 12)) / 400)              
 	   - 32045) % 7;
+}
+
+
+static uint32_t getDstOffset (void)
+{
+  const  uint32_t startMonth=3;
+  const  uint32_t endMonth=10;
+  const uint32_t day = getMonthDay();
+  const uint32_t month = getMonth();
+  const uint32_t year = getYear();
+  static uint32_t lastSundayOfMonth=0;
+
+  
+  if ((month < startMonth) || (month > endMonth))
+    return 0;
+
+  if ((month > startMonth) && (month < endMonth))
+      return 1;
+
+  if (lastSundayOfMonth==0) {
+    for (uint32_t d=31; d>=24; d--) {
+      if (weekDayOfDate (d, month, year) == 0) {
+	lastSundayOfMonth=d;
+	break;
+      }
+    }
+  }
+
+  if (month == startMonth) 
+    return (day >= lastSundayOfMonth) ? 1 : 0;
+  else
+    return (day < lastSundayOfMonth) ? 1 : 0;
 }
