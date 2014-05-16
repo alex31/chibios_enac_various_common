@@ -13,7 +13,7 @@ static uint32_t getDstOffset (void);
 void setHour (uint32_t val)
 {
   rtcGetTimeTm (&RTCD1, &utime);
-  utime.tm_hour = val;
+  utime.tm_hour = val-getDstOffset();
   utime.tm_isdst = 0;
   rtcSetTimeTm (&RTCD1, &utime);
 }
