@@ -69,6 +69,12 @@
 extern "C" {
 #endif
 
+ typedef struct  {
+   GPIO_TypeDef	*gpio;
+   uint32_t	pin;
+} GpioPin;
+ 
+
 
   float atof_m(const char *s);
   void *malloc_m (size_t size);
@@ -79,6 +85,7 @@ extern "C" {
   void my_assert_func (const char* file, const int line, 
 		       const char *cond);
   float lerpf (const float x, const float y, const float w) ;
+  float unlerpf (const float x, const float y, const float x_y) ;
   uint32_t lerpu32 (const uint32_t x, const uint32_t y, const float w) ;
   uint32_t lerpu32Fraction (const uint32_t x, const uint32_t y, const uint32_t numerator, 
 			    const uint32_t denumerator) ;

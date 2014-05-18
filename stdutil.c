@@ -128,6 +128,11 @@ float lerpf (const float x, const float y, const float w)
   return x + (w * (y-x));
 }
 
+float unlerpf (const float x, const float y, const float x_y) 
+{
+  return (x_y - x) / (y - x);
+}
+
 uint32_t lerpu32 (const uint32_t x, const uint32_t y, const float w)
 {
   if (y>x) {
