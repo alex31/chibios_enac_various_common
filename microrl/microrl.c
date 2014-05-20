@@ -101,11 +101,11 @@ static void hist_save_line (ring_history_t * pThis, char * line, int len)
 	
   // store line
   if (len < _RING_HISTORY_LEN-pThis->end-1)
-    memcpy (pThis->ring_buf + pThis->end + 1, line, len);
+    memmove (pThis->ring_buf + pThis->end + 1, line, len);
   else {
     int part_len = _RING_HISTORY_LEN-pThis->end-1;
-    memcpy (pThis->ring_buf + pThis->end + 1, line, part_len);
-    memcpy (pThis->ring_buf, line + part_len, len - part_len);
+    memmove (pThis->ring_buf + pThis->end + 1, line, part_len);
+    memmove (pThis->ring_buf, line + part_len, len - part_len);
   }
   pThis->ring_buf [pThis->end] = len;
   pThis->end = pThis->end + len + 1;
@@ -146,12 +146,18 @@ static int hist_restore_line (ring_history_t * pThis, char * line, int dir)
       if (pThis->ring_buf[header]) {
 	pThis->cur++;
 	// obtain saved line
-	if (pThis->ring_buf [header] + header < _RING_HISTORY_LEN) {
-	  memcpy (line, pThis->ring_buf + header + 1, pThis->ring_buf[header]);
+	if (pThis->ring_buf [header] + header + 1 < _RING_HISTORY_LEN) {
+	  // fix from coverity scan
+	  /*
+	    CID 60358 (#1 of 2): Out-of-bounds read (OVERRUN)30. 
+            overrun-local: Overrunning array of 256 bytes at byte offset 256 
+	    by dereferencing pointer &pThis->ring_buf[header] + 1
+	   */
+	  memove (line, pThis->ring_buf + header + 1, pThis->ring_buf[header]);
 	} else {
 	  int part0 = _RING_HISTORY_LEN - header - 1;
-	  memcpy (line, pThis->ring_buf + header + 1, part0);
-	  memcpy (line + part0, pThis->ring_buf, pThis->ring_buf[header] - part0);
+	  memmove (line, pThis->ring_buf + header + 1, part0);
+	  memmove (line + part0, pThis->ring_buf, pThis->ring_buf[header] - part0);
 	}
 	return pThis->ring_buf[header];
       }
@@ -169,11 +175,11 @@ static int hist_restore_line (ring_history_t * pThis, char * line, int dir)
 	j++;
       }
       if (pThis->ring_buf [header] + header < _RING_HISTORY_LEN) {
-	memcpy (line, pThis->ring_buf + header + 1, pThis->ring_buf[header]);
+	memmove (line, pThis->ring_buf + header + 1, pThis->ring_buf[header]);
       } else {
 	int part0 = _RING_HISTORY_LEN - header - 1;
-	memcpy (line, pThis->ring_buf + header + 1, part0);
-	memcpy (line + part0, pThis->ring_buf, pThis->ring_buf[header] - part0);
+	memmove (line, pThis->ring_buf + header + 1, part0);
+	memmove (line + part0, pThis->ring_buf, pThis->ring_buf[header] - part0);
       }
       return pThis->ring_buf[header];
     }
