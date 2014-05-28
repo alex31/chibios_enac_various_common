@@ -148,24 +148,27 @@ void oledReleaseLock (oledConfig *oledConfig)
   chMtxUnlock();
 }
 
-void oledPrintVersion (oledConfig *oledConfig)
+void oledGetVersion (oledConfig *oledConfig, char *buffer, const size_t buflen)
 {
   RET_UNLESS_PICASO(oledConfig);
 
    // get display model6
   OLED_KOF (KOF_INT16LENGTH_THEN_DATA, "%c%c", 0x00, 0x1a);  
-  DebugTrace ("display model %s", oledConfig->response);
-  //  syslog (LOG_INFO, "4ds model %s", oledConfig->response);
+  strncpy (buffer, (const char *) oledConfig->response, buflen);
 
   // get Pmmc version
   OLED_KOF (KOF_INT16, "%c%c", 0x00, 0x1c);
-  DebugTrace ("Pmmc version %d", getResponseAsUint16(oledConfig));
-  //  syslog (LOG_INFO, "Pmmc %d", getResponseAsUint16(oledConfig));
+  const uint16_t pmmc = getResponseAsUint16(oledConfig);
+  const uint8_t pmmcMajor = pmmc/256;
+  const uint8_t pmmcMinor = pmmc%256;
+  chsnprintf (&buffer[strlen(buffer)], buflen-strlen(buffer), " Pmmc=%d.%d", pmmcMajor, pmmcMinor);
 
   // get SPE version
   OLED_KOF (KOF_INT16, "%c%c", 0x00, 0x1b);
-  DebugTrace ("SPE version %d", getResponseAsUint16(oledConfig));
-  //  syslog (LOG_INFO, "SPE %d", getResponseAsUint16(oledConfig));
+  const uint16_t spe = getResponseAsUint16(oledConfig);
+  const uint8_t speMajor = spe/256;
+  const uint8_t speMinor = spe%256;
+  chsnprintf (&buffer[strlen(buffer)], buflen-strlen(buffer), " Spe=%d.%d", speMajor, speMinor);
 }
 
 void oledSetBaud (oledConfig *oledConfig, uint32_t baud)

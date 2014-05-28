@@ -146,14 +146,14 @@ static int hist_restore_line (ring_history_t * pThis, char * line, int dir)
       if (pThis->ring_buf[header]) {
 	pThis->cur++;
 	// obtain saved line
-	if (pThis->ring_buf [header] + header + 1 < _RING_HISTORY_LEN) {
+	if ((pThis->ring_buf [header] + header + 1) < _RING_HISTORY_LEN) {
 	  // fix from coverity scan
 	  /*
 	    CID 60358 (#1 of 2): Out-of-bounds read (OVERRUN)30. 
             overrun-local: Overrunning array of 256 bytes at byte offset 256 
 	    by dereferencing pointer &pThis->ring_buf[header] + 1
 	   */
-	  memove (line, pThis->ring_buf + header + 1, pThis->ring_buf[header]);
+	  memmove (line, pThis->ring_buf + header + 1, pThis->ring_buf[header]);
 	} else {
 	  int part0 = _RING_HISTORY_LEN - header - 1;
 	  memmove (line, pThis->ring_buf + header + 1, part0);
@@ -174,7 +174,7 @@ static int hist_restore_line (ring_history_t * pThis, char * line, int dir)
 	  header -= _RING_HISTORY_LEN;
 	j++;
       }
-      if (pThis->ring_buf [header] + header < _RING_HISTORY_LEN) {
+      if ((pThis->ring_buf [header] + header +1) < _RING_HISTORY_LEN) {
 	memmove (line, pThis->ring_buf + header + 1, pThis->ring_buf[header]);
       } else {
 	int part0 = _RING_HISTORY_LEN - header - 1;

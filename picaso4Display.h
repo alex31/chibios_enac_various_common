@@ -22,7 +22,7 @@ void oledReleaseLock (oledConfig *oledConfig);
 // replace escape n by carriage return, line feed
 void oledPrintFmt (oledConfig *oledConfig, const char *txt, ...);
 void oledPrintBuffer (oledConfig *oledConfig, const char *buffer);
-void oledPrintVersion (oledConfig *oledConfig);
+void oledGetVersion (oledConfig *oledConfig, char *buffer, const size_t buflen);
 void oledChangeBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
 void oledSetTextFgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
 void oledSetTextBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
