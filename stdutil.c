@@ -165,3 +165,8 @@ float clampToVerify (const char* file, const int line, float l, float h, float v
 #endif
   return  (MAX(MIN(v,h),l));
 }
+
+float clampTo (float l, float h, float v)
+{
+  return  (MAX(MIN(v,h),l));
+}

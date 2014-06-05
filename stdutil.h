@@ -90,6 +90,7 @@ extern "C" {
   uint32_t lerpu32Fraction (const uint32_t x, const uint32_t y, const uint32_t numerator, 
 			    const uint32_t denumerator) ;
   float clampToVerify (const char* file, const int line, float l, float h, float v);
+  float clampTo (float l, float h, float v);
   static inline bool_t isInRangef (float x, float min, float max) {
     return (x >= min) && (x <= max);
   }
