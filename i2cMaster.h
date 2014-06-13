@@ -65,9 +65,19 @@ msg_t i2cSetIO_MCP23008 (I2CDriver *i2cd, uint8_t ioVal);
 msg_t i2cGetIO_PCF8574 (I2CDriver *i2cd, uint8_t *ioVal);
 #endif
 
+
+
+/*
+  i2cd		: I2C driver
+  adrOffset	: pin selectionnable i2c address offset
+  bitmask       : mask of channel to be sampled
+  useExt_VRef	: use external ref (1) or internal 2.5v ref (0)
+  percent	: pointer to an array of 8 float values
+ */
 #ifdef I2C_USE_ADS7828
-msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, uint8_t adrOffset, 
-			     uint8_t bitmask, float *percent);
+msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset, 
+			     const uint8_t bitmask, const bool useExt_VRef, 
+			     float *percent);
 #endif
 
 

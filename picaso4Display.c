@@ -110,7 +110,6 @@ static void oledReInit (oledConfig *oledConfig)
   // opaque background
   OLED_KOF (KOF_INT16, "%c%c%c%c", 0xff, 0xdf, 0x00, 0x01); 
   oledClearScreen (oledConfig);
-
   
   // use greater speed
   if (baud != 9600) 
@@ -685,6 +684,7 @@ static void oledTrace (oledConfig *oledConfig, const char* err)
   if (strcmp (err, "NACK") != 0) {
     if (errCount++ == 5) {
       errCount = 0;
+      chThdSleepSeconds (2);
       oledReInit (oledConfig);
     }
   }

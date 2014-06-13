@@ -666,18 +666,28 @@ msg_t i2cGetIO_PCF8574 (I2CDriver *i2cd, uint8_t *ioVal)
 
 
 
+/*
+  i2cd		: I2C driver
+  adrOffset	: pin selectionnable i2c address offset
+  bitmask       : mask of channel to be sampled
+  useExt_VRef	: use external ref (1) or internal 2.5v ref (0)
+  percent	: pointer to an array of 8 float values
+ */
 #ifdef I2C_USE_ADS7828
 const uint8_t adcAdrBase =  0x48;
 const uint8_t chanSel[] = {0x80, 0xC0, 0x90, 0xD0, 0xA0, 0xE0, 0xB0, 0xF0};
-const uint8_t powerDown = 0x04;
-msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, uint8_t adrOffset, 
-			     uint8_t bitmask, float *percent)
+const uint8_t powerDownExtRef = 0b0100;
+const uint8_t powerDownIntRef = 0b1100;
+msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset, 
+			     const uint8_t bitmask, const bool useExt_VRef, 
+			     float *percent)
 {
   msg_t status = RDY_OK;
   uint8_t rawVal[2];
   //  uint8_t zeroSizeArray[0];
   uint8_t fcount=0;
   const uint8_t adcAdr = adcAdrBase+adrOffset;
+  const uint8_t powerDown = useExt_VRef ? powerDownExtRef : powerDownIntRef;
 
   i2cAcquireBus(i2cd);
   for (uint8_t i=0; i<8; i++) {
