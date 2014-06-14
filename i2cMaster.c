@@ -825,8 +825,9 @@ static void i2cMasterSetModePeriphI2c (I2CDriver *i2cd)
   
 }
 
+__attribute__((__unused__))
 static msg_t i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  const uint8_t regAdr,
-				const uint8_t mask, bool_t enable)
+				const uint8_t mask, bool_t enable) 
 {
   msg_t status;
   const uint8_t txbuf[] = {regAdr};
