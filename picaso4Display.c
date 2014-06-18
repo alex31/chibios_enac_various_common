@@ -684,7 +684,6 @@ static void oledTrace (oledConfig *oledConfig, const char* err)
   if (strcmp (err, "NACK") != 0) {
     if (errCount++ == 5) {
       errCount = 0;
-      chThdSleepSeconds (2);
       oledReInit (oledConfig);
     }
   }
