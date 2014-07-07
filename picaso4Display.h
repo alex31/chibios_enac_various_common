@@ -4,6 +4,9 @@
 #include <hal.h>
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 typedef struct oledConfig  oledConfig;
@@ -101,7 +104,9 @@ struct oledConfig {
 };
 
 
-
+#ifdef __cplusplus
+}
+#endif
 
 
 
