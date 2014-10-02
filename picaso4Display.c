@@ -362,8 +362,6 @@ void oledSetTextFgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
 
 void oledSetTextBgColorTable (oledConfig *oledConfig, uint8_t index, uint8_t r, uint8_t g, uint8_t b)
 {
-  RET_UNLESS_PICASO(oledConfig);
-
   RET_UNLESS_INIT(oledConfig);
   if (++index >= COLOR_TABLE_SIZE) return;
 
@@ -372,7 +370,6 @@ void oledSetTextBgColorTable (oledConfig *oledConfig, uint8_t index, uint8_t r, 
 
 void oledSetTextFgColorTable (oledConfig *oledConfig,  uint8_t index, uint8_t r, uint8_t g, uint8_t b)
 {
-  RET_UNLESS_PICASO(oledConfig);
   RET_UNLESS_INIT(oledConfig);
   if (++index >= COLOR_TABLE_SIZE) return;
 
@@ -381,18 +378,24 @@ void oledSetTextFgColorTable (oledConfig *oledConfig,  uint8_t index, uint8_t r,
 
 void oledUseColorIndex (oledConfig *oledConfig, uint8_t index)
 {
-  RET_UNLESS_PICASO(oledConfig);
   RET_UNLESS_INIT(oledConfig);
   if (++index >= COLOR_TABLE_SIZE) return;
 
-  if (oledConfig->fg[0].rgb != oledConfig->fg[index].rgb)  {
+  if (oledConfig->deviceType == PICASO) {
+    if (oledConfig->fg[0].rgb != oledConfig->fg[index].rgb)  {
+      oledSetTextFgColor (oledConfig, oledConfig->fg[index].r, 
+			  oledConfig->fg[index].g, oledConfig->fg[index].b);
+    }
+    
+    if (oledConfig->tbg[0].rgb != oledConfig->tbg[index].rgb)  {
+      oledSetTextBgColor (oledConfig, oledConfig->tbg[index].r, 
+			  oledConfig->tbg[index].g, oledConfig->tbg[index].b);
+    }
+  } else {
     oledSetTextFgColor (oledConfig, oledConfig->fg[index].r, 
 			oledConfig->fg[index].g, oledConfig->fg[index].b);
-  }
-  
-  if (oledConfig->tbg[0].rgb != oledConfig->tbg[index].rgb)  {
     oledSetTextBgColor (oledConfig, oledConfig->tbg[index].r, 
-			 oledConfig->tbg[index].g, oledConfig->tbg[index].b);
+			oledConfig->tbg[index].g, oledConfig->tbg[index].b);
   }
 }
 
