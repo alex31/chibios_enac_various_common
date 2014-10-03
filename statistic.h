@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 typedef struct {
 	long  cnt;
@@ -46,3 +50,6 @@ Vec3f stat3_maximum(const Statistic3 *s3);
 Vec3f stat3_pop_stdev(const Statistic3 *s3);	    // population stdev
 Vec3f stat3_unbiased_stdev(const Statistic3 *s3);
 
+#ifdef __cplusplus
+}
+#endif

@@ -3,6 +3,10 @@
 
 #include <ch.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 void setHour (uint32_t val);
 void setMinute (uint32_t val);
@@ -23,6 +27,9 @@ uint32_t	getWeekDay (void);
 const char*	getWeekDayAscii (void);
 
 
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif //  __RTC_ACCESS_H__
