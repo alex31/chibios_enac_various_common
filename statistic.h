@@ -37,7 +37,7 @@ float stat_unbiased_stdev(const Statistic *s);
 
 void  stat3_clear(Statistic3 *s3);
 void  stat3_add(Statistic3 *s3, const Vec3f* v3f);
-Vec3l stat3_count(const Statistic3 *s3);
+long  stat3_count(const Statistic3 *s3);
 Vec3f stat3_sum(const Statistic3 *s3);
 Vec3f stat3_average(const Statistic3 *s3);
 Vec3f stat3_minimum(const Statistic3 *s3);

@@ -97,11 +97,9 @@ void  stat3_add(Statistic3 *s3, const Vec3f* v3)
   FOREACH_STAT3( stat_add (&s3->stat3[i], v3->v[i]) );
 }
 
-Vec3l stat3_count(const Statistic3 *s3)
+long stat3_count(const Statistic3 *s3)
 {
-  Vec3l ret;
-  FOREACH_STAT3( ret.l[i] = stat_count (&s3->stat3[i]) );
-  return ret;
+  return s3->stat3[0].cnt;
 }
 
 Vec3f stat3_sum(const Statistic3 *s3)
