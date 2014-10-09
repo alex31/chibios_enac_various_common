@@ -35,6 +35,11 @@ BUGS : static init of ccm ram array not done by gcc init stub
 #include "hal.h"
 #include "ringBuffer.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #define ERROR_MAILBOX_FULL -10
 #define ERROR_MAILBOX_FAIL -11
 #define ERROR_MAILBOX_TIMEOUT -12
@@ -274,3 +279,7 @@ struct VarLenMsgQueue {
   uint32_t sparseChunkNumber;
   MsgPtrLen * const sparseChunkMap;
 } ;
+
+#ifdef __cplusplus
+}
+#endif

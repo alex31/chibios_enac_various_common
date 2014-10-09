@@ -5,6 +5,10 @@
 #include "ff.h"
 #include <stdarg.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 #if SDLOG_WRITE_BUFFER_SIZE == 0 || SDLOG_MAX_MESSAGE_LEN == 0 || \
     SDLOG_QUEUE_SIZE  == 0 || SDLOG_QUEUE_BUCKETS  == 0
@@ -42,5 +46,8 @@ SdioError sdLogStopThread (void);
 #endif
 
 
+#ifdef __cplusplus
+}
+#endif
 
 
