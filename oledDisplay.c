@@ -285,6 +285,12 @@ void oledGotoXY (oledConfig *oledConfig, uint8_t x, uint8_t y)
   oledConfig->curYpos=y;
 }
 
+void oledGotoX (oledConfig *oledConfig, uint8_t x)
+{  
+  RET_UNLESS_INIT(oledConfig);
+  oledConfig->curXpos=x;
+}
+
 void oledGotoNextLine (oledConfig *oledConfig)
 {  
   RET_UNLESS_INIT(oledConfig);

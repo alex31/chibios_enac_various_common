@@ -407,11 +407,21 @@ void oledGotoXY (oledConfig *oledConfig, uint8_t x, uint8_t y)
 {  
   RET_UNLESS_INIT(oledConfig);
 
+   oledConfig->curXpos=x;
+   oledConfig->curYpos=y;
+
+   if (oledConfig->deviceType == TERM_VT100) {
+     sendVt100Seq (oledConfig->serial, "%d;%dH", y+1,x+1);
+   } 
+}
+
+void oledGotoX (oledConfig *oledConfig, uint8_t x)
+{  
+  RET_UNLESS_INIT(oledConfig);
+
+  oledConfig->curXpos=x;
   if (oledConfig->deviceType == TERM_VT100) {
-    sendVt100Seq (oledConfig->serial, "%d;%dH", y+1,x+1);
-  } else {
-    oledConfig->curXpos=x;
-    oledConfig->curYpos=y;
+    sendVt100Seq (oledConfig->serial, "%d;%dH", oledConfig->curYpos+1,x+1);
   }
 }
 
@@ -419,12 +429,11 @@ void oledGotoNextLine (oledConfig *oledConfig)
 {  
   RET_UNLESS_INIT(oledConfig);
 
+  oledConfig->curXpos=0;
+  oledConfig->curYpos++;
   if (oledConfig->deviceType == TERM_VT100) {
     sendVt100Seq (oledConfig->serial, "B");
     //    chprintf (oledConfig->serial, "\r\n");
-  } else {
-    oledConfig->curXpos=0;
-    oledConfig->curYpos++;
   }
 }
 

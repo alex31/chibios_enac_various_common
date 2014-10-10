@@ -25,6 +25,7 @@ void oledSetTextFgColorTable (oledConfig *oledConfig,  uint8_t index,
 			      uint8_t r, uint8_t g, uint8_t b);
 void oledUseColorIndex (oledConfig *oledConfig, uint8_t index);
 void oledGotoXY (oledConfig *oledConfig, uint8_t x, uint8_t y);
+void oledGotoX (oledConfig *oledConfig, uint8_t x);
 void oledGotoNextLine (oledConfig *oledConfig);
 void oledClearScreen (oledConfig *oledConfig);
 void oledInitSdCard (oledConfig *oledConfig);
