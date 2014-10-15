@@ -255,7 +255,7 @@ void oledSetBaud (oledConfig *oledConfig, uint32_t baud)
 
 void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
 {
-  char buffer[80];
+  char buffer[120];
   char *token, *curBuf;
   bool_t lastLoop=FALSE;
 
@@ -312,7 +312,8 @@ void oledPrintBuffer (oledConfig *oledConfig, const char *buffer)
   if (oledConfig->deviceType == PICASO) {
     OLED ("%c%c%c%c%c%c", 0xff, 0xe9, 0x00, oledConfig->curYpos, 0x00, oledConfig->curXpos);
     OLED_KOF (KOF_INT16, "%c%c%s%c", 0x0, 0x18, buffer, 0x0);
-  } else {
+  } else { 
+    sendVt100Seq (oledConfig->serial, "%d;%dH",  oledConfig->curYpos+1,oledConfig->curXpos+1);
     chprintf (oledConfig->serial, buffer);
     chprintf (oledConfig->serial, "\r\n");
   }
