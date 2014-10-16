@@ -8,7 +8,6 @@
 static struct tm utime;
 static uint32_t weekDay (void);
 static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const uint32_t year);
-static uint32_t getDstOffset (void);
 
 void setHour (uint32_t val)
 {
@@ -130,7 +129,7 @@ static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const u
 }
 
 
-static uint32_t getDstOffset (void)
+uint32_t getDstOffset (void)
 {
   const  uint32_t startMonth=3;
   const  uint32_t endMonth=10;
