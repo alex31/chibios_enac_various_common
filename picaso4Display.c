@@ -273,6 +273,7 @@ void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
   // replace escape color sequence by color command for respective backend
   // ESC c 0 à 9 : couleur index of background and foreground
   // replace escape n by carriage return, line feed
+  // replace escape t by horizontal tabulation
   for (curBuf=buffer;(curBuf<endPtr) && (lastLoop == FALSE);) {
     token = index (curBuf, 033);
     if (token == NULL) {
@@ -300,6 +301,14 @@ void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
 	//	DebugTrace ("carriage return");
 	oledGotoXY (oledConfig, 0, oledConfig->curYpos+1);
 	curBuf=token+1;
+      } else if (tolower((uint32_t) (*token)) == 't') { 	
+	//	DebugTrace ("tabulation");
+	const uint32_t tabLength = 8-(oledConfig->curXpos%8);
+	char space[8] = {[0 ... 7] = ' '};
+	space[tabLength] = 0;
+	oledPrintBuffer (oledConfig, space);
+	oledGotoX (oledConfig, oledConfig->curXpos + tabLength);
+	curBuf=token+1;
       }
     }
   }
@@ -313,9 +322,8 @@ void oledPrintBuffer (oledConfig *oledConfig, const char *buffer)
     OLED ("%c%c%c%c%c%c", 0xff, 0xe9, 0x00, oledConfig->curYpos, 0x00, oledConfig->curXpos);
     OLED_KOF (KOF_INT16, "%c%c%s%c", 0x0, 0x18, buffer, 0x0);
   } else { 
-    sendVt100Seq (oledConfig->serial, "%d;%dH",  oledConfig->curYpos+1,oledConfig->curXpos+1);
+    sendVt100Seq (oledConfig->serial, "%d;%dH",  oledConfig->curYpos+1, oledConfig->curXpos+1);
     chprintf (oledConfig->serial, buffer);
-    chprintf (oledConfig->serial, "\r\n");
   }
 }
 

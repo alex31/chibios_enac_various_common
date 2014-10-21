@@ -484,7 +484,7 @@ bool_t sdioConnect (void)
     DebugTrace ("sdcConnect still not connected");
   }
 
-  DebugTrace ("SDC START");
+  //  DebugTrace ("SDC START");
   
   cnxState = CONNECT;
   return TRUE;
