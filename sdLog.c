@@ -155,6 +155,31 @@ SdioError sdLogCloseLog (FIL *fileObject)
 
 
 #ifdef SDLOG_NEED_QUEUE
+SdioError sdLogWriteLogDirect (FIL *fileObject, const char* fmt, ...)
+{
+  UINT bw;
+  if (fileObject->fs == NULL)
+    return SDLOG_FATFS_ERROR;
+
+  va_list ap;
+  va_start(ap, fmt);
+
+  char *buf = alloca(LOG_MESSAGE_PREBUF_LEN);
+
+  chvsnprintf (buf, SDLOG_MAX_MESSAGE_LEN-1,  fmt, ap);
+  buf[SDLOG_MAX_MESSAGE_LEN-1]=0;
+  va_end(ap);
+
+  FRESULT rc = f_write (fileObject, buf, strlen (buf), &bw); 
+  if (rc) {
+    return SDLOG_FATFS_ERROR;
+  } else if (bw != strlen (buf)) {
+    return SDLOG_FSFULL;
+  } else {
+    return SDLOG_OK;
+  }
+}
+
 SdioError sdLogWriteLog (FIL *fileObject, const char* fmt, ...)
 {
   if (fileObject->fs == NULL)
@@ -177,6 +202,23 @@ SdioError sdLogWriteLog (FIL *fileObject, const char* fmt, ...)
   return SDLOG_OK;
 }
 
+SdioError sdLogWriteRawDirect (FIL *fileObject, const uint8_t * buffer, const size_t len)
+{
+  UINT bw;
+  if (fileObject->fs == NULL)
+    return SDLOG_FATFS_ERROR;
+
+  FRESULT rc = f_write (fileObject, buffer, len, &bw); 
+  if (rc) {
+    return SDLOG_FATFS_ERROR;
+  } else if (bw != len) {
+    return SDLOG_FSFULL;
+  } else {
+    return SDLOG_OK;
+  }
+}
+
+
 SdioError sdLogWriteRaw (FIL *fileObject, const uint8_t * buffer, const size_t len)
 {
   if (fileObject->fs == NULL)
@@ -192,6 +234,22 @@ SdioError sdLogWriteRaw (FIL *fileObject, const uint8_t * buffer, const size_t l
   }
 
   return SDLOG_OK;
+}
+
+SdioError sdLogWriteByteDirect (FIL *fileObject, const uint8_t value)
+{
+  UINT bw;
+  if (fileObject->fs == NULL)
+    return SDLOG_FATFS_ERROR;
+
+  FRESULT rc = f_write (fileObject, &value, 1, &bw); 
+  if (rc) {
+    return SDLOG_FATFS_ERROR;
+  } else if (bw != 1) {
+    return SDLOG_FSFULL;
+  } else {
+    return SDLOG_OK;
+  }
 }
 
 SdioError sdLogWriteByte (FIL *fileObject, const uint8_t value)

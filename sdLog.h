@@ -40,8 +40,11 @@ SdioError sdLogCloseLog (FIL *fileObject);
 #ifdef SDLOG_NEED_QUEUE
 SdioError sdLoglaunchThread (const bool_t binaryLog);
 SdioError sdLogWriteLog (FIL *fileObject, const char* fmt, ...);
+SdioError sdLogWriteLogDirect (FIL *fileObject, const char* fmt, ...);
 SdioError sdLogWriteRaw (FIL *fileObject, const uint8_t* buffer, const size_t len);
+SdioError sdLogWriteRawDirect (FIL *fileObject, const uint8_t* buffer, const size_t len);
 SdioError sdLogWriteByte (FIL *fileObject, const uint8_t value);
+SdioError sdLogWriteByteDirect (FIL *fileObject, const uint8_t value);
 SdioError sdLogStopThread (void);
 #endif
 
