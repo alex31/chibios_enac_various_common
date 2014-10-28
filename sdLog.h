@@ -37,14 +37,15 @@ SdioError sdLogFinish (void);
 SdioError sdLogOpenLog (FIL *fileObject, const char* directoryName, const char* fileName);
 SdioError sdLogCloseLog (FIL *fileObject);
 
+SdioError sdLogWriteLogDirect (FIL *fileObject, const char* fmt, ...);
+SdioError sdLogWriteRawDirect (FIL *fileObject, const uint8_t* buffer, const size_t len);
+SdioError sdLogWriteByteDirect (FIL *fileObject, const uint8_t value);
+
 #ifdef SDLOG_NEED_QUEUE
 SdioError sdLoglaunchThread (const bool_t binaryLog);
 SdioError sdLogWriteLog (FIL *fileObject, const char* fmt, ...);
-SdioError sdLogWriteLogDirect (FIL *fileObject, const char* fmt, ...);
 SdioError sdLogWriteRaw (FIL *fileObject, const uint8_t* buffer, const size_t len);
-SdioError sdLogWriteRawDirect (FIL *fileObject, const uint8_t* buffer, const size_t len);
 SdioError sdLogWriteByte (FIL *fileObject, const uint8_t value);
-SdioError sdLogWriteByteDirect (FIL *fileObject, const uint8_t value);
 SdioError sdLogStopThread (void);
 #endif
 
