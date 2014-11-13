@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 
-#if SDLOG_WRITE_BUFFER_SIZE == 0 || SDLOG_MAX_MESSAGE_LEN == 0 || \
+#if SDLOG_ALL_BUFFERS_SIZE == 0 || SDLOG_MAX_MESSAGE_LEN == 0 || \
     SDLOG_QUEUE_SIZE  == 0 || SDLOG_QUEUE_BUCKETS  == 0
 #undef SDLOG_NEED_QUEUE
 #else
@@ -27,25 +27,33 @@ typedef enum {
   SDLOG_NOCARD,
   SDLOG_FATFS_ERROR,
   SDLOG_FSFULL,
+  SDLOG_FDFULL,
   SDLOG_QUEUEFULL,
   SDLOG_NOTHREAD,
-  SDLOG_INTERNAL_ERROR
+  SDLOG_INTERNAL_ERROR,
 } SdioError;
+
+
+typedef uint8_t FileDes;
+
+
 
 SdioError sdLogInit (uint32_t* freeSpaceInKo);
 SdioError sdLogFinish (void);
-SdioError sdLogOpenLog (FIL *fileObject, const char* directoryName, const char* fileName);
-SdioError sdLogCloseLog (FIL *fileObject);
+SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const char* fileName);
+SdioError sdLogFlushLog (const FileDes fileObject);
+SdioError sdLogCloseLog (const FileDes fileObject);
+SdioError sdLogCloseAllLogs (void);
 
-SdioError sdLogWriteLogDirect (FIL *fileObject, const char* fmt, ...);
-SdioError sdLogWriteRawDirect (FIL *fileObject, const uint8_t* buffer, const size_t len);
-SdioError sdLogWriteByteDirect (FIL *fileObject, const uint8_t value);
+SdioError sdLogWriteLogDirect (const FileDes fileObject, const char* fmt, ...);
+SdioError sdLogWriteRawDirect (const FileDes fileObject, const uint8_t* buffer, const size_t len);
+SdioError sdLogWriteByteDirect (const FileDes fileObject, const uint8_t value);
 
 #ifdef SDLOG_NEED_QUEUE
 SdioError sdLoglaunchThread (const bool_t binaryLog);
-SdioError sdLogWriteLog (FIL *fileObject, const char* fmt, ...);
-SdioError sdLogWriteRaw (FIL *fileObject, const uint8_t* buffer, const size_t len);
-SdioError sdLogWriteByte (FIL *fileObject, const uint8_t value);
+SdioError sdLogWriteLog (const FileDes fileObject, const char* fmt, ...);
+SdioError sdLogWriteRaw (const FileDes fileObject, const uint8_t* buffer, const size_t len);
+SdioError sdLogWriteByte (const FileDes fileObject, const uint8_t value);
 SdioError sdLogStopThread (void);
 #endif
 
