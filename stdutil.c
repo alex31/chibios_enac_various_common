@@ -95,10 +95,32 @@ void systemReset(void)
 /* to lower consumption until reset */
 void systemDeepSleep (void)
 {
-  chSysLock();
+  /*
+    chSysLock();
+    SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+    PWR->CR |= (PWR_CR_PDDS | PWR_CR_LPDS | PWR_CR_CSBF | PWR_CR_CWUF);
+    __WFE();
+  */
+
+  /* clear PDDS and LPDS bits */
+  PWR->CR &= ~(PWR_CR_PDDS | PWR_CR_LPDS);
+  
+  /* set LPDS and clear  */
+  PWR->CR |= (PWR_CR_LPDS | PWR_CR_CSBF | PWR_CR_CWUF);
+  
+  /* Setup the deepsleep mask */
   SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-  PWR->CR |= (PWR_CR_PDDS | PWR_CR_LPDS | PWR_CR_CSBF | PWR_CR_CWUF);
+  
+  __disable_irq();
+  
+  __SEV();
   __WFE();
+  __WFE();
+  
+  __enable_irq();
+  
+  /* clear the deepsleep mask */
+  SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
 }
 
 
