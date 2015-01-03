@@ -79,10 +79,15 @@ extern "C" {
 } GpioPin;
  
 
-
-  float atof_m(const char *s);
+#if CH_USE_HEAP || CH_HEAP_USE_TLSF
+  size_t initHeap (void);
+  size_t getHeapFree (void);
   void *malloc_m (size_t size);
   void free_m(void *p);
+#endif
+
+
+  float atof_m(const char *s);
   void systemReset (void);
   void systemDeepSleep (void);
   uint32_t revbit(uint32_t data);

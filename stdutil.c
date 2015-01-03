@@ -4,7 +4,9 @@
 #include "printf.h"
 #include "globalVar.h"
 #include "stdutil.h"
-
+#if CH_HEAP_USE_TLSF
+#include "tlsf.h"
+#endif
 
 
 static float powi(int x, int y);   
@@ -74,16 +76,56 @@ static float powi(int x, int y)
 }   
 
 
+#if CH_USE_HEAP || CH_HEAP_USE_TLSF
+#ifndef CH_HEAP_SIZE
+#error CH_HEAP_SIZE should be defined if  CH_USE_HEAP or CH_HEAP_USE_TLSF are defined
+#endif
+static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(".ccmram"), aligned(8))) ;
+#if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
+static MemoryHeap ccmHeap;
+#endif
+size_t initHeap (void)
+{
+#if CH_HEAP_USE_TLSF
+  return init_memory_pool(sizeof (ccmHeapBuffer), ccmHeapBuffer);
+#else
+  size_t size;
+  chHeapInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
+  chHeapStatus(&ccmHeap, &size);
+  return size;
+#endif
+}
+
+size_t getHeapFree (void)
+{
+#if CH_HEAP_USE_TLSF
+  return sizeof (ccmHeapBuffer) - get_used_size (ccmHeapBuffer);
+#else
+  size_t size;
+  chHeapStatus(&ccmHeap, &size);
+  return size;
+#endif
+}
+
+
 void *malloc_m (size_t size)
 {
+#if CH_HEAP_USE_TLSF
+  return tlsf_malloc(size);
+#else
   return chHeapAlloc (&ccmHeap, size);
+#endif
 }
 
 void free_m(void *p)
 {
+#if CH_HEAP_USE_TLSF
+  tlsf_free (p);
+#else
   chHeapFree (p);
+#endif
 }
-
+#endif
 
 
 void systemReset(void)
