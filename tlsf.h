@@ -16,10 +16,18 @@
  *
  */
 
-#ifndef _TLSF_H_
-#define _TLSF_H_
 
+#define	TLSF_USE_LOCKS 1
+#define	TLSF_STATISTIC 1
+//#define USE_PRINTF 1
+//#define _DEBUG_TLSF_ 1
+
+#pragma once
 #include <sys/types.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern size_t init_memory_pool(size_t, void *);
 extern size_t get_used_size(void *);
@@ -36,4 +44,7 @@ extern void tlsf_free(void *ptr);
 extern void *tlsf_realloc(void *ptr, size_t size);
 extern void *tlsf_calloc(size_t nelem, size_t elem_size);
 
+
+#ifdef __cplusplus
+}
 #endif

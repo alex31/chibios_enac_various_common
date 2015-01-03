@@ -52,6 +52,9 @@
 /*#define USE_SBRK        (0) */
 /*#define USE_MMAP        (0) */
 
+#include "tlsf.h"
+
+
 #ifndef USE_PRINTF
 #define USE_PRINTF      (0)
 #endif
@@ -112,7 +115,6 @@
 #include <sys/mman.h>
 #endif
 
-#include "tlsf.h"
 
 #if !defined(__GNUC__)
 #ifndef __inline__
@@ -131,7 +133,7 @@
 
 /* Some IMPORTANT TLSF parameters */
 /* Unlike the preview TLSF versions, now they are statics */
-#define BLOCK_ALIGN (sizeof(void *) * 2)
+#define BLOCK_ALIGN (sizeof(void *))
 
 #define MAX_FLI		(30)
 #define MAX_LOG2_SLI	(5)
@@ -173,9 +175,11 @@
 #endif
 
 #ifdef USE_PRINTF
-#include <stdio.h>
-# define PRINT_MSG(fmt, args...) printf(fmt, ## args)
-# define ERROR_MSG(fmt, args...) printf(fmt, ## args)
+#include <ch.h>
+#include <printf.h>
+#include <globalVar.h>
+# define PRINT_MSG(fmt, args...) chprintf(chp, fmt, ## args)
+# define ERROR_MSG(fmt, args...) chprintf(chp, fmt, ## args)
 #else
 # if !defined(PRINT_MSG)
 #  define PRINT_MSG(fmt, args...)
@@ -185,8 +189,8 @@
 # endif
 #endif
 
-typedef unsigned int u32_t;     /* NOTE: Make sure that this type is 4 bytes long on your computer */
-typedef unsigned char u8_t;     /* NOTE: Make sure that this type is 1 byte on your computer */
+typedef uint32_t u32_t;     /* NOTE: Make sure that this type is 4 bytes long on your computer */
+typedef uint8_t u8_t;     /* NOTE: Make sure that this type is 1 byte on your computer */
 
 typedef struct free_ptr_struct {
     struct bhdr_struct *prev;
@@ -475,17 +479,11 @@ size_t init_memory_pool(size_t mem_pool_size, void *mem_pool)
         return -1;
     }
     tlsf = (tlsf_t *) mem_pool;
-    /* Check if already initialised */
-    if (tlsf->tlsf_signature == TLSF_SIGNATURE) {
-        mp = mem_pool;
-        b = GET_NEXT_BLOCK(mp, ROUNDUP_SIZE(sizeof(tlsf_t)));
-        return b->size & BLOCK_SIZE;
-    }
-
-    mp = mem_pool;
 
     /* Zeroing the memory pool */
     memset(mem_pool, 0, sizeof(tlsf_t));
+
+    mp = mem_pool;
 
     tlsf->tlsf_signature = TLSF_SIGNATURE;
 
