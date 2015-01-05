@@ -4,8 +4,8 @@
 #include "stdutil.h"
 #include "rowColKeypad.h"
 
-
-static WORKING_AREA(waThdKeypadScan, 512);
+// when finish to debug (printf need big stack), shrink  WORKING_AREA to 256
+static WORKING_AREA(waThdKeypadScan, 256);
 
 static GPIO_TypeDef  * getGpioPtrFromEnum (const Keypad_Gpio kpg);
 static void configureGpio (const Keypad_Def *kd);
@@ -27,7 +27,10 @@ typedef struct {
 
 void launchScanKeypad (keypadCbType keyCb, const Keypad_Def *kd, void *userData)
 {
-  WorkerThreadArgs wta = {keyCb, userData, kd};
+  static WorkerThreadArgs wta ;
+  wta.cb=keyCb;
+  wta.userData=userData;
+  wta.kd=kd;
 
   configureGpio (kd);
   chThdCreateStatic(waThdKeypadScan, sizeof(waThdKeypadScan),
@@ -74,7 +77,7 @@ static msg_t thdKeypadScan(void *arg)
       chThdSleepMilliseconds (100);
     } else {
       lastKey = kk;
-      chThdSleepMilliseconds (10);
+      chThdSleepMilliseconds (5);
     }
 
   }

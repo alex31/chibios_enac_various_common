@@ -1,5 +1,13 @@
 #pragma once
 
+/*
+  TODO : 
+  * col en output et row en input
+  * config dans un rowColKeypadConf.h
+  * gestion multi press (notion de modifier)
+  * bind à une touche, ou suite de touches
+ */
+
 #ifndef KEYPAD_NUM_OF_ROWS
 #define KEYPAD_NUM_OF_ROWS 8
 #endif
