@@ -1,9 +1,33 @@
 #pragma once
 
 /*
+  configuration should be provided in a keypad_conf.h wich will
+  define constant as in this example :
+
+#define KEYPAD_NUM_OF_ROWS 5
+
+#define KEYPAD_NUM_OF_COLS 4
+
+#define KEYPAD_GPIO_ROW {{Keypad_GpioE,0}, {Keypad_GpioE,1}, {Keypad_GpioE,2}, \
+	         	 {Keypad_GpioE,3}, {Keypad_GpioE,4}}
+
+#define KEYPAD_GPIO_COL {{Keypad_GpioE,8}, {Keypad_GpioE,7}, {Keypad_GpioE,6}, \
+	        	 {Keypad_GpioE,5}}
+
+
+#define KEYPAD_SYMBOLS {KP_F1,    KP_F2, KP_HASH,     KP_MULTIPLY, \
+			KP_1,     KP_2,  KP_3,        KP_UP, \
+			KP_4,     KP_5,  KP_6,        KP_DOWN, \
+			KP_7,     KP_8,  KP_9,        KP_ESC, \
+                        KP_LEFT,  KP_0,  KP_RIGHT,    KP_ENTER}
+
+
+ */
+
+
+
+/*
   TODO : 
-  * col en output et row en input
-  * config dans un rowColKeypadConf.h
   * gestion multi press (notion de modifier)
   * bind à une touche, ou suite de touches
  */
