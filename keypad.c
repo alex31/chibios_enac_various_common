@@ -2,7 +2,7 @@
 #include <hal.h>
 #include "globalVar.h"
 #include "stdutil.h"
-#include "rowColKeypad.h"
+#include "keypad.h"
 
 // when finish to debug (printf need big stack), shrink  WORKING_AREA to 256
 static WORKING_AREA(waThdKeypadScan, 256);
@@ -15,6 +15,11 @@ static bool  keypadKeyAreNotEqual (const Keypad_key k1, const Keypad_key k2);
 static msg_t thdKeypadScan(void *arg) ;
 static const Keypad_key noPress = {KEYPAD_NO_PRESS, KEYPAD_NO_PRESS};
 
+static const Keypad_Def keypadWiring = {
+  .kpRow = KEYPAD_GPIO_ROW,
+  .kpCol = KEYPAD_GPIO_COL
+};
+
 
 
 typedef struct {
@@ -25,14 +30,14 @@ typedef struct {
 
 
 
-void launchScanKeypad (keypadCbType keyCb, const Keypad_Def *kd, void *userData)
+void launchScanKeypad (keypadCbType keyCb, void *userData)
 {
   static WorkerThreadArgs wta ;
   wta.cb=keyCb;
   wta.userData=userData;
-  wta.kd=kd;
+  wta.kd=&keypadWiring;
 
-  configureGpio (kd);
+  configureGpio ( wta.kd);
   chThdCreateStatic(waThdKeypadScan, sizeof(waThdKeypadScan),
                     NORMALPRIO, thdKeypadScan, &wta);
 }
@@ -42,7 +47,6 @@ void launchScanKeypad (keypadCbType keyCb, const Keypad_Def *kd, void *userData)
 static GPIO_TypeDef  * getGpioPtrFromEnum (const Keypad_Gpio kpg)
 {
   switch (kpg) {
-  case Keypad_None : return NULL;
      case Keypad_GpioA : return GPIOA;
      case Keypad_GpioB : return GPIOB;
      case Keypad_GpioC : return GPIOC;
@@ -69,7 +73,8 @@ static msg_t thdKeypadScan(void *arg)
   while (!chThdShouldTerminate()) {
     Keypad_key kk = scanKeypad (wta->kd);
     if ((keypadKeyAreNotEqual(kk, noPress)) && (keypadKeyAreEqual(kk, lastKey))) {
-      (wta->cb) (kk, wta->userData); 
+      const Keypad_Symbol ks = (kk.row * KEYPAD_NUM_OF_COLS) + kk.col;
+      (wta->cb) (ks, wta->userData); 
       while (keypadKeyAreNotEqual (scanKeypad (wta->kd), noPress)) {
 	chThdSleepMilliseconds (10);
       }
@@ -89,11 +94,11 @@ static void configureGpio (const Keypad_Def *kd)
 {
   for (int r = 0; r < KEYPAD_NUM_OF_ROWS; r++) {
     palSetPadMode (getGpioPtrFromEnum (kd->kpRow[r].kpGgpio), kd->kpRow[r].kpPin,
-		   PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_HIGHEST);
+		   PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_LOWEST);
   }
   for (int c = 0; c < KEYPAD_NUM_OF_COLS; c++) {
     palSetPadMode (getGpioPtrFromEnum (kd->kpCol[c].kpGgpio), kd->kpCol[c].kpPin,
-		   PAL_MODE_INPUT_PULLUP | PAL_STM32_OSPEED_HIGHEST);
+		   PAL_MODE_INPUT_PULLUP | PAL_STM32_OSPEED_LOWEST);
   }
 }
 
@@ -103,13 +108,12 @@ static Keypad_key scanKeypad (const Keypad_Def *kd)
     palSetPad (getGpioPtrFromEnum (kd->kpRow[r].kpGgpio), kd->kpRow[r].kpPin);
   }
 
-  for (int r = 0; (r < KEYPAD_NUM_OF_ROWS) && (kd->kpRow[r].kpGgpio !=  Keypad_None); r++) {
+  for (int r = 0; r < KEYPAD_NUM_OF_ROWS; r++) {
     palClearPad (getGpioPtrFromEnum (kd->kpRow[r].kpGgpio), kd->kpRow[r].kpPin);
  
-    // this should be minimised to 1 microsecond
-    chThdSleepMilliseconds (1);
-
-    for (int c = 0; (c < KEYPAD_NUM_OF_COLS) && (kd->kpCol[c].kpGgpio !=  Keypad_None); c++) {
+    //chThdSleepMilliseconds (1);
+    halPolledDelay(US2RTT(2));
+    for (int c = 0; c < KEYPAD_NUM_OF_COLS; c++) {
       int level = palReadPad (getGpioPtrFromEnum (kd->kpCol[c].kpGgpio), kd->kpCol[c].kpPin);
       if (level == 0) {// keypress
 	palSetPad (getGpioPtrFromEnum (kd->kpRow[r].kpGgpio), kd->kpRow[r].kpPin);

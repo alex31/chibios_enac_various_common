@@ -8,13 +8,21 @@
   * bind à une touche, ou suite de touches
  */
 
+#include "keypad_conf.h"
+
 #ifndef KEYPAD_NUM_OF_ROWS
-#define KEYPAD_NUM_OF_ROWS 8
+#error KEYPAD_NUM_OF_ROWS should be defined in keypad_conf.h
 #endif
 
 #ifndef KEYPAD_NUM_OF_COLS
-#define KEYPAD_NUM_OF_COLS 8
+#error KEYPAD_NUM_OF_COLS should be defined in keypad_conf.h
 #endif
+
+#ifndef KEYPAD_SYMBOLS
+#error KEYPAD_SYMBOLS should be defined in keypad_conf.h
+#endif
+
+
 
 #define KEYPAD_NO_PRESS 254
 
@@ -23,9 +31,13 @@
 extern "C" {
 #endif
 
+
+typedef enum KEYPAD_SYMBOLS Keypad_Symbol;
+
+
 // store index of gpio instead of address to save memory (3*16 bytes saved) 
 typedef enum  __attribute__ ((packed)) {
-  Keypad_None=0, Keypad_GpioA, Keypad_GpioB, Keypad_GpioC, 
+  Keypad_GpioA, Keypad_GpioB, Keypad_GpioC, 
   Keypad_GpioD, Keypad_GpioE,  Keypad_GpioF, Keypad_GpioG, 
   Keypad_GpioH, Keypad_GpioI}  Keypad_Gpio;
 
@@ -45,9 +57,9 @@ typedef struct {
 } Keypad_key;
 
 
-typedef void (*keypadCbType) (Keypad_key key, void *userData);
+typedef void (*keypadCbType) (Keypad_Symbol ks, void *userData);
 
-void launchScanKeypad (keypadCbType keyCb, const Keypad_Def *kd, void *userData);
+void launchScanKeypad (keypadCbType keyCb, void *userData);
 
 #ifdef __cplusplus
 }
