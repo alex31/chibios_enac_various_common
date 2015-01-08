@@ -9,9 +9,11 @@
 static  float	        lastDistance= 0.0f;
 static  uint32_t	lastPeriod= 0;
 static  float		meanDistance = 0.0f;
+static  bool_t		lastMeasureValid=false;
 
 static  const SonarGen    *pwmGen;
 static  const SonarInput  *pwmInput;
+
 
 
 
@@ -59,6 +61,11 @@ void sonarInit (const SonarGen *_pwmGen, const SonarInput *_pwmInput)
   icuEnable(pwmInput->driver);
 }
 
+bool_t sonarGetValidity (void)
+{
+  return  lastMeasureValid;
+}
+
 float sonarGetDistanceInCm (void)
 {
   return  meanDistance;
@@ -91,6 +98,9 @@ static void icuwidthcb(ICUDriver *icup)
   
   if ((lastDistance > 4.0f) && (lastDistance <= 400.0f)) {
     meanDistance = ((4.0f*meanDistance)+lastDistance)/5.0f;
+    lastMeasureValid = true;
+  } else {
+    lastMeasureValid = false;
   }
 }
 

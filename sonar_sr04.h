@@ -25,7 +25,7 @@ extern "C" {
   void     sonarInit (const SonarGen *pwmGen, const SonarInput *pwmInput) ;
   float    sonarGetDistanceInCm (void);
   uint32_t sonarGetPeriodInMilliseconds (void);
-  
+  bool_t   sonarGetValidity (void);
 #ifdef __cplusplus
 }
 #endif
