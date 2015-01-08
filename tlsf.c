@@ -135,8 +135,9 @@
 /* Unlike the preview TLSF versions, now they are statics */
 #define BLOCK_ALIGN (sizeof(void *))
 
-#define MAX_FLI		(30)
-#define MAX_LOG2_SLI	(5)
+#define MAX_FLI		(16) // limited to 64ko buffer
+#define MAX_LOG2_SLI	(5) // 5 take 1.4ko overhead but limit fragmentation to 3%
+			    // 4 take 700 bytes overhead but fragmentation raise to 6%
 #define MAX_SLI		(1 << MAX_LOG2_SLI)     /* MAX_SLI = 2^MAX_LOG2_SLI */
 
 #define FLI_OFFSET	(6)     /* tlsf structure just will manage blocks bigger */
