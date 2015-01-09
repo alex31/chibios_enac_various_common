@@ -73,6 +73,14 @@ namespace flatten_byte_array {
 }
 
 
-
+template <typename AT>
+int findIndexOf(const AT& arr, const typename AT::value_type value)
+{
+  for (size_t idx=0; idx<arr.size(); idx++) {
+    if (arr[idx] == value)
+      return idx;
+  }
+  return -1;
+}
 
 
