@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include <initializer_list>
 #include <tuple>
+#include <vector>
+#include <limits>
+#include <typeinfo>
+#include <cmath>
+
 
 namespace tuple_foreach
 {
@@ -74,7 +79,7 @@ namespace flatten_byte_array {
 
 
 template <typename AT>
-int findIndexOf(const AT& arr, const typename AT::value_type value)
+int findIndexOfOld(const AT& arr, const typename AT::value_type value)
 {
   for (size_t idx=0; idx<arr.size(); idx++) {
     if (arr[idx] == value)
@@ -83,4 +88,51 @@ int findIndexOf(const AT& arr, const typename AT::value_type value)
   return -1;
 }
 
+template <typename T>
+int findIndexOf(const std::vector<T> &vec, const T value)
+{
+  for (size_t idx=0; idx<vec.size(); idx++) {
+    if (vec[idx] == value)
+      return idx;
+  }
+  return -1;
+}
+
+template <typename AT>
+int findIndexOfNearestOld(const AT& arr, const typename AT::value_type value)
+{
+  AT absDiff (arr.size());
+  using  T = typename AT::value_type;
+  T min = std::numeric_limits<T>::max();
+
+  for (size_t idx=0; idx<absDiff.size(); idx++) {
+    absDiff[idx] = std::abs (value - arr[idx]);
+    if (absDiff[idx] < min)  
+      min = absDiff[idx];
+  }
+  return findIndexOf (absDiff, min);
+}
+
+
+//#include "globalVar.h"
+template <typename T>
+int findIndexOfNearest(const std::vector<T> &vec, const T value)
+{
+  std::vector<T>  absDiff (vec.size());
+  T min = std::numeric_limits<T>::max();
+  int indexMin = -1;
+
+  for (size_t idx=0; idx<vec.size(); idx++) {
+    absDiff[idx] = std::abs (value - vec[idx]);
+    //    DebugTrace ("absDiff[%d]= abs (%.2f - %.2f) = %.2f", idx, value, vec[idx], absDiff[idx]);
+    if (absDiff[idx] < min) { 
+      min = absDiff[idx];
+      indexMin = idx;
+      //      DebugTrace ("min = %.2f indexMin=%d", min, indexMin);
+    }
+  }
+
+  //  DebugTrace ("return indexMin=%d", indexMin);
+  return indexMin;
+}
 
