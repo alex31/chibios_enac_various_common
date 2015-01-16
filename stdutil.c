@@ -111,7 +111,8 @@ size_t getHeapFree (void)
 void *malloc_m (size_t size)
 {
 #if CH_HEAP_USE_TLSF
-  return tlsf_malloc(size);
+  //  DebugTrace ("tlsf alloc size=%d", size);
+  return malloc_ex(size, ccmHeapBuffer);
 #else
   return chHeapAlloc (&ccmHeap, size);
 #endif
@@ -120,7 +121,8 @@ void *malloc_m (size_t size)
 void free_m(void *p)
 {
 #if CH_HEAP_USE_TLSF
-  tlsf_free (p);
+  //  DebugTrace ("tlsf free 0x%x", p);
+  free_ex (p, ccmHeapBuffer);
 #else
   chHeapFree (p);
 #endif

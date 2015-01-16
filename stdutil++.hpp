@@ -136,3 +136,15 @@ int findIndexOfNearest(const std::vector<T> &vec, const T value)
   return indexMin;
 }
 
+template <typename T>
+int findIndexOfImmediateSup(const std::vector<T> &vec, const T value)
+{
+  for (size_t idx=0; idx<vec.size(); idx++) {
+    if (vec[idx] > value)
+      return idx;
+  }
+
+  //  DebugTrace ("return indexMin=%d", indexMin);
+  return vec.size();
+}
+

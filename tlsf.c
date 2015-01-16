@@ -133,7 +133,7 @@
 
 /* Some IMPORTANT TLSF parameters */
 /* Unlike the preview TLSF versions, now they are statics */
-#define BLOCK_ALIGN (sizeof(void *))
+#define BLOCK_ALIGN (sizeof(void *) * 2)
 
 #define MAX_FLI		(16) // limited to 64ko buffer
 #define MAX_LOG2_SLI	(5) // 5 take 1.4ko overhead but limit fragmentation to 3%
@@ -482,7 +482,8 @@ size_t init_memory_pool(size_t mem_pool_size, void *mem_pool)
     tlsf = (tlsf_t *) mem_pool;
 
     /* Zeroing the memory pool */
-    memset(mem_pool, 0, sizeof(tlsf_t));
+    //    memset(mem_pool, 0, sizeof(tlsf_t));
+    memset(mem_pool, 0, mem_pool_size);
 
     mp = mem_pool;
 
