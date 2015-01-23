@@ -148,3 +148,15 @@ int findIndexOfImmediateSup(const std::vector<T> &vec, const T value)
   return vec.size();
 }
 
+template <typename T>
+int findIndexOfImmediateInf(const std::vector<T> &vec, const T value)
+{
+  for (size_t idx=vec.size()-1; idx>0; idx--) {
+    if (vec[idx] < value)
+      return idx;
+  }
+  
+  //  DebugTrace ("return indexMin=%d", indexMin);
+  return 0;
+}
+
