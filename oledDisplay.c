@@ -5,7 +5,7 @@
 #include "printf.h"
 #include "oledDisplay.h"
 #include "string.h"
-#include "lcdDisplay.h"
+//#include "lcdDisplay.h"
 
 #define clampColor(r,v,b) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f))
 #define colorDecTo16b(r,v,b) (clampColor((r*31/100), (v*63/100), (b*31/100)))
@@ -52,10 +52,10 @@ static void oledPreInit (oledConfig *oledConfig, uint32_t baud)
 
   // initial USART conf
   // 9600 bauds because of broken ato baud feature on some screen model
-  oledConfig->serialConfig.sc_speed = baud;
-  oledConfig->serialConfig.sc_cr1 =0;
-  oledConfig->serialConfig.sc_cr2 = USART_CR2_STOP1_BITS | USART_CR2_LINEN;
-  oledConfig->serialConfig.sc_cr3 =0;
+  oledConfig->serialConfig.speed = baud;
+  oledConfig->serialConfig.cr1 =0;
+  oledConfig->serialConfig.cr2 = USART_CR2_STOP1_BITS | USART_CR2_LINEN;
+  oledConfig->serialConfig.cr3 =0;
   
 }
 
@@ -84,7 +84,7 @@ void oledInit (oledConfig *oledConfig,  struct SerialDriver *oled, const uint32_
 static void oledReInit (oledConfig *oledConfig)
 {
   oledHardReset (oledConfig);
-  const uint32_t baud = oledConfig->serialConfig.sc_speed;
+  const uint32_t baud = oledConfig->serialConfig.speed;
 
   oledSetBaud (oledConfig, 9600);
   chThdSleepMilliseconds(10);
@@ -150,16 +150,13 @@ void oledPrintVersion (oledConfig *oledConfig)
     DebugTrace ("response[%d] = 0x%x", i, oledConfig->response[i]);
   }
 
-  syslog (LOG_INFO, "OLED H%d F%d R%dx%d", oledConfig->response[1], 
-	  oledConfig->response[2], getRes (oledConfig->response[3]), 
-	  getRes (oledConfig->response[4]));
 }
 
 void oledSetBaud (oledConfig *oledConfig, uint32_t baud)
 {
   
   uint8_t baudCode ;
-  oledConfig->serialConfig.sc_speed = baud;
+  oledConfig->serialConfig.speed = baud;
   struct SerialDriver *sd = (struct SerialDriver *) oledConfig->serial;
 
   RET_UNLESS_INIT(oledConfig);

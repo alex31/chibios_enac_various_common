@@ -1,8 +1,11 @@
-#ifndef __I2C_MASTER_H__
-#define __I2C_MASTER_H__
-
+#pragma once
 #include "ch.h"
 #include "hal.h"
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 typedef struct  {
@@ -65,6 +68,11 @@ msg_t i2cSetIO_MCP23008 (I2CDriver *i2cd, uint8_t ioVal);
 msg_t i2cGetIO_PCF8574 (I2CDriver *i2cd, uint8_t *ioVal);
 #endif
 
+#ifdef I2C_USE_24AA02
+msg_t i2cRead24AA02 (I2CDriver *i2cd, const uint8_t eepromAddr, uint8_t *buffer, const size_t len);
+msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t eepromAddr, const uint8_t *buffer, const size_t len);
+#endif
+
 
 
 /*
@@ -80,5 +88,9 @@ msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset,
 			     float *percent);
 #endif
 
+#ifdef __cplusplus
+}
+#endif
 
-#endif //__I2C_MASTER_H__
+
+

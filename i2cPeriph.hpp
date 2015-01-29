@@ -188,8 +188,12 @@ namespace HMC5883L {
   using devidSequence_type =  const std::array<uint8_t, 1>;
 
   constexpr uint8_t i2cAddr =  0x1e;
-  constexpr std::array<uint8_t, 4> sampleAvg8_minGain = {0x0, 0x6c, 0x20, 0x0}; // sample average 8, gain (+/-  1.30 G)
-  constexpr std::array<uint8_t, 4> sampleAvg1_maxGain = {0x0, 0x18, 0x00, 0x0}; // no sample average, max gain (+/- 0.88 G)
+
+  // sample average 8, gain (+/-  1.30 G)
+  constexpr std::array<uint8_t, 4> sampleAvg8_minGain = {0x0, 0x6c, 0x20, 0x0}; 
+
+  // no sample average, max gain (+/- 0.88 G)
+  constexpr std::array<uint8_t, 4> sampleAvg1_maxGain = {0x0, 0x18, 0x00, 0x0}; 
 
   extern constexpr initSequence_type initSequence {sampleAvg1_maxGain};
   extern constexpr devidSequence_type devidSequence {0x0a};
@@ -230,3 +234,40 @@ class I2cCompassHMC5883L : public I2cPeriphBase<_name,
 
 };
 
+
+#ifdef USE_24AA02
+namespace 24AA02 {
+  using initSequence_type = const std::tuple<std::array<uint8_t, 0>>;
+  using devidSequence_type =  const std::array<uint8_t, 0>;
+
+  const initSequence_type initSequence = {};
+  const devidSequence_type devidSequence = {};
+
+  constexpr uint8_t i2cAddr =  0b1010000;
+
+  extern constexpr const char* eeprom = {"eeprom 24AA02"};
+}
+
+template<const char* const &_name,
+	 const I2cChannel &_i2cd>
+class Eeprom24AA02 : public I2cPeriphBase<_name,
+						_i2cd, 
+					      24AA02::i2cAddr,
+					      /*24AA02::pressureReg[0]*/ 0x03, 
+					      0, 
+					      std::array<uint8_t, 8>, 
+					      24AA02::initSequence_type,
+					      24AA02::devidSequence_type,
+					      24AA02::initSequence,
+					      24AA02::devidSequence>
+{
+ public:
+
+  static const  void getBuffer (const uint8_t address, uint8_t *buffer, uint8_t bufferSize)  {
+    (void) address;
+    (void) buffer;
+    (void) bufferSize;
+  }
+
+};
+#endif
