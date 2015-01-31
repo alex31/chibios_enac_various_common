@@ -72,17 +72,16 @@ typedef uint8_t FileDes;
  * @brief	initialise sdLog
  * @details	init sdio peripheral, verify sdCard is inserted, check and mount filesystem,
  *		launch worker thread
- * @param[in]	binaryLog : if true, does not append end marker at end of file when closing
  * @param[out]	freeSpaceInKo : if pointer in nonnull, return free space on filesystem
  */
-SdioError sdLogInit (const bool_t binaryLog, uint32_t* freeSpaceInKo);
+SdioError sdLogInit (uint32_t* freeSpaceInKo);
 
+SdioError getFileName(const char* prefix, const char* directoryName, 
+		      char* nextFileName, const size_t nameLength, const int indexOffset);
 
 /**
  * @brief	unmount filesystem
  * @details	unmount filesystem, free sdio peripheral
- * @param[in]	binaryLog : if true, does not append end marker at end of file when closing
- * @param[out]	freeSpaceInKo : if pointer in nonnull, return free space on filesystem
  */
 SdioError sdLogFinish (void);
 
@@ -94,7 +93,8 @@ SdioError sdLogFinish (void);
  * @param[in]	directoryName : name of directory just under ROOT, created if nonexistant
  * @param[in]	fileName : the name will be appended with 3 digits number
  */
-SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const char* fileName);
+SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const char* fileName,
+			bool_t appendTagAtClose);
 
 
 /**
@@ -108,7 +108,7 @@ SdioError sdLogFlushLog (const FileDes fileObject);
  * @brief	flush ram buffer then close file.
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  */
-SdioError sdLogCloseLog (const FileDes fileObject);
+  SdioError sdLogCloseLog (const FileDes fileObject);
 
 /**
  * @brief	close all opened logs then stop worker thread
