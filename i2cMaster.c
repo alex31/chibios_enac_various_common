@@ -783,10 +783,8 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t eepromAddr,
   memcpy (&chunk[1], buffer, len);
   i2cAcquireBus(i2cd);
   I2C_WRITELEN(i2cd, eepromI2cAddr, chunk, len+1);
-  chThdSleepMilliseconds(1);
   
   // WAIT for internal write cycle is finished
-  chunk[0]=0;
   while (i2cMasterReceiveTimeout (i2cd, eepromI2cAddr, chunk, 1, 1) != RDY_OK) {
     chThdSleepMilliseconds(1);
   }
