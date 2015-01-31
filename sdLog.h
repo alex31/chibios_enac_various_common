@@ -79,6 +79,7 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo);
 SdioError getFileName(const char* prefix, const char* directoryName, 
 		      char* nextFileName, const size_t nameLength, const int indexOffset);
 
+#ifdef SDLOG_NEED_QUEUE
 /**
  * @brief	unmount filesystem
  * @details	unmount filesystem, free sdio peripheral
@@ -120,7 +121,7 @@ SdioError sdLogFlushLog (const FileDes fileObject);
 SdioError sdLogCloseAllLogs (bool flush);
 
 
-#ifdef SDLOG_NEED_QUEUE
+
 
 
 /**

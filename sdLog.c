@@ -92,11 +92,12 @@ static msg_t thdSdLog(void *arg) ;
 static SdioError sdLoglaunchThread (void);
 static SdioError sdLogStopThread (void);
 static Thread *sdLogThd = NULL;
+static SdioError  getNextFIL (FileDes *fd);
 #endif
 
 
 
-static SdioError  getNextFIL (FileDes *fd);
+
 static uint32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName) ;
 
 SdioError sdLogInit (uint32_t* freeSpaceInKo)
@@ -129,11 +130,11 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
     *freeSpaceInKo = clusters * (uint32_t)fatfs.csize / 2;
   }
 
+#ifdef SDLOG_NEED_QUEUE
   for (uint8_t i=0; i<SDLOG_NUM_BUFFER; i++) {
     fileDes[i].inUse = fileDes[i].tagAtClose = false;
   }
 
-#ifdef SDLOG_NEED_QUEUE
   return sdLoglaunchThread ();
 #else
   return SDLOG_OK;
@@ -158,7 +159,7 @@ SdioError sdLogFinish (void)
 
 
 
-
+#ifdef SDLOG_NEED_QUEUE
 SdioError sdLogOpenLog (FileDes *fd, const char* directoryName, const char* prefix,
 			bool_t appendTagAtClose)
 {
@@ -241,7 +242,7 @@ SdioError sdLogCloseAllLogs (bool flush)
 }
 
 
-#ifdef SDLOG_NEED_QUEUE
+
 SdioError sdLogWriteLog (const FileDes fd, const char* fmt, ...)
 {
   if ((fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false))
