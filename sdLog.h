@@ -72,27 +72,47 @@ typedef uint8_t FileDes;
  * @brief	initialise sdLog
  * @details	init sdio peripheral, verify sdCard is inserted, check and mount filesystem,
  *		launch worker thread
+ *              This function is available even without thread login facility : even
+ *		if SDLOG_XXX macro are zeroed
  * @param[out]	freeSpaceInKo : if pointer in nonnull, return free space on filesystem
  */
 SdioError sdLogInit (uint32_t* freeSpaceInKo);
 
+/**
+ * @brief	get last used name for a pattern, then add offset and return valid filename
+ * @details	for log file, you often have a pattern and a version. To retreive last
+ *		file for reading, call function with indexOffset=0. To get next
+ *              available file for writing, call function with indexOffset=1
+ *              This function is available even without thread login facility : even
+ *		if SDLOG_XXX macro are zeroed
+ * @param[in]	prefix : the pattern for the file : example LOG_
+ * @param[in]	directoryName : root directory where to find file
+ * @param[out]	nextFileName : file with path ready to be used for f_open system call
+ * @param[in]	nameLength : length of previous buffer
+ * @param[in]	indexOffset : use 0 to retrieve last existent filename, 1 for next filename
+ */
 SdioError getFileName(const char* prefix, const char* directoryName, 
 		      char* nextFileName, const size_t nameLength, const int indexOffset);
 
-#ifdef SDLOG_NEED_QUEUE
 /**
  * @brief	unmount filesystem
  * @details	unmount filesystem, free sdio peripheral
+ *              This function is available even without thread login facility : even
+ *		if SDLOG_XXX macro are zeroed
  */
 SdioError sdLogFinish (void);
 
 
+#ifdef SDLOG_NEED_QUEUE
 /**
  * @brief	open new log file
  * @details	always open new file with numeric index
  * @param[out]	fileObject : file descriptor : small integer between 0 and _FS_REENTRANT-1
  * @param[in]	directoryName : name of directory just under ROOT, created if nonexistant
  * @param[in]	fileName : the name will be appended with 3 digits number
+ * @param[in]	appendTagAtClose : at close, a marker will be added to prove that the file is complete
+ *		and not corrupt. useful for text logging purpose, but probably not wanted fort binary 
+ *		files.
  */
 SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const char* fileName,
 			bool_t appendTagAtClose);
