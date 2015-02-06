@@ -716,25 +716,26 @@ msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset,
 const uint8_t eepromI2cAddr =  {0xA0>>1};
 const uint32_t eepromPageSize = 8;
 
-static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t eepromAddr, 
+static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, const uint8_t eepromAddr, 
 				  const uint8_t *buffer, const size_t len);
 
 
 
-msg_t i2cRead24AA02 (I2CDriver *i2cd, const uint8_t _eepromAddr, uint8_t *buffer, const size_t len)
+msg_t i2cRead24AA02 (I2CDriver *i2cd, const uint8_t chipAddr,
+		     const uint8_t _eepromAddr, uint8_t *buffer, const size_t len)
 {
   msg_t status = RDY_OK;
   const uint8_t eepromAddr[1] = {_eepromAddr};
 
   i2cAcquireBus(i2cd);
-  I2C_READ_WRITE(i2cd, eepromI2cAddr, eepromAddr, buffer, len);
+  I2C_READ_WRITE(i2cd, eepromI2cAddr|chipAddr, eepromAddr, buffer, len);
   i2cReleaseBus(i2cd);
 
   return status;
 }
 
-msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t _eepromAddr, const uint8_t *_buffer, 
-		      const size_t _len)
+msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, const uint8_t _eepromAddr, 
+		      const uint8_t *_buffer, const size_t _len)
 {
   msg_t status = RDY_OK;
 
@@ -745,12 +746,12 @@ msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t _eepromAddr, const uint8_t 
     msg_t status = RDY_OK;
     const size_t maxLen = eepromPageSize - (ptrLen->eepromAddr % eepromPageSize);
     if (ptrLen->len <= maxLen) {
-      status = i2cWriteInPage24AA02 (i2cd, ptrLen->eepromAddr, ptrLen->buffer, ptrLen->len);
+      status = i2cWriteInPage24AA02 (i2cd, chipAddr, ptrLen->eepromAddr, ptrLen->buffer, ptrLen->len);
       //       DebugTrace ("Final B[0x%x] => E[0x%x] for len %d",  
       //	   ptrLen->eepromAddr, ptrLen->buffer, ptrLen->len); 
        ptrLen->len = 0;
     } else {
-      status = i2cWriteInPage24AA02 (i2cd, ptrLen->eepromAddr, ptrLen->buffer, maxLen);
+      status = i2cWriteInPage24AA02 (i2cd, chipAddr, ptrLen->eepromAddr, ptrLen->buffer, maxLen);
       //      DebugTrace ("Intermediate B[0x%x] => E[0x%x] for len %d",
       //	  ptrLen->eepromAddr, ptrLen->buffer, maxLen);
       ptrLen->eepromAddr += maxLen;
@@ -769,7 +770,7 @@ msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t _eepromAddr, const uint8_t 
 }
 
 
-static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t eepromAddr, 
+static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, const uint8_t eepromAddr, 
 				  const uint8_t *buffer, const size_t len)
 {
   msg_t status = RDY_OK;
@@ -782,10 +783,10 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t eepromAddr,
 
   memcpy (&chunk[1], buffer, len);
   i2cAcquireBus(i2cd);
-  I2C_WRITELEN(i2cd, eepromI2cAddr, chunk, len+1);
+  I2C_WRITELEN(i2cd, eepromI2cAddr|chipAddr, chunk, len+1);
   
   // WAIT for internal write cycle is finished
-  while (i2cMasterReceiveTimeout (i2cd, eepromI2cAddr, chunk, 1, 1) != RDY_OK) {
+  while (i2cMasterReceiveTimeout (i2cd, eepromI2cAddr|chipAddr, chunk, 1, 1) != RDY_OK) {
     chThdSleepMilliseconds(1);
   }
   

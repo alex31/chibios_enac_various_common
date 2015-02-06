@@ -27,10 +27,10 @@ extern "C" {
 
 
    use of the api :
-   sdLogInit (initialize peripheral,  verify sdCard availibility
-   sdLoglaunchThread : launnch worker thread
+   sdLogInit (initialize peripheral,  verify sdCard availibility)
    sdLogOpenLog : open file
    sdLogWriteXXX
+ r sdLogFlushLog : flush buffer (optional)
    sdLogCloseLog
    sdLogFinish
 

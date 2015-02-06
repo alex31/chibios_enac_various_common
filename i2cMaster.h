@@ -69,8 +69,10 @@ msg_t i2cGetIO_PCF8574 (I2CDriver *i2cd, uint8_t *ioVal);
 #endif
 
 #ifdef I2C_USE_24AA02
-msg_t i2cRead24AA02 (I2CDriver *i2cd, const uint8_t eepromAddr, uint8_t *buffer, const size_t len);
-msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t eepromAddr, const uint8_t *buffer, const size_t len);
+msg_t i2cRead24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, 
+		     const uint8_t eepromAddr, uint8_t *buffer, const size_t len);
+msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, 
+		      const uint8_t eepromAddr, const uint8_t *buffer, const size_t len);
 #endif
 
 
