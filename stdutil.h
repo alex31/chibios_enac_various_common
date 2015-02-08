@@ -51,11 +51,26 @@
 
 #define SWAP_ENDIAN16(x) ((int16_t) ((((x) & 0xff) << 8) | (((x) & 0xff00) >> 8)))
 
-#define RotL(x,shift) ((x << shift) | (x >> (sizeof(x) - shift)))
-#define RotR(x,shift) ((x >> shift) | (x << (sizeof(x) - shift)))
+/* #define RotL(x,shift) ((x << shift) | (x >> (sizeof(x) - shift))) */
+/* #define RotR(x,shift) ((x >> shift) | (x << (sizeof(x) - shift))) */
 
-#define RotLnb(x,shift,nbits) ((x << shift) | (x >> (nbits - shift)))
-#define RotRnb(x,shift,nbits) ((x >> shift) | (x << (nbits - shift)))
+/* #define RotLnb(x,shift,nbits) ((x << shift) | (x >> (nbits - shift))) */
+/* #define RotRnb(x,shift,nbits) ((x >> shift) | (x << (nbits - shift))) */
+
+static inline uint32_t RotL (const uint32_t x, const uint32_t shift) {
+  return (x << shift) | (x >> (sizeof(x) - shift));
+}
+static inline uint32_t RotR(const uint32_t x,const uint32_t shift)  {
+  return (x >> shift) | (x << (sizeof(x) - shift));
+}
+static inline uint32_t RotLnb(const uint32_t x, const uint32_t shift, const uint32_t nbits)  {
+  return (x << shift) | (x >> (nbits - shift));
+};
+static inline uint32_t RotRnb(const uint32_t x, const uint32_t shift, const uint32_t nbits)  {
+  return (x >> shift) | (x << (nbits - shift));
+}
+
+
 
 #undef assert
 #define assert(__e) ((__e) ? (void)0 : my_assert_func (__FILE__, __LINE__, #__e))
