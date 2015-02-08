@@ -237,6 +237,19 @@ float clampTo (float l, float h, float v)
   return  (MAX(MIN(v,h),l));
 }
 
+// obviously not reentrant
+#define FMT_BUF_SIZE (sizeof(uintmax_t) * 8)
+char *binary_fmt(uintmax_t x)
+{
+  static char buf[FMT_BUF_SIZE];
+  char *s = buf + FMT_BUF_SIZE;
+  *--s = 0;
+  if (!x) *--s = '0';
+  for(; x; x/=2) *--s = '0' + x%2;
+  return s;
+}
+#undef FMT_BUF_SIZE // don't pullute namespace
+
 
 /* libc stub */
 int _getpid(void) {return 1;}

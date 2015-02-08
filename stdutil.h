@@ -57,6 +57,11 @@
 /* #define RotLnb(x,shift,nbits) ((x << shift) | (x >> (nbits - shift))) */
 /* #define RotRnb(x,shift,nbits) ((x >> shift) | (x << (nbits - shift))) */
 
+
+// optimised rotation routine
+// http://en.wikipedia.org/wiki/Circular_shift
+
+
 static inline uint32_t RotL (const uint32_t x, const uint32_t shift) {
   return (x << shift) | (x >> (sizeof(x) - shift));
 }
@@ -70,6 +75,31 @@ static inline uint32_t RotRnb(const uint32_t x, const uint32_t shift, const uint
   return (x >> shift) | (x << (nbits - shift));
 }
 
+// optimised counting bits routine from https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#Other-Builtins
+/*
+ — Built-in Function: int __builtin_ffs (int x)
+
+    Returns one plus the index of the least significant 1-bit of x, or if x is zero, returns zero. 
+
+— Built-in Function: int __builtin_clz (unsigned int x)
+
+    Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined. 
+
+— Built-in Function: int __builtin_ctz (unsigned int x)
+
+    Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined. 
+
+— Built-in Function: int __builtin_clrsb (int x)
+
+    Returns the number of leading redundant sign bits in x, i.e. the number of bits following the most significant bit that are identical to it. There are no special cases for 0 or other values. 
+
+— Built-in Function: int __builtin_popcount (unsigned int x)
+
+    Returns the number of 1-bits in x. 
+
+— Built-in Function: int __builtin_parity (unsigned int x)
+
+ */
 
 
 #undef assert
@@ -118,6 +148,8 @@ extern "C" {
   static inline bool_t isInRangef (float x, float min, float max) {
     return (x >= min) && (x <= max);
   }
+
+  char *binary_fmt(uintmax_t x);
 
 #ifdef __cplusplus
 }
