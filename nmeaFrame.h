@@ -64,7 +64,7 @@ typedef void (*ErrorCallback) (const NmeaError error, const void * const userDat
 
 // static definition of field for binding
 typedef struct  {
-  const char *    fieldName; // name of field, for debug and readibility
+  const char *    fieldName; // name of field, for debug and readability
   const NmeaType    fieldType; // type of the field, value will be converted according to this type
   const uint8_t     fieldIndex; // index of the field in the NMEA message
 } NmeaFieldDesc;

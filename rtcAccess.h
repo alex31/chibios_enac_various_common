@@ -25,7 +25,7 @@ uint32_t 	getMonth (void);
 uint32_t 	getMonthDay (void);
 uint32_t	getWeekDay (void);
 const char*	getWeekDayAscii (void);
-uint32_t getDstOffset (void);
+uint32_t	getDstOffset (void);
 
 
 #ifdef __cplusplus
