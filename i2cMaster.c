@@ -72,6 +72,12 @@ chMtxInit(&i2cd->mutex);		\
 				      NULL, 0, 100) ;			\
     STATUS_TEST_WRITE(i2cd,array)}
 
+#define I2C_WRITE_REGISTERS(i2cd,adr,regAdr,...)   {			\
+    const uint8_t array[] = {regAdr, __VA_ARGS__};			\
+    status = i2cMasterTransmitTimeout(i2cd, adr, array, sizeof(array),	\
+				      NULL, 0, 100) ;			\
+    STATUS_TEST_WRITE(i2cd,array)}
+
 #define I2C_WRITELEN(i2cd,adr,w_array,w_size)   {			\
     status = i2cMasterTransmitTimeout(i2cd, adr, w_array, w_size,	\
 				      NULL, 0, 100) ;			\
@@ -81,6 +87,24 @@ chMtxInit(&i2cd->mutex);		\
     status = i2cMasterTransmitTimeout(i2cd, adr, r_array, sizeof(r_array),	\
 				      w_array, w_size, 100) ;			\
     STATUS_TEST_READ_WRITE(i2cd,r_array,w_array) }
+
+#define I2C_READ_REGISTERS(i2cd,adr,regAdr,w_array)   {				\
+    const uint8_t r_array[] = {regAdr};						\
+    status = i2cMasterTransmitTimeout(i2cd, adr, r_array, sizeof(r_array),	\
+				      w_array, sizeof(w_array), 100) ;		\
+    STATUS_TEST_READ_WRITE(i2cd,r_array,w_array) }
+
+#define I2C_READLEN_REGISTERS(i2cd,adr,regAdr,w_array,w_len)   {		\
+    const uint8_t r_array[] = {regAdr};						\
+    status = i2cMasterTransmitTimeout(i2cd, adr, r_array, sizeof(r_array),	\
+				      w_array, w_len, 100) ;			\
+    STATUS_TEST_READ_WRITE(i2cd,r_array,w_array) }
+
+#define I2C_READ_REGISTER(i2cd,adr,regAdr,w_val)   {				\
+    const uint8_t r_array[] = {regAdr};						\
+    status = i2cMasterTransmitTimeout(i2cd, adr, r_array, sizeof(r_array),	\
+				      w_val, sizeof(*w_val), 100) ;		\
+    STATUS_TEST_READ_WRITE(i2cd,r_array,w_val) }
 
 
 
@@ -796,7 +820,7 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
 
 #endif
 
-
+#include "i2cPeriphMpu9250.c"
 
 /*
 #                 _ __           _                    _                   

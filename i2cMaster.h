@@ -8,6 +8,16 @@ extern "C" {
 #endif
 
 
+typedef union {
+  struct {
+    float x;
+    float y;
+    float z;
+  };
+  float arr[3];
+} ImuVec3f;
+  
+  
 typedef struct  {
   I2CDriver	*driver;
   const I2CConfig     *i2ccfg;
@@ -18,6 +28,9 @@ typedef struct  {
   uint8_t	alternateFunction;
 } I2cMasterConfig ;
 
+
+#define I2C_EINVAL -13
+#define I2C_BADID  -14
 
 bool_t initI2cDriver (const I2cMasterConfig *mconf);
 
@@ -89,6 +102,9 @@ msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset,
 			     const uint8_t bitmask, const bool useExt_VRef, 
 			     float *percent);
 #endif
+
+
+#include "i2cPeriphMpu9250.h"
 
 #ifdef __cplusplus
 }
