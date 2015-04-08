@@ -29,8 +29,10 @@ typedef struct  {
 } I2cMasterConfig ;
 
 
-#define I2C_EINVAL -13
-#define I2C_BADID  -14
+#define I2C_EINVAL	  -13
+#define I2C_BADID	  -14
+#define I2C_MAXSLV_REACH  -15
+
 
 bool_t initI2cDriver (const I2cMasterConfig *mconf);
 

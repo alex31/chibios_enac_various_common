@@ -874,6 +874,7 @@ static bool_t   i2cMasterResetBus (I2CDriver *i2cd)
 {
   i2cStop (i2cd);
   bool_t res = i2cMasterUnhangBus (i2cd);
+  i2cMasterSetModePeriphI2c (i2cd);
   i2cStart(i2cd, getMasterConfigFromDriver(i2cd)->i2ccfg);
   return res;
 }
