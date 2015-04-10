@@ -207,7 +207,6 @@ msg_t mpu9250_cacheVal ( Mpu9250Data *imu)
   msg_t status = RDY_OK;
 
   i2cAcquireBus(imu->i2cd);
-  memset (imu->rawCache, 0, sizeof(imu->rawCache));
   I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU9250_REGISTER_BASE, imu->rawCache, 
 		     imu->registerSegmentLen);
   i2cReleaseBus(imu->i2cd);
@@ -225,8 +224,8 @@ msg_t mpu9250_getVal ( Mpu9250Data *imu, float *temp,
 
   if (!halIsCounterWithin(imu->cacheTimestamp, 
 			  imu->cacheTimestamp + imu->sampleInterval)) {
-    status =  mpu9250_cacheVal (imu);
     imu->cacheTimestamp = halGetCounterValue();
+    status =  mpu9250_cacheVal (imu);
   }
 
   if (status != RDY_OK) 
@@ -257,6 +256,7 @@ msg_t mpu9250_getDevid (Mpu9250Data *imu, uint8_t *devid)
   return status;
 }
 
+
 msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass)
 {
   msg_t status = RDY_OK;
@@ -276,7 +276,7 @@ msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass)
   Mpu9250MasterConfig_0_to_3 *mc03 = &(imu->mc.mc03[imu->nextSlvFreeSlot]);
   compass->mstConfig = mc03;
   mc03->mpu = imu;
-  mc03->cacheAdr = &(imu->rawCache[MPU9250_EXT_SENS_DATA_00+sumOfLen-MPU9250_REGISTER_BASE]);
+  mc03->cacheAdr = &(imu->rawCache[MPU9250_EXT_SENS_DATA_00-MPU9250_REGISTER_BASE+sumOfLen]);
   mc03->slvI2cAdr = AK8963_ADDRESS;
   mc03->slvRegStart = AK8963_REGISTER_BASE;
   mc03->mapLen = AK8963_REGISTER_LAST-AK8963_REGISTER_BASE+1;
@@ -289,12 +289,62 @@ msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass)
   status = addSlave (imu, mc03);
   if (status == RDY_OK) {
     imu->nextSlvFreeSlot++;
-    status = mpu9250_setBypass (imu, IMU_MASTER);
   }
   
   return status;		      
 }
 
+msg_t mpu9250AddSlv_MPL3115A2 (Mpu9250Data *imu, MPL3115A2Data *baro) 
+{
+  msg_t status = RDY_OK;
+  
+  if (imu->nextSlvFreeSlot > 3) {
+    return I2C_MAXSLV_REACH;
+  }
+  
+  uint8_t sumOfLen=0;
+  for (uint8_t i=0; i<imu->nextSlvFreeSlot; i++) {
+    Mpu9250MasterConfig_0_to_3 *mc03 = &(imu->mc.mc03[0]);
+    sumOfLen += mc03->mapLen;
+  }
+
+  //DebugTrace ("slot = %d; sumOfLen = %d", imu->nextSlvFreeSlot, sumOfLen);
+
+  Mpu9250MasterConfig_0_to_3 *mc03 = &(imu->mc.mc03[imu->nextSlvFreeSlot]);
+  baro->mstConfig = mc03;
+  mc03->mpu = imu;
+  mc03->cacheAdr = &(imu->rawCache[MPU9250_EXT_SENS_DATA_00-MPU9250_REGISTER_BASE+sumOfLen]);
+  mc03->slvI2cAdr =  MPL3115A2_ADDRESS;
+  mc03->slvRegStart = MPL3115A2_OUT_P_MSB;
+  mc03->mapLen = MPL3115A2_OUT_P_LSB-MPL3115A2_OUT_P_MSB+1;
+  imu->registerSegmentLen += mc03->mapLen;
+  mc03->way = IMU_TRANSFER_READ;
+  mc03->swapMode = IMU_NO_SWAP;
+  mc03->useMstDlyPrev = true;
+
+  status = addSlave (imu, mc03);
+  if (status != RDY_OK) 
+    return status;
+
+  imu->nextSlvFreeSlot++;
+ 
+  mc03 = &(imu->mc.mc03[imu->nextSlvFreeSlot]);
+  mc03->mpu = imu;
+  mc03->slvI2cAdr =  MPL3115A2_ADDRESS;
+  mc03->slvRegStart = MPL3115A2_CTRL_REG1;
+  mc03->slvDo = MPL3115A2_ONESHOT_INIT | baro->oversampling;
+  mc03->mapLen = 1;
+  mc03->way = IMU_TRANSFER_WRITE;
+  mc03->swapMode = IMU_NO_SWAP;
+  mc03->useMstDlyPrev = true; 
+
+  status = addSlave (imu, mc03);
+  if (status == RDY_OK) {
+    imu->nextSlvFreeSlot++;
+  }
+  
+  return status;		      
+}
 
 static  msg_t addSlave (Mpu9250Data *imu, Mpu9250MasterConfig_0_to_3 *mc)
 {
@@ -320,6 +370,8 @@ static  msg_t addSlave (Mpu9250Data *imu, Mpu9250MasterConfig_0_to_3 *mc)
     I2C_READ_REGISTER  (imu->i2cd, imu->slaveAddr, MPU9250_I2C_MST_DELAY_CTRL, &i2cMasterDelayControl);
     i2cMasterDelayControl |= (1 << imu->nextSlvFreeSlot);
   }
+  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_I2C_SLV0_DO + imu->nextSlvFreeSlot,
+			mc->slvDo);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_I2C_MST_DELAY_CTRL, i2cMasterDelayControl);
   I2C_WRITE_REGISTERS (imu->i2cd, imu->slaveAddr, i2cSlvAddr, i2cSlvAddrVal);
   I2C_WRITE_REGISTERS (imu->i2cd, imu->slaveAddr, i2cSlvReg, i2cSlvRegVal);
@@ -467,7 +519,6 @@ msg_t ak8963_init (Ak8963Data *compass,  I2CDriver *i2cd)
   msg_t status = RDY_OK;
   uint8_t asa[3];
   compass->cacheTimestamp = halGetCounterValue();
-  compass->byPass =  IMU_BYPASS;
   compass->i2cd = i2cd;
   compass->mstConfig = NULL;
 
@@ -545,10 +596,10 @@ msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *val)
 
   if (!halIsCounterWithin(compass->cacheTimestamp, 
 			  compass->cacheTimestamp + compass->sampleInterval)) {
+    compass->cacheTimestamp = halGetCounterValue();
     status =  ak8963_cacheVal (compass);
     if (status != RDY_OK)
       return status;
-    compass->cacheTimestamp = halGetCounterValue();
   }
   const uint8_t  *rawB =   (compass->mstConfig == NULL) ? compass->rawCache :
     compass->mstConfig->cacheAdr;

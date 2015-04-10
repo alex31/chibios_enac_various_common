@@ -95,9 +95,9 @@
 #define MPU9250_EXT_SENS_DATA_00    0x49
 #define MPU9250_EXT_SENS_DATA_23    0x60
 #define MPU9250_I2C_SLV0_DO         0x63
-#define MPU9250_I2C_SLV0_D1         0x64
-#define MPU9250_I2C_SLV0_D2         0x65
-#define MPU9250_I2C_SLV0_D3         0x66
+#define MPU9250_I2C_SLV1_DO         0x64
+#define MPU9250_I2C_SLV2_DO         0x65
+#define MPU9250_I2C_SLV3_DO         0x66
 #define MPU9250_I2C_MST_DELAY_CTRL  0x67 // 103
 #define MPU9250_USER_CTRL           0x6a
 #define MPU9250_PWR_MGMT_1          0x6b
@@ -223,6 +223,7 @@ typedef struct
   uint8_t		slvI2cAdr;
   uint8_t		slvRegStart;
   uint8_t		mapLen;
+  uint8_t		slvDo; // I2C_SLV4_Dx : data to be written to slave x if way is WRITE
   TransferWay		way;
   TransferSwapMode	swapMode;
   bool_t		useMstDlyPrev;
@@ -297,7 +298,6 @@ typedef struct
   uint32_t cacheTimestamp; 
   uint32_t sampleInterval;                       // interval between samples in tick
   ImuVec3f compassAdjust;                         // the compass fuse ROM values converted for use
-  PassThroughMode byPass;			  // pathrough mode or bypass mode
   uint8_t rawCache[AK8963_REGISTER_LAST-AK8963_REGISTER_BASE+1];
   uint8_t cntl1;                                  // down or single or continuous mode
 } Ak8963Data;
@@ -325,7 +325,6 @@ msg_t mpu9250_cacheVal  (Mpu9250Data *imu);
 msg_t mpu9250_getVal  (Mpu9250Data *imu, float *temp, 
 		      ImuVec3f *gyro, ImuVec3f *acc);
 msg_t mpu9250_getDevid (Mpu9250Data *imu, uint8_t *devid);
-msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass);
 
 
 
@@ -343,6 +342,7 @@ msg_t ak8963_getDevid (Ak8963Data *compass, uint8_t *devid);
 msg_t ak8963_setCompassCntl (Ak8963Data *compass, const uint8_t cntl);
 msg_t ak8963_cacheVal  (Ak8963Data *compass);
 msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *mag);
+msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass);
 
 
 
