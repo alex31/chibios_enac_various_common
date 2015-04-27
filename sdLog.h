@@ -5,6 +5,10 @@
 #include "ff.h"
 #include <stdarg.h>
 
+#define NUMBERLEN 4
+#define NUMBERMAX 9999
+#define NUMBERFMF "%s\\%s%.04d.LOG"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -63,6 +67,7 @@ typedef enum {
   SDLOG_QUEUEFULL,
   SDLOG_NOTHREAD,
   SDLOG_INTERNAL_ERROR,
+  SDLOG_LOGNUM_ERROR
 } SdioError;
 
 

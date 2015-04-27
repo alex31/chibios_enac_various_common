@@ -7,6 +7,9 @@
 #include "printf.h"
 #include "sdio.h"
 #include "rtcAccess.h"
+#include <ctype.h>
+#include "stdutil.h"
+#include "globalVar.h"
 
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
 #define MAX(x , y)  (((x) > (y)) ? (x) : (y))
@@ -410,8 +413,8 @@ SdioError getFileName(const char* prefix, const char* directoryName,
 #endif
   const size_t directoryNameLen = strlen (directoryName);
   char slashDirName[directoryNameLen+2];
-  strcpy (slashDirName, "/");
-  strcat (slashDirName, directoryName);
+  strncpy (slashDirName, "/", sizeof(slashDirName));
+  strncat (slashDirName, directoryName,  sizeof(slashDirName));
   
   rc = f_opendir(&dir, directoryName);
   if (rc != FR_OK) {
@@ -445,9 +448,15 @@ SdioError getFileName(const char* prefix, const char* directoryName,
     return SDLOG_FATFS_ERROR;
   }
 
-  chsnprintf (nextFileName, nameLength, "%s\\%s%.03d.LOG", 
-	      directoryName, prefix, maxCurrentIndex+indexOffset);
-  return SDLOG_OK;
+  if (maxCurrentIndex < NUMBERMAX) {
+    chsnprintf (nextFileName, nameLength, NUMBERFMF,
+		directoryName, prefix, maxCurrentIndex+indexOffset);
+    return SDLOG_OK;
+  } else {
+    chsnprintf (nextFileName, nameLength, "%s\\%s%.ERR", 
+		directoryName, prefix);
+    return SDLOG_LOGNUM_ERROR;
+  }
 }
 
 
@@ -472,12 +481,17 @@ uint32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName)
   const size_t len = strlen(prefix);
 
   // if filename does not began with prefix, return 0
-  if (strncmp (prefix, fileName, len))
+  if (strncmp (prefix, fileName, len) != 0)
     return 0;
 
   // we point on the first char after prefix
   const char* suffix = &(fileName[len]);
 
+  // we test that suffix is valid (at least begin with digit)
+    if (!isdigit ((int) suffix[0])) {
+      DebugTrace ("DBG> suffix = %s", suffix);
+      return NUMBERMAX+1;
+    }
 
   return (uint32_t) atoi (suffix);
 }
