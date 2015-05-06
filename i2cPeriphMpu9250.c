@@ -4,6 +4,17 @@
 #include <math.h>
 #include <string.h>
 
+/*
+
+TODO :
+
+* verifier la période d'interrogation
+* trouver le bug
+* commenter les structures de i2cperiph9150.h et i2cperiphmpl311.h
+* commenter les fonctions addslave
+
+
+ */
 
 
 /*
@@ -276,10 +287,10 @@ msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass)
   Mpu9250MasterConfig_0_to_3 *mc03 = &(imu->mc.mc03[imu->nextSlvFreeSlot]);
   compass->mstConfig = mc03;
   mc03->mpu = imu;
-  mc03->cacheAdr = &(imu->rawCache[MPU9250_EXT_SENS_DATA_00-MPU9250_REGISTER_BASE+sumOfLen]);
+  mc03->cacheAdr = &(imu->rawCache[(sumOfLen+MPU9250_EXT_SENS_DATA_00)-MPU9250_REGISTER_BASE]);
   mc03->slvI2cAdr = AK8963_ADDRESS;
   mc03->slvRegStart = AK8963_REGISTER_BASE;
-  mc03->mapLen = AK8963_REGISTER_LAST-AK8963_REGISTER_BASE+1;
+  mc03->mapLen = (AK8963_REGISTER_LAST+1)-AK8963_REGISTER_BASE;
   imu->registerSegmentLen += mc03->mapLen;
   mc03->way = IMU_TRANSFER_READ;
   mc03->swapMode = IMU_NO_SWAP;
@@ -313,10 +324,10 @@ msg_t mpu9250AddSlv_MPL3115A2 (Mpu9250Data *imu, MPL3115A2Data *baro)
   Mpu9250MasterConfig_0_to_3 *mc03 = &(imu->mc.mc03[imu->nextSlvFreeSlot]);
   baro->mstConfig = mc03;
   mc03->mpu = imu;
-  mc03->cacheAdr = &(imu->rawCache[MPU9250_EXT_SENS_DATA_00-MPU9250_REGISTER_BASE+sumOfLen]);
+  mc03->cacheAdr = &(imu->rawCache[(sumOfLen+MPU9250_EXT_SENS_DATA_00)-MPU9250_REGISTER_BASE]);
   mc03->slvI2cAdr =  MPL3115A2_ADDRESS;
   mc03->slvRegStart = MPL3115A2_OUT_P_MSB;
-  mc03->mapLen = MPL3115A2_OUT_P_LSB-MPL3115A2_OUT_P_MSB+1;
+  mc03->mapLen = (MPL3115A2_OUT_P_LSB+1)-MPL3115A2_OUT_P_MSB;
   imu->registerSegmentLen += mc03->mapLen;
   mc03->way = IMU_TRANSFER_READ;
   mc03->swapMode = IMU_NO_SWAP;
@@ -598,8 +609,9 @@ msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *val)
 			  compass->cacheTimestamp + compass->sampleInterval)) {
     compass->cacheTimestamp = halGetCounterValue();
     status =  ak8963_cacheVal (compass);
-    if (status != RDY_OK)
+    if (status != RDY_OK) {
       return status;
+    }
   }
   const uint8_t  *rawB =   (compass->mstConfig == NULL) ? compass->rawCache :
     compass->mstConfig->cacheAdr;
@@ -609,7 +621,7 @@ msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *val)
   const int16_t magy = *((int16_t *) (&rawB[3]));
   const int16_t magz = *((int16_t *) (&rawB[5]));
   const uint8_t status2 = rawB[7];
-
+  
   val->mag.x = magy * compass->compassAdjust.y;
   val->mag.y = magx * compass->compassAdjust.x;
   val->mag.z = -magz * compass->compassAdjust.z;
