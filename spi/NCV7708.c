@@ -159,7 +159,7 @@ void spiChangeHalfBridgeMask (const HalfBridgeOperation hbo, const HalfBridgeInd
 
   spiOrder = get_NCV7708_latchesBits (halfBridgeData[hbi].out);
   spiOrder |= ((NCV7708E_RESET_STATUS | NCV7708E_OVERLOAD_CONTROL | 
-		NCV7708E_UNDERLOAD_CONTROL |  NCV7708E_OVERVOLTAGE_CONTROL) & options);
+		NCV7708E_UNDERLOAD_CONTROL |  NCV7708E_POWERFAILURE_CONTROL) & options);
   
   spiPrologue (&SPID1, &halfBridgeCfg[hbi]);
   spiExchange (&SPID1, sizeof(spiOrder), &spiOrder, &spiStatus);
@@ -170,7 +170,7 @@ void spiChangeHalfBridgeMask (const HalfBridgeOperation hbo, const HalfBridgeInd
 }
 
 bool_t spiCheckHalfBridgeMask (const HalfBridgeIndex hbi, bool_t *overLoad, 
-			       bool_t *underLoad, bool_t *supplyFailure, bool_t *thermalWarning,
+			       bool_t *underLoad, bool_t *powerFailure, bool_t *thermalWarning,
 			       HalfBridgePortMask *portStatusMsk)
 {
 #if HAL_USE_SPI
@@ -182,8 +182,11 @@ bool_t spiCheckHalfBridgeMask (const HalfBridgeIndex hbi, bool_t *overLoad,
   }
  
   spiOrder = get_NCV7708_latchesBits (halfBridgeData[hbi].out);
-  spiOrder |= ((NCV7708E_RESET_STATUS | NCV7708E_OVERLOAD_CONTROL | 
-		NCV7708E_UNDERLOAD_CONTROL |  NCV7708E_OVERVOLTAGE_CONTROL) & 
+
+  // for the check, we do not reset bits (NCV7708E_NORESET_STATUS instead of
+  // NCV7708E_RESET_STATUS in spiChangeHalfBridgeMask
+  spiOrder |= ((NCV7708E_NORESET_STATUS | NCV7708E_OVERLOAD_CONTROL | 
+		NCV7708E_UNDERLOAD_CONTROL |  NCV7708E_POWERFAILURE_CONTROL) & 
 	       halfBridgeData[hbi].options);
 
   spiPrologue (&SPID1, &halfBridgeCfg[hbi]);
@@ -195,11 +198,17 @@ bool_t spiCheckHalfBridgeMask (const HalfBridgeIndex hbi, bool_t *overLoad,
   *portStatusMsk = get_NCV7708_status (spiOrder, spiStatus);
   *overLoad = spiStatus & NCV7708E_STATUS_OVERLOAD;
   *underLoad = spiStatus & NCV7708E_STATUS_UNDERLOAD;
-  *supplyFailure = spiStatus & NCV7708E_STATUS_OVERVOLTAGE;
+  *powerFailure = spiStatus & NCV7708E_STATUS_POWERFAILURE;
   *thermalWarning = spiStatus &  NCV7708E_STATUS_THERMAL_WARNING;
 
-  return *portStatusMsk || *overLoad || *underLoad
-    || *supplyFailure || *thermalWarning;
+  // report problem only if failure is both in status and option request :
+  // if underload is not controled, underload condition will set underlod bit but not
+  // problem return status
+  return *portStatusMsk || 
+    (*overLoad  && (halfBridgeData[hbi].options & NCV7708E_OVERLOAD_CONTROL))  || 
+    (*underLoad  && (halfBridgeData[hbi].options & NCV7708E_UNDERLOAD_CONTROL)) || 
+    (*powerFailure && (halfBridgeData[hbi].options &  NCV7708E_POWERFAILURE_CONTROL)) || 
+    *thermalWarning;
 #endif
 }
 

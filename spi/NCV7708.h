@@ -27,8 +27,8 @@ extern "C" {
 #define NCV7708E_OVERLOAD_NOCONTROL	((uint16_t) (0 << 13))
 #define NCV7708E_UNDERLOAD_CONTROL	((uint16_t) (1 << 14))
 #define NCV7708E_UNDERLOAD_NOCONTROL	((uint16_t) (0 << 14))
-#define NCV7708E_OVERVOLTAGE_CONTROL	((uint16_t) (1 << 15))
-#define NCV7708E_OVERVOLTAGE_NOCONTROL	((uint16_t) (0 << 15))
+#define NCV7708E_POWERFAILURE_CONTROL	((uint16_t) (1 << 15))
+#define NCV7708E_POWERFAILURE_NOCONTROL	((uint16_t) (0 << 15))
 
 
 #define NCV7708E_STATUS_THERMAL_WARNING ((uint16_t) (1 << 0))
@@ -46,7 +46,7 @@ extern "C" {
 #define NCV7708E_STATUS_OUT_H6 		((uint16_t) (1 << 12))
 #define NCV7708E_STATUS_OVERLOAD	((uint16_t) (1 << 13))
 #define NCV7708E_STATUS_UNDERLOAD	((uint16_t) (1 << 14))
-#define NCV7708E_STATUS_OVERVOLTAGE	((uint16_t) (1 << 15))
+#define NCV7708E_STATUS_POWERFAILURE	((uint16_t) (1 << 15))
 
 
 
@@ -80,7 +80,7 @@ void spiChangeHalfBridgeMask (const HalfBridgeOperation hbo, const HalfBridgeInd
 			      const HalfBridgePortMask hbm, const HalfBridgeCommandMask options);
 
 bool_t spiCheckHalfBridgeMask (const HalfBridgeIndex hbi, bool_t *overLoad, 
-			       bool_t *underLoad, bool_t *supplyFailure, bool_t *thermalWarning,
+			       bool_t *underLoad, bool_t *powerFailure, bool_t *thermalWarning,
 			       HalfBridgePortMask *portStatusMsk);
 
 
