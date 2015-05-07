@@ -21,7 +21,7 @@ extern "C" {
     ° _FS_SHARE : number of simultaneously open file
     ° _FS_REENTRANT : If you need to open / close file during log, this should be set to 1 at
                        the expense of more used cam and cpu.
-                    If you open all files prior to log data on them, it should be left to 0  
+                    If you open all files prior to log data on them, it should be left to 0
 
    MCUCONF.H (or any other header included before sdLog.h
    ° SDLOG_ALL_BUFFERS_SIZE : (in bytes) performance ram buffer size shared between all opened log file
@@ -96,7 +96,7 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo);
  * @param[in]	nameLength : length of previous buffer
  * @param[in]	indexOffset : use 0 to retrieve last existent filename, 1 for next filename
  */
-SdioError getFileName(const char* prefix, const char* directoryName, 
+SdioError getFileName(const char* prefix, const char* directoryName,
 		      char* nextFileName, const size_t nameLength, const int indexOffset);
 
 /**
@@ -116,7 +116,7 @@ SdioError sdLogFinish (void);
  * @param[in]	directoryName : name of directory just under ROOT, created if nonexistant
  * @param[in]	fileName : the name will be appended with 3 digits number
  * @param[in]	appendTagAtClose : at close, a marker will be added to prove that the file is complete
- *		and not corrupt. useful for text logging purpose, but probably not wanted fort binary 
+ *		and not corrupt. useful for text logging purpose, but probably not wanted fort binary
  *		files.
  */
 SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const char* fileName,
@@ -150,7 +150,7 @@ SdioError sdLogCloseAllLogs (bool flush);
 
 
 /**
- * @brief	log text 
+ * @brief	log text
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  * @param[in]	fmt : format and args in printf convention
  */
@@ -158,7 +158,7 @@ SdioError sdLogWriteLog (const FileDes fileObject, const char* fmt, ...);
 
 
 /**
- * @brief	log binary data 
+ * @brief	log binary data
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  * @param[in]	buffer : memory pointer on buffer
  * @param[in]	len : number of bytes to write
@@ -167,7 +167,7 @@ SdioError sdLogWriteRaw (const FileDes fileObject, const uint8_t* buffer, const 
 
 
 /**
- * @brief	log one byte of binary data 
+ * @brief	log one byte of binary data
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  * @param[in]	value : byte to log
  */
