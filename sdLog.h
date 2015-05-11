@@ -71,7 +71,7 @@ typedef enum {
 } SdioError;
 
 
-typedef uint8_t FileDes;
+typedef int8_t FileDes;
 
 /**
  * @brief	initialise sdLog

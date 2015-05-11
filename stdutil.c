@@ -36,7 +36,7 @@ float atof_m(const char *s)
           
   while(isdigit((int) *s))    
     {   
-      v += (*s++ - '0') * scale;   
+      v += (float)((*s++ - '0')) * scale;   
       scale /= 10.0f;   
     }   
          
@@ -70,7 +70,7 @@ static float powi(int x, int y)
   float p = 1;   
         
   for (d = 0; d<y; d++)   
-    p *= x;   
+    p *= (float)(x);   
          
   return p;   
 }   
@@ -202,9 +202,9 @@ float unlerpf (const float x, const float y, const float x_y)
 uint32_t lerpu32 (const uint32_t x, const uint32_t y, const float w)
 {
   if (y>x) {
-    return x + (uint32_t) (w * (y-x));
+    return x + (uint32_t) (w * (float)(y-x));
   } else {
-    return x - (uint32_t) (w * (x-y));
+    return x - (uint32_t) (w * (float)(x-y));
   }
 }
 
@@ -245,7 +245,7 @@ char *binary_fmt(uintmax_t x)
   char *s = buf + FMT_BUF_SIZE;
   *--s = 0;
   if (!x) *--s = '0';
-  for(; x; x/=2) *--s = '0' + x%2;
+  for(; x; x/=2) *--s = (char) ('0' + x%2);
   return s;
 }
 #undef FMT_BUF_SIZE // don't pullute namespace

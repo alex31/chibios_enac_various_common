@@ -101,7 +101,7 @@ static SdioError  getNextFIL (FileDes *fd);
 
 
 
-static uint32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName) ;
+static int32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName) ;
 
 SdioError sdLogInit (uint32_t* freeSpaceInKo)
 {
@@ -206,7 +206,7 @@ SdioError sdLogCloseAllLogs (bool flush)
   if (flush == false) {
     // stop worker thread then close file
     sdLogStopThread ();
-    for (uint8_t fd=0; fd<SDLOG_NUM_BUFFER; fd++) {
+    for (FileDes fd=0; fd<SDLOG_NUM_BUFFER; fd++) {
       if (fileDes[fd].inUse) {
 	FIL *fileObject = &fileDes[fd].fil;
 
@@ -224,7 +224,7 @@ SdioError sdLogCloseAllLogs (bool flush)
     // flush ram buffer then close
   } else { // flush == true
     // queue flush + close order, then stop worker thread
-    for (uint8_t fd=0; fd<SDLOG_NUM_BUFFER; fd++) {
+    for (FileDes fd=0; fd<SDLOG_NUM_BUFFER; fd++) {
       if (fileDes[fd].inUse) {
 	sdLogCloseLog (fd);
       }
@@ -257,7 +257,7 @@ SdioError sdLogWriteLog (const FileDes fd, const char* fmt, ...)
   LogMessage *lm = alloca (LOG_MESSAGE_PREBUF_LEN);
 
   lm->op.fcntl = FCNTL_WRITE;
-  lm->op.fd = fd;
+  lm->op.fd = fd & 0x1f;
 
   chvsnprintf (lm->mess, SDLOG_MAX_MESSAGE_LEN-1,  fmt, ap);
   lm->mess[SDLOG_MAX_MESSAGE_LEN-1]=0;
@@ -278,7 +278,7 @@ SdioError sdLogFlushLog (const FileDes fd)
   LogMessage lm;
 
   lm.op.fcntl = FCNTL_FLUSH;
-  lm.op.fd = fd;
+  lm.op.fd = fd & 0x1f;
 
   if (varLenMsgQueuePush (&messagesQueue, &lm, sizeof(lm), VarLenMsgQueue_REGULAR) < 0) {
     return SDLOG_QUEUEFULL;
@@ -295,7 +295,7 @@ SdioError sdLogCloseLog (const FileDes fd)
   LogMessage lm;
 
   lm.op.fcntl = FCNTL_CLOSE;
-  lm.op.fd = fd;
+  lm.op.fd = fd & 0x1f;
 
   if (varLenMsgQueuePush (&messagesQueue, &lm, sizeof(lm), VarLenMsgQueue_REGULAR) < 0) {
     return SDLOG_QUEUEFULL;
@@ -316,7 +316,7 @@ SdioError sdLogWriteRaw (const FileDes fd, const uint8_t * buffer, const size_t 
   LogMessage *lm = alloca(LOG_MESSAGE_PREBUF_LEN);
 
   lm->op.fcntl = FCNTL_WRITE;
-  lm->op.fd = fd;
+  lm->op.fd = fd & 0x1f;
   memcpy (lm->mess, buffer, len);
 
   if (varLenMsgQueuePush (&messagesQueue, lm, logRawLen(len), VarLenMsgQueue_REGULAR) < 0) {
@@ -335,7 +335,7 @@ SdioError sdLogWriteByte (const FileDes fd, const uint8_t value)
   LogMessage *lm = alloca(sizeof(LogMessage)+1);
 
   lm->op.fcntl = FCNTL_WRITE;
-  lm->op.fd = fd;
+  lm->op.fd = fd & 0x1f;
   lm->mess[0] = value;
 
   if (varLenMsgQueuePush (&messagesQueue, lm, sizeof(LogMessage)+1, VarLenMsgQueue_REGULAR) < 0) {
@@ -377,7 +377,7 @@ SdioError sdLogStopThread (void)
   for (uint8_t i=0; i<SDLOG_NUM_BUFFER; i++) {
     if (fileDes[i].inUse) {
       lm.op.fcntl = FCNTL_CLOSE;
-      lm.op.fd = i;
+      lm.op.fd = i & 0x1f;
       if (varLenMsgQueuePush (&messagesQueue, &lm, sizeof(LogMessage), VarLenMsgQueue_OUT_OF_BAND) < 0) {
 	retVal= SDLOG_QUEUEFULL;
       }
@@ -403,8 +403,8 @@ SdioError getFileName(const char* prefix, const char* directoryName,
   DIR dir; /* Directory object */
   FRESULT rc; /* Result code */
   FILINFO fno; /* File information object */
-  uint32_t fileIndex ;
-  uint32_t maxCurrentIndex = 0;
+  int32_t fileIndex ;
+  int32_t maxCurrentIndex = 0;
   char *fn;   /* This function is assuming non-Unicode cfg. */
 #if _USE_LFN
   char lfn[_MAX_LFN + 1];
@@ -477,7 +477,7 @@ SdioError getFileName(const char* prefix, const char* directoryName,
 
 
 
-uint32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName)
+int32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName)
 {
   const size_t len = strlen(prefix);
 
@@ -494,7 +494,7 @@ uint32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName)
       return 0;
     }
 
-  return (uint32_t) atoi (suffix);
+  return (int32_t) atoi (suffix);
 }
 
 
@@ -514,7 +514,7 @@ static msg_t thdSdLog(void *arg)
   chRegSetThreadName("thdSdLog");
   while (!chThdShouldTerminate()) {
     ChunkBufferRO cbro;
-    const int32_t retLen = varLenMsgQueuePopChunk (&messagesQueue, &cbro);
+    const int32_t retLen = ( int32_t) (varLenMsgQueuePopChunk (&messagesQueue, &cbro));
     if (retLen > 0) {
       const LogMessage *lm = (LogMessage *) cbro.bptr;
       FIL *fo =  &fileDes[lm->op.fd].fil;
@@ -550,15 +550,15 @@ static msg_t thdSdLog(void *arg)
 
       case FCNTL_WRITE:
 	if (fileDes[lm->op.fd].inUse) {
-	  const int32_t messLen = retLen-sizeof(LogMessage);
+	  const int32_t messLen = retLen-(int32_t) (sizeof(LogMessage));
 	  if (messLen < (SDLOG_WRITE_BUFFER_SIZE-curBufFill)) {
 	    // the buffer can accept this message
-	    memcpy (&(perfBuffer[curBufFill]), lm->mess, messLen);
-	    perfBuffers[lm->op.fd].size += messLen; // curBufFill
+	    memcpy (&(perfBuffer[curBufFill]), lm->mess, (size_t) (messLen));
+	    perfBuffers[lm->op.fd].size = (uint16_t) ((perfBuffers[lm->op.fd].size)+messLen);
 	  } else {
 	    // fill the buffer
-	    const uint32_t stayLen = SDLOG_WRITE_BUFFER_SIZE-curBufFill;
-	    memcpy (&(perfBuffer[curBufFill]), lm->mess, stayLen);
+	    const int32_t stayLen = SDLOG_WRITE_BUFFER_SIZE-curBufFill;
+	    memcpy (&(perfBuffer[curBufFill]), lm->mess, (size_t)(stayLen));
 	    FRESULT rc = f_write(fo, perfBuffer, SDLOG_WRITE_BUFFER_SIZE, &bw);
 	    f_sync (fo);
 	    if (rc) {
@@ -567,8 +567,8 @@ static msg_t thdSdLog(void *arg)
 	      return SDLOG_FSFULL;
 	    }
 
-	    memcpy (perfBuffer, &(lm->mess[stayLen]), messLen-stayLen);
-	    perfBuffers[lm->op.fd].size = messLen-stayLen; // curBufFill
+	    memcpy (perfBuffer, &(lm->mess[stayLen]),  (uint32_t) (messLen-stayLen));
+	    perfBuffers[lm->op.fd].size = (uint16_t) (messLen-stayLen); // curBufFill
 	  }
 	}
       }
@@ -597,7 +597,7 @@ static SdioError  getNextFIL (FileDes *fd)
   // if there is a free slot in fileDes, use it
   // else, if all slots are buzy, maximum open files limit
   // is reach.
-  for (uint8_t i=0; i<SDLOG_NUM_BUFFER; i++) {
+  for (FileDes i=0; i<SDLOG_NUM_BUFFER; i++) {
     if (fileDes[i].inUse ==  false) {
       *fd = i;
       fileDes[i].inUse = true;

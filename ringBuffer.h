@@ -82,11 +82,11 @@ static inline void	 	ringBufferSetReadPointer(CircularBuffer* que, uint16_t read
 }
 
 static inline void 	ringBufferReadSeek(CircularBuffer* que, size_t len) {
- que->readPointer = (que->readPointer+len) % que->size;
+  que->readPointer = (uint16_t) ((que->readPointer+len) % que->size);
 }
 
 static inline void 	ringBufferWriteSeek(CircularBuffer* que, size_t len) {
-  que->writePointer = (que->writePointer+len) % que->size;
+  que->writePointer = (uint16_t) ((que->writePointer+len) % que->size);
 }
 
 static inline int32_t 	ringBufferFreeSizeToEndOfCircular(const CircularBuffer* que)
@@ -101,7 +101,7 @@ static inline uint8_t 	*ringBufferGetAddrOfElem(const CircularBuffer* que, const
 
 static inline uint16_t 	ringBufferGetIndexOfElemAddr(const CircularBuffer* que, const uint8_t* elemAddr)
 {
-  return (elemAddr - que->keys);
+  return (uint16_t)(elemAddr - que->keys);
 }
 
 
