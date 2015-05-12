@@ -134,54 +134,54 @@ static int hist_restore_line (ring_history_t * pThis, char * line, int dir)
 
   if (dir == _HIST_UP) {
     if (cnt >= pThis->cur) {
-      int header = pThis->begin;
+      int lheader = pThis->begin;
       int j = 0;
       // found record for 'pThis->cur' index
-      while ((pThis->ring_buf [header] != 0) && (cnt - j -1 != pThis->cur)) {
-	header += pThis->ring_buf [header] + 1;
-	if (header >= _RING_HISTORY_LEN)
-	  header -= _RING_HISTORY_LEN;
+      while ((pThis->ring_buf [lheader] != 0) && (cnt - j -1 != pThis->cur)) {
+	lheader += pThis->ring_buf [lheader] + 1;
+	if (lheader >= _RING_HISTORY_LEN)
+	  lheader -= _RING_HISTORY_LEN;
 	j++;
       }
-      if (pThis->ring_buf[header]) {
+      if (pThis->ring_buf[lheader]) {
 	pThis->cur++;
 	// obtain saved line
-	if ((pThis->ring_buf [header] + header + 1) < _RING_HISTORY_LEN) {
+	if ((pThis->ring_buf [lheader] + lheader + 1) < _RING_HISTORY_LEN) {
 	  // fix from coverity scan
 	  /*
 	    CID 60358 (#1 of 2): Out-of-bounds read (OVERRUN)30. 
             overrun-local: Overrunning array of 256 bytes at byte offset 256 
-	    by dereferencing pointer &pThis->ring_buf[header] + 1
+	    by dereferencing pointer &pThis->ring_buf[lheader] + 1
 	   */
-	  memmove (line, pThis->ring_buf + header + 1, pThis->ring_buf[header]);
+	  memmove (line, pThis->ring_buf + lheader + 1, pThis->ring_buf[lheader]);
 	} else {
-	  int part0 = _RING_HISTORY_LEN - header - 1;
-	  memmove (line, pThis->ring_buf + header + 1, part0);
-	  memmove (line + part0, pThis->ring_buf, pThis->ring_buf[header] - part0);
+	  int part0 = _RING_HISTORY_LEN - lheader - 1;
+	  memmove (line, pThis->ring_buf + lheader + 1, part0);
+	  memmove (line + part0, pThis->ring_buf, pThis->ring_buf[lheader] - part0);
 	}
-	return pThis->ring_buf[header];
+	return pThis->ring_buf[lheader];
       }
     }
   } else {
     if (pThis->cur > 0) {
       pThis->cur--;
-      int header = pThis->begin;
+      int lheader = pThis->begin;
       int j = 0;
 
-      while ((pThis->ring_buf [header] != 0) && (cnt - j != pThis->cur)) {
-	header += pThis->ring_buf [header] + 1;
-	if (header >= _RING_HISTORY_LEN)
-	  header -= _RING_HISTORY_LEN;
+      while ((pThis->ring_buf [lheader] != 0) && (cnt - j != pThis->cur)) {
+	lheader += pThis->ring_buf [lheader] + 1;
+	if (lheader >= _RING_HISTORY_LEN)
+	  lheader -= _RING_HISTORY_LEN;
 	j++;
       }
-      if ((pThis->ring_buf [header] + header +1) < _RING_HISTORY_LEN) {
-	memmove (line, pThis->ring_buf + header + 1, pThis->ring_buf[header]);
+      if ((pThis->ring_buf [lheader] + lheader +1) < _RING_HISTORY_LEN) {
+	memmove (line, pThis->ring_buf + lheader + 1, pThis->ring_buf[lheader]);
       } else {
-	int part0 = _RING_HISTORY_LEN - header - 1;
-	memmove (line, pThis->ring_buf + header + 1, part0);
-	memmove (line + part0, pThis->ring_buf, pThis->ring_buf[header] - part0);
+	int part0 = _RING_HISTORY_LEN - lheader - 1;
+	memmove (line, pThis->ring_buf + lheader + 1, part0);
+	memmove (line + part0, pThis->ring_buf, pThis->ring_buf[lheader] - part0);
       }
-      return pThis->ring_buf[header];
+      return pThis->ring_buf[lheader];
     }
   }
   return 0;

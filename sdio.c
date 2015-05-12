@@ -136,7 +136,7 @@ void fillbuffers(uint8_t pattern){
 /**
  *
  */
-void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[]) {
+void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]) {
   (void)argc;
   (void)argv;
   uint32_t i = 0;
@@ -145,38 +145,38 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
 
   if (argc == 1) {
     format = TRUE;
-    chprintf(chp, "tests io R/W et Formatage \r\n");
+    chprintf(lchp, "tests io R/W et Formatage \r\n");
   } else {
-    chprintf(chp, "pas de formatage \r\n");
+    chprintf(lchp, "pas de formatage \r\n");
   }
 
-  chprintf(chp, "Trying to connect SDIO... ");
+  chprintf(lchp, "Trying to connect SDIO... ");
   chThdSleepMilliseconds(100);
 
   if (!sdioConnect ()) {
-     chprintf(chp, "   FAIL\r\n ");
+     chprintf(lchp, "   FAIL\r\n ");
     return;
   }
 
   if (TRUE) {
-  chprintf(chp, "OK\r\n");
-  chprintf(chp, "*** Card CSD content is: ");
-  chprintf(chp, "%X %X %X %X \r\n", (&SDCD1)->csd[3], (&SDCD1)->csd[2],
+  chprintf(lchp, "OK\r\n");
+  chprintf(lchp, "*** Card CSD content is: ");
+  chprintf(lchp, "%X %X %X %X \r\n", (&SDCD1)->csd[3], (&SDCD1)->csd[2],
 	   (&SDCD1)->csd[1], (&SDCD1)->csd[0]);
   
 
-  chprintf(chp, "capacity = %d sectors of 512 bytes = %d Mo\r\n", 
+  chprintf(lchp, "capacity = %d sectors of 512 bytes = %d Mo\r\n", 
 	   SDCD1.capacity, SDCD1.capacity / 2048);
 
-  chprintf(chp, "Single aligned read...");
+  chprintf(lchp, "Single aligned read...");
   chThdSleepMilliseconds(100);
   if (sdcRead(&SDCD1, 0, inbuf, 1))
     goto error;
-  chprintf(chp, " OK\r\n");
+  chprintf(lchp, " OK\r\n");
   chThdSleepMilliseconds(100);
   
   
-  chprintf(chp, "Single unaligned read...");
+  chprintf(lchp, "Single unaligned read...");
   chThdSleepMilliseconds(100);
   if (sdcRead(&SDCD1, 0, inbuf + 1, 1))
     goto error;
@@ -184,11 +184,11 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
     goto error;
   if (sdcRead(&SDCD1, 0, inbuf + 3, 1))
     goto error;
-  chprintf(chp, " OK\r\n");
+  chprintf(lchp, " OK\r\n");
   chThdSleepMilliseconds(100);
   
   
-  chprintf(chp, "Multiple aligned reads...");
+  chprintf(lchp, "Multiple aligned reads...");
   chThdSleepMilliseconds(100);
   fillbuffers(0x55);
   /* fill reference buffer from SD card */
@@ -200,11 +200,11 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
     if (memcmp(inbuf, outbuf, SDC_BURST_SIZE * MMCSD_BLOCK_SIZE) != 0)
       goto error;
   }
-  chprintf(chp, " OK\r\n");
+  chprintf(lchp, " OK\r\n");
   chThdSleepMilliseconds(100);
   
   
-  chprintf(chp, "Multiple unaligned reads...");
+  chprintf(lchp, "Multiple unaligned reads...");
   chThdSleepMilliseconds(100);
   fillbuffers(0x55);
   /* fill reference buffer from SD card */
@@ -216,13 +216,13 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
     if (memcmp(inbuf, outbuf, SDC_BURST_SIZE * MMCSD_BLOCK_SIZE) != 0)
       goto error;
   }
-  chprintf(chp, " OK\r\n");
+  chprintf(lchp, " OK\r\n");
   chThdSleepMilliseconds(100);
   
 #if SDC_DATA_DESTRUCTIVE_TEST 
   if (format) {
     
-    chprintf(chp, "Single aligned write...");
+    chprintf(lchp, "Single aligned write...");
     chThdSleepMilliseconds(100);
     fillbuffer(0xAA, inbuf);
     if (sdcWrite(&SDCD1, 0, inbuf, 1))
@@ -232,13 +232,13 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
       goto error;
     if (memcmp(inbuf, outbuf, MMCSD_BLOCK_SIZE) != 0)
       goto error;
-    chprintf(chp, " OK\r\n");
+    chprintf(lchp, " OK\r\n");
     
-    chprintf(chp, "Running badblocks at 0x10000 offset...");
+    chprintf(lchp, "Running badblocks at 0x10000 offset...");
     chThdSleepMilliseconds(100);
     if(badblocks(0x10000, 0x11000, SDC_BURST_SIZE, 0xAA))
       goto error;
-    chprintf(chp, " OK\r\n");
+    chprintf(lchp, " OK\r\n");
   } else {
     
   }
@@ -270,73 +270,73 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
   
 #if SDC_DATA_DESTRUCTIVE_TEST 
   if (format) {
-    chprintf(chp, "Formatting... ");
+    chprintf(lchp, "Formatting... ");
     chThdSleepMilliseconds(100);
     
-    chprintf(chp, "Register working area for filesystem... ");
+    chprintf(lchp, "Register working area for filesystem... ");
     chThdSleepMilliseconds(100);
     err = f_mount(0, &SDC_FS);
     if (err != FR_OK){
       goto error;
     }
     else{
-      chprintf(chp, "OK\r\n");
+      chprintf(lchp, "OK\r\n");
     }
   }
     
   if (format) {
-    chprintf(chp, "f_mkfs starting ... ");
+    chprintf(lchp, "f_mkfs starting ... ");
     chThdSleepMilliseconds(100);
     err = f_mkfs (0,0,0);
     if (err != FR_OK){
       goto error;
     }  else {
-      chprintf(chp, "OK\r\n");
+      chprintf(lchp, "OK\r\n");
     }
   }
 #endif /* SDC_DATA_DESTRUCTIVE_TEST */
     
     
-  chprintf(chp, "get free space on filesystem... ");
+  chprintf(lchp, "get free space on filesystem... ");
   chThdSleepMilliseconds(100);
   err =  f_getfree(NULL, &clusters, &fsp);
  
   if (err != FR_OK)
     goto error;
   
-  chprintf(chp, "OK\r\n");
-  chprintf(chp,
+  chprintf(lchp, "OK\r\n");
+  chprintf(lchp,
 	   "FS: %lu free clusters, %lu sectors per cluster, %lu bytes free\r\n",
 	   clusters, (uint32_t)SDC_FS.csize,
 	   clusters * (uint32_t)SDC_FS.csize * (uint32_t)MMCSD_BLOCK_SIZE);
   
   
-  chprintf(chp, "Create file \"chtest.txt\"... ");
+  chprintf(lchp, "Create file \"chtest.txt\"... ");
   chThdSleepMilliseconds(100);
   err = f_open(&FileObject, "chtest.txt", FA_WRITE | FA_OPEN_ALWAYS);
   if (err != FR_OK) {
     goto error;
   }
-  chprintf(chp, "OK\r\n");
-  chprintf(chp, "Write some data in it... ");
+  chprintf(lchp, "OK\r\n");
+  chprintf(lchp, "Write some data in it... ");
   chThdSleepMilliseconds(100);
   err = f_write(&FileObject, teststring, sizeof(teststring), (void *)&bytes_written);
   if (err != FR_OK) {
     goto error;
   }
   else
-    chprintf(chp, "OK\r\n");
+    chprintf(lchp, "OK\r\n");
   
-  chprintf(chp, "Close file \"chtest.txt\"... ");
+  chprintf(lchp, "Close file \"chtest.txt\"... ");
   err = f_close(&FileObject);
   if (err != FR_OK) {
     goto error;
   }
   else
-    chprintf(chp, "OK\r\n");
+    chprintf(lchp, "OK\r\n");
   
 
-  chprintf(chp, "Check file size \"chtest.txt\"... ");
+  chprintf(lchp, "Check file size \"chtest.txt\"... ");
   chThdSleepMilliseconds(10);
   err = f_stat("chtest.txt", &fno);
   chThdSleepMilliseconds(100);
@@ -344,13 +344,13 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
     goto error;
   } else {
     if (fno.fsize == sizeof(teststring))
-      chprintf(chp, "OK\r\n");
+      chprintf(lchp, "OK\r\n");
     else
       goto error;
   }
   
   
-  chprintf(chp, "Check file content \"chtest.txt\"... ");
+  chprintf(lchp, "Check file content \"chtest.txt\"... ");
   err = f_open(&FileObject, "chtest.txt", FA_READ | FA_OPEN_EXISTING);
   chThdSleepMilliseconds(100);
   if (err != FR_OK) {
@@ -364,18 +364,18 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
     if (memcmp(teststring, buf, sizeof(teststring)) != 0){
       goto error;
     } else {
-       chprintf(chp, "OK\r\n");
+       chprintf(lchp, "OK\r\n");
     }
   }
   
   {
-    FILINFO fno;
+    FILINFO lfno;
     DIR dir;
     char *fn;   /* This function is assuming non-Unicode cfg. */
 #if _USE_LFN
-    char lfn[_MAX_LFN + 1];
-    fno.lfname = lfn;
-    fno.lfsize = sizeof lfn;
+    char llfn[_MAX_LFN + 1];
+    lfno.lfname = llfn;
+    lfno.lfsize = sizeof llfn;
 #endif
     const char *path = "";
     FRESULT res =0;
@@ -383,31 +383,31 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
     res = f_opendir(&dir, path);                       /* Open the directory */
     if (res == FR_OK) {
       for (;;) {
-	res = f_readdir(&dir, &fno);                   /* Read a directory item */
-	if (res != FR_OK || fno.fname[0] == 0) break;  /* Break on error or end of dir */
-	if (fno.fname[0] == '.') continue;             /* Ignore dot entry */
+	res = f_readdir(&dir, &lfno);                   /* Read a directory item */
+	if (res != FR_OK || lfno.fname[0] == 0) break;  /* Break on error or end of dir */
+	if (lfno.fname[0] == '.') continue;             /* Ignore dot entry */
 #if _USE_LFN
-	fn = fno.lfname;
+	fn = lfno.lfname;
 #else
-	fn = fno.fname;
+	fn = lfno.fname;
 #endif
 	                                     /* It is a file. */
-	chprintf(chp, "readdir %s/%s\r\n", path, fn);
+	chprintf(lchp, "readdir %s/%s\r\n", path, fn);
       }
     }
   }
   
-  chprintf(chp, "Umount filesystem... ");
+  chprintf(lchp, "Umount filesystem... ");
   f_mount(0, NULL);
-  chprintf(chp, "OK\r\n");
+  chprintf(lchp, "OK\r\n");
   
-  chprintf(chp, "Disconnecting from SDIO...");
+  chprintf(lchp, "Disconnecting from SDIO...");
   chThdSleepMilliseconds(100);
   if (!sdioDisconnect())
     goto error;
-  chprintf(chp, " OK\r\n");
-  chprintf(chp, "------------------------------------------------------\r\n");
-  chprintf(chp, "All tests passed successfully.\r\n");
+  chprintf(lchp, " OK\r\n");
+  chprintf(lchp, "------------------------------------------------------\r\n");
+  chprintf(lchp, "All tests passed successfully.\r\n");
   chThdSleepMilliseconds(100);
   
 
@@ -415,7 +415,7 @@ void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[])
   return;
   }
  error:
-  chprintf(chp, "SDC error [%d] occurs\r\n", err);
+  chprintf(lchp, "SDC error [%d] occurs\r\n", err);
   sdioDisconnect();
 }
 
