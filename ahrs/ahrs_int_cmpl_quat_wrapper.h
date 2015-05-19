@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 The Paparazzi Team
+ * Copyright (C) 2015 Felix Ruess <felix.ruess@gmail.com>
  *
  * This file is part of paparazzi.
  *
@@ -14,30 +14,25 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with paparazzi; see the file COPYING.  If not, write to
- * the Free Software Foundation, 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
+ * along with Paparazzi; see the file COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
  */
 
 /**
- * @file subsystems/ahrs/ahrs_sim.h
+ * @file subsystems/ahrs/ahrs_int_cmpl_quat_wrapper.h
  *
- * Interface to set the AHRS from the simple OCaml simulator.
- *
+ * Paparazzi specific wrapper to run floating point complementary filter.
  */
 
-#ifndef AHRS_SIM_H
-#define AHRS_SIM_H
+#ifndef AHRS_INT_CMPL_QUAT_WRAPPER_H
+#define AHRS_INT_CMPL_QUAT_WRAPPER_H
 
-#include "subsystems/ahrs.h"
-#include "std.h"
+#include "subsystems/ahrs/ahrs_int_cmpl_quat.h"
 
-extern float ins_roll_neutral;
-extern float ins_pitch_neutral;
+#ifndef PRIMARY_AHRS
+#define PRIMARY_AHRS ahrs_icq
+#endif
 
-extern void update_ahrs_from_sim(void);
-extern void ahrs_sim_register(void);
+extern void ahrs_icq_register(void);
 
-#define PRIMARY_AHRS ahrs_sim
-
-#endif /* AHRS_SIM_H */
+#endif /* AHRS_INT_CMPL_QUAT_WRAPPER_H */

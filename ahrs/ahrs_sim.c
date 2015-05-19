@@ -19,14 +19,17 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * @file subsystems/ahrs/ahrs_sim.c
+ *
+ * Dummy plug to set the AHRS from the simple OCaml simulator.
+ *
+ */
 
-#include "subsystems/ahrs.h"
 #include "subsystems/ahrs/ahrs_sim.h"
 #include "math/pprz_algebra_float.h"
 #include "generated/airframe.h"
-
-#include <inttypes.h>
-#include <caml/mlvalues.h>
+#include "state.h"
 
 extern float sim_phi;
 extern float sim_theta;
@@ -34,10 +37,8 @@ extern float sim_psi;
 extern float sim_p;
 extern float sim_q;
 extern float sim_r;
-extern bool_t ahrs_sim_available;
 
-#ifdef AHRS_UPDATE_FW_ESTIMATOR
-// remotely settable
+// for sim of e.g. Xsens ins
 #ifndef INS_ROLL_NEUTRAL_DEFAULT
 #define INS_ROLL_NEUTRAL_DEFAULT 0
 #endif
@@ -46,15 +47,12 @@ extern bool_t ahrs_sim_available;
 #endif
 float ins_roll_neutral = INS_ROLL_NEUTRAL_DEFAULT;
 float ins_pitch_neutral = INS_PITCH_NEUTRAL_DEFAULT;
-#endif //AHRS_UPDATE_FW_ESTIMATOR
 
-void update_ahrs_from_sim(void) {
+
+void update_ahrs_from_sim(void)
+{
 
   struct FloatEulers ltp_to_imu_euler = { sim_phi, sim_theta, sim_psi };
-#ifdef AHRS_UPDATE_FW_ESTIMATOR
-  ltp_to_imu_euler.phi -= ins_roll_neutral;
-  ltp_to_imu_euler.theta -= ins_pitch_neutral;
-#endif
   struct FloatRates imu_rate = { sim_p, sim_q, sim_r };
   /* set ltp_to_body to same as ltp_to_imu, currently no difference simulated */
   stateSetNedToBodyEulers_f(&ltp_to_imu_euler);
@@ -63,41 +61,8 @@ void update_ahrs_from_sim(void) {
 }
 
 
-void ahrs_init(void) {
-  //ahrs_float.status = AHRS_UNINIT;
-  // set to running for now
-  ahrs.status = AHRS_RUNNING;
-
-  ahrs_sim_available = FALSE;
-
-}
-
-void ahrs_align(void)
+void ahrs_sim_register(void)
 {
-  /* Currently not really simulated
-   * body and imu have the same frame and always set to true value from sim
-   */
-
-  update_ahrs_from_sim();
-
-  ahrs.status = AHRS_RUNNING;
+  // dummy, simple ocaml sim only supports one basic fake AHRS anyway
+  ahrs_register_impl(NULL);
 }
-
-
-void ahrs_propagate(void) {
-  if (ahrs_sim_available) {
-    update_ahrs_from_sim();
-    ahrs_sim_available = FALSE;
-  }
-}
-
-void ahrs_update_accel(void) {
-}
-
-void ahrs_update_mag(void) {
-}
-
-void ahrs_update_gps(void) {
-
-}
-

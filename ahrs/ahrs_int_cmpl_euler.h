@@ -19,12 +19,26 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * @file subsystems/ahrs/ahrs_int_cmpl_euler.h
+ *
+ * Complementary filter in euler representation (fixed-point).
+ *
+ */
+
+
 #ifndef AHRS_INT_CMPL_EULER_H
 #define AHRS_INT_CMPL_EULER_H
 
 #include "subsystems/ahrs.h"
 #include "std.h"
 #include "math/pprz_algebra_int.h"
+#include "math/pprz_orientation_conversion.h"
+
+enum AhrsICEStatus {
+  AHRS_ICE_UNINIT,
+  AHRS_ICE_RUNNING
+};
 
 struct AhrsIntCmplEuler {
   struct Int32Rates  gyro_bias;
@@ -36,14 +50,22 @@ struct AhrsIntCmplEuler {
   struct Int32Eulers ltp_to_imu_euler;
   int32_t reinj_1;
   float mag_offset;
+
+  struct OrientationReps body_to_imu;
+
+  enum AhrsICEStatus status;
+  bool_t is_aligned;
 };
 
-extern struct AhrsIntCmplEuler ahrs_impl;
+extern struct AhrsIntCmplEuler ahrs_ice;
 
-
-#ifdef AHRS_UPDATE_FW_ESTIMATOR
-extern float ins_roll_neutral;
-extern float ins_pitch_neutral;
-#endif
+extern void ahrs_ice_init(void);
+extern void ahrs_ice_set_body_to_imu(struct OrientationReps *body_to_imu);
+extern void ahrs_ice_set_body_to_imu_quat(struct FloatQuat *q_b2i);
+extern bool_t ahrs_ice_align(struct Int32Rates *lp_gyro, struct Int32Vect3 *lp_accel,
+                             struct Int32Vect3 *lp_mag);
+extern void ahrs_ice_propagate(struct Int32Rates *gyro);
+extern void ahrs_ice_update_accel(struct Int32Vect3 *accel);
+extern void ahrs_ice_update_mag(struct Int32Vect3 *mag);
 
 #endif /* AHRS_INT_CMPL_EULER_H */

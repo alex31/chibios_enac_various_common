@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2008-2009 Antoine Drouin <poinix@gmail.com>
+ * Copyright (C) 2015 Felix Ruess <felix.ruess@gmail.com>
  *
  * This file is part of paparazzi.
  *
@@ -16,22 +14,25 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with paparazzi; see the file COPYING.  If not, write to
- * the Free Software Foundation, 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
+ * along with Paparazzi; see the file COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
  */
 
-#ifndef AHRS_FLOAT_EKF_H
-#define AHRS_FLOAT_EKF_H
+/**
+ * @file subsystems/ahrs/ahrs_int_cmpl_euler_wrapper.h
+ *
+ * Paparazzi specific wrapper to run floating point DCM filter.
+ */
 
+#ifndef AHRS_INT_CMPL_EULER_WRAPPER_H
+#define AHRS_INT_CMPL_EULER_WRAPPER_H
 
+#include "subsystems/ahrs/ahrs_int_cmpl_euler.h"
 
-extern void ahrs_init(void);
-extern void ahrs_align(void);
-extern void ahrs_propagate(void);
-extern void ahrs_update(void);
+#ifndef PRIMARY_AHRS
+#define PRIMARY_AHRS ahrs_ice
+#endif
 
+extern void ahrs_ice_register(void);
 
-
-
-#endif /* AHRS_FLOAT_EKF_H */
+#endif /* AHRS_INT_CMPL_EULER_WRAPPER_H */

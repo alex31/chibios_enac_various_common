@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 The Paparazzi Team
+ * Copyright (C) 2015 Felix Ruess <felix.ruess@gmail.com>
  *
  * This file is part of paparazzi.
  *
@@ -14,25 +14,25 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with paparazzi; see the file COPYING.  If not, write to
- * the Free Software Foundation, 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
+ * along with Paparazzi; see the file COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
  */
-
-#ifndef AHRS_INFRARED_H
-#define AHRS_INFRARED_H
-
-#include "subsystems/ahrs.h"
-#include "std.h"
 
 /**
- * @todo harmonize infrared neutrals with ins_neutrals
- * or get rid of ins neutrals
- * this ins only needed for sim right now
+ * @file subsystems/ahrs/ahrs_float_cmpl_wrapper.h
+ *
+ * Paparazzi specific wrapper to run floating point complementary filter.
  */
-extern float ins_roll_neutral;
-extern float ins_pitch_neutral;
 
-extern void ahrs_update_infrared(void);
+#ifndef AHRS_FLOAT_CMPL_WRAPPER_H
+#define AHRS_FLOAT_CMPL_WRAPPER_H
 
-#endif /* AHRS_INFRARED_H */
+#include "subsystems/ahrs/ahrs_float_cmpl.h"
+
+#ifndef PRIMARY_AHRS
+#define PRIMARY_AHRS ahrs_fc
+#endif
+
+extern void ahrs_fc_register(void);
+
+#endif /* AHRS_FLOAT_CMPL_WRAPPER_H */

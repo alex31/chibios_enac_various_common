@@ -4,7 +4,7 @@
 #include "ch.h"
 #include "hal.h"
 
-#pragma GCC diagnostic error "-Wconversion"
+#pragma GCC diagnostic warning "-Wconversion"
 
 /*===========================================================================*/
 /* Generic MACRO */
