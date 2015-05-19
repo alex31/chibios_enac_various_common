@@ -237,6 +237,31 @@ float clampTo (float l, float h, float v)
   return  (MAX(MIN(v,h),l));
 }
 
+
+
+uint16_t fletcher16 (uint8_t const *data, size_t bytes)
+{
+  uint16_t sum1 = 0xff, sum2 = 0xff;
+  
+  while (bytes) {
+    size_t tlen = bytes > 20 ? 20 : bytes;
+    bytes -= tlen;
+    do {
+      sum1 = (uint16_t) (sum1 + *data++);
+      sum2 =  (uint16_t) (sum2 + sum1);
+    } while (--tlen);
+    sum1 = (uint16_t) ((sum1 & 0xff) + (sum1 >> 8));
+    sum2 = (uint16_t) ((sum2 & 0xff) + (sum2 >> 8));
+  }
+  /* Second reduction step to reduce sums to 8 bits */
+  sum1 = (uint16_t) ((sum1 & 0xff) + (sum1 >> 8));
+  sum2 = (uint16_t) ((sum2 & 0xff) + (sum2 >> 8));
+  return (uint16_t) (sum2 << 8) | sum1;
+}
+
+
+
+
 // obviously not reentrant
 #define FMT_BUF_SIZE (sizeof(uintmax_t) * 8)
 char *binary_fmt(uintmax_t x)

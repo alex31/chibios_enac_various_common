@@ -411,7 +411,7 @@ msg_t i2cGetBaro_MPL3115A2_Val (I2CDriver *i2cd, int32_t  *rawBuf, float *pressu
   uint8_t rxbuf[4];
   bool_t  notReady;
   msg_t status;
-  int32_t  *rawB = rawBuf != NULL ? rawBuf : alloca(sizeof(int32_t));
+  uint32_t  *rawB = rawBuf != NULL ? rawBuf : alloca(sizeof(int32_t));
 
   i2cAcquireBus(i2cd);
   
@@ -430,7 +430,7 @@ msg_t i2cGetBaro_MPL3115A2_Val (I2CDriver *i2cd, int32_t  *rawBuf, float *pressu
   i2cReleaseBus(i2cd);
 
   const uint32_t swapVal = (SWAP_ENDIAN32(*rawB<<8)) ;
-  *pressure = swapVal/6400.0f;
+  *pressure = (float) swapVal / 6400.0f;
 
   return  RDY_OK;
 }
@@ -951,9 +951,9 @@ static msg_t i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  const 
 
   I2C_READ_WRITE(i2cd, slaveAdr, txbuf, recBuf, 2);
   if (enable) {
-    recBuf[0] |= mask;
+    recBuf[0] = recBuf[0] | mask;
   } else {
-    recBuf[0] &= ~mask;
+    recBuf[0] = recBuf[0] & (uint8_t) (~mask);
   }
 
   I2C_WRITE(i2cd, slaveAdr, recBuf);

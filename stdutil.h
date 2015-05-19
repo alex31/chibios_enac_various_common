@@ -152,6 +152,7 @@ extern "C" {
   }
 
   char *binary_fmt(uintmax_t x);
+  uint16_t fletcher16 (uint8_t const *data, size_t bytes);
 
 #ifdef __cplusplus
 }

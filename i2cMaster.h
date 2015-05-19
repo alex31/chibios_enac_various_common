@@ -25,7 +25,7 @@ typedef struct  {
   GPIO_TypeDef  *sclGpio;
   uint32_t      sdaPin;
   uint32_t      sclPin;
-  uint8_t	alternateFunction;
+  iomode_t	alternateFunction;
 } I2cMasterConfig ;
 
 

@@ -125,7 +125,7 @@ msg_t mpu9250_setAccelLpf( Mpu9250Data *imu, const uint8_t lpf)
   return setAccelConfig (imu);
 }
 
-msg_t mpu9250_setSampleRate( Mpu9250Data *imu, const int32_t rate)
+msg_t mpu9250_setSampleRate( Mpu9250Data *imu, const uint32_t rate)
 {
   if ((rate < MPU9250_SAMPLERATE_MIN) || (rate > MPU9250_SAMPLERATE_MAX)) {
     return I2C_EINVAL;
@@ -142,22 +142,22 @@ msg_t mpu9250_setGyroFsr( Mpu9250Data *imu, const uint8_t fsr)
   switch (fsr) {
   case MPU9250_GYROFSR_250:
     imu->gyroFsr = fsr;
-    imu->gyroScale = MATH_PI / (131.0d * 180.0d);
+    imu->gyroScale = MATH_PI / (131.0f * 180.0f);
     break;
 
   case MPU9250_GYROFSR_500:
     imu->gyroFsr = fsr;
-    imu->gyroScale = MATH_PI / (62.5d * 180.0d);
+    imu->gyroScale = MATH_PI / (62.5f * 180.0f);
     break;
       
   case MPU9250_GYROFSR_1000:
     imu->gyroFsr = fsr;
-    imu->gyroScale = MATH_PI / (32.8d * 180.0d);
+    imu->gyroScale = MATH_PI / (32.8f * 180.0f);
     break;
    
   case MPU9250_GYROFSR_2000:
     imu->gyroFsr = fsr;
-    imu->gyroScale = MATH_PI / (16.4d * 180.0d);
+    imu->gyroScale = MATH_PI / (16.4f * 180.0f);
     break;
             
   default:
@@ -198,7 +198,7 @@ msg_t mpu9250_setAccelFsr( Mpu9250Data *imu, const uint8_t fsr)
    return setAccelConfig (imu);
 }
 
-msg_t mpu9250_setAuxSampleRate (Mpu9250Data *imu, const int32_t rate)
+msg_t mpu9250_setAuxSampleRate (Mpu9250Data *imu, const uint32_t rate)
 {
   imu->auxSampleRate = rate;
   
@@ -276,7 +276,7 @@ msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass)
     return I2C_MAXSLV_REACH;
   }
   
-  uint8_t sumOfLen=0;
+  uint32_t sumOfLen=0;
   for (uint8_t i=0; i<imu->nextSlvFreeSlot; i++) {
     Mpu9250MasterConfig_0_to_3 *mc03 = &(imu->mc.mc03[0]);
     sumOfLen += mc03->mapLen;
@@ -291,7 +291,7 @@ msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass)
   mc03->slvI2cAdr = AK8963_ADDRESS;
   mc03->slvRegStart = AK8963_REGISTER_BASE;
   mc03->mapLen = (AK8963_REGISTER_LAST+1)-AK8963_REGISTER_BASE;
-  imu->registerSegmentLen += mc03->mapLen;
+  imu->registerSegmentLen =  (uint8_t) (imu->registerSegmentLen + mc03->mapLen);
   mc03->way = IMU_TRANSFER_READ;
   mc03->swapMode = IMU_NO_SWAP;
   mc03->useMstDlyPrev = true;
@@ -313,7 +313,7 @@ msg_t mpu9250AddSlv_MPL3115A2 (Mpu9250Data *imu, MPL3115A2Data *baro)
     return I2C_MAXSLV_REACH;
   }
   
-  uint8_t sumOfLen=0;
+  uint32_t sumOfLen=0;
   for (uint8_t i=0; i<imu->nextSlvFreeSlot; i++) {
     Mpu9250MasterConfig_0_to_3 *mc03 = &(imu->mc.mc03[0]);
     sumOfLen += mc03->mapLen;
@@ -328,7 +328,7 @@ msg_t mpu9250AddSlv_MPL3115A2 (Mpu9250Data *imu, MPL3115A2Data *baro)
   mc03->slvI2cAdr =  MPL3115A2_ADDRESS;
   mc03->slvRegStart = MPL3115A2_OUT_P_MSB;
   mc03->mapLen = (MPL3115A2_OUT_P_LSB+1)-MPL3115A2_OUT_P_MSB;
-  imu->registerSegmentLen += mc03->mapLen;
+  imu->registerSegmentLen = (uint8_t) (imu->registerSegmentLen + mc03->mapLen);
   mc03->way = IMU_TRANSFER_READ;
   mc03->swapMode = IMU_NO_SWAP;
   mc03->useMstDlyPrev = true;
@@ -362,26 +362,29 @@ static  msg_t addSlave (Mpu9250Data *imu, Mpu9250MasterConfig_0_to_3 *mc)
   msg_t status = RDY_OK;
 
   
-  const uint8_t slvRegistersOffset = (MPU9250_I2C_SLV1_ADDR - MPU9250_I2C_SLV0_ADDR) *
-    imu->nextSlvFreeSlot;
+  const uint8_t slvRegistersOffset = (uint8_t) ((MPU9250_I2C_SLV1_ADDR - MPU9250_I2C_SLV0_ADDR) *
+						imu->nextSlvFreeSlot);
 
-  const uint8_t i2cSlvAddr = MPU9250_I2C_SLV0_ADDR + slvRegistersOffset;
-  const uint8_t i2cSlvReg = MPU9250_I2C_SLV0_REG + slvRegistersOffset;
-  const uint8_t i2cSlvCtrl = MPU9250_I2C_SLV0_CTRL + slvRegistersOffset;
+  const uint8_t i2cSlvAddr =  (uint8_t) (MPU9250_I2C_SLV0_ADDR + slvRegistersOffset);
+  const uint8_t i2cSlvReg = (uint8_t) (MPU9250_I2C_SLV0_REG + slvRegistersOffset);
+  const uint8_t i2cSlvCtrl = (uint8_t) (MPU9250_I2C_SLV0_CTRL + slvRegistersOffset);
 
-  const uint8_t i2cSlvAddrVal = (mc->slvI2cAdr & I2C_ID_MSK) | mc->way;
-  const uint8_t i2cSlvRegVal =  mc->slvRegStart;
-  const uint8_t i2cSlvCtrlVal =  I2C_SLV_EN | mc->swapMode | (mc->mapLen & I2C_SLV_LENG_MSK);
+  const uint8_t i2cSlvAddrVal = (uint8_t) ((mc->slvI2cAdr & I2C_ID_MSK) | mc->way);
+  const uint8_t i2cSlvRegVal =  (uint8_t) (mc->slvRegStart);
+  const uint8_t i2cSlvCtrlVal =  (uint8_t) (I2C_SLV_EN | mc->swapMode | (mc->mapLen & I2C_SLV_LENG_MSK));
+
   uint8_t i2cMasterDelayControl;
+
   if (mc->mapLen >  I2C_SLV_LENG_MSK)
     return I2C_EINVAL;
   
   i2cAcquireBus(imu->i2cd);
   if (mc->useMstDlyPrev == true) {
     I2C_READ_REGISTER  (imu->i2cd, imu->slaveAddr, MPU9250_I2C_MST_DELAY_CTRL, &i2cMasterDelayControl);
-    i2cMasterDelayControl |= (1 << imu->nextSlvFreeSlot);
+    i2cMasterDelayControl = (uint8_t) (i2cMasterDelayControl | (1U << imu->nextSlvFreeSlot));
   }
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_I2C_SLV0_DO + imu->nextSlvFreeSlot,
+  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, 
+			(uint8_t) (MPU9250_I2C_SLV0_DO + imu->nextSlvFreeSlot),
 			mc->slvDo);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_I2C_MST_DELAY_CTRL, i2cMasterDelayControl);
   I2C_WRITE_REGISTERS (imu->i2cd, imu->slaveAddr, i2cSlvAddr, i2cSlvAddrVal);
@@ -417,8 +420,8 @@ static    msg_t setByPassConfig ( Mpu9250Data *imu)
   
   I2C_READ_REGISTER  (imu->i2cd, imu->slaveAddr, MPU9250_USER_CTRL, &userControl);
   if (imu->byPass == IMU_BYPASS) {
-    userControl &= ~0x20; // I2C_MST_EN = 0 : disable Master
-    userControl |= 2; // Reset I2C Master Module
+    userControl = (uint8_t) (userControl & ~0x20U); // I2C_MST_EN = 0 : disable Master
+    userControl = (uint8_t) (userControl | 0x02U); // Reset I2C Master Module
     I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_USER_CTRL, userControl);
     I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_PIN_CFG, 0x2);
   } else {
@@ -438,8 +441,8 @@ static    msg_t setByPassConfig ( Mpu9250Data *imu)
 static    msg_t setGyroConfig ( Mpu9250Data *imu)
 {
   msg_t status = RDY_OK;
-  uint8_t gyroConfig = imu->gyroFsr + ((imu->gyroLpf >> 3) & 3);
-  uint8_t gyroLpf = imu->gyroLpf & 7;
+  uint8_t gyroConfig = (uint8_t) (imu->gyroFsr + ((imu->gyroLpf >> 3U) & 3U));
+  uint8_t gyroLpf = (uint8_t) (imu->gyroLpf & 7U);
   
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_GYRO_CONFIG, gyroConfig);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_GYRO_LPF, gyroLpf);
@@ -460,7 +463,7 @@ static    msg_t setAccelConfig ( Mpu9250Data *imu)
 static    msg_t setMasterDelayDivider ( Mpu9250Data *imu)
 {
   msg_t status = RDY_OK;
-  uint8_t delay = (imu->sampleRate / imu->auxSampleRate) -1;
+  uint8_t delay = (uint8_t) ((imu->sampleRate / imu->auxSampleRate) -1U);
   delay = MIN (delay  , 31);
 
 
@@ -624,7 +627,7 @@ msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *val)
   
   val->mag.x = magy * compass->compassAdjust.y;
   val->mag.y = magx * compass->compassAdjust.x;
-  val->mag.z = -magz * compass->compassAdjust.z;
+  val->mag.z = -(magz * compass->compassAdjust.z);
 
   val->dataReady = status1 & AK8963_ST1_DATAREADY;
   val->overrun = status1 & AK8963_ST1_OVERRUN;
