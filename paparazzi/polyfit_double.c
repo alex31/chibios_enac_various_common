@@ -24,9 +24,9 @@
  *
  */
 
-#include "polyfit_double.h"
-#include "algebra_double.h"
-#include "matrix_decomp_double.h"
+#include "paparazzi/polyfit_double.h"
+#include "paparazzi/algebra_double.h"
+#include "paparazzi/matrix_decomp_double.h"
 
 /** Polynomial regression
  *
