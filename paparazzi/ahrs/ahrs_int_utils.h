@@ -30,12 +30,11 @@
 #ifndef AHRS_INT_UTILS_H
 #define AHRS_INT_UTILS_H
 
-//#include "../../test/pprz_algebra_print.h"
-#include "math/pprz_algebra_int.h"
+#include "paparazzi/math/pprz_algebra_int.h"
 
-#include "subsystems/ahrs/ahrs_magnetic_field_model.h"
+#include "paparazzi/ahrs/ahrs_magnetic_field_model.h"
 
-#include "subsystems/ahrs/ahrs_float_utils.h"
+#include "paparazzi/ahrs/ahrs_float_utils.h"
 
 static inline void ahrs_int_get_euler_from_accel_mag(struct Int32Eulers *e, struct Int32Vect3 *accel,
     struct Int32Vect3 *mag)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Antoine Drouin <poinix@gmail.com>
+ * Copyright (C) 2012 Piotr Esden-Tempski <piotr@esden.net>
  *
  * This file is part of paparazzi.
  *
@@ -17,37 +17,32 @@
  * along with paparazzi; see the file COPYING.  If not, write to
  * the Free Software Foundation, 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
- */
-
-/**
- * @file subsystems/ahrs/ahrs_aligner.h
- *
- * Interface to align the AHRS via low-passed measurements at startup.
  *
  */
 
-#ifndef AHRS_ALIGNER_H
-#define AHRS_ALIGNER_H
+#include <stdint.h>
 
-#include "paparazzi/std.h"
-#include "math/pprz_algebra_int.h"
+#include "mcu_periph/can.h"
+#include "mcu_periph/can_arch.h"
 
-#define AHRS_ALIGNER_UNINIT  0
-#define AHRS_ALIGNER_RUNNING 1
-#define AHRS_ALIGNER_LOCKED  2
+can_rx_callback_t can_rx_callback;
 
-struct AhrsAligner {
-  struct Int32Rates lp_gyro;
-  struct Int32Vect3 lp_accel;
-  struct Int32Vect3 lp_mag;
-  int32_t           noise;
-  int32_t           low_noise_cnt;
-  uint8_t           status;
-};
+void _can_run_rx_callback(uint32_t id, uint8_t *buf, uint8_t len);
 
-extern struct AhrsAligner ahrs_aligner;
+void ppz_can_init(can_rx_callback_t callback)
+{
+  can_rx_callback = callback;
+  can_hw_init();
+}
 
-extern void ahrs_aligner_init(void);
-extern void ahrs_aligner_run(void);
+int ppz_can_transmit(uint32_t id, const uint8_t *buf, uint8_t len)
+{
+  return can_hw_transmit(id, buf, len);
+}
 
-#endif /* AHRS_ALIGNER_H */
+void _can_run_rx_callback(uint32_t id, uint8_t *buf, uint8_t len)
+{
+  if (can_rx_callback) {
+    can_rx_callback(id, buf, len);
+  }
+}

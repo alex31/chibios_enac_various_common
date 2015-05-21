@@ -30,7 +30,7 @@
 #define AHRS_SIM_H
 
 #include "subsystems/ahrs.h"
-#include "std.h"
+#include "paparazzi/std.h"
 
 extern float ins_roll_neutral;
 extern float ins_pitch_neutral;

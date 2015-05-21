@@ -28,16 +28,23 @@
  *
  */
 
-#include "generated/airframe.h"
+#define AHRS_H_X 1
+#define AHRS_H_Y 0
+#define AHRS_H_Z 0
 
-#include "subsystems/ahrs/ahrs_int_cmpl_quat.h"
-#include "subsystems/ahrs/ahrs_int_utils.h"
+#include "paparazzi/generated/airframe.h"
+
+#undef GPS
+#define USE_MAGNETOMETER 1
+
+#include "paparazzi/ahrs/ahrs_int_cmpl_quat.h"
+#include "paparazzi/ahrs/ahrs_int_utils.h"
 
 #if USE_GPS
-#include "subsystems/gps.h"
+#include "paparazzi/gps.h"
 #endif
-#include "math/pprz_trig_int.h"
-#include "math/pprz_algebra_int.h"
+#include "paparazzi/math/pprz_trig_int.h"
+#include "paparazzi/math/pprz_algebra_int.h"
 
 #ifdef AHRS_PROPAGATE_LOW_PASS_RATES
 PRINT_CONFIG_MSG("LOW PASS FILTER ON GYRO RATES")
@@ -509,6 +516,7 @@ static inline void ahrs_icq_update_mag_2d(struct Int32Vect3 *mag, float dt)
 
 }
 
+#if USE_GPS
 void ahrs_icq_update_gps(struct GpsState *gps_s __attribute__((unused)))
 {
 #if AHRS_GRAVITY_UPDATE_COORDINATED_TURN && USE_GPS
@@ -541,7 +549,7 @@ void ahrs_icq_update_gps(struct GpsState *gps_s __attribute__((unused)))
   }
 #endif
 }
-
+#endif
 
 void ahrs_icq_update_heading(int32_t heading)
 {

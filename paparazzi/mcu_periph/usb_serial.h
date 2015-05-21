@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Antoine Drouin <poinix@gmail.com>
+ * Copyright (C) 2006 Pascal Brisset, Antoine Drouin, Michel Gorraz
  *
  * This file is part of paparazzi.
  *
@@ -17,37 +17,36 @@
  * along with paparazzi; see the file COPYING.  If not, write to
  * the Free Software Foundation, 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
- */
-
-/**
- * @file subsystems/ahrs/ahrs_aligner.h
- *
- * Interface to align the AHRS via low-passed measurements at startup.
  *
  */
 
-#ifndef AHRS_ALIGNER_H
-#define AHRS_ALIGNER_H
+/** \file usb_serial.h
+ *  \brief arch independent USB API
+ *
+ */
 
-#include "paparazzi/std.h"
-#include "math/pprz_algebra_int.h"
+#ifndef USB_S_H
+#define USB_S_H
 
-#define AHRS_ALIGNER_UNINIT  0
-#define AHRS_ALIGNER_RUNNING 1
-#define AHRS_ALIGNER_LOCKED  2
+#include <inttypes.h>
+#include "std.h"
+#include "mcu_periph/link_device.h"
 
-struct AhrsAligner {
-  struct Int32Rates lp_gyro;
-  struct Int32Vect3 lp_accel;
-  struct Int32Vect3 lp_mag;
-  int32_t           noise;
-  int32_t           low_noise_cnt;
-  uint8_t           status;
+struct usb_serial_periph {
+  /** Generic device interface */
+  struct link_device device;
 };
 
-extern struct AhrsAligner ahrs_aligner;
+extern struct usb_serial_periph usb_serial;
 
-extern void ahrs_aligner_init(void);
-extern void ahrs_aligner_run(void);
+void VCOM_init(void);
+int  VCOM_putchar(int c);
+int  VCOM_getchar(void);
+bool_t VCOM_check_free_space(uint8_t len);
+int VCOM_check_available(void);
+void VCOM_set_linecoding(uint8_t mode);
+void VCOM_allow_linecoding(uint8_t mode);
+void VCOM_send_message(void);
+void VCOM_event(void);
 
-#endif /* AHRS_ALIGNER_H */
+#endif /* USB_S_H */

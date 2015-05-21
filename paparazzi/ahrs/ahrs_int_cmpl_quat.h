@@ -31,11 +31,13 @@
 #ifndef AHRS_INT_CMPL_QUAT_H
 #define AHRS_INT_CMPL_QUAT_H
 
-#include "subsystems/ahrs.h"
-#include "subsystems/gps.h"
-#include "std.h"
-#include "math/pprz_algebra_int.h"
-#include "math/pprz_orientation_conversion.h"
+#include "paparazzi/ahrs.h"
+#if USE_GPS
+#include "paparazzi/gps.h"
+#endif
+#include "paparazzi/std.h"
+#include "paparazzi/math/pprz_algebra_int.h"
+#include "paparazzi/math/pprz_orientation_conversion.h"
 
 enum AhrsICQStatus {
   AHRS_ICQ_UNINIT,
@@ -114,7 +116,11 @@ extern bool_t ahrs_icq_align(struct Int32Rates *lp_gyro, struct Int32Vect3 *lp_a
 extern void ahrs_icq_propagate(struct Int32Rates *gyro, float dt);
 extern void ahrs_icq_update_accel(struct Int32Vect3 *accel, float dt);
 extern void ahrs_icq_update_mag(struct Int32Vect3 *mag, float dt);
+
+#if USE_GPS
 extern void ahrs_icq_update_gps(struct GpsState *gps_s);
+#endif
+
 
 /** Update yaw based on a heading measurement.
  * e.g. from GPS course

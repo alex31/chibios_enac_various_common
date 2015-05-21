@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Antoine Drouin <poinix@gmail.com>
+ * Copyright (C) 2013 Felix Ruess <felix.ruess@gmail.com>
  *
  * This file is part of paparazzi.
  *
@@ -20,34 +20,25 @@
  */
 
 /**
- * @file subsystems/ahrs/ahrs_aligner.h
+ * @file mcu_periph/gpio.h
  *
- * Interface to align the AHRS via low-passed measurements at startup.
+ * Some architecture independent helper functions for GPIOs.
  *
+ * Functions which should be supported by each architecture implementation:
+ * - gpio_setup_output(port, gpios)
+ * - gpio_setup_input(port, gpios)
+ * - gpio_set(port, gpios)
+ * - gpio_clear(port, gpios)
+ * - gpio_toggle(port, gpios)
+ *
+ * This includes the architecture specific header where the actual functions are declared.
  */
 
-#ifndef AHRS_ALIGNER_H
-#define AHRS_ALIGNER_H
+#ifndef MCU_PERIPH_GPIO_H
+#define MCU_PERIPH_GPIO_H
 
-#include "paparazzi/std.h"
-#include "math/pprz_algebra_int.h"
+#include "std.h"
+#include "mcu_periph/gpio_arch.h"
 
-#define AHRS_ALIGNER_UNINIT  0
-#define AHRS_ALIGNER_RUNNING 1
-#define AHRS_ALIGNER_LOCKED  2
 
-struct AhrsAligner {
-  struct Int32Rates lp_gyro;
-  struct Int32Vect3 lp_accel;
-  struct Int32Vect3 lp_mag;
-  int32_t           noise;
-  int32_t           low_noise_cnt;
-  uint8_t           status;
-};
-
-extern struct AhrsAligner ahrs_aligner;
-
-extern void ahrs_aligner_init(void);
-extern void ahrs_aligner_run(void);
-
-#endif /* AHRS_ALIGNER_H */
+#endif /* MCU_PERIPH_GPIO_H */

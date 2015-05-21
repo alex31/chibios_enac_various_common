@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Antoine Drouin <poinix@gmail.com>
+ * Copyright (C) 2011 The Paparazzi Team
  *
  * This file is part of paparazzi.
  *
@@ -17,37 +17,16 @@
  * along with paparazzi; see the file COPYING.  If not, write to
  * the Free Software Foundation, 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
- */
-
-/**
- * @file subsystems/ahrs/ahrs_aligner.h
- *
- * Interface to align the AHRS via low-passed measurements at startup.
  *
  */
 
-#ifndef AHRS_ALIGNER_H
-#define AHRS_ALIGNER_H
+/** \file mcu_periph/pwm_input.c
+ * \brief arch independent PWM input capture API */
 
-#include "paparazzi/std.h"
-#include "math/pprz_algebra_int.h"
+#include "std.h"
+#include "mcu_periph/pwm_input.h"
 
-#define AHRS_ALIGNER_UNINIT  0
-#define AHRS_ALIGNER_RUNNING 1
-#define AHRS_ALIGNER_LOCKED  2
-
-struct AhrsAligner {
-  struct Int32Rates lp_gyro;
-  struct Int32Vect3 lp_accel;
-  struct Int32Vect3 lp_mag;
-  int32_t           noise;
-  int32_t           low_noise_cnt;
-  uint8_t           status;
-};
-
-extern struct AhrsAligner ahrs_aligner;
-
-extern void ahrs_aligner_init(void);
-extern void ahrs_aligner_run(void);
-
-#endif /* AHRS_ALIGNER_H */
+volatile uint32_t pwm_input_duty_tics[PWM_INPUT_NB];
+volatile uint8_t pwm_input_duty_valid[PWM_INPUT_NB];
+volatile uint32_t pwm_input_period_tics[PWM_INPUT_NB];
+volatile uint8_t pwm_input_period_valid[PWM_INPUT_NB];

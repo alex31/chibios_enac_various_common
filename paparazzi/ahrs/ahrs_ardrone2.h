@@ -30,7 +30,7 @@
 #ifndef AHRS_ARDRONE2_H
 #define AHRS_ARDRONE2_H
 
-#include "std.h"
+#include "paparazzi/std.h"
 #include "math/pprz_algebra_int.h"
 #include "math/pprz_geodetic_float.h"
 

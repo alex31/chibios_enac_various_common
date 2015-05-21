@@ -31,7 +31,7 @@
 #ifndef AHRS_FLOAT_MLKF_H
 #define AHRS_FLOAT_MLKF_H
 
-#include "std.h"
+#include "paparazzi/std.h"
 #include "math/pprz_algebra_float.h"
 #include "math/pprz_orientation_conversion.h"
 

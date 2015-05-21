@@ -31,7 +31,7 @@
 #define AHRS_INT_CMPL_EULER_H
 
 #include "subsystems/ahrs.h"
-#include "std.h"
+#include "paparazzi/std.h"
 #include "math/pprz_algebra_int.h"
 #include "math/pprz_orientation_conversion.h"
 
