@@ -106,6 +106,8 @@ msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset,
 #endif
 
 
+
+
 #include "i2cPeriphMpu9250.h"
 #include "i2cPeriphMPL3115A2.h"
 #ifdef __cplusplus
@@ -114,3 +116,30 @@ msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset,
 
 
 
+static inline void imuVec3fAdd (const ImuVec3f *opa, const ImuVec3f *opb, ImuVec3f *res)
+{
+  for (int i=0; i< 3; i++) {
+    res->arr[i]=opa->arr[i]+opb->arr[i];
+  }
+}
+
+static inline void imuVec3fAccumulate (ImuVec3f *acc, const ImuVec3f *opa)
+{
+  for (int i=0; i< 3; i++) {
+    acc->arr[i]+=opa->arr[i];
+  }
+}
+
+static inline void imuVec3fZero (ImuVec3f *v)
+{
+  for (int i=0; i< 3; i++) {
+    v->arr[i]=0.0f;
+  }
+}
+
+static inline void imuVec3fDiv (ImuVec3f *v, const float div)
+{
+  for (int i=0; i< 3; i++) {
+    v->arr[i] /= div;
+  }
+}

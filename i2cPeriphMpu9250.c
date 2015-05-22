@@ -620,11 +620,12 @@ msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *val)
     compass->mstConfig->cacheAdr;
   
   const uint8_t status1 = rawB[0];
-  const int16_t magx = *((int16_t *) (&rawB[1]));
-  const int16_t magy = *((int16_t *) (&rawB[3]));
-  const int16_t magz = *((int16_t *) (&rawB[5]));
+  const int16_t magx = *((int16_t *) (rawB+1));
+  const int16_t magy = *((int16_t *) (rawB+3));
+  const int16_t magz = *((int16_t *) (rawB+5));
   const uint8_t status2 = rawB[7];
   
+  // align axis same way than the imu part of 9250 (PS-MPU-9250A-01.pdf page 38)
   val->mag.x = magy * compass->compassAdjust.y;
   val->mag.y = magx * compass->compassAdjust.x;
   val->mag.z = -(magz * compass->compassAdjust.z);
