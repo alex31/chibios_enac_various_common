@@ -82,7 +82,7 @@ static float powi(int x, int y)
 #endif
 static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(".ccmram"), aligned(8))) ;
 #if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
-static MemoryHeap ccmHeap;
+MemoryHeap ccmHeap;
 #endif
 size_t initHeap (void)
 {

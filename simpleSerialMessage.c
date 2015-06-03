@@ -65,7 +65,7 @@ Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callbac
   mbp->callback = callback;
   mbp->userData = userData;
 
-  Thread *tp = chThdCreateFromHeap(NULL, 1024, NORMALPRIO,
+  Thread *tp = chThdCreateFromHeap(NULL,  THD_WA_SIZE(1024), NORMALPRIO,
   				   readAndProcessChannel, mbp);
 
   /* Thread *tp = chThdCreateStatic(waMsgBind, sizeof(waMsgBind), NORMALPRIO, */

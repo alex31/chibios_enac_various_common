@@ -77,6 +77,15 @@ static inline uint32_t RotRnb(const uint32_t x, const uint32_t shift, const uint
   return (x >> shift) | (x << (nbits - shift));
 }
 
+static inline halrtcnt_t rtcntDiff (const halrtcnt_t start, const  halrtcnt_t stop) 
+{
+  if (stop > start) 
+    return stop - start;
+  else
+    return start - stop; 
+}
+
+
 // optimised counting bits routine from https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#Other-Builtins
 /*
  — Built-in Function: int __builtin_ffs (int x)
@@ -125,7 +134,7 @@ extern "C" {
    uint32_t	pin;
 } GpioPin;
  
-
+extern MemoryHeap ccmHeap;
 #if CH_USE_HEAP || CH_HEAP_USE_TLSF
   size_t initHeap (void);
   size_t getHeapFree (void);

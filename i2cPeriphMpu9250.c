@@ -253,6 +253,8 @@ msg_t mpu9250_getVal ( Mpu9250Data *imu, float *temp,
     gyro->arr[i] =  ((int16_t) ((rawB[(i*2)+8]<<8) | rawB[(i*2)+9])) * imu->gyroScale;
   }
 
+
+ 
   return status;
 }
 

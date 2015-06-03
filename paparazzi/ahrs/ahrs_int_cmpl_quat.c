@@ -28,9 +28,9 @@
  *
  */
 
-#define AHRS_H_X 1
-#define AHRS_H_Y 0
-#define AHRS_H_Z 0
+#define AHRS_H_X 0.5156
+#define AHRS_H_Y 0.057
+#define AHRS_H_Z .8549
 
 #include "paparazzi/generated/airframe.h"
 

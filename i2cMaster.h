@@ -1,6 +1,7 @@
 #pragma once
 #include "ch.h"
 #include "hal.h"
+#include <math.h>
 
 
 #ifdef __cplusplus
@@ -123,6 +124,13 @@ static inline void imuVec3fAdd (const ImuVec3f *opa, const ImuVec3f *opb, ImuVec
   }
 }
 
+static inline void imuVec3fSub (const ImuVec3f *opa, const ImuVec3f *opb, ImuVec3f *res)
+{
+  for (int i=0; i< 3; i++) {
+    res->arr[i]=opa->arr[i]-opb->arr[i];
+  }
+}
+
 static inline void imuVec3fAccumulate (ImuVec3f *acc, const ImuVec3f *opa)
 {
   for (int i=0; i< 3; i++) {
@@ -142,4 +150,16 @@ static inline void imuVec3fDiv (ImuVec3f *v, const float div)
   for (int i=0; i< 3; i++) {
     v->arr[i] /= div;
   }
+}
+
+
+static inline void imuVec3fNormalize (const ImuVec3f *v, ImuVec3f *norm)
+{  // normalize vector 3d
+  float vlen = 0.0f;
+  for (int i=0; i<3; i++) 
+    vlen += (v->arr[i] *  v->arr[i]);
+  
+  vlen = sqrtf (vlen);
+  for (int i=0; i<3; i++) 
+    norm->arr[i] = v->arr[i] / vlen;
 }
