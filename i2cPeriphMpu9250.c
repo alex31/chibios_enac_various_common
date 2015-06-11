@@ -242,13 +242,15 @@ msg_t mpu9250_getVal ( Mpu9250Data *imu, float *temp,
   if (status != RDY_OK) 
     return status;
 
+  // C°
   *temp = ( ((int16_t) ((rawB[6]<<8) | rawB[7])) / 340.0f) + 21.0f;
 
-
+  // m/s²
   for (int i=0; i< 3; i++) {
-    acc->arr[i] =  ((int16_t) ((rawB[i*2]<<8) | rawB[(i*2)+1])) * imu->accelScale;
+    acc->arr[i] =  ((int16_t) ((rawB[i*2]<<8) | rawB[(i*2)+1])) * imu->accelScale  * 9.81f;
   }
   
+  // rad/s
  for (int i=0; i< 3; i++) {
     gyro->arr[i] =  ((int16_t) ((rawB[(i*2)+8]<<8) | rawB[(i*2)+9])) * imu->gyroScale;
   }
@@ -307,6 +309,7 @@ msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass)
   return status;		      
 }
 
+#if I2C_USE_MPL3115A2
 msg_t mpu9250AddSlv_MPL3115A2 (Mpu9250Data *imu, MPL3115A2Data *baro) 
 {
   msg_t status = RDY_OK;
@@ -358,7 +361,7 @@ msg_t mpu9250AddSlv_MPL3115A2 (Mpu9250Data *imu, MPL3115A2Data *baro)
   
   return status;		      
 }
-
+#endif
 static  msg_t addSlave (Mpu9250Data *imu, Mpu9250MasterConfig_0_to_3 *mc)
 {
   msg_t status = RDY_OK;

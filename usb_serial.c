@@ -9,7 +9,7 @@
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
 
-    ChibiOS/RT is distributed in the hope that it will be useful,
+    ChibiOS/RT is distributed in the hope that it will be ueful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
@@ -206,6 +206,9 @@ static const USBDescriptor vcom_strings[] = {
   {sizeof vcom_string3, vcom_string3}
 };
 
+
+static SerialUSBDriver *SDU=NULL;
+
 /*
  * Handles the GET_DESCRIPTOR callback. All required descriptors must be
  * handled here.
@@ -301,7 +304,7 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
     usbInitEndpointI(usbp, USBD1_INTERRUPT_REQUEST_EP, &ep2config);
 
     /* Resetting the state of the CDC subsystem.*/
-    sduConfigureHookI(&SDU1);
+    sduConfigureHookI(SDU);
 
     chSysUnlockFromIsr();
     return;
@@ -370,6 +373,8 @@ void usbSerialInit(SerialUSBDriver *sdu, USBDriver *usbDriver)
   serusbcfg.bulk_in = USBD1_DATA_REQUEST_EP;
   serusbcfg.bulk_out = USBD1_DATA_AVAILABLE_EP;
   serusbcfg.int_in = USBD1_INTERRUPT_REQUEST_EP;
+
+  SDU = sdu;
 
   sduObjectInit(sdu);
   sduStart(sdu, &serusbcfg);

@@ -31,6 +31,8 @@ typedef struct {
 
 static msg_t readAndProcessChannel(void *arg);
 static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes);
+static MUTEX_DECL(sendMtx);
+
 
 
 bool_t simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
@@ -43,17 +45,22 @@ bool_t simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffe
 			       .len = len & 0xff};
   uint16_t crc =  fletcher16WithLen (buffer, len);
   
+  chMtxLock (&sendMtx);
   if (chSequentialStreamWrite (channel, (uint8_t *) &msgHeader, 
 			       sizeof(MsgHeader)) != sizeof(MsgHeader))
-    return false;
+    goto exitFail;
   if (chSequentialStreamWrite (channel, buffer, len) != len)
-    return false;
+    goto exitFail;
   if (chSequentialStreamWrite (channel, (uint8_t *) &crc, 
 			       sizeof(crc)) != sizeof(crc))
-    return false;
+    goto exitFail;
   
+  chMtxUnlock();
   return true;
   
+ exitFail:
+  chMtxUnlock();
+  return false;
 }
 
 Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callback, 

@@ -38,6 +38,8 @@
 #include "paparazzi/std.h"
 #include "paparazzi/math/pprz_algebra_int.h"
 #include "paparazzi/math/pprz_orientation_conversion.h"
+#include "i2cMaster.h"
+
 
 enum AhrsICQStatus {
   AHRS_ICQ_UNINIT,

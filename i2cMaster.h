@@ -16,7 +16,7 @@ typedef union {
     float z;
   };
   float arr[3];
-} ImuVec3f;
+}  __attribute__ ((__packed__)) ImuVec3f;
   
   
 typedef struct  {
@@ -152,6 +152,13 @@ static inline void imuVec3fDiv (ImuVec3f *v, const float div)
   }
 }
 
+static inline void imuVec3fMul (ImuVec3f *v, const float mul)
+{
+  for (int i=0; i< 3; i++) {
+    v->arr[i] *= mul;
+  }
+}
+
 
 static inline void imuVec3fNormalize (const ImuVec3f *v, ImuVec3f *norm)
 {  // normalize vector 3d
@@ -160,6 +167,10 @@ static inline void imuVec3fNormalize (const ImuVec3f *v, ImuVec3f *norm)
     vlen += (v->arr[i] *  v->arr[i]);
   
   vlen = sqrtf (vlen);
-  for (int i=0; i<3; i++) 
-    norm->arr[i] = v->arr[i] / vlen;
+  if (vlen != 0.0f) {
+    for (int i=0; i<3; i++) 
+      norm->arr[i] = v->arr[i] / vlen;
+  } else {
+    imuVec3fZero (norm);
+  }
 }

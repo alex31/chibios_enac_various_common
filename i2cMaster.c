@@ -30,7 +30,7 @@ static const I2cMasterConfig * getMasterConfigFromDriver (I2CDriver *i2cd);
 static msg_t  i2cMasterControlForHMC5883L_SLV2 (I2CDriver *i2cd);
 #endif
 
-#ifdef I2C_USE_MPL3115A2
+#if I2C_USE_MPL3115A2
 static msg_t  i2cMasterControlForMPL3115A2_SLV_RW_01 (I2CDriver *i2cd);
 #endif
 
@@ -585,7 +585,7 @@ static msg_t   i2cMasterControlForHMC5883L_SLV2 (I2CDriver *i2cd)
 }
 #endif
 
-#ifdef I2C_USE_MPL3115A2
+#if I2C_USE_MPL3115A2
 static msg_t   i2cMasterControlForMPL3115A2_SLV_RW_01 (I2CDriver *i2cd)
 {
   msg_t status = RDY_OK;

@@ -281,7 +281,7 @@ typedef struct
 {
   I2CDriver *i2cd;
   Mpu9250MasterConfig masterCfg;		  // configuration of master module
-  uint32_t sampleRate;                             // imu sample rate in Hz
+  uint32_t sampleRate;                            // imu sample rate in Hz
   uint32_t auxSampleRate;			  // sample rate on  auxiliary i2c bus
   bool_t  useAd0;				  // I2C address offset pin enabled
   uint8_t gyroLpf;                                // gyro low pass filter setting
@@ -322,6 +322,8 @@ msg_t mpu9250_setGyroFsr (Mpu9250Data *imu, const uint8_t fsr);
 msg_t mpu9250_setAccelFsr (Mpu9250Data *imu, const uint8_t fsr);
 msg_t mpu9250_setBypass (Mpu9250Data *imu, const PassThroughMode mode);  
 msg_t mpu9250_cacheVal  (Mpu9250Data *imu);
+
+// temp in celcius degree, gyro in rad/s, accel in m/s², 
 msg_t mpu9250_getVal  (Mpu9250Data *imu, float *temp, 
 		      ImuVec3f *gyro, ImuVec3f *acc);
 msg_t mpu9250_getDevid (Mpu9250Data *imu, uint8_t *devid);
@@ -341,6 +343,8 @@ msg_t ak8963_init (Ak8963Data *compass, I2CDriver *i2cd);
 msg_t ak8963_getDevid (Ak8963Data *compass, uint8_t *devid);
 msg_t ak8963_setCompassCntl (Ak8963Data *compass, const uint8_t cntl);
 msg_t ak8963_cacheVal  (Ak8963Data *compass);
+
+// mag in tesla
 msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *mag);
 msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass);
 

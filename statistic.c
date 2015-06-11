@@ -29,8 +29,8 @@ void stat_add(Statistic *s, const float f)
 	s->cnt++;
 
         if (s->cnt >1) {
-           s->store = (s->sum / s->cnt - f);
-           s->ssqdif = s->ssqdif + s->cnt * s->store * s->store / (s->cnt-1);
+           s->store = (s->sum / ((float) s->cnt) - f);
+           s->ssqdif = s->ssqdif + ((float) s->cnt) * s->store * s->store / (((float) s->cnt)-1);
         } // end if > 1
 
 
@@ -46,7 +46,7 @@ long stat_count(const Statistic *s)
 float stat_average(const Statistic *s)
 {
 	if (s->cnt < 1) return NAN; // original code returned 0
-	return s->sum / s->cnt;
+	return s->sum / ((float) s->cnt);
 }
 
 // returns the sum of the data-set (0 if no values added)
@@ -73,13 +73,13 @@ float stat_maximum(const Statistic *s)
 float stat_pop_stdev(const Statistic *s)
 {
 	if (s->cnt < 1) return NAN; // otherwise DIV0 error
-	return sqrt( s->ssqdif / s->cnt);
+	return sqrtf( s->ssqdif / ((float) s->cnt));
 }
 
 float stat_unbiased_stdev(const Statistic *s)
 {
 	if (s->cnt < 2) return NAN; // otherwise DIV0 error
-	return sqrt( s->ssqdif / (s->cnt - 1));
+	return sqrtf( s->ssqdif / (((float) s->cnt) - 1));
 }
 
 
