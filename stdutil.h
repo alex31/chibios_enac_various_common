@@ -4,7 +4,9 @@
 #include "ch.h"
 #include "hal.h"
 
+#if WSTRICT_CONVERSION
 #pragma GCC diagnostic warning "-Wconversion"
+#endif
 
 /*===========================================================================*/
 /* Generic MACRO */

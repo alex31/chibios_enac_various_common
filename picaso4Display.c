@@ -12,7 +12,7 @@
 #endif
 
 
-#define clampColor(r,v,b) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f))
+#define clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
 #define colorDecTo16b(r,v,b) (clampColor((r*31/100), (v*63/100), (b*31/100)))
 #define twoBytesFromWord(x) ((x & 0xff00) >> 8), (x & 0xff)
 
@@ -158,15 +158,15 @@ void oledGetVersion (oledConfig *oledConfig, char *buffer, const size_t buflen)
   // get Pmmc version
   OLED_KOF (KOF_INT16, "%c%c", 0x00, 0x1c);
   const uint16_t pmmc = getResponseAsUint16(oledConfig);
-  const uint8_t pmmcMajor = pmmc/256;
-  const uint8_t pmmcMinor = pmmc%256;
+  const uint8_t pmmcMajor = (uint8_t) (pmmc/256);
+  const uint8_t pmmcMinor =  (uint8_t) (pmmc%256);
   chsnprintf (&buffer[strlen(buffer)], buflen-strlen(buffer), " Pmmc=%d.%d", pmmcMajor, pmmcMinor);
 
   // get SPE version
   OLED_KOF (KOF_INT16, "%c%c", 0x00, 0x1b);
   const uint16_t spe = getResponseAsUint16(oledConfig);
-  const uint8_t speMajor = spe/256;
-  const uint8_t speMinor = spe%256;
+  const uint8_t speMajor = (uint8_t) (spe/256);
+  const uint8_t speMinor = (uint8_t) (spe%256);
   chsnprintf (&buffer[strlen(buffer)], buflen-strlen(buffer), " Spe=%d.%d", speMajor, speMinor);
 }
 
@@ -287,27 +287,27 @@ void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
     
     if (*curBuf != 0) {
       oledPrintBuffer (oledConfig, curBuf);
-      oledConfig->curXpos += strnlen (curBuf, sizeof(buffer));
+      oledConfig->curXpos =  (uint8_t) (oledConfig->curXpos + strnlen (curBuf, sizeof(buffer)));
     }
     
     if (lastLoop == FALSE) {
       // next two char a color coding scheme
       if (tolower((uint32_t) (*token)) == 'c') { 
 	const int32_t colorIndex = *++token - '0';
-	oledUseColorIndex (oledConfig, colorIndex);
+	oledUseColorIndex (oledConfig,  (uint8_t) colorIndex);
 	//	DebugTrace ("useColorIndex %d", colorIndex);
 	curBuf=token+1;
       } else if (tolower((uint32_t) (*token)) == 'n') { 	
 	//	DebugTrace ("carriage return");
-	oledGotoXY (oledConfig, 0, oledConfig->curYpos+1);
+	oledGotoXY (oledConfig, 0,  (uint8_t) (oledConfig->curYpos+1));
 	curBuf=token+1;
       } else if (tolower((uint32_t) (*token)) == 't') { 	
 	//	DebugTrace ("tabulation");
-	const uint32_t tabLength = 8-(oledConfig->curXpos%8);
+	const uint8_t tabLength =  (uint8_t) (8-(oledConfig->curXpos%8));
 	char space[8] = {[0 ... 7] = ' '};
 	space[tabLength] = 0;
 	oledPrintBuffer (oledConfig, space);
-	oledGotoX (oledConfig, oledConfig->curXpos + tabLength);
+	oledGotoX (oledConfig, (uint8_t) (oledConfig->curXpos + tabLength));
 	curBuf=token+1;
       }
     }
@@ -467,7 +467,7 @@ void oledDrawPoint (oledConfig *oledConfig, const uint16_t x, const uint16_t y,
     return;
   }
 
-  const uint16_t fg = fgColorIndexTo16b (oledConfig, index+1);
+  const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (index+1));
 
   OLED ("%c%c%c%c%c%c%c%c",
 	0xff, 0xc1,
@@ -489,7 +489,7 @@ void oledDrawLine (oledConfig *oledConfig,
   }
   
 
-  const uint16_t fg = fgColorIndexTo16b (oledConfig, index+1);
+  const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (index+1));
 
   OLED ("%c%c%c%c%c%c%c%c%c%c%c%c",
 	0xff, 0xc8,
@@ -513,7 +513,7 @@ void oledDrawRect (oledConfig *oledConfig,
   }
   
 
-  const uint16_t fg = fgColorIndexTo16b (oledConfig, index+1);
+  const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (index+1));
 
   OLED ("%c%c%c%c%c%c%c%c%c%c%c%c",
 	0xff, filled ? 0xc4 : 0xc5,
@@ -545,7 +545,7 @@ static uint16_t oledTouchGet (oledConfig *oledConfig, uint16_t mode)
   }
   
   OLED_KOF (KOF_INT16, "%c%c%c%c", 0xff, 0x37, twoBytesFromWord(mode));
-  uint16_t ret = (oledConfig->response[1] << 8) | oledConfig->response[2];
+  uint16_t ret = (uint16_t) ((oledConfig->response[1] << 8) | oledConfig->response[2]);
   return ret;
 }
 
@@ -612,7 +612,7 @@ void oledSetSoundVolume (oledConfig *oledConfig, uint8_t percent)
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_PICASO(oledConfig);
   percent = MIN (100, percent);
-  percent +=27;
+  percent = (uint8_t) (percent + 27);
   OLED ("%c%c%c%c", 0xff, 0x00, 0x00, percent);
 }
 
@@ -673,7 +673,7 @@ void oledDisplayGci (oledConfig *oledConfig, const uint16_t handle, uint32_t off
 
 uint16_t getResponseAsUint16 (oledConfig *oledConfig)
 {
-  return (oledConfig->response[1] << 8) | oledConfig->response[2];
+  return (uint16_t) ((oledConfig->response[1] << 8) | oledConfig->response[2]);
 }
 
 

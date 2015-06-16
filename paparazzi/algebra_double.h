@@ -110,7 +110,7 @@ struct DoubleRates {
 #define DOUBLE_VECT2_ZERO(_v) VECT2_ASSIGN(_v, 0.0f, 0.0f)
 
 /* macros also usable if _v is not a DoubleVect2, but a different struct with x,y members */
-#define DOUBLE_VECT2_NORM(_v) sqrtf(VECT2_NORM2(_v))
+#define DOUBLE_VECT2_NORM(_v) sqrt(VECT2_NORM2(_v))
 
 static inline double double_vect2_norm2(struct DoubleVect2* v)
 {
@@ -119,7 +119,7 @@ static inline double double_vect2_norm2(struct DoubleVect2* v)
 
 static inline double double_vect2_norm(struct DoubleVect2* v)
 {
-  return sqrtf(double_vect2_norm2(v));
+  return sqrt(double_vect2_norm2(v));
 }
 
 /** normalize 2D vector in place */
@@ -142,7 +142,7 @@ static inline void double_vect2_normalize(struct DoubleVect2* v)
 #define DOUBLE_VECT3_ZERO(_v) VECT3_ASSIGN(_v, 0.0f, 0.0f, 0.0f)
 
 /* macros also usable if _v is not a DoubleVect3, but a different struct with x,y,z members */
-#define DOUBLE_VECT3_NORM(_v) sqrtf(VECT3_NORM2(_v))
+#define DOUBLE_VECT3_NORM(_v) sqrt(VECT3_NORM2(_v))
 
 static inline double double_vect3_norm2(struct DoubleVect3* v)
 {
@@ -151,7 +151,7 @@ static inline double double_vect3_norm2(struct DoubleVect3* v)
 
 static inline double double_vect3_norm(struct DoubleVect3* v)
 {
-  return sqrtf(double_vect3_norm2(v));
+  return sqrt(double_vect3_norm2(v));
 }
 
 /** normalize 3D vector in place */
@@ -173,7 +173,7 @@ static inline void double_vect3_normalize(struct DoubleVect3* v)
     RATES_ASSIGN(_r, 0.0f, 0.0f, 0.0f);       \
   }
 
-#define DOUBLE_RATES_NORM(_v) (sqrtf((_v).p*(_v).p + (_v).q*(_v).q + (_v).r*(_v).r))
+#define DOUBLE_RATES_NORM(_v) (sqrt((_v).p*(_v).p + (_v).q*(_v).q + (_v).r*(_v).r))
 
 #define DOUBLE_RATES_LIN_CMB(_ro, _r1, _s1, _r2, _s2) {          \
     _ro.p = _s1 * _r1.p + _s2 * _r2.p;                  \
@@ -331,7 +331,7 @@ static inline void double_quat_identity(struct DoubleQuat* q)
 
 static inline double double_quat_norm(struct DoubleQuat* q)
 {
-  return sqrtf(SQUARE(q->qi) + SQUARE(q->qx) +  SQUARE(q->qy) + SQUARE(q->qz));
+  return sqrt(SQUARE(q->qi) + SQUARE(q->qx) +  SQUARE(q->qy) + SQUARE(q->qz));
 }
 
 static inline void double_quat_normalize(struct DoubleQuat* q)
@@ -469,7 +469,7 @@ extern void double_quat_of_rmat(struct DoubleQuat* q, struct DoubleRMat* rm);
 
 static inline double double_eulers_norm(struct DoubleEulers* e)
 {
-  return sqrtf(SQUARE(e->phi) + SQUARE(e->theta) + SQUARE(e->psi));
+  return sqrt(SQUARE(e->phi) + SQUARE(e->theta) + SQUARE(e->psi));
 }
 extern void double_eulers_of_rmat(struct DoubleEulers* e, struct DoubleRMat* rm);
 extern void double_eulers_of_quat(struct DoubleEulers* e, struct DoubleQuat* q);
@@ -556,7 +556,7 @@ static inline double double_vect_norm(const double* a, const int n)
   int i;
   double sum = 0;
   for (i = 0; i < n; i++) { sum += a[i] * a[i]; }
-  return sqrtf(sum);
+  return sqrt(sum);
 }
 
 //
