@@ -27,14 +27,14 @@
  * Propagation can be done in rotation matrix or quaternion representation.
  */
 
-#include "subsystems/ahrs/ahrs_float_cmpl.h"
-#include "subsystems/ahrs/ahrs_float_utils.h"
-#include "math/pprz_algebra_float.h"
-#include "math/pprz_algebra_int.h"
-#include "math/pprz_simple_matrix.h"
-#include "generated/airframe.h"
+#include "paparazzi/ahrs/ahrs_float_cmpl.h"
+#include "paparazzi/ahrs/ahrs_float_utils.h"
+#include "paparazzi/math/pprz_algebra_float.h"
+#include "paparazzi/math/pprz_algebra_int.h"
+#include "paparazzi/math/pprz_simple_matrix.h"
+#include "paparazzi/generated/airframe.h"
 #if USE_GPS
-#include "subsystems/gps.h"
+#include "paparazzi/gps.h"
 #endif
 
 //#include "../../test/pprz_algebra_print.h"

@@ -3,6 +3,7 @@
 #include <ch.h>
 #include <hal.h>
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -62,7 +63,7 @@ typedef enum {
 } HalfBridgeOutputMode;
 
 typedef enum {
-  HALF_BRIDGE_CLEAR=0, HALF_BRIDGE_SET
+  HALF_BRIDGE_CLEAR=0, HALF_BRIDGE_SET, HALF_BRIDGE_TOGGLE
 } HalfBridgeOperation;
 
 typedef enum {BUT_B_3=0x00, BUT_D_1, BUT_G_1, BUT_AR_2, BUT_AV_2, BUT_H_3,
@@ -76,6 +77,8 @@ void spiSetHalfBridgeMask (const HalfBridgeIndex hbi, const HalfBridgePortMask h
 			   const HalfBridgeCommandMask options);
 void spiClearHalfBridgeMask (const HalfBridgeIndex hbi, const HalfBridgePortMask hbm, 
 			     const HalfBridgeCommandMask options);
+void spiToggleHalfBridgeMask (const HalfBridgeIndex hbi, const HalfBridgePortMask hbm, 
+			     const HalfBridgeCommandMask options);
 void spiChangeHalfBridgeMask (const HalfBridgeOperation hbo, const HalfBridgeIndex hbi, 
 			      const HalfBridgePortMask hbm, const HalfBridgeCommandMask options);
 
@@ -83,6 +86,7 @@ bool_t spiCheckHalfBridgeMask (const HalfBridgeIndex hbi, bool_t *overLoad,
 			       bool_t *underLoad, bool_t *powerFailure, bool_t *thermalWarning,
 			       HalfBridgePortMask *portStatusMsk);
 
+#include "NCV7708_conf.h"
 
 #ifdef __cplusplus
 }

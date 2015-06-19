@@ -31,9 +31,9 @@
 #define AHRS_FLOAT_CMPL_H
 
 #include "paparazzi/std.h"
-#include "math/pprz_algebra_float.h"
-#include "math/pprz_orientation_conversion.h"
-#include "subsystems/gps.h"
+#include "paparazzi/math/pprz_algebra_float.h"
+#include "paparazzi/math/pprz_orientation_conversion.h"
+#include "paparazzi/subsystems/gps.h"
 
 enum AhrsFCStatus {
   AHRS_FC_UNINIT,

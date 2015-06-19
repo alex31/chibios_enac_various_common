@@ -38,6 +38,11 @@
  */
 
 
+#ifndef SPIDRIVER_NVC7708
+#error "SPIDRIVER_NVC7708 should be defined in file NCV7708_conf.h"
+#endif
+
+
 static void spiPrologue (SPIDriver * spid, const SPIConfig *spiCfg);
 static void spiEpilogue (SPIDriver * spid);
 static HalfBridgePortMask get_NCV7708_status (const HalfBridgeCommandMask latchesBits, 
@@ -103,27 +108,10 @@ const HalfBridgeOutputModeMask halfBridgeOutputModeMask[MODE_NUMBER] = {
 
 
 
-#if HAL_USE_SPI
-static  SPIConfig halfBridgeCfg[] = {{
-    NULL,
-    /* HW dependent part.*/
-    GPIOC,
-    GPIOC_PIN4_SPI1_CS1,
-    SPI_CR1_CPHA | SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_LSBFIRST // Speed 328khz
-  },
-				     
-  {
-    NULL,
-    /* HW dependent part.*/
-    GPIOC,
-    GPIOC_PIN5_SPI1_CS2,
-    SPI_CR1_CPHA | SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_LSBFIRST // Speed 328khz
-  }
-};
 
 
 
-#endif
+
 
 void spiSetHalfBridgeMask (const HalfBridgeIndex hbi, const HalfBridgePortMask hbm,
 			   const HalfBridgeCommandMask options)
@@ -135,6 +123,12 @@ void spiClearHalfBridgeMask (const HalfBridgeIndex hbi, const HalfBridgePortMask
 			   const HalfBridgeCommandMask options)
 {
   spiChangeHalfBridgeMask (HALF_BRIDGE_CLEAR, hbi, hbm, options);
+}
+
+void spiToggleHalfBridgeMask (const HalfBridgeIndex hbi, const HalfBridgePortMask hbm,
+			   const HalfBridgeCommandMask options)
+{
+  spiChangeHalfBridgeMask (HALF_BRIDGE_TOGGLE, hbi, hbm, options);
 }
 
 
@@ -149,21 +143,24 @@ void spiChangeHalfBridgeMask (const HalfBridgeOperation hbo, const HalfBridgeInd
     return;
   }
 
-  if (hbo == HALF_BRIDGE_SET) {
-    halfBridgeData[hbi].out |= hbm;
-  } else {
-    halfBridgeData[hbi].out &= (~hbm);
+  switch (hbo) {
+  case HALF_BRIDGE_SET :
+    halfBridgeData[hbi].out |= hbm; break;
+  case HALF_BRIDGE_CLEAR :
+    halfBridgeData[hbi].out &= (~hbm); break;
+  case HALF_BRIDGE_TOGGLE :
+    halfBridgeData[hbi].out ^= hbm; break;
   }
-   
+
   halfBridgeData[hbi].options = options;
 
   spiOrder = get_NCV7708_latchesBits (halfBridgeData[hbi].out);
   spiOrder |= ((NCV7708E_RESET_STATUS | NCV7708E_OVERLOAD_CONTROL | 
 		NCV7708E_UNDERLOAD_CONTROL |  NCV7708E_POWERFAILURE_CONTROL) & options);
   
-  spiPrologue (&SPID1, &halfBridgeCfg[hbi]);
-  spiExchange (&SPID1, sizeof(spiOrder), &spiOrder, &spiStatus);
-  spiEpilogue (&SPID1);
+  spiPrologue (&SPIDRIVER_NVC7708, &halfBridgeCfg[hbi]);
+  spiExchange (&SPIDRIVER_NVC7708, sizeof(spiOrder), &spiOrder, &spiStatus);
+  spiEpilogue (&SPIDRIVER_NVC7708);
   //  DebugTrace ("Change: spiOrder = 0x%x, spiStatus = 0x%x", spiOrder, spiStatus);
   
 #endif
@@ -189,9 +186,9 @@ bool_t spiCheckHalfBridgeMask (const HalfBridgeIndex hbi, bool_t *overLoad,
 		NCV7708E_UNDERLOAD_CONTROL |  NCV7708E_POWERFAILURE_CONTROL) & 
 	       halfBridgeData[hbi].options);
 
-  spiPrologue (&SPID1, &halfBridgeCfg[hbi]);
-  spiExchange (&SPID1, sizeof(spiOrder), &spiOrder, &spiStatus);
-  spiEpilogue (&SPID1);
+  spiPrologue (&SPIDRIVER_NVC7708, &halfBridgeCfg[hbi]);
+  spiExchange (&SPIDRIVER_NVC7708, sizeof(spiOrder), &spiOrder, &spiStatus);
+  spiEpilogue (&SPIDRIVER_NVC7708);
 
   //  DebugTrace ("Check: spiOrder = 0x%x, spiStatus = 0x%x", spiOrder, spiStatus);
 

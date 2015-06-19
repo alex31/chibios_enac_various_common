@@ -31,7 +31,7 @@
 extern "C" {
 #endif
 
-#include "math/pprz_algebra_float.h"
+#include "paparazzi/math/pprz_algebra_float.h"
 
 /** First-Order Runge-Kutta
  *
