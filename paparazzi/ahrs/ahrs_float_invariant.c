@@ -26,6 +26,15 @@
  *
  */
 
+#define AHRS_H_X 0.5156
+#define AHRS_H_Y 0.057
+#define AHRS_H_Z .8549
+
+/* #define AHRS_H_X 0.7007 */
+/* #define AHRS_H_Y 0.7007 */
+/* #define AHRS_H_Z 0 */
+
+
 #include "paparazzi/ahrs/ahrs_float_invariant.h"
 
 #include "paparazzi/ahrs/ahrs_int_utils.h"
@@ -116,7 +125,12 @@ void float_quat_vmul_right(struct FloatQuat *mright, const struct FloatQuat *q,
 static inline void init_invariant_state(void)
 {
   // init state
+  /* ahrs_float_inv.state.quat.qi = -1.f; */
+  /* ahrs_float_inv.state.quat.qx = 0.3f; */
+  /* ahrs_float_inv.state.quat.qy = 0.3f; */
+  /* ahrs_float_inv.state.quat.qz = 0.f; */
   float_quat_identity(&ahrs_float_inv.state.quat);
+  
   FLOAT_RATES_ZERO(ahrs_float_inv.state.bias);
   ahrs_float_inv.state.as = 1.0f;
   ahrs_float_inv.state.cs = 1.0f;
@@ -156,9 +170,11 @@ void ahrs_float_invariant_align(struct Int32Rates *lp_gyro,
                                struct Int32Vect3 *lp_accel,
                                struct Int32Vect3 *lp_mag)
 {
+  (void) lp_accel;
+  (void) lp_mag;
   /* Compute an initial orientation from accel and mag directly as quaternion */
   ahrs_float_get_quat_from_accel_mag(&ahrs_float_inv.state.quat, lp_accel, lp_mag);
-
+  
   /* use average gyro as initial value for bias */
   struct FloatRates bias0;
   RATES_COPY(bias0, *lp_gyro);
@@ -326,7 +342,8 @@ static inline void error_output(struct AhrsFloatInv *_ahrs)
   // test accel sensitivity
   if (fabs(_ahrs->state.as) < 0.1) {
     // too small, don't do anything to avoid division by 0
-    return;
+    //    return;
+    _ahrs->state.as = 0.1f;
   }
 
   /* C = A X B Cross product */

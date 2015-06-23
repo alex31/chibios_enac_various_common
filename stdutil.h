@@ -99,6 +99,17 @@ static inline bool_t isTimerExpiredAndRearm (halrtcnt_t *timer, const halrtcnt_t
 }
 
 
+static inline halrtcnt_t halCounterDiff (const halrtcnt_t begin, const halrtcnt_t end)
+{
+  return   (end > begin) ? end-begin : (UINT32_MAX-begin) + end;
+}
+
+static inline halrtcnt_t halCounterDiffNow (const halrtcnt_t begin)
+{
+  return halCounterDiff (begin, halGetCounterValue());
+}
+
+
 // optimised counting bits routine from https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#Other-Builtins
 /*
  — Built-in Function: int __builtin_ffs (int x)

@@ -109,7 +109,7 @@ static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes)
   /* Second reduction step to reduce sums to 8 bits */
   sum1 = (uint16_t) ((sum1 & 0xff) + (sum1 >> 8));
   sum2 = (uint16_t) ((sum2 & 0xff) + (sum2 >> 8));
-  return (uint16_t) (sum2 << 8) | sum1;
+   return (uint16_t) ((sum2 % 0xff) << 8) | (sum1 % 0xff);
 }
 
 
@@ -133,7 +133,10 @@ static msg_t readAndProcessChannel(void *arg)
       // DebugTrace ("WAIT_FOR_SYNC");
       messState.payload[0] = messState.payload[1];
       messState.payload[1] = (uint8_t) chSequentialStreamGet (mbp->channel);
-      if ( (*((uint16_t *) &messState.payload[0]) & 0xffff) == 0xFEED) {
+      /* if ( (*((uint16_t *) &messState.payload[0]) & 0xffff) == 0xFEED) { */
+      /* 	messState.state = WAIT_FOR_LEN; */
+      /* }  */
+      if ((messState.payload[0]  == 0xED) &&  (messState.payload[1]  == 0xFE)) {
 	messState.state = WAIT_FOR_LEN;
       } 
       break;

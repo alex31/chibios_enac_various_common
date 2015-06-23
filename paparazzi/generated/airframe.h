@@ -4,6 +4,9 @@
 #ifndef AIRFRAME_H
 #define AIRFRAME_H
 
+
+
+
 #define AIRFRAME_NAME "withAPJ"
 #define AC_ID 1
 #define MD5SUM ((uint8_t*)"\034\360\262\145\103\232\156\151\027\340\354\057\153\307\132\365")
