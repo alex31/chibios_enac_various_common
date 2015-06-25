@@ -21,10 +21,10 @@
 
 
 /* BR[2:0]: Baud rate control */
-/* 000: fPCLK/2 100: fPCLK/32 */
-/* 001: fPCLK/4 101: fPCLK/64 */
-/* 010: fPCLK/8 110: fPCLK/128 */
-/* 011: fPCLK/16 111: fPCLK/256 */
+/* 000: fPCLK/2  ||  100: fPCLK/32  */
+/* 001: fPCLK/4  ||  101: fPCLK/64  */
+/* 010: fPCLK/8  ||  110: fPCLK/128 */
+/* 011: fPCLK/16 ||  111: fPCLK/256 */
 
 /*
  * SPI1 configuration structure.
@@ -143,6 +143,8 @@ void spiChangeHalfBridgeMask (const HalfBridgeOperation hbo, const HalfBridgeInd
     return;
   }
 
+  const HalfBridgePortMask initialOut = halfBridgeData[hbi].out;
+  
   switch (hbo) {
   case HALF_BRIDGE_SET :
     halfBridgeData[hbi].out |= hbm; break;
@@ -151,16 +153,18 @@ void spiChangeHalfBridgeMask (const HalfBridgeOperation hbo, const HalfBridgeInd
   case HALF_BRIDGE_TOGGLE :
     halfBridgeData[hbi].out ^= hbm; break;
   }
-
+  
   halfBridgeData[hbi].options = options;
-
+  
   spiOrder = get_NCV7708_latchesBits (halfBridgeData[hbi].out);
   spiOrder |= ((NCV7708E_RESET_STATUS | NCV7708E_OVERLOAD_CONTROL | 
 		NCV7708E_UNDERLOAD_CONTROL |  NCV7708E_POWERFAILURE_CONTROL) & options);
   
-  spiPrologue (&SPIDRIVER_NVC7708, &halfBridgeCfg[hbi]);
-  spiExchange (&SPIDRIVER_NVC7708, sizeof(spiOrder), &spiOrder, &spiStatus);
-  spiEpilogue (&SPIDRIVER_NVC7708);
+  if (initialOut != halfBridgeData[hbi].out) {
+    spiPrologue (&SPIDRIVER_NVC7708, &halfBridgeCfg[hbi]);
+    spiExchange (&SPIDRIVER_NVC7708, sizeof(spiOrder), &spiOrder, &spiStatus);
+    spiEpilogue (&SPIDRIVER_NVC7708);
+  }
   //  DebugTrace ("Change: spiOrder = 0x%x, spiStatus = 0x%x", spiOrder, spiStatus);
   
 #endif
