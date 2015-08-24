@@ -160,8 +160,7 @@ void chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
     if (*fmt == '-') {
       fmt++;
       left_align = TRUE;
-    }
-   if (*fmt == '+') {
+    } else if (*fmt == '+') {
       fmt++;
       plus_on_float = TRUE;
     }
@@ -300,7 +299,7 @@ unsigned_common:
 void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
   char *p, *s, c, filler;
   int i, precision, width;
-  bool_t is_long, left_align;
+  bool_t is_long, left_align, plus_on_float;
   long l;
 #if CHPRINTF_USE_FLOAT
   int fprec=0;
@@ -322,10 +321,13 @@ void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
     }
     p = tmpbuf;
     s = tmpbuf;
-    left_align = FALSE;
+    left_align = plus_on_float =  FALSE;
     if (*fmt == '-') {
       fmt++;
       left_align = TRUE;
+    } else if (*fmt == '+') {
+      fmt++;
+      plus_on_float = TRUE;
     }
     filler = ' ';
     if (*fmt == '.') {
@@ -405,6 +407,8 @@ void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
       if (d < 0) {
         *p++ = '-';
         d = -d;
+      } else if (plus_on_float) {
+	*p++ = '+';
       }
       p = ftoa(p, d, fprec);
       break;
