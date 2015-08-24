@@ -135,7 +135,7 @@ static char *ftoa(char *p, double num, uint32_t precision) {
 void chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
   char *p, *s, c, filler;
   int i, precision, width;
-  bool_t is_long, left_align;
+  bool_t is_long, left_align, plus_on_float;
   long l;
 #if CHPRINTF_USE_FLOAT
   int fprec=0;
@@ -156,10 +156,14 @@ void chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
     }
     p = tmpbuf;
     s = tmpbuf;
-    left_align = FALSE;
+    left_align = plus_on_float =  FALSE;
     if (*fmt == '-') {
       fmt++;
       left_align = TRUE;
+    }
+   if (*fmt == '+') {
+      fmt++;
+      plus_on_float = TRUE;
     }
     filler = ' ';
     if (*fmt == '.') {
@@ -240,6 +244,8 @@ void chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
       if (d < 0) {
         *p++ = '-';
         d = -d;
+      } else if (plus_on_float) {
+	*p++ = '+';
       }
       p = ftoa(p, d, fprec);
       break;
