@@ -220,7 +220,7 @@ uint32_t lerpu32Fraction (const uint32_t x, const uint32_t y, const uint32_t num
 
 float clampToVerify (const char* file, const int line, float l, float h, float v)
 {
-#if defined (DEBUG) && (HAL_USE_SERIAL_USB || defined CONSOLE_DEV_SD)
+#if (DEBUG && (HAL_USE_SERIAL_USB || defined CONSOLE_DEV_SD))
   if ((v<l) || (v>h)) {
     chprintf (chp, "clampToVerify failed : file %s: line %d : %f not in [%f .. %f]\r\n",
 	      file, line, v, l, h);
