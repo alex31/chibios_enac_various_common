@@ -5,7 +5,6 @@
 #include "printf.h"
 #include "oledDisplay.h"
 #include "string.h"
-//#include "lcdDisplay.h"
 
 #define clampColor(r,v,b) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f))
 #define colorDecTo16b(r,v,b) (clampColor((r*31/100), (v*63/100), (b*31/100)))
@@ -17,7 +16,7 @@
 /* 		      n == 0 ? 0 : chnReadTimeout (((BaseChannel *) oled), response, MIN(sizeof (response), n), 100)\ */
 /* ) */
 
-static void oledTrace (oledConfig *oledConfig, const char* err);
+static void oledTrace (OledConfig *oledConfig, const char* err);
 
 #define OLED(n, ...) (\
 		      chnReadTimeout (((BaseChannel *) oledConfig->serial), oledConfig->response, \
@@ -35,12 +34,12 @@ static void oledTrace (oledConfig *oledConfig, const char* err);
 
 #define RET_UNLESS_INIT(oledCfg) {if (oledIsInitialised(oledCfg) == FALSE) return;}
 
-static bool_t oledIsInitialised (oledConfig *oledConfig) ;
-static void oledSetBaud (oledConfig *oledConfig, uint32_t baud);
-static void oledPreInit (oledConfig *oledConfig, uint32_t baud);
-static void oledReInit (oledConfig *oledConfig);
+static bool_t oledIsInitialised (OledConfig *oledConfig) ;
+static void oledSetBaud (OledConfig *oledConfig, uint32_t baud);
+static void oledPreInit (OledConfig *oledConfig, uint32_t baud);
+static void oledReInit (OledConfig *oledConfig);
 
-static void oledPreInit (oledConfig *oledConfig, uint32_t baud)
+static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
 {
   oledConfig->bg = colorDecTo16b(0,0,0);
   oledConfig->tbg[0] = colorDecTo16b(0,0,0);
@@ -59,7 +58,7 @@ static void oledPreInit (oledConfig *oledConfig, uint32_t baud)
   
 }
 
-void oledInit (oledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
+void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
 	       GPIO_TypeDef *rstGpio, uint32_t rstPin)
 {
   oledConfig->rstGpio = rstGpio;
@@ -81,7 +80,7 @@ void oledInit (oledConfig *oledConfig,  struct SerialDriver *oled, const uint32_
   }
 }
 
-static void oledReInit (oledConfig *oledConfig)
+static void oledReInit (OledConfig *oledConfig)
 {
   oledHardReset (oledConfig);
   const uint32_t baud = oledConfig->serialConfig.speed;
@@ -101,7 +100,7 @@ static void oledReInit (oledConfig *oledConfig)
 }
 
 
-void oledHardReset (oledConfig *oledConfig)
+void oledHardReset (OledConfig *oledConfig)
 {
   palClearPad (oledConfig->rstGpio, oledConfig->rstPin);
   chThdSleepMilliseconds(10);
@@ -110,25 +109,25 @@ void oledHardReset (oledConfig *oledConfig)
 }
 
 
-bool_t oledIsInitialised (oledConfig *oledConfig)
+bool_t oledIsInitialised (OledConfig *oledConfig)
 {
   return (oledConfig->serial != NULL);
 }
 
-void oledAcquireLock (oledConfig *oledConfig)
+void oledAcquireLock (OledConfig *oledConfig)
 { 
   RET_UNLESS_INIT(oledConfig);
   chMtxLock(&(oledConfig->omutex));
 }
 
-void oledReleaseLock (oledConfig *oledConfig)
+void oledReleaseLock (OledConfig *oledConfig)
 { 
   RET_UNLESS_INIT(oledConfig);
   (void) oledConfig;
   chMtxUnlock();
 }
 
-void oledPrintVersion (oledConfig *oledConfig)
+void oledPrintVersion (OledConfig *oledConfig)
 {
   uint32_t getRes (uint32_t code) {
     switch (code) {
@@ -152,7 +151,7 @@ void oledPrintVersion (oledConfig *oledConfig)
 
 }
 
-void oledSetBaud (oledConfig *oledConfig, uint32_t baud)
+void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
 {
   
   uint8_t baudCode ;
@@ -188,7 +187,7 @@ void oledSetBaud (oledConfig *oledConfig, uint32_t baud)
   sdStart (sd, &(oledConfig->serialConfig));
 }
 
-void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
+void oledPrintFmt (OledConfig *oledConfig, const char *fmt, ...)
 {
   char buffer[80];
   va_list ap;
@@ -204,7 +203,7 @@ void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
 
 }
 
-void oledPrintBuffer (oledConfig *oledConfig, const char *buffer)
+void oledPrintBuffer (OledConfig *oledConfig, const char *buffer)
 {
   RET_UNLESS_INIT(oledConfig);
 
@@ -214,7 +213,7 @@ void oledPrintBuffer (oledConfig *oledConfig, const char *buffer)
 
 }
 
-void oledChangeBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
+void oledChangeBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
   oledConfig->bg = colorDecTo16b(r,g,b);
@@ -222,20 +221,20 @@ void oledChangeBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
   
 }
 
-void oledSetTextBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
   oledConfig->tbg[0] = colorDecTo16b(r,g,b);
   OLED (1, "K%c%c", ((oledConfig->tbg[0] & 0xff00) >> 8), (oledConfig->tbg[0] & 0xff));
 }
 
-void oledSetTextFgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextFgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
  oledConfig->fg[0] = colorDecTo16b(r,g,b);
 }
 
-void oledSetTextBgColorTable (oledConfig *oledConfig, uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t index, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
   if (++index >= COLOR_TABLE_SIZE) return;
@@ -243,7 +242,7 @@ void oledSetTextBgColorTable (oledConfig *oledConfig, uint8_t index, uint8_t r, 
   oledConfig->tbg[index] = colorDecTo16b(r,g,b);
 }
 
-void oledSetTextFgColorTable (oledConfig *oledConfig,  uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t index, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
   if (++index >= COLOR_TABLE_SIZE) return;
@@ -251,7 +250,7 @@ void oledSetTextFgColorTable (oledConfig *oledConfig,  uint8_t index, uint8_t r,
   oledConfig->fg[index] = colorDecTo16b(r,g,b);
 }
 
-void oledUseColorIndex (oledConfig *oledConfig, uint8_t index)
+void oledUseColorIndex (OledConfig *oledConfig, uint8_t index)
 {
   RET_UNLESS_INIT(oledConfig);
   if (++index >= COLOR_TABLE_SIZE) return;
@@ -267,7 +266,7 @@ void oledUseColorIndex (oledConfig *oledConfig, uint8_t index)
 
 
 
-void oledSound (oledConfig *oledConfig, uint16_t freq, uint16_t duration)
+void oledSound (OledConfig *oledConfig, uint16_t freq, uint16_t duration)
 {
   RET_UNLESS_INIT(oledConfig);
   duration = MAX (duration, 1000); // duration < 1000 hangs 4ds screen
@@ -275,39 +274,39 @@ void oledSound (oledConfig *oledConfig, uint16_t freq, uint16_t duration)
 	(uint8_t) ((duration & 0xff00) >> 8), (uint8_t) (duration & 0xff));
 }
 
-void oledGotoXY (oledConfig *oledConfig, uint8_t x, uint8_t y)
+void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y)
 {  
   RET_UNLESS_INIT(oledConfig);
   oledConfig->curXpos=x;
   oledConfig->curYpos=y;
 }
 
-void oledGotoX (oledConfig *oledConfig, uint8_t x)
+void oledGotoX (OledConfig *oledConfig, uint8_t x)
 {  
   RET_UNLESS_INIT(oledConfig);
   oledConfig->curXpos=x;
 }
 
-void oledGotoNextLine (oledConfig *oledConfig)
+void oledGotoNextLine (OledConfig *oledConfig)
 {  
   RET_UNLESS_INIT(oledConfig);
   oledConfig->curXpos=0;
   oledConfig->curYpos++;
 }
 
-void oledClearScreen (oledConfig *oledConfig)
+void oledClearScreen (OledConfig *oledConfig)
 {
   RET_UNLESS_INIT(oledConfig);
   OLED (1, "E");
 }
 
-void oledInitSdCard (oledConfig *oledConfig)
+void oledInitSdCard (OledConfig *oledConfig)
 {
   RET_UNLESS_INIT(oledConfig);
   OLED (1, "@i");
 }
 
-void oledListSdCardDirectory (oledConfig *oledConfig)
+void oledListSdCardDirectory (OledConfig *oledConfig)
 {
   RET_UNLESS_INIT(oledConfig);
   uint8_t gc;
@@ -339,20 +338,20 @@ void oledListSdCardDirectory (oledConfig *oledConfig)
   }
 }
 
-void oledSetSoundVolume (oledConfig *oledConfig, uint8_t percent)
+void oledSetSoundVolume (OledConfig *oledConfig, uint8_t percent)
 {
   percent = MIN (100, percent);
   percent +=27;
   OLED (1, "v%c", percent);
 }
 
-void oledPlayWav (oledConfig *oledConfig, const char* fileName)
+void oledPlayWav (OledConfig *oledConfig, const char* fileName)
 {  
   RET_UNLESS_INIT(oledConfig);
   OLED (1, "@l%c%s%c", 1, fileName, 0);
 }
 
-void oledDisplayCgi (oledConfig *oledConfig, const char* fileName, uint32_t offset)
+void oledDisplayCgi (OledConfig *oledConfig, const char* fileName, uint32_t offset)
 {
   union {
     uint32_t val;
@@ -393,7 +392,7 @@ void oledDisplayCgi (oledConfig *oledConfig, const char* fileName, uint32_t offs
 /*   va_end(ap); */
 /* } */
 
-static void oledTrace (oledConfig *oledConfig, const char* err)
+static void oledTrace (OledConfig *oledConfig, const char* err)
 {
   static uint32_t errCount=0;
 

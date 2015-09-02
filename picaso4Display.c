@@ -27,11 +27,11 @@ const uint32_t readTimout = 1000;
 /* 		      n == 0 ? 0 : chnReadTimeout (((BaseChannel *) oled), response, MIN(sizeof (response), n), 100)\ */
 /* ) */
 
-static void oledTrace (oledConfig *oledConfig, const char* err);
-static uint32_t oledSendCommand (struct oledConfig *oc, KindOfCommand kof, 
+static void oledTrace (OledConfig *oledConfig, const char* err);
+static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof, 
 				 const char* fct, const uint32_t line, const char *fmt, ...);
 
-static uint32_t oledReceiveAnswer (struct oledConfig *oc, const uint32_t size,
+static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
 				   const char* fct, const uint32_t line);
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 
@@ -43,16 +43,16 @@ static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 #define RET_UNLESS_INIT(oledCfg)    {if (oledIsInitialised(oledCfg) == FALSE) return;}
 #define RET_UNLESS_PICASO(oledCfg)  {if (oledConfig->deviceType != PICASO) return;}
 
-static bool_t oledIsInitialised (oledConfig *oledConfig) ;
-static void oledSetBaud (oledConfig *oledConfig, uint32_t baud);
-static void oledPreInit (oledConfig *oledConfig, uint32_t baud);
-static void oledReInit (oledConfig *oledConfig);
-static uint32_t oledGetFileError  (oledConfig *oledConfig);
-static bool_t oledFileSeek  (oledConfig *oledConfig, const uint16_t handle, const uint32_t offset);
-static uint16_t fgColorIndexTo16b (const oledConfig *oledConfig, const uint8_t index);
-static uint16_t oledTouchGet (oledConfig *oledConfig, uint16_t mode);
+static bool_t oledIsInitialised (OledConfig *oledConfig) ;
+static void oledSetBaud (OledConfig *oledConfig, uint32_t baud);
+static void oledPreInit (OledConfig *oledConfig, uint32_t baud);
+static void oledReInit (OledConfig *oledConfig);
+static uint32_t oledGetFileError  (OledConfig *oledConfig);
+static bool_t oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const uint32_t offset);
+static uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t index);
+static uint16_t oledTouchGet (OledConfig *oledConfig, uint16_t mode);
 
-static void oledPreInit (oledConfig *oledConfig, uint32_t baud)
+static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
 {
   oledConfig->bg = colorDecTo16b(0,0,0);
   oledConfig->tbg[0] = mkColor24 (0,0,0);
@@ -71,7 +71,7 @@ static void oledPreInit (oledConfig *oledConfig, uint32_t baud)
   
 }
 
-void oledInit (oledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
+void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
 	       GPIO_TypeDef *rstGpio, uint32_t rstPin, enum OledConfig_Device dev)
 {
   oledConfig->rstGpio = rstGpio;
@@ -99,7 +99,7 @@ void oledInit (oledConfig *oledConfig,  struct SerialDriver *oled, const uint32_
     oledSetBaud (oledConfig, baud);
 }
 
-static void oledReInit (oledConfig *oledConfig)
+static void oledReInit (OledConfig *oledConfig)
 {
   RET_UNLESS_PICASO(oledConfig);
   oledHardReset (oledConfig);
@@ -117,7 +117,7 @@ static void oledReInit (oledConfig *oledConfig)
 }
 
 
-void oledHardReset (oledConfig *oledConfig)
+void oledHardReset (OledConfig *oledConfig)
 {
 
   RET_UNLESS_PICASO(oledConfig);
@@ -129,25 +129,25 @@ void oledHardReset (oledConfig *oledConfig)
 }
 
 
-bool_t oledIsInitialised (oledConfig *oledConfig)
+bool_t oledIsInitialised (OledConfig *oledConfig)
 {
   return (oledConfig->serial != NULL);
 }
 
-void oledAcquireLock (oledConfig *oledConfig)
+void oledAcquireLock (OledConfig *oledConfig)
 { 
   RET_UNLESS_INIT(oledConfig);
   chMtxLock(&(oledConfig->omutex));
 }
 
-void oledReleaseLock (oledConfig *oledConfig)
+void oledReleaseLock (OledConfig *oledConfig)
 { 
   RET_UNLESS_INIT(oledConfig);
   (void) oledConfig;
   chMtxUnlock();
 }
 
-void oledGetVersion (oledConfig *oledConfig, char *buffer, const size_t buflen)
+void oledGetVersion (OledConfig *oledConfig, char *buffer, const size_t buflen)
 {
   RET_UNLESS_PICASO(oledConfig);
 
@@ -170,7 +170,7 @@ void oledGetVersion (oledConfig *oledConfig, char *buffer, const size_t buflen)
   chsnprintf (&buffer[strlen(buffer)], buflen-strlen(buffer), " Spe=%d.%d", speMajor, speMinor);
 }
 
-void oledSetBaud (oledConfig *oledConfig, uint32_t baud)
+void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
 {
   uint8_t baudCode ;
   uint32_t actualbaudRate; 
@@ -253,7 +253,7 @@ void oledSetBaud (oledConfig *oledConfig, uint32_t baud)
 /*   } */
 /* } */
 
-void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
+void oledPrintFmt (OledConfig *oledConfig, const char *fmt, ...)
 {
   char buffer[120];
   char *token, *curBuf;
@@ -314,7 +314,7 @@ void oledPrintFmt (oledConfig *oledConfig, const char *fmt, ...)
   }
 }
 
-void oledPrintBuffer (oledConfig *oledConfig, const char *buffer)
+void oledPrintBuffer (OledConfig *oledConfig, const char *buffer)
 {
   RET_UNLESS_INIT(oledConfig);
 
@@ -327,7 +327,7 @@ void oledPrintBuffer (oledConfig *oledConfig, const char *buffer)
   }
 }
 
-void oledChangeBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
+void oledChangeBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
   
@@ -339,7 +339,7 @@ void oledChangeBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
 } 
 
 
-void oledSetTextBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
 
@@ -353,7 +353,7 @@ void oledSetTextBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
   }
 }
 
-void oledSetTextFgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextFgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
 
@@ -369,7 +369,7 @@ void oledSetTextFgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
 }
 
 
-void oledSetTextBgColorTable (oledConfig *oledConfig, uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t index, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
   if (++index >= COLOR_TABLE_SIZE) return;
@@ -377,7 +377,7 @@ void oledSetTextBgColorTable (oledConfig *oledConfig, uint8_t index, uint8_t r, 
   oledConfig->tbg[index] = mkColor24(r,g,b);
 }
 
-void oledSetTextFgColorTable (oledConfig *oledConfig,  uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t index, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
   if (++index >= COLOR_TABLE_SIZE) return;
@@ -385,7 +385,7 @@ void oledSetTextFgColorTable (oledConfig *oledConfig,  uint8_t index, uint8_t r,
   oledConfig->fg[index] = mkColor24(r,g,b);
 }
 
-void oledUseColorIndex (oledConfig *oledConfig, uint8_t index)
+void oledUseColorIndex (OledConfig *oledConfig, uint8_t index)
 {
   RET_UNLESS_INIT(oledConfig);
   if (++index >= COLOR_TABLE_SIZE) return;
@@ -412,7 +412,7 @@ void oledUseColorIndex (oledConfig *oledConfig, uint8_t index)
 
 
 
-void oledGotoXY (oledConfig *oledConfig, uint8_t x, uint8_t y)
+void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y)
 {  
   RET_UNLESS_INIT(oledConfig);
 
@@ -424,7 +424,7 @@ void oledGotoXY (oledConfig *oledConfig, uint8_t x, uint8_t y)
    } 
 }
 
-void oledGotoX (oledConfig *oledConfig, uint8_t x)
+void oledGotoX (OledConfig *oledConfig, uint8_t x)
 {  
   RET_UNLESS_INIT(oledConfig);
 
@@ -434,7 +434,7 @@ void oledGotoX (oledConfig *oledConfig, uint8_t x)
   }
 }
 
-void oledGotoNextLine (oledConfig *oledConfig)
+void oledGotoNextLine (OledConfig *oledConfig)
 {  
   RET_UNLESS_INIT(oledConfig);
 
@@ -446,7 +446,7 @@ void oledGotoNextLine (oledConfig *oledConfig)
   }
 }
 
-void oledClearScreen (oledConfig *oledConfig)
+void oledClearScreen (OledConfig *oledConfig)
 {
   RET_UNLESS_INIT(oledConfig);
 
@@ -458,7 +458,7 @@ void oledClearScreen (oledConfig *oledConfig)
 }
 
 
-void oledDrawPoint (oledConfig *oledConfig, const uint16_t x, const uint16_t y, 
+void oledDrawPoint (OledConfig *oledConfig, const uint16_t x, const uint16_t y, 
 		    const uint8_t index)
 {
   RET_UNLESS_INIT(oledConfig);
@@ -477,7 +477,7 @@ void oledDrawPoint (oledConfig *oledConfig, const uint16_t x, const uint16_t y,
 }
 
 
-void oledDrawLine (oledConfig *oledConfig, 
+void oledDrawLine (OledConfig *oledConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
 		   const uint8_t index)
@@ -500,7 +500,7 @@ void oledDrawLine (oledConfig *oledConfig,
 	twoBytesFromWord(fg));
 }
 
-void oledDrawRect (oledConfig *oledConfig, 
+void oledDrawRect (OledConfig *oledConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2,
 		   const bool_t filled,
@@ -524,7 +524,7 @@ void oledDrawRect (oledConfig *oledConfig,
 	twoBytesFromWord(fg));
 }
 
-void oledEnableTouch (oledConfig *oledConfig, bool_t enable)
+void oledEnableTouch (OledConfig *oledConfig, bool_t enable)
 {
    RET_UNLESS_INIT(oledConfig);
 
@@ -535,7 +535,7 @@ void oledEnableTouch (oledConfig *oledConfig, bool_t enable)
   OLED ("%c%c%c%c", 0xff, 0x38, 0x00, enable ? 0x00 : 0x01);
 }
 
-static uint16_t oledTouchGet (oledConfig *oledConfig, uint16_t mode)
+static uint16_t oledTouchGet (OledConfig *oledConfig, uint16_t mode)
 {
   if (oledIsInitialised(oledConfig) == FALSE) 
     return 0xff;
@@ -550,17 +550,17 @@ static uint16_t oledTouchGet (oledConfig *oledConfig, uint16_t mode)
 }
 
 
-uint16_t oledTouchGetStatus (oledConfig *oledConfig)
+uint16_t oledTouchGetStatus (OledConfig *oledConfig)
 {
   return oledTouchGet (oledConfig, 0);
 }
 
-uint16_t oledTouchGetXcoord (oledConfig *oledConfig)
+uint16_t oledTouchGetXcoord (OledConfig *oledConfig)
 {
   return oledTouchGet (oledConfig, 1);
 }
 
-uint16_t oledTouchGetYcoord (oledConfig *oledConfig)
+uint16_t oledTouchGetYcoord (OledConfig *oledConfig)
 {
   return oledTouchGet (oledConfig, 2);
 }
@@ -568,7 +568,7 @@ uint16_t oledTouchGetYcoord (oledConfig *oledConfig)
 
 
 
-bool_t oledInitSdCard (oledConfig *oledConfig)
+bool_t oledInitSdCard (OledConfig *oledConfig)
 { 
   if (oledIsInitialised(oledConfig) == FALSE) return FALSE;
   if (oledConfig->deviceType != PICASO) return FALSE;
@@ -584,7 +584,7 @@ bool_t oledInitSdCard (oledConfig *oledConfig)
   return (oledConfig->response[2] != 0);
 }
 
-void oledListSdCardDirectory (oledConfig *oledConfig)
+void oledListSdCardDirectory (OledConfig *oledConfig)
 {
   bool remainFile=TRUE;
   uint32_t fileNo=0;
@@ -607,7 +607,7 @@ void oledListSdCardDirectory (oledConfig *oledConfig)
 }
 
 
-void oledSetSoundVolume (oledConfig *oledConfig, uint8_t percent)
+void oledSetSoundVolume (OledConfig *oledConfig, uint8_t percent)
 {
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_PICASO(oledConfig);
@@ -616,14 +616,14 @@ void oledSetSoundVolume (oledConfig *oledConfig, uint8_t percent)
   OLED ("%c%c%c%c", 0xff, 0x00, 0x00, percent);
 }
 
-void oledPlayWav (oledConfig *oledConfig, const char* fileName)
+void oledPlayWav (OledConfig *oledConfig, const char* fileName)
 {  
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_PICASO(oledConfig);
   OLED_KOF (KOF_INT16, "%c%c%s%c", 0x0, 0x0b, fileName, 0x0);
 }
 
-uint32_t oledOpenFile (oledConfig *oledConfig, const char* fileName, uint16_t *handle)
+uint32_t oledOpenFile (OledConfig *oledConfig, const char* fileName, uint16_t *handle)
 {
   if (oledIsInitialised(oledConfig) == FALSE) return 0;
   if (oledConfig->deviceType != PICASO) return 0;
@@ -634,7 +634,7 @@ uint32_t oledOpenFile (oledConfig *oledConfig, const char* fileName, uint16_t *h
 }
 
 
-void oledCloseFile (oledConfig *oledConfig, const uint16_t handle)
+void oledCloseFile (OledConfig *oledConfig, const uint16_t handle)
 {
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_PICASO(oledConfig);
@@ -648,7 +648,7 @@ void oledCloseFile (oledConfig *oledConfig, const uint16_t handle)
 
 
 
-void oledDisplayGci (oledConfig *oledConfig, const uint16_t handle, uint32_t offset)
+void oledDisplayGci (OledConfig *oledConfig, const uint16_t handle, uint32_t offset)
 {
    RET_UNLESS_INIT(oledConfig);
    RET_UNLESS_PICASO(oledConfig);
@@ -671,7 +671,7 @@ void oledDisplayGci (oledConfig *oledConfig, const uint16_t handle, uint32_t off
 
 
 
-uint16_t getResponseAsUint16 (oledConfig *oledConfig)
+uint16_t getResponseAsUint16 (OledConfig *oledConfig)
 {
   return (uint16_t) ((oledConfig->response[1] << 8) | oledConfig->response[2]);
 }
@@ -693,13 +693,13 @@ uint16_t getResponseAsUint16 (oledConfig *oledConfig)
 /*   va_end(ap); */
 /* } */
 
-static  uint16_t fgColorIndexTo16b (const oledConfig *oledConfig, const uint8_t index) {
+static  uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t index) {
   const Color24 fg = oledConfig->fg[index];
   
   return (colorDecTo16b(fg.r, fg.g, fg.b));
 }
 
-static void oledTrace (oledConfig *oledConfig, const char* err)
+static void oledTrace (OledConfig *oledConfig, const char* err)
 {
   static uint32_t errCount=0;
 
@@ -712,7 +712,7 @@ static void oledTrace (oledConfig *oledConfig, const char* err)
   }
 }
 
-static uint32_t oledGetFileError  (oledConfig *oledConfig)
+static uint32_t oledGetFileError  (OledConfig *oledConfig)
 {
   if (oledIsInitialised(oledConfig) == FALSE) return 0;
   if (oledConfig->deviceType != PICASO) return 0;
@@ -726,7 +726,7 @@ static uint32_t oledGetFileError  (oledConfig *oledConfig)
   return oledConfig->response[2];
 }
 
-static bool_t oledFileSeek  (oledConfig *oledConfig, const uint16_t handle, const uint32_t offset)
+static bool_t oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const uint32_t offset)
 {
   if (oledIsInitialised(oledConfig) == FALSE) return FALSE;
   if (oledConfig->deviceType != PICASO) return FALSE;
@@ -747,7 +747,7 @@ static bool_t oledFileSeek  (oledConfig *oledConfig, const uint16_t handle, cons
   return oledConfig->response[2] == 1;
 }
 
-static uint32_t oledReceiveAnswer (struct oledConfig *oc, const uint32_t size,
+static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
 				   const char* fct, const uint32_t line)
 {
   (void) fct;
@@ -785,7 +785,7 @@ static uint32_t oledReceiveAnswer (struct oledConfig *oc, const uint32_t size,
 }
 
 
-static uint32_t oledSendCommand (struct oledConfig *oc, KindOfCommand kof, 
+static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof, 
 				 const char* fct, const uint32_t line, const char *fmt, ...)
 {
   va_list ap;

@@ -4,36 +4,36 @@
 #include <hal.h>
 
 
-typedef struct oledConfig  oledConfig;
+typedef struct OledConfig  OledConfig;
 #define COLOR_TABLE_SIZE 8
 
-void oledInit (oledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
+void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
 	       GPIO_TypeDef *rstGpio, uint32_t rstPin);
-void oledHardReset (oledConfig *oledConfig);
+void oledHardReset (OledConfig *oledConfig);
 
-void oledAcquireLock (oledConfig *oledConfig);
-void oledReleaseLock (oledConfig *oledConfig);
-void oledPrintFmt (oledConfig *oledConfig, const char *txt, ...);
-void oledPrintBuffer (oledConfig *oledConfig, const char *buffer);
-void oledPrintVersion (oledConfig *oledConfig);
-void oledChangeBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
-void oledSetTextFgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
-void oledSetTextBgColor (oledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
-void oledSetTextBgColorTable (oledConfig *oledConfig, uint8_t index, 
+void oledAcquireLock (OledConfig *oledConfig);
+void oledReleaseLock (OledConfig *oledConfig);
+void oledPrintFmt (OledConfig *oledConfig, const char *txt, ...);
+void oledPrintBuffer (OledConfig *oledConfig, const char *buffer);
+void oledPrintVersion (OledConfig *oledConfig);
+void oledChangeBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
+void oledSetTextFgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
+void oledSetTextBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
+void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t index, 
 			      uint8_t r, uint8_t g, uint8_t b);
-void oledSetTextFgColorTable (oledConfig *oledConfig,  uint8_t index, 
+void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t index, 
 			      uint8_t r, uint8_t g, uint8_t b);
-void oledUseColorIndex (oledConfig *oledConfig, uint8_t index);
-void oledGotoXY (oledConfig *oledConfig, uint8_t x, uint8_t y);
-void oledGotoX (oledConfig *oledConfig, uint8_t x);
-void oledGotoNextLine (oledConfig *oledConfig);
-void oledClearScreen (oledConfig *oledConfig);
-void oledInitSdCard (oledConfig *oledConfig);
-void oledListSdCardDirectory (oledConfig *oledConfig);
-void oledSound (oledConfig *oledConfig, uint16_t freq, uint16_t duration);
-void oledSetSoundVolume (oledConfig *oledConfig, uint8_t percent);
-void oledPlayWav (oledConfig *oledConfig, const char* fileName);
-void oledDisplayCgi  (oledConfig *oledConfig, const char* fileName, uint32_t offset);
+void oledUseColorIndex (OledConfig *oledConfig, uint8_t index);
+void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y);
+void oledGotoX (OledConfig *oledConfig, uint8_t x);
+void oledGotoNextLine (OledConfig *oledConfig);
+void oledClearScreen (OledConfig *oledConfig);
+void oledInitSdCard (OledConfig *oledConfig);
+void oledListSdCardDirectory (OledConfig *oledConfig);
+void oledSound (OledConfig *oledConfig, uint16_t freq, uint16_t duration);
+void oledSetSoundVolume (OledConfig *oledConfig, uint8_t percent);
+void oledPlayWav (OledConfig *oledConfig, const char* fileName);
+void oledDisplayCgi  (OledConfig *oledConfig, const char* fileName, uint32_t offset);
 
 
 
@@ -47,7 +47,7 @@ void oledDisplayCgi  (oledConfig *oledConfig, const char* fileName, uint32_t off
 */
 
 
-struct oledConfig {
+struct OledConfig {
   SerialConfig serialConfig;
   Mutex omutex ;
   BaseSequentialStream *serial;
