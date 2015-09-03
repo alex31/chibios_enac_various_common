@@ -10,7 +10,7 @@ extern "C" {
 
 
 typedef struct OledConfig  OledConfig;
-enum OledConfig_Device {PICASO, TERM_VT100};
+enum OledConfig_Device {PICASO, GOLDELOX, TERM_VT100}; // will have to implement DIABLO
 #define COLOR_TABLE_SIZE 11
 
 void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
@@ -34,6 +34,7 @@ void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t index,
 void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t index, 
 			      uint8_t r, uint8_t g, uint8_t b);
 void oledUseColorIndex (OledConfig *oledConfig, uint8_t index);
+void oledTextOpacity (OledConfig *oledConfig, bool_t opaque);
 void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y);
 void oledGotoX (OledConfig *oledConfig, uint8_t x);
 void oledGotoNextLine (OledConfig *oledConfig);
@@ -56,10 +57,10 @@ uint16_t oledTouchGetYcoord (OledConfig *oledConfig);
 void oledListSdCardDirectory (OledConfig *oledConfig);
 void oledSetSoundVolume (OledConfig *oledConfig, uint8_t percent);
 void oledPlayWav (OledConfig *oledConfig, const char* fileName);
+//void oledPlayBeep (OledConfig *oledConfig, uint8_t note, uint16_t duration);
 uint32_t oledOpenFile  (OledConfig *oledConfig, const char* fileName, uint16_t *handle);
 void oledCloseFile (OledConfig *oledConfig, const uint16_t handle);
 void oledDisplayGci  (OledConfig *oledConfig, const uint16_t handle, uint32_t offset);
-uint16_t getResponseAsUint16 (OledConfig *oledConfig);
 
 typedef union  {
   struct {
