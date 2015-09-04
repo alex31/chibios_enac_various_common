@@ -41,6 +41,7 @@ void oledUseColorIndex (OledConfig *oledConfig, uint8_t index);
 void oledSetTextOpacity (OledConfig *oledConfig, bool_t opaque);
 void oledSetTextAttributeMask (OledConfig *oledConfig, enum OledTextAttribute attrib);
 void oledSetTextGap (OledConfig *oledConfig, uint8_t xgap, uint8_t ygap);
+void oledSetTextSizeMultiplier (OledConfig *oledConfig, uint8_t xmul, uint8_t ymul);
 void oledSetScreenOrientation (OledConfig *oledConfig, enum OledScreenOrientation orientation);
 void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y);
 void oledGotoX (OledConfig *oledConfig, uint8_t x);
