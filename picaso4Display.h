@@ -15,8 +15,8 @@ enum OledConfig_Device {PICASO, GOLDELOX, TERM_VT100}; // will have to implement
 
 void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
 	       GPIO_TypeDef *rstGpio, uint32_t rstPin, enum OledConfig_Device dev);
-void oledHardReset (OledConfig *oledConfig);
-
+void   oledHardReset (OledConfig *oledConfig);
+bool_t oledIsCorrectDevice (OledConfig *oledConfig);
 void oledAcquireLock (OledConfig *oledConfig);
 void oledReleaseLock (OledConfig *oledConfig);
 
