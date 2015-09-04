@@ -487,6 +487,16 @@ void oledSetTextGap (OledConfig *oledConfig, uint8_t xgap, uint8_t ygap)
   OLED_KOF (kof, "%c%c%c%c", 0xff, cmdYgap, 0x00, ygap); 
 }
 
+void oledSetScreenOrientation (OledConfig *oledConfig, enum OledScreenOrientation orientation)
+{
+  RET_UNLESS_INIT(oledConfig);
+  RET_UNLESS_4DSYS(oledConfig);
+
+  const uint8_t cmdMode =  ISPIC(oledConfig) ? 0x9e : 0x68;
+  const KindOfCommand kof =  ISPIC(oledConfig) ? KOF_INT16 : KOF_ACK;
+  OLED_KOF (kof, "%c%c%c%c", 0xff, cmdMode, 0x00, orientation); 
+}
+
 
 void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y)
 {  
