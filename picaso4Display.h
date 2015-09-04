@@ -11,6 +11,8 @@ extern "C" {
 
 typedef struct OledConfig  OledConfig;
 enum OledConfig_Device {PICASO, GOLDELOX, TERM_VT100}; // will have to implement DIABLO
+  enum OledTextAttribute {OLED_RESET_ATTRIB=0,
+			  OLED_BOLD=16, OLED_ITALIC=32, OLED_INVERSE=64, OLED_UNDERLINE=128};
 #define COLOR_TABLE_SIZE 11
 
 void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
@@ -34,7 +36,9 @@ void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t index,
 void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t index, 
 			      uint8_t r, uint8_t g, uint8_t b);
 void oledUseColorIndex (OledConfig *oledConfig, uint8_t index);
-void oledTextOpacity (OledConfig *oledConfig, bool_t opaque);
+void oledSetTextOpacity (OledConfig *oledConfig, bool_t opaque);
+void oledSetTextAttributeMask (OledConfig *oledConfig, enum OledTextAttribute attrib);
+void oledSetTextGap (OledConfig *oledConfig, uint8_t xgap, uint8_t ygap);
 void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y);
 void oledGotoX (OledConfig *oledConfig, uint8_t x);
 void oledGotoNextLine (OledConfig *oledConfig);

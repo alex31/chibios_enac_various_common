@@ -97,8 +97,8 @@ void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_
   if (!oledIsCorrectDevice (oledConfig)) {
     // if not try to change it
     oledConfig->deviceType = (oledConfig->deviceType == PICASO) ? GOLDELOX : PICASO;
-    oledTextOpacity (oledConfig, true);
-    oledTextOpacity (oledConfig, true);
+    oledSetTextOpacity (oledConfig, true);
+    oledSetTextOpacity (oledConfig, true);
     DebugTrace ("oled comm error, try %s\r\n",
 		(oledConfig->deviceType == PICASO) ? "PICASO instead GOLDELOX" :
 		"GOLDELOX instead PICASO");
@@ -106,11 +106,12 @@ void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_
 
   // opaque background
   oledClearScreen (oledConfig);
-  oledTextOpacity (oledConfig, true);
+  oledSetTextOpacity (oledConfig, true);
 
 
   // disable screensaver : 0 is special value for disabling screensaver
-  oledScreenSaverTimout (oledConfig, 0);
+  // since oled has remanance problem, we activate screensaver after 20 seconds
+  oledScreenSaverTimout (oledConfig, 20000);
   
   // use greater speed
   if (baud != 9600) 
@@ -128,7 +129,7 @@ static void oledReInit (OledConfig *oledConfig)
     oledSetBaud (oledConfig, 9600);
 
     // opaque background
-    oledTextOpacity (oledConfig, true);
+    oledSetTextOpacity (oledConfig, true);
     oledClearScreen (oledConfig);
     
     // use greater speed
@@ -453,7 +454,7 @@ void oledUseColorIndex (OledConfig *oledConfig, uint8_t index)
 }
 
 
-void oledTextOpacity (OledConfig *oledConfig, bool_t opaque)
+void oledSetTextOpacity (OledConfig *oledConfig, bool_t opaque)
 {
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_4DSYS(oledConfig);
@@ -461,6 +462,29 @@ void oledTextOpacity (OledConfig *oledConfig, bool_t opaque)
   const uint8_t cmdOpa =  ISPIC(oledConfig) ? 0xdf : 0x77;
   const KindOfCommand kof =  ISPIC(oledConfig) ? KOF_INT16 : KOF_ACK;
   OLED_KOF (kof, "%c%c%c%c", 0xff, cmdOpa, 0x00, opaque); 
+}
+
+
+void oledSetTextAttributeMask (OledConfig *oledConfig, enum OledTextAttribute attrib)
+{
+  RET_UNLESS_INIT(oledConfig);
+  RET_UNLESS_4DSYS(oledConfig);
+
+  const uint8_t cmdAttrib =  ISPIC(oledConfig) ? 0xda : 0x72;
+  const KindOfCommand kof =  ISPIC(oledConfig) ? KOF_INT16 : KOF_ACK;
+  OLED_KOF (kof, "%c%c%c%c", 0xff, cmdAttrib, 0x00, attrib); 
+}
+
+void oledSetTextGap (OledConfig *oledConfig, uint8_t xgap, uint8_t ygap)
+{
+  RET_UNLESS_INIT(oledConfig);
+  RET_UNLESS_4DSYS(oledConfig);
+
+  const uint8_t cmdXgap =  ISPIC(oledConfig) ? 0xe2 : 0x7a;
+  const uint8_t cmdYgap =  ISPIC(oledConfig) ? 0xe1 : 0x79;
+  const KindOfCommand kof =  ISPIC(oledConfig) ? KOF_INT16 : KOF_ACK;
+  OLED_KOF (kof, "%c%c%c%c", 0xff, cmdXgap, 0x00, xgap); 
+  OLED_KOF (kof, "%c%c%c%c", 0xff, cmdYgap, 0x00, ygap); 
 }
 
 
@@ -787,10 +811,9 @@ static void oledTrace (OledConfig *oledConfig, const char* err)
 static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout)
 {
   RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-  const uint8_t cmdTimout =  ISPIC(oledConfig) ? 0x0c : 0x0c;
+  RET_UNLESS_GOLDELOX(oledConfig);
 
-  OLED ("%c%c%c%c", 0x00, cmdTimout, twoBytesFromWord(timout));
+  OLED ("%c%c%c%c", 0x00, 0x0c, twoBytesFromWord(timout));
 }
 
 static uint32_t oledGetFileError  (OledConfig *oledConfig)
