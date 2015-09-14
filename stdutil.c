@@ -9,8 +9,6 @@
 #endif
 
 
-static float powi(int x, int y);   
-       
 float atof_m(const char *s)   
 {   
   float v = 0.0f,   
@@ -62,7 +60,7 @@ float atof_m(const char *s)
   return v;   
 }   
        
-static float powi(int x, int y)   
+float powi(int x, int y)   
 // Determines x-raised-to-the-power-of-y and returns the   
 // result as a float   
 {   

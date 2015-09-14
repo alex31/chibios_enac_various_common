@@ -620,7 +620,7 @@ void oledDrawRect (OledConfig *oledConfig,
 
   uint8_t cmdDR =  ISPIC(oledConfig) ? 0xc4 : 0xcf;
   if (filled) 
-    cmdDR++;
+    cmdDR--;
 
   const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (index+1));
 

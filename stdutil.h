@@ -186,6 +186,7 @@ extern MemoryHeap ccmHeap;
 
   char *binary_fmt(uintmax_t x);
   uint16_t fletcher16 (uint8_t const *data, size_t bytes);
+  float powi(int x, int y) ;
 
 #ifdef __cplusplus
 }
