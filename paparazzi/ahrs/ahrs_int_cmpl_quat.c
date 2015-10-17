@@ -36,7 +36,7 @@
 
 #undef GPS
 #define USE_MAGNETOMETER 1
-#define AHRS_MAG_UPDATE_ALL_AXES 1
+#define AHRS_MAG_UPDATE_ALL_AXES 0
 
 #include "paparazzi/ahrs/ahrs_int_cmpl_quat.h"
 #include "paparazzi/ahrs/ahrs_int_utils.h"
