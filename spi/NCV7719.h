@@ -16,7 +16,8 @@ typedef enum {
   NCV7719_UnderloadMask=1<<13,
   NCV7719_UnderOverVoltageMask=1<<14, 
   NCV7719_OverCurrentMask=1<<15, 
-  NCV7719_ThermalShutdownMask=1<<16
+  NCV7719_ThermalShutdownMask=1<<16,
+  NCV7719_AsyncDriverNotReady=1<<17
 }  HalfBridgeNCV7719_Status ;
 
 typedef struct  {
@@ -30,30 +31,38 @@ typedef struct  {
   uint8_t         alternateFunction;
 } SpiPeriphConfig ;
 
+typedef union  {
+  uint16_t cmd[2];
+  uint16_t status[2];
+  uint8_t  bytes[4];
+} SpiData;
+
 
 typedef struct {
   SPIConfig *spiCfg;
   const     SpiPeriphConfig *periphCfg;
-  Mutex	    mtx;
-  uint32_t  statusBitField;
+  volatile uint32_t  statusBitField;
   uint16_t  lastSpiCmd[2];
   uint16_t  cmdBitField;
+  SpiData   spiCmd;
+  SpiData   spiStatus;
 } HalfBridgeNCV7719;
 
+#include "NCV7719_conf.h"
 
-void HalfBridgeNCV7719_init (HalfBridgeNCV7719 *hb);
-HalfBridgeNCV7719_Status HalfBridgeNCV7719_setHalfBridge (HalfBridgeNCV7719 *hb,
-							  const uint32_t outIndex, // 1-8 
-							  HalfBridgeNCV7719_Cmd cmd, bool doSpiExch);
-HalfBridgeNCV7719_Status HalfBridgeNCV7719_toggleHalfBridge (HalfBridgeNCV7719 *hb,
-							     const uint32_t outIndex, 
-							     bool doSpiExch);
-HalfBridgeNCV7719_Status HalfBridgeNCV7719_getStatus (HalfBridgeNCV7719 *hb);
-HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange (HalfBridgeNCV7719 *hb);
-HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiGetStatus (HalfBridgeNCV7719 *hb);
+void HalfBridgeNCV7719_init (void);
+HalfBridgeNCV7719_Status HalfBridgeNCV7719_setHalfBridge (const uint32_t outIndex, // 1-8 
+							  HalfBridgeNCV7719_Cmd cmd, 
+							  const bool doSpiExch,
+							  const bool fromIsr);
+HalfBridgeNCV7719_Status HalfBridgeNCV7719_toggleHalfBridge (const uint32_t outIndex, 
+							     const bool doSpiExch,
+							     const bool fromIsr);
+HalfBridgeNCV7719_Status HalfBridgeNCV7719_getStatus (void);
+HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange (bool fromIsr);
 
-HalfBridgeNCV7719_Status HalfBridgeNCV7719_setBridge (HalfBridgeNCV7719 *hb,
-						      const uint32_t bridgeIndex, // 1-4 
-						      BridgeNCV7719_Cmd cmd);
+HalfBridgeNCV7719_Status HalfBridgeNCV7719_setBridge (const uint32_t bridgeIndex, // 1-4 
+						      BridgeNCV7719_Cmd cmd,
+						      const bool fromIsr);
 
 
