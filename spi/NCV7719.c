@@ -226,7 +226,8 @@ void HalfBridgeNCV7719_init (HalfBridgeNCV7719 *hb)
   HalfBridgeNCV7719_spiExchange (hb);
   
   // disable chip output
-  palSetPad (hb->enGpio, hb->enPin);
+  palSetPad (hb->spiCfg->ssport, hb->spiCfg->sspad);
+  //  palSetPad (hb->enGpio, hb->enPin);
 }
 
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_toggleHalfBridge (HalfBridgeNCV7719 *hb, const uint32_t outIndex, 

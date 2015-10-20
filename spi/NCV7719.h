@@ -32,10 +32,8 @@ typedef struct  {
 
 
 typedef struct {
-  const     SPIConfig *spiCfg;
+  SPIConfig *spiCfg;
   const     SpiPeriphConfig *periphCfg;
-  GPIO_TypeDef *enGpio;
-  const	    uint32_t enPin;
   Mutex	    mtx;
   uint32_t  statusBitField;
   uint16_t  lastSpiCmd[2];
