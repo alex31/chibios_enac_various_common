@@ -302,7 +302,6 @@ static void gptcb(GPTDriver *gptp)
     spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[0] , &hb1.spiStatus.bytes[0]);
   } else if (hb1.spiCmd.cmd[1] != hb1.lastSpiCmd[1]) {
     hb1.lastSpiCmd[1] = hb1.spiCmd.cmd[1];
-    palSetPad (GPIOC, GPIOC_PIN3);
     spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[2] , &hb1.spiStatus.bytes[2]);
   }
   chSysUnlockFromIsr();
