@@ -44,6 +44,18 @@
 #define NCV7719_RESET_REGISTER (1 << 15)
 
 //static void printCmd (uint16_t command);
+
+
+static void gptcb(GPTDriver *gptp);
+
+static const GPTConfig gptcfg = {
+  1000000,    /* 1Mhz timer clock.*/
+  gptcb,   /* Timer callback.*/
+  0
+};
+
+
+
 static void asyncTransfertCompleted (SPIDriver *spip);
 
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const bool fromIsr)
@@ -82,28 +94,29 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const bool fromIsr)
     }
   }
 
-  /* // channel 7-8 */
-  /* for (uint32_t i=6; i<8; i++) { */
-  /*   const HalfBridgeNCV7719_Cmd cmd = ((hb1.cmdBitField >> (i*2)) & 0b11); */
-  /*   switch (cmd) { */
-  /*   case NCV7719_HighZ:  */
-  /*     break; */
-  /*   case NCV7719_Low:  */
-  /*     hb1.spiCmd.cmd[1] |= 1 << (i+1); // enabled */
-  /*     break; */
-  /*   case NCV7719_High:  */
-  /*     hb1.spiCmd.cmd[1] |= 1 << (i+1); // enabled */
-  /*     hb1.spiCmd.cmd[1] |= 1 << (i-5); // output = high */
-  /*     break; */
-  /*   default: break; */
-  /*   } */
-  /* } */
+  // channel 7-8
+  for (uint32_t i=6; i<8; i++) {
+    const HalfBridgeNCV7719_Cmd cmd = ((hb1.cmdBitField >> (i*2)) & 0b11);
+    switch (cmd) {
+    case NCV7719_HighZ:
+      break;
+    case NCV7719_Low:
+      hb1.spiCmd.cmd[1] |= 1 << (i+1); // enabled
+      break;
+    case NCV7719_High:
+      hb1.spiCmd.cmd[1] |= 1 << (i+1); // enabled
+      hb1.spiCmd.cmd[1] |= 1 << (i-5); // output = high
+      break;
+    default: break;
+    }
+  }
 
   // in one pass : should be tested
   //spiExchange (driver, sizeof(SpiData), spiCmd.bytes , spiStatus.bytes);
 
   //  const halrtcnt_t firstTransactionTS = halGetCounterValue();
   if (hb1.spiCmd.cmd[0] != hb1.lastSpiCmd[0]) {
+    hb1.lastSpiCmd[0] = hb1.spiCmd.cmd[0];
     if (fromIsr) {
       chSysLockFromIsr();
       spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[0] , &hb1.spiStatus.bytes[0]);
@@ -111,12 +124,17 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const bool fromIsr)
     } else {
       spiStartExchange (driver, 1, &hb1.spiCmd.bytes[0] , &hb1.spiStatus.bytes[0]);
     }
-    hb1.lastSpiCmd[0] = hb1.spiCmd.cmd[0];
-  }
+  } else if (hb1.spiCmd.cmd[1] != hb1.lastSpiCmd[1]) {
+    hb1.lastSpiCmd[1] = hb1.spiCmd.cmd[1];
+    if (fromIsr) {
+      chSysLockFromIsr();
+      spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[2] , &hb1.spiStatus.bytes[2]);
+      chSysUnlockFromIsr();
+    } else {
+      spiStartExchange (driver, 1, &hb1.spiCmd.bytes[2] , &hb1.spiStatus.bytes[2]);
+    }
+  } 
   
-  hb1.lastSpiCmd[1] = hb1.spiCmd.cmd[1];
-  
-
   return hb1.statusBitField;
 }
 
@@ -143,6 +161,7 @@ void HalfBridgeNCV7719_init (void)
 
 
   spiStart (hb1.periphCfg->driver, hb1.spiCfg);
+  gptStart (hb1.periphCfg->timer, &gptcfg);
 }
 
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_toggleHalfBridge (const uint32_t outIndex, 
@@ -256,8 +275,39 @@ static void asyncTransfertCompleted (SPIDriver *spip)
 
   chSysLockFromIsr ();
   spiUnselectI(spip); 
+  // if there is another word to transfert
+  if ((hb1.spiCmd.cmd[1] != hb1.lastSpiCmd[1]) ||
+      (hb1.spiCmd.cmd[0] != hb1.lastSpiCmd[0])) {
+    if (hb1.periphCfg->timer->state == GPT_READY)  {
+	gptStartOneShotI(hb1.periphCfg->timer, 5); // 5 microsecond with enable at HIGH
+      }
+  }
   chSysUnlockFromIsr ();
 }
+
+
+static void gptcb(GPTDriver *gptp)
+{
+  (void) gptp;
+
+  if (hb1.periphCfg->driver->state != SPI_READY)
+    return;
+  
+  SPIDriver *driver = hb1.periphCfg->driver;
+  chSysLockFromIsr();
+  spiSelectI (driver);
+  
+  if (hb1.spiCmd.cmd[0] != hb1.lastSpiCmd[0]) {
+    hb1.lastSpiCmd[0] = hb1.spiCmd.cmd[0];
+    spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[0] , &hb1.spiStatus.bytes[0]);
+  } else if (hb1.spiCmd.cmd[1] != hb1.lastSpiCmd[1]) {
+    hb1.lastSpiCmd[1] = hb1.spiCmd.cmd[1];
+    palSetPad (GPIOC, GPIOC_PIN3);
+    spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[2] , &hb1.spiStatus.bytes[2]);
+  }
+  chSysUnlockFromIsr();
+}
+
 
 /*
 static void printCmd (uint16_t command)
