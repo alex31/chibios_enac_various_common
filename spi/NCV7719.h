@@ -5,8 +5,15 @@
 
 typedef enum  {NCV7719_HighZ=0b00, NCV7719_Reserved=0b01, NCV7719_Low=0b10, NCV7719_High=0b11}
   HalfBridgeNCV7719_Cmd;
+
 typedef enum  {NCV7719_Bridge_HighZ, NCV7719_Bridge_Short, NCV7719_Forward, NCV7719_Reverse}
   BridgeNCV7719_Cmd;
+
+typedef enum  {
+  NCV7719_noOptions=0,
+  NCV7719_FromIsr=1<<0,
+  NCV7719_DoSpiExchange=1<<1
+}  NCV7719_Options;
 
 typedef enum {
   NCV7719_ThermalWarningMask=1<<0, 
@@ -54,16 +61,14 @@ typedef struct {
 void HalfBridgeNCV7719_init (void);
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_setHalfBridge (const uint32_t outIndex, // 1-8 
 							  HalfBridgeNCV7719_Cmd cmd, 
-							  const bool doSpiExch,
-							  const bool fromIsr);
+							  const NCV7719_Options options);
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_toggleHalfBridge (const uint32_t outIndex, 
-							     const bool doSpiExch,
-							     const bool fromIsr);
+							     const NCV7719_Options options);
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_getStatus (void);
-HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange (bool fromIsr);
+HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange (const NCV7719_Options options);
 
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_setBridge (const uint32_t bridgeIndex, // 1-4 
-						      BridgeNCV7719_Cmd cmd,
-						      const bool fromIsr);
+						      const BridgeNCV7719_Cmd cmd,
+						      NCV7719_Options options);
 
 
