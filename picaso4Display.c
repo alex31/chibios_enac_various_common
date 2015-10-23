@@ -67,13 +67,13 @@ static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
   oledConfig->curYpos =0;
   oledConfig->serial = NULL;
 
-  // initial USART conf
+  // initial USART conf only for 4D system screen
   // 9600 bauds because of broken ato baud feature on some screen model
+  
   oledConfig->serialConfig.speed = baud;
   oledConfig->serialConfig.cr1 =0;
   oledConfig->serialConfig.cr2 = USART_CR2_STOP1_BITS | USART_CR2_LINEN;
   oledConfig->serialConfig.cr3 =0;
-  
 }
 
 void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
@@ -86,7 +86,8 @@ void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_
   oledHardReset (oledConfig);
 
 
-  oledPreInit (oledConfig, 9600);
+  oledPreInit (oledConfig,
+	       oledConfig->deviceType == TERM_VT100 ? baud : 9600);
   oledConfig->serial = (BaseSequentialStream *) oled;
   chMtxInit(&(oledConfig->omutex));
   sdStart(oled, &(oledConfig->serialConfig));
@@ -114,7 +115,7 @@ void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_
   oledScreenSaverTimout (oledConfig, 20000);
   
   // use greater speed
-  if (baud != 9600) 
+  if ((oledConfig->deviceType != TERM_VT100) && (baud != 9600))
     oledSetBaud (oledConfig, baud);
 }
 
@@ -210,9 +211,12 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
   struct SerialDriver *sd = (struct SerialDriver *) oledConfig->serial;
 
   RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
 
-  if (ISPIC(oledConfig)) {
+  
+
+  
+  switch  (oledConfig->deviceType) {
+  case PICASO: {
     uint8_t baudCode ;
     switch (baud) {
     case 110    : baudCode = 0x0;  actualbaudRate = 110; break;
@@ -240,7 +244,10 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
     oledConfig->serialConfig.speed = actualbaudRate; 
     // send command, do not wait response
     OLED_KOF (KOF_NONE, "%c%c%c%c", 0x0, 0x26, 0x0, baudCode);
-  } else {
+  }
+    break;
+
+  case GOLDELOX: {
     uint16_t baudCode ;
     switch (baud) {
     case 110    : baudCode =  27271;  	actualbaudRate = 110; break;
@@ -269,6 +276,12 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
     // send command, do not wait response
     OLED_KOF (KOF_NONE, "%c%c%c%c", 0x0, 0x0b, twoBytesFromWord(baudCode));
   }
+    break;
+
+  case TERM_VT100:
+    oledConfig->serialConfig.speed = baud;
+    break;
+  }
 
   chThdSleepMilliseconds(10);
   sdStop (sd);
@@ -276,6 +289,7 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
 
   // wait 150ms, and wait for response at new speed
   chThdSleepMilliseconds(150);
+  RET_UNLESS_4DSYS(oledConfig);
   oledReceiveAnswer (oledConfig, 1, __FUNCTION__, __LINE__);
 }
 
