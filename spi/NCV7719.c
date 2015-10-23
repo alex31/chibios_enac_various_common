@@ -113,10 +113,6 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const NCV7719_Options opt
     }
   }
 
-  // in one pass : should be tested
-  //spiExchange (driver, sizeof(SpiData), spiCmd.bytes , spiStatus.bytes);
-
-  //  const halrtcnt_t firstTransactionTS = halGetCounterValue();
   if (hb1.spiCmd.cmd[0] != hb1.lastSpiCmd[0]) {
     hb1.lastSpiCmd[0] = hb1.spiCmd.cmd[0];
     if (fromIsr) {
@@ -222,29 +218,32 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_setBridge (const uint32_t bridgeIndex
 {
   HalfBridgeNCV7719_Status st=0;
   const uint32_t idx = bridgeIndex-1;
+  const  NCV7719_Options fromIsr = options & NCV7719_FromIsr;
+  const  NCV7719_Options doSpiExchange = options & NCV7719_DoSpiExchange;
+
   if (idx > 3)
     return NCV7719_IndexErrorMask;
 
-  const  NCV7719_Options fromIsr = options & NCV7719_FromIsr;
+
   const uint32_t index1 = (idx*2)+1;
   const uint32_t index2 = index1+1;
 
   switch (cmd) {
   case NCV7719_Bridge_HighZ  :
     HalfBridgeNCV7719_setHalfBridge (index1, NCV7719_HighZ, fromIsr);
-    st=HalfBridgeNCV7719_setHalfBridge (index2, NCV7719_HighZ, fromIsr | NCV7719_DoSpiExchange);
+    st=HalfBridgeNCV7719_setHalfBridge (index2, NCV7719_HighZ, fromIsr | doSpiExchange);
     break;
   case NCV7719_Bridge_Short  :
     HalfBridgeNCV7719_setHalfBridge (index1,  NCV7719_Low, fromIsr);
-    st=HalfBridgeNCV7719_setHalfBridge (index2,  NCV7719_Low, fromIsr | NCV7719_DoSpiExchange);
+    st=HalfBridgeNCV7719_setHalfBridge (index2,  NCV7719_Low, fromIsr | doSpiExchange);
     break;
   case NCV7719_Forward  :
     HalfBridgeNCV7719_setHalfBridge (index1, NCV7719_Low, fromIsr);
-    st=HalfBridgeNCV7719_setHalfBridge (index2, NCV7719_High, fromIsr | NCV7719_DoSpiExchange);
+    st=HalfBridgeNCV7719_setHalfBridge (index2, NCV7719_High, fromIsr | doSpiExchange);
     break;
   case NCV7719_Reverse  :
     HalfBridgeNCV7719_setHalfBridge (index1, NCV7719_High, fromIsr);
-    st=HalfBridgeNCV7719_setHalfBridge (index2, NCV7719_Low, fromIsr | NCV7719_DoSpiExchange);
+    st=HalfBridgeNCV7719_setHalfBridge (index2, NCV7719_Low, fromIsr | doSpiExchange);
     break;
   }
 
