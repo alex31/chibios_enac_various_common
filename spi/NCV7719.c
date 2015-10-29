@@ -289,11 +289,21 @@ static void asyncTransfertCompleted (SPIDriver *spip)
 static void gptcb(GPTDriver *gptp)
 {
   (void) gptp;
-
-  if (hb1.periphCfg->driver->state != SPI_READY)
-    return;
   
+  if ((hb1.spiCmd.cmd[0] == hb1.lastSpiCmd[0]) && (hb1.spiCmd.cmd[1] == hb1.lastSpiCmd[1]))
+    return;
+
   SPIDriver *driver = hb1.periphCfg->driver;
+  if (driver->state != SPI_READY) {
+    // if not ready, reschedule
+    if (hb1.periphCfg->timer->state == GPT_READY)  {
+      gptStartOneShotI(hb1.periphCfg->timer, 10); // wait 10 microsecond 
+    }
+    return;
+  }
+
+
+
   chSysLockFromIsr();
   spiSelectI (driver);
   
