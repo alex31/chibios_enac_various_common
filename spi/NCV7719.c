@@ -77,6 +77,10 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const NCV7719_Options opt
   // reset SSR, HDSEL acordingly, no [underload, overvoltage] shutdown
   hb1.spiCmd.cmd[0] = NCV7719_OVER_VOLTAGE_LOCKOUT;
   hb1.spiCmd.cmd[1] = NCV7719_OVER_VOLTAGE_LOCKOUT | NCV7719_CHANNELGROUP_SELECT;
+  if (options & NCV7719_ResetStatusReg) {
+    hb1.spiCmd.cmd[0] |= NCV7719_RESET_REGISTER;
+    hb1.spiCmd.cmd[1] |= NCV7719_RESET_REGISTER;
+  }
   
   // set bits for enabling half bridge and output level
   // channel 1-6
@@ -270,8 +274,8 @@ static void asyncTransfertCompleted (SPIDriver *spip)
      NCV7719_UnderloadMask |
      NCV7719_UnderOverVoltageMask | 
      NCV7719_OverCurrentMask | 
-     NCV7719_ThermalShutdownMask |
-     allZero | allOne);
+     NCV7719_ThermalShutdownMask);
+  hb1.statusBitField |= (allZero | allOne);
 
   chSysLockFromIsr ();
   spiUnselectI(spip); 
@@ -279,8 +283,8 @@ static void asyncTransfertCompleted (SPIDriver *spip)
   if ((hb1.spiCmd.cmd[1] != hb1.lastSpiCmd[1]) ||
       (hb1.spiCmd.cmd[0] != hb1.lastSpiCmd[0])) {
     if (hb1.periphCfg->timer->state == GPT_READY)  {
-	gptStartOneShotI(hb1.periphCfg->timer, 5); // 5 microsecond with enable at HIGH
-      }
+      gptStartOneShotI(hb1.periphCfg->timer, 5); // 5 microsecond with enable at HIGH
+    }
   }
   chSysUnlockFromIsr ();
 }

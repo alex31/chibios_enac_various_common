@@ -12,7 +12,8 @@ typedef enum  {NCV7719_Bridge_HighZ, NCV7719_Bridge_Short, NCV7719_Forward, NCV7
 typedef enum  {
   NCV7719_noOptions=0,
   NCV7719_FromIsr=1<<0,
-  NCV7719_DoSpiExchange=1<<1
+  NCV7719_DoSpiExchange=1<<1,
+  NCV7719_ResetStatusReg=1<<2
 }  NCV7719_Options;
 
 typedef enum {
@@ -39,7 +40,7 @@ typedef struct  {
   uint8_t         alternateFunction;
 } SpiPeriphConfig ;
 
-typedef union  {
+typedef  union  {
   uint16_t cmd[2];
   uint16_t status[2];
   uint8_t  bytes[4];
