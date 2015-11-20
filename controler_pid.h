@@ -13,9 +13,9 @@ typedef struct
   float dispKi;				//   format for display purposes
   float dispKd;				//
   
-  float kp;                  // * (P)roportional Tuning Parameter
-  float ki;                  // * (I)ntegral Tuning Parameter
-  float kd;                  // * (D)erivative Tuning Parameter
+  volatile float kp;                  // * (P)roportional Tuning Parameter
+  volatile float ki;                  // * (I)ntegral Tuning Parameter
+  volatile float kd;                  // * (D)erivative Tuning Parameter
   
   PidDirection controllerDirection;
   
@@ -24,11 +24,11 @@ typedef struct
   float *mySetpoint;           //   PID, freeing the user from having to constantly tell us
   //   what these values are.  with pointers we'll just know.
   
-   halrtcnt_t  lastTime;
-  float ITerm, lastInput;
+  volatile halrtcnt_t  lastTime;
+  volatile float ITerm, lastInput;
   
-  halrtcnt_t SampleTime;
-  float outMin, outMax;
+  volatile halrtcnt_t SampleTime;
+  volatile float outMin, outMax;
   bool inAuto;
 } ControlerPid;
 
@@ -50,7 +50,7 @@ void  pidSetOutputLimits(ControlerPid* cpid, float Min, float Max);
 //clamps the output to a specific range. -100 .. 100  by default, but
 //it's likely the user will want to change this depending on
 //the application
-
+void  pidSetOutputLimitsRatio(ControlerPid* cpid, float ratio);
 
 
 //available but not commonly used functions ********************************************************

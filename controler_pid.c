@@ -144,6 +144,12 @@ void pidSetOutputLimits(ControlerPid* cpid, float Min, float Max)
    }
 }
 
+void  pidSetOutputLimitsRatio(ControlerPid* cpid, float ratio)
+{
+  pidSetOutputLimits (cpid, cpid->outMin*ratio,  cpid->outMax*ratio);
+}
+
+
 /* SetMode(...)****************************************************************
  * Allows the controller Mode to be set to manual (0) or Automatic (non-zero)
  * when the transition from manual to auto occurs, the controller is
