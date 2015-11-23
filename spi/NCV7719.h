@@ -60,7 +60,7 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_setHalfBridge (const uint32_t outInde
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_toggleHalfBridge (const uint32_t outIndex, 
 							     const NCV7719_Options options);
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_getStatus (void);
-HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange (const NCV7719_Options options);
+void HalfBridgeNCV7719_spiExchange (const NCV7719_Options options);
 
 HalfBridgeNCV7719_Status HalfBridgeNCV7719_setBridge (const uint32_t bridgeIndex, // 1-4 
 						      const BridgeNCV7719_Cmd cmd,

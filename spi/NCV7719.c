@@ -58,13 +58,15 @@ static const GPTConfig gptcfg = {
 
 static void asyncTransfertCompleted (SPIDriver *spip);
 
-HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const NCV7719_Options options)
+void HalfBridgeNCV7719_spiExchange(const NCV7719_Options options)
 {
   SPIDriver *driver = hb1.periphCfg->driver;
   const bool fromIsr = options & NCV7719_FromIsr;
   
-  if (hb1.periphCfg->driver->state != SPI_READY)
-    return NCV7719_AsyncDriverNotReady;
+  if (hb1.periphCfg->driver->state != SPI_READY) {
+    hb1.statusBitField |= NCV7719_AsyncDriverNotReady;
+    return;
+  }
 
    if (fromIsr) {
       chSysLockFromIsr();
@@ -119,7 +121,6 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const NCV7719_Options opt
 
   if (hb1.spiCmd[0] != hb1.lastSpiCmd[0]) {
     hb1.lastSpiCmd[0] = hb1.spiCmd[0];
-    hb1.spiStatus[0] = 0;
     if (fromIsr) {
       chSysLockFromIsr();
       spiStartExchangeI (driver, 1, &hb1.spiCmd[0] , &hb1.spiStatus[0]);
@@ -129,7 +130,6 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const NCV7719_Options opt
     }
   } else if (hb1.spiCmd[1] != hb1.lastSpiCmd[1]) {
     hb1.lastSpiCmd[1] = hb1.spiCmd[1];
-    hb1.spiStatus[1] = 1;
     if (fromIsr) {
       chSysLockFromIsr();
       spiStartExchangeI (driver, 1, &hb1.spiCmd[1] , &hb1.spiStatus[1]);
@@ -139,7 +139,6 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const NCV7719_Options opt
     }
   } 
   
-  return hb1.statusBitField;
 }
 
 void HalfBridgeNCV7719_init (void)
@@ -303,6 +302,7 @@ static void gptcb(GPTDriver *gptp)
   SPIDriver *driver = hb1.periphCfg->driver;
   if (driver->state != SPI_READY) {
     // if not ready, reschedule
+    hb1.statusBitField |= NCV7719_AsyncDriverNotReady;
     if (hb1.periphCfg->timer->state == GPT_READY)  {
       gptStartOneShotI(hb1.periphCfg->timer, 10); // wait 10 microsecond 
     }
@@ -316,10 +316,8 @@ static void gptcb(GPTDriver *gptp)
   
   if (hb1.spiCmd[0] != hb1.lastSpiCmd[0]) {
     hb1.lastSpiCmd[0] = hb1.spiCmd[0];
-    hb1.spiStatus[0] = 1;
     spiStartExchangeI (driver, 1, &hb1.spiCmd[0] , &hb1.spiStatus[0]);
   } else if (hb1.spiCmd[1] != hb1.lastSpiCmd[1]) {
-    hb1.spiStatus[1] = 1;
     hb1.lastSpiCmd[1] = hb1.spiCmd[1];
     spiStartExchangeI (driver, 1, &hb1.spiCmd[1] , &hb1.spiStatus[1]);
   }
