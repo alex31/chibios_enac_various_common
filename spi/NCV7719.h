@@ -40,12 +40,6 @@ typedef struct  {
   uint8_t         alternateFunction;
 } SpiPeriphConfig ;
 
-typedef  union  {
-  uint16_t cmd[2];
-  uint16_t status[2];
-  uint8_t  bytes[4];
-} SpiData;
-
 
 typedef struct {
   SPIConfig *spiCfg;
@@ -53,8 +47,8 @@ typedef struct {
   volatile uint32_t  statusBitField;
   uint16_t  lastSpiCmd[2];
   uint16_t  cmdBitField;
-  SpiData   spiCmd;
-  SpiData   spiStatus;
+  uint16_t   spiCmd[2];
+  uint16_t   spiStatus[2];
 } HalfBridgeNCV7719;
 
 #include "NCV7719_conf.h"

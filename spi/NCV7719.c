@@ -75,11 +75,11 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const NCV7719_Options opt
    }
   
   // reset SSR, HDSEL acordingly, no [underload, overvoltage] shutdown
-  hb1.spiCmd.cmd[0] = NCV7719_OVER_VOLTAGE_LOCKOUT;
-  hb1.spiCmd.cmd[1] = NCV7719_OVER_VOLTAGE_LOCKOUT | NCV7719_CHANNELGROUP_SELECT;
+  hb1.spiCmd[0] = NCV7719_OVER_VOLTAGE_LOCKOUT;
+  hb1.spiCmd[1] = NCV7719_OVER_VOLTAGE_LOCKOUT | NCV7719_CHANNELGROUP_SELECT;
   if (options & NCV7719_ResetStatusReg) {
-    hb1.spiCmd.cmd[0] |= NCV7719_RESET_REGISTER;
-    hb1.spiCmd.cmd[1] |= NCV7719_RESET_REGISTER;
+    hb1.spiCmd[0] |= NCV7719_RESET_REGISTER;
+    hb1.spiCmd[1] |= NCV7719_RESET_REGISTER;
   }
   
   // set bits for enabling half bridge and output level
@@ -90,11 +90,11 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const NCV7719_Options opt
     case NCV7719_HighZ: 
       break;
     case NCV7719_Low: 
-      hb1.spiCmd.cmd[0] |= (1 << (i+7)); // enabled
+      hb1.spiCmd[0] |= (1 << (i+7)); // enabled
       break;
     case NCV7719_High: 
-      hb1.spiCmd.cmd[0] |= (1 << (i+7)); // enabled
-      hb1.spiCmd.cmd[0] |= (1 << (i+1)); // output = high
+      hb1.spiCmd[0] |= (1 << (i+7)); // enabled
+      hb1.spiCmd[0] |= (1 << (i+1)); // output = high
       break;
     default: break;
     }
@@ -107,33 +107,35 @@ HalfBridgeNCV7719_Status HalfBridgeNCV7719_spiExchange(const NCV7719_Options opt
     case NCV7719_HighZ:
       break;
     case NCV7719_Low:
-      hb1.spiCmd.cmd[1] |= 1 << (i+1); // enabled
+      hb1.spiCmd[1] |= 1 << (i+1); // enabled
       break;
     case NCV7719_High:
-      hb1.spiCmd.cmd[1] |= 1 << (i+1); // enabled
-      hb1.spiCmd.cmd[1] |= 1 << (i-5); // output = high
+      hb1.spiCmd[1] |= 1 << (i+1); // enabled
+      hb1.spiCmd[1] |= 1 << (i-5); // output = high
       break;
     default: break;
     }
   }
 
-  if (hb1.spiCmd.cmd[0] != hb1.lastSpiCmd[0]) {
-    hb1.lastSpiCmd[0] = hb1.spiCmd.cmd[0];
+  if (hb1.spiCmd[0] != hb1.lastSpiCmd[0]) {
+    hb1.lastSpiCmd[0] = hb1.spiCmd[0];
+    hb1.spiStatus[0] = 0;
     if (fromIsr) {
       chSysLockFromIsr();
-      spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[0] , &hb1.spiStatus.bytes[0]);
+      spiStartExchangeI (driver, 1, &hb1.spiCmd[0] , &hb1.spiStatus[0]);
       chSysUnlockFromIsr();
     } else {
-      spiStartExchange (driver, 1, &hb1.spiCmd.bytes[0] , &hb1.spiStatus.bytes[0]);
+      spiStartExchange (driver, 1, &hb1.spiCmd[0] , &hb1.spiStatus[0]);
     }
-  } else if (hb1.spiCmd.cmd[1] != hb1.lastSpiCmd[1]) {
-    hb1.lastSpiCmd[1] = hb1.spiCmd.cmd[1];
+  } else if (hb1.spiCmd[1] != hb1.lastSpiCmd[1]) {
+    hb1.lastSpiCmd[1] = hb1.spiCmd[1];
+    hb1.spiStatus[1] = 1;
     if (fromIsr) {
       chSysLockFromIsr();
-      spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[2] , &hb1.spiStatus.bytes[2]);
+      spiStartExchangeI (driver, 1, &hb1.spiCmd[1] , &hb1.spiStatus[1]);
       chSysUnlockFromIsr();
     } else {
-      spiStartExchange (driver, 1, &hb1.spiCmd.bytes[2] , &hb1.spiStatus.bytes[2]);
+      spiStartExchange (driver, 1, &hb1.spiCmd[1] , &hb1.spiStatus[1]);
     }
   } 
   
@@ -147,6 +149,7 @@ void HalfBridgeNCV7719_init (void)
   hb1.lastSpiCmd[0] =0xffff;
   hb1.lastSpiCmd[1] =0xffff;
   hb1.spiCfg->end_cb = &asyncTransfertCompleted;
+  hb1.spiStatus[0] = hb1.spiStatus[1] = 0;
   
   // disable chip output
   palSetPad (hb1.spiCfg->ssport, hb1.spiCfg->sspad);
@@ -260,7 +263,7 @@ static void asyncTransfertCompleted (SPIDriver *spip)
 
   
   // we combine status error of both groups and eliminate channels output and config
-  const uint16_t outAndConfBits = (hb1.spiStatus.status[0] | hb1.spiStatus.status[1]) & 
+  const uint16_t outAndConfBits = (hb1.spiStatus[0] | hb1.spiStatus[1]) & 
     0b0001111111111110;
 
   const  HalfBridgeNCV7719_Status allZero = 
@@ -268,7 +271,7 @@ static void asyncTransfertCompleted (SPIDriver *spip)
   const  HalfBridgeNCV7719_Status allOne = 
     (outAndConfBits == 0b0001111111111110) ? NCV7719_StatusAllOneMask : 0;
 
-  hb1.statusBitField = (hb1.spiStatus.status[0] | hb1.spiStatus.status[1]) &
+  hb1.statusBitField = (hb1.spiStatus[0] | hb1.spiStatus[1]) &
     (NCV7719_ThermalWarningMask |
      NCV7719_IndexErrorMask |
      NCV7719_UnderloadMask |
@@ -280,8 +283,8 @@ static void asyncTransfertCompleted (SPIDriver *spip)
   chSysLockFromIsr ();
   spiUnselectI(spip); 
   // if there is another word to transfert
-  if ((hb1.spiCmd.cmd[1] != hb1.lastSpiCmd[1]) ||
-      (hb1.spiCmd.cmd[0] != hb1.lastSpiCmd[0])) {
+  if ((hb1.spiCmd[1] != hb1.lastSpiCmd[1]) ||
+      (hb1.spiCmd[0] != hb1.lastSpiCmd[0])) {
     if (hb1.periphCfg->timer->state == GPT_READY)  {
       gptStartOneShotI(hb1.periphCfg->timer, 5); // 5 microsecond with enable at HIGH
     }
@@ -294,7 +297,7 @@ static void gptcb(GPTDriver *gptp)
 {
   (void) gptp;
   
-  if ((hb1.spiCmd.cmd[0] == hb1.lastSpiCmd[0]) && (hb1.spiCmd.cmd[1] == hb1.lastSpiCmd[1]))
+  if ((hb1.spiCmd[0] == hb1.lastSpiCmd[0]) && (hb1.spiCmd[1] == hb1.lastSpiCmd[1]))
     return;
 
   SPIDriver *driver = hb1.periphCfg->driver;
@@ -311,12 +314,14 @@ static void gptcb(GPTDriver *gptp)
   chSysLockFromIsr();
   spiSelectI (driver);
   
-  if (hb1.spiCmd.cmd[0] != hb1.lastSpiCmd[0]) {
-    hb1.lastSpiCmd[0] = hb1.spiCmd.cmd[0];
-    spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[0] , &hb1.spiStatus.bytes[0]);
-  } else if (hb1.spiCmd.cmd[1] != hb1.lastSpiCmd[1]) {
-    hb1.lastSpiCmd[1] = hb1.spiCmd.cmd[1];
-    spiStartExchangeI (driver, 1, &hb1.spiCmd.bytes[2] , &hb1.spiStatus.bytes[2]);
+  if (hb1.spiCmd[0] != hb1.lastSpiCmd[0]) {
+    hb1.lastSpiCmd[0] = hb1.spiCmd[0];
+    hb1.spiStatus[0] = 1;
+    spiStartExchangeI (driver, 1, &hb1.spiCmd[0] , &hb1.spiStatus[0]);
+  } else if (hb1.spiCmd[1] != hb1.lastSpiCmd[1]) {
+    hb1.spiStatus[1] = 1;
+    hb1.lastSpiCmd[1] = hb1.spiCmd[1];
+    spiStartExchangeI (driver, 1, &hb1.spiCmd[1] , &hb1.spiStatus[1]);
   }
   chSysUnlockFromIsr();
 }
