@@ -79,6 +79,20 @@ static inline uint32_t RotRnb(const uint32_t x, const uint32_t shift, const uint
   return (x >> shift) | (x << (nbits - shift));
 }
 
+static inline uint32_t RotLnbOfst(const uint32_t x, const uint32_t shift, const uint32_t nbits,
+				  const uint32_t ofst)  {
+  const uint32_t ar = RotR(x, ofst);
+  const uint32_t ar2 = (ar << shift) | (ar >> (nbits - shift));
+  return RotL(ar2, ofst);
+};
+
+static inline uint32_t RotRnbOfst(const uint32_t x, const uint32_t shift, const uint32_t nbits,
+				  const uint32_t ofst)  {
+  const uint32_t ar = RotR(x, ofst);
+  const uint32_t ar2 =  (ar >> shift) | (ar << (nbits - shift));
+  return RotL(ar2, ofst);
+}
+
 static inline halrtcnt_t rtcntDiff (const halrtcnt_t start, const  halrtcnt_t stop) 
 {
   if (stop > start) 

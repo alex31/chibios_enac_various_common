@@ -177,8 +177,8 @@
 
 #ifdef USE_PRINTF
 #include <ch.h>
-#include <printf.h>
-#include <globalVar.h>
+#include "printf.h"
+#include "globalVar.h"
 # define PRINT_MSG(fmt, args...) chprintf(chp, fmt, ## args)
 # define ERROR_MSG(fmt, args...) chprintf(chp, fmt, ## args)
 #else
