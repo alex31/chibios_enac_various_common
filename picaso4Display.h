@@ -45,6 +45,8 @@ void oledSetTextSizeMultiplier (OledConfig *oledConfig, uint8_t xmul, uint8_t ym
 void oledSetScreenOrientation (OledConfig *oledConfig, enum OledScreenOrientation orientation);
 void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y);
 void oledGotoX (OledConfig *oledConfig, uint8_t x);
+uint8_t oledGetX  (const OledConfig *oledConfig);
+uint8_t oledGetY  (const OledConfig *oledConfig);
 void oledGotoNextLine (OledConfig *oledConfig);
 void oledClearScreen (OledConfig *oledConfig);
 bool_t oledInitSdCard (OledConfig *oledConfig);

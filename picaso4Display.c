@@ -46,7 +46,7 @@ static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 #define RET_UNLESS_GOLDELOX(oledCfg)  {if (oledCfg->deviceType != GOLDELOX) return;}
 #define ISPIC(oledCfg)  (oledCfg->deviceType == PICASO) 
 
-static bool_t oledIsInitialised (OledConfig *oledConfig) ;
+static bool_t oledIsInitialised (const OledConfig *oledConfig) ;
 static void oledSetBaud (OledConfig *oledConfig, uint32_t baud);
 static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout);
 static void oledPreInit (OledConfig *oledConfig, uint32_t baud);
@@ -156,7 +156,7 @@ void oledHardReset (OledConfig *oledConfig)
 }
 
 
-bool_t oledIsInitialised (OledConfig *oledConfig)
+bool_t oledIsInitialised (const OledConfig *oledConfig)
 {
   return (oledConfig->serial != NULL);
 }
@@ -310,6 +310,11 @@ void oledPrintFmt (OledConfig *oledConfig, const char *fmt, ...)
   if (buffer[0] == 0)
     return;
 
+  if (buffer[1] == 0) {
+    oledPrintBuffer (oledConfig, buffer);
+    return;
+  }
+  
   const char* endPtr = &(buffer[strnlen(buffer, sizeof (buffer)) -1]);
   // replace escape color sequence by color command for respective backend
   // ESC c 0 à 9 : couleur index of background and foreground
@@ -545,6 +550,22 @@ void oledGotoX (OledConfig *oledConfig, uint8_t x)
   if (oledConfig->deviceType == TERM_VT100) {
     sendVt100Seq (oledConfig->serial, "%d;%dH", oledConfig->curYpos+1,x+1);
   }
+}
+
+uint8_t oledGetX  (const OledConfig *oledConfig)
+{  
+  if (oledIsInitialised(oledConfig) == FALSE)
+    return 0;
+  
+  return oledConfig->curXpos;
+}
+
+uint8_t oledGetY  (const OledConfig *oledConfig)
+{  
+  if (oledIsInitialised(oledConfig) == FALSE)
+    return 0;
+  
+  return oledConfig->curXpos;
 }
 
 void oledGotoNextLine (OledConfig *oledConfig)
