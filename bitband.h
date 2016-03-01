@@ -4,15 +4,18 @@
  *
  * @brief Bit-banding utility functions
  */
-#ifndef _BITBAND_H_
-#define _BITBAND_H_
+#pragma once
 
 #include <ch.h>
 
 #ifdef __cplusplus
   extern "C" {
 #endif
- 
+
+
+#ifdef STM32F746xx
+ #error "STM32F7  is not bitbanding capable"
+#endif
 
 static inline volatile uint32_t* __bb_addr(volatile void* const,
                                          const uint32_t,
@@ -148,5 +151,3 @@ static inline volatile uint32_t* __bb_addr(volatile void * const address,
   }
 #endif
  
-
-#endif  /* _BITBAND_H_ */

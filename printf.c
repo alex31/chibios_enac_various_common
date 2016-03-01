@@ -29,10 +29,16 @@
  * @{
  */
 
+
 #include <stdarg.h>
 
 #include "ch.h"
 #include "printf.h"
+
+#if (CH_KERNEL_MAJOR != 2)
+typedef bool            bool_t; 
+#endif
+
 
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 100000

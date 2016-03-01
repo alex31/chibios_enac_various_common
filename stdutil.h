@@ -4,7 +4,7 @@
 #include "ch.h"
 #include "hal.h"
 
-#if WSTRICT_CONVERSION
+#ifdef WSTRICT_CONVERSION
 #pragma GCC diagnostic warning "-Wconversion"
 #endif
 
@@ -55,6 +55,10 @@
 
 #define SWAP_ENDIAN16(x) ((int16_t) ((((x) & 0xff) << 8) | (((x) & 0xff00) >> 8)))
 
+#define REINTERPRET_CAST(type, val) ({_Static_assert(sizeof(val) <= sizeof(type), \
+						    "sizeof (type) is too small");  \
+				       *((type *) (&val));}
+  
 /* #define RotL(x,shift) ((x << shift) | (x >> (sizeof(x) - shift))) */
 /* #define RotR(x,shift) ((x >> shift) | (x << (sizeof(x) - shift))) */
 
@@ -93,6 +97,7 @@ static inline uint32_t RotRnbOfst(const uint32_t x, const uint32_t shift, const 
   return RotL(ar2, ofst);
 }
 
+#if (CH_KERNEL_MAJOR == 2)
 static inline halrtcnt_t rtcntDiff (const halrtcnt_t start, const  halrtcnt_t stop) 
 {
   if (stop > start) 
@@ -122,7 +127,38 @@ static inline halrtcnt_t halCounterDiffNow (const halrtcnt_t begin)
 {
   return halCounterDiff (begin, halGetCounterValue());
 }
+#else // (CH_KERNEL_MAJOR > 2)
+static inline rtcnt_t rtcntDiff (const rtcnt_t start, const  rtcnt_t stop) 
+{
+  if (stop > start) 
+    return stop - start;
+  else
+    return start - stop; 
+}
 
+
+static inline bool isTimerExpiredAndRearm (rtcnt_t *timer, const rtcnt_t interval)
+{
+  if (chSysIsCounterWithinX (chSysGetRealtimeCounterX(), *timer, *timer+interval)) {
+    return false;
+  } else {
+    *timer =  chSysGetRealtimeCounterX();
+    return true;
+  }
+}
+
+
+static inline rtcnt_t halCounterDiff (const rtcnt_t begin, const rtcnt_t end)
+{
+  return   (end > begin) ? end-begin : (UINT32_MAX-begin) + end;
+}
+
+static inline rtcnt_t halCounterDiffNow (const rtcnt_t begin)
+{
+  return halCounterDiff (begin, chSysGetRealtimeCounterX());
+}
+
+#endif // (CH_KERNEL_MAJOR == 2)
 
 // optimised counting bits routine from https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#Other-Builtins
 /*
@@ -171,7 +207,8 @@ extern "C" {
    GPIO_TypeDef	*gpio;
    uint32_t	pin;
 } GpioPin;
- 
+
+#if (CH_KERNEL_MAJOR == 2)
 extern MemoryHeap ccmHeap;
 #if CH_USE_HEAP || CH_HEAP_USE_TLSF
   size_t initHeap (void);
@@ -179,6 +216,16 @@ extern MemoryHeap ccmHeap;
   void *malloc_m (size_t size);
   void free_m(void *p);
 #endif
+#else
+extern memory_heap_t ccmHeap;
+#if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
+  size_t initHeap (void);
+  size_t getHeapFree (void);
+  void *malloc_m (size_t size);
+  void free_m(void *p);
+#endif
+#endif
+
 
 
   float atof_m(const char *s);
@@ -194,7 +241,7 @@ extern MemoryHeap ccmHeap;
 			    const uint32_t denumerator) ;
   float clampToVerify (const char* file, const int line, float l, float h, float v);
   float clampTo (float l, float h, float v);
-  static inline bool_t isInRangef (float x, float min, float max) {
+  static inline bool isInRangef (float x, float min, float max) {
     return (x >= min) && (x <= max);
   }
 

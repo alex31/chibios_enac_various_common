@@ -73,23 +73,53 @@ float powi(int x, int y)
   return p;   
 }   
 
+#if (CH_KERNEL_MAJOR == 2)
 
 #if CH_USE_HEAP || CH_HEAP_USE_TLSF
+
 #ifndef CH_HEAP_SIZE
 #error CH_HEAP_SIZE should be defined if  CH_USE_HEAP or CH_HEAP_USE_TLSF are defined
 #endif
+
 static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(".ccmram"), aligned(8))) ;
+
 #if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
 MemoryHeap ccmHeap;
 #endif
+
+#endif // if CH_USE_HEAP || CH_HEAP_USE_TLSF
+
+#else // (CH_KERNEL_MAJOR > 2)
+
+#if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
+
+#ifndef CH_HEAP_SIZE
+#error CH_HEAP_SIZE should be defined if  CH_CFG_USE_HEAP or CH_HEAP_USE_TLSF are defined
+#endif
+
+static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(".ccmram"), aligned(8))) ;
+#if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
+memory_heap_t ccmHeap;
+#endif
+
+#endif // #if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
+#endif // if (CH_KERNEL_MAJOR == 2)
+
+
+
 size_t initHeap (void)
 {
 #if CH_HEAP_USE_TLSF
   return init_memory_pool(sizeof (ccmHeapBuffer), ccmHeapBuffer);
 #else
   size_t size;
+#if (CH_KERNEL_MAJOR == 2)
   chHeapInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
   chHeapStatus(&ccmHeap, &size);
+#else
+  chHeapObjectInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
+  chHeapStatus(&ccmHeap, &size);
+#endif
   return size;
 #endif
 }
@@ -125,7 +155,7 @@ void free_m(void *p)
   chHeapFree (p);
 #endif
 }
-#endif
+
 
 
 void systemReset(void)
@@ -137,13 +167,27 @@ void systemReset(void)
 /* to lower consumption until reset */
 void systemDeepSleep (void)
 {
-  /*
-    chSysLock();
-    SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-    PWR->CR |= (PWR_CR_PDDS | PWR_CR_LPDS | PWR_CR_CSBF | PWR_CR_CWUF);
-    __WFE();
-  */
-
+#ifdef STM32F746xx
+  /* clear PDDS and LPDS bits */
+  PWR->CR1 &= ~(PWR_CR1_PDDS | PWR_CR1_LPDS);
+  
+  /* set LPDS and clear  */
+  PWR->CR1 |= (PWR_CR1_LPDS | PWR_CR1_CSBF);
+  
+  /* Setup the deepsleep mask */
+  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+  
+  __disable_irq();
+  
+  __SEV();
+  __WFE();
+  __WFE();
+  
+  __enable_irq();
+  
+  /* clear the deepsleep mask */
+  SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+#else
   /* clear PDDS and LPDS bits */
   PWR->CR &= ~(PWR_CR_PDDS | PWR_CR_LPDS);
   
@@ -163,6 +207,7 @@ void systemDeepSleep (void)
   
   /* clear the deepsleep mask */
   SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+#endif
 }
 
 
@@ -218,7 +263,7 @@ uint32_t lerpu32Fraction (const uint32_t x, const uint32_t y, const uint32_t num
 
 float clampToVerify (const char* file, const int line, float l, float h, float v)
 {
-#if (DEBUG && (HAL_USE_SERIAL_USB || defined CONSOLE_DEV_SD))
+#if ((defined (DEBUG) && DEBUG) && (HAL_USE_SERIAL_USB || defined CONSOLE_DEV_SD))
   if ((v<l) || (v>h)) {
     chprintf (chp, "clampToVerify failed : file %s: line %d : %f not in [%f .. %f]\r\n",
 	      file, line, v, l, h);
