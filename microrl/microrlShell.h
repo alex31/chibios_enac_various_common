@@ -66,6 +66,8 @@ typedef struct {
                                                  table.                     */
 } ShellConfig;
 
+#include "portage.h"
+
 #if !defined(__DOXYGEN__)
 extern EventSource shell_terminated;
 #endif
@@ -77,7 +79,7 @@ extern "C" {
   Thread *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio);
   Thread *shellCreateStatic(const ShellConfig *scp, void *wsp,
                             size_t size, tprio_t prio);
-  bool_t shellGetLine(BaseSequentialStream *chp, char *line, unsigned size);
+  bool shellGetLine(BaseSequentialStream *chp, char *line, unsigned size);
   void modeAlternate (void (*) (uint8_t c, uint32_t mode), uint32_t mode);
   void modeShell (void);
 #ifdef __cplusplus

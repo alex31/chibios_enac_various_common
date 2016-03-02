@@ -187,11 +187,12 @@ static ShellCommand local_commands[] = {
  * @retval RDY_OK       terminated by command.
  * @retval RDY_RESET    terminated by reset condition on the I/O channel.
  */
+#if (CH_KERNEL_MAJOR == 2)
 static msg_t shell_thread(void *p) {
   msg_t msg = RDY_OK;
   chpg = ((ShellConfig *)p)->sc_channel;
   scpg = ((ShellConfig *)p)->sc_commands;
-  bool_t readOk=TRUE;
+  bool readOk=TRUE;
 
   
   const ShellCommand *scp = scpg;
@@ -222,7 +223,42 @@ static msg_t shell_thread(void *p) {
   chThdExitS(msg);
   return 0; /* Never executed.*/
 }
+#else // CH_KERNEL_MAJOR > 2
+static THD_FUNCTION(shell_thread, p) {
+  msg_t msg = RDY_OK;
+  chpg = ((ShellConfig *)p)->sc_channel;
+  scpg = ((ShellConfig *)p)->sc_commands;
+  bool readOk=TRUE;
 
+  
+  const ShellCommand *scp = scpg;
+  while (scp->sc_name != NULL) {
+    scp++;
+    numOfCommand++;
+  }
+
+  chRegSetThreadName("Enhanced_shell");
+  printScreen ("ChibiOS/RT Enhanced Shell");
+  while (!chThdShouldTerminate() && readOk) {
+    uint8_t c;
+    if (chSequentialStreamRead(chpg, &c, 1) == 0) {
+       readOk=FALSE;
+    } else {
+      if (altCbParam.altFunc == NULL) {
+	microrl_insert_char (&rl, c);
+      } else {
+	(*altCbParam.altFunc) (c, altCbParam.param);
+      }
+    }
+  }
+  /* Atomically broadcasting the event source and terminating the thread,
+     there is not a chSysUnlock() because the thread terminates upon return.*/
+  printScreen ("exit");
+  chSysLock();
+  chEvtBroadcastI(&shell_terminated);
+  chThdExitS(msg);
+}
+#endif // if (CH_KERNEL_MAJOR == 2)
 /**
  * @brief   Shell manager initialization.
  */
