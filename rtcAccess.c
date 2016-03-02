@@ -1,13 +1,18 @@
 #include "rtcAccess.h"
 #include <ch.h>
 #include <hal.h>
-#include <chrtclib.h>
 #include <stdlib.h>
 
-
-static struct tm utime;
 static uint32_t weekDay (void);
 static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const uint32_t year);
+
+static struct tm utime;
+#if (CH_KERNEL_MAJOR == 2)
+
+#include <chrtclib.h>
+
+
+
 
 void setHour (uint32_t val)
 {
@@ -99,6 +104,148 @@ uint32_t getWeekDay (void)
   rtcGetTimeTm (&RTCD1, &utime);
   return utime.tm_wday;
 }
+
+
+#else // CH_KERNEL_MAJOR > 2
+
+static RTCDateTime rtctime;
+static uint32_t tv_msec;
+
+void setHour (uint32_t val)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+  utime.tm_hour = val-getDstOffset();
+  utime.tm_isdst = 0;
+  rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
+  rtcSetTime (&RTCD1, &rtctime);
+}
+
+void setMinute (uint32_t val)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  utime.tm_min = val;
+  rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
+  rtcSetTime (&RTCD1, &rtctime);
+
+}
+
+void setSecond (uint32_t val)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  utime.tm_sec = val;
+  rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
+  rtcSetTime (&RTCD1, &rtctime);
+
+}
+
+void setYear (uint32_t val)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  utime.tm_year = val-1900;
+  rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
+  rtcSetTime (&RTCD1, &rtctime);
+
+  setWeekDay (weekDay());
+}
+
+void setMonth (uint32_t val)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  utime.tm_mon = val-1;
+  rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
+  rtcSetTime (&RTCD1, &rtctime);
+
+  setWeekDay (weekDay());
+}
+
+void setMonthDay (uint32_t val)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  utime.tm_mday = val;
+  rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
+  rtcSetTime (&RTCD1, &rtctime);
+
+  setWeekDay (weekDay());
+}
+
+void setWeekDay (uint32_t val)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  utime.tm_wday = val;
+  rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
+  rtcSetTime (&RTCD1, &rtctime);
+
+}
+
+uint32_t getHour (void)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  mktime(&utime);
+  
+  return (utime.tm_hour+getDstOffset()) % 24;
+}
+uint32_t getMinute (void)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  return utime.tm_min;
+}
+uint32_t getSecond (void)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  return utime.tm_sec;
+}
+uint32_t getYear (void)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  return utime.tm_year+1900;
+}
+uint32_t getMonth (void)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  return utime.tm_mon+1;
+}
+uint32_t getMonthDay (void)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  return utime.tm_mday;
+}
+uint32_t getWeekDay (void)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  return utime.tm_wday;
+}
+
+
+
+#endif
+
 
 const char *getWeekDayAscii (void)
 {
