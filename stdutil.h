@@ -14,9 +14,17 @@
 //#define TRACE_EEPROM 1
 //#define TRACE_PWM 1
 //#define TRACE_IOMODE 1
-#define ARRAY_LEN(a) (sizeof(a)/sizeof(a[0]))
+
+#if (CH_KERNEL_MAJOR == 2)
 #define WORKING_AREA_ARRAY(s, n, al) stkalign_t s[al] [THD_WA_SIZE(n) \
 						       / sizeof(stkalign_t)]
+#else
+#define THD_WORKING_AREA_ARRAY(s, n, al) stkalign_t s[al] [THD_WORKING_AREA_SIZE(n) \
+						       / sizeof(stkalign_t)]
+#endif
+
+
+#define ARRAY_LEN(a) (sizeof(a)/sizeof(a[0]))
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
 #define MAX(x , y)  (((x) > (y)) ? (x) : (y))
 #define INRANGE(min,max,x) MAX(min,MIN(max,x))
