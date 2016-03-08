@@ -2,7 +2,7 @@
 #define __PICASO4_DISPLAY_H__
 #include <ch.h>
 #include <hal.h>
-
+#include "portage.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,9 +18,9 @@ enum OledScreenOrientation {OLED_LANDSCAPE=0, OLED_LANDSCAPE_REVERSE, OLED_PORTR
 #define COLOR_TABLE_SIZE 11
 
 void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
-	       GPIO_TypeDef *rstGpio, uint32_t rstPin, enum OledConfig_Device dev);
+	        ioportid_t rstGpio, uint32_t rstPin, enum OledConfig_Device dev);
 void   oledHardReset (OledConfig *oledConfig);
-bool_t oledIsCorrectDevice (OledConfig *oledConfig);
+bool oledIsCorrectDevice (OledConfig *oledConfig);
 void oledAcquireLock (OledConfig *oledConfig);
 void oledReleaseLock (OledConfig *oledConfig);
 
@@ -38,7 +38,7 @@ void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t index,
 void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t index, 
 			      uint8_t r, uint8_t g, uint8_t b);
 void oledUseColorIndex (OledConfig *oledConfig, uint8_t index);
-void oledSetTextOpacity (OledConfig *oledConfig, bool_t opaque);
+void oledSetTextOpacity (OledConfig *oledConfig, bool opaque);
 void oledSetTextAttributeMask (OledConfig *oledConfig, enum OledTextAttribute attrib);
 void oledSetTextGap (OledConfig *oledConfig, uint8_t xgap, uint8_t ygap);
 void oledSetTextSizeMultiplier (OledConfig *oledConfig, uint8_t xmul, uint8_t ymul);
@@ -49,7 +49,7 @@ uint8_t oledGetX  (const OledConfig *oledConfig);
 uint8_t oledGetY  (const OledConfig *oledConfig);
 void oledGotoNextLine (OledConfig *oledConfig);
 void oledClearScreen (OledConfig *oledConfig);
-bool_t oledInitSdCard (OledConfig *oledConfig);
+bool oledInitSdCard (OledConfig *oledConfig);
 void oledDrawPoint (OledConfig *oledConfig, const uint16_t x, 
 		    const uint16_t y, const uint8_t index);
 void oledDrawLine (OledConfig *oledConfig, 
@@ -59,8 +59,8 @@ void oledDrawLine (OledConfig *oledConfig,
 void oledDrawRect (OledConfig *oledConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
-		   const bool_t filled, const uint8_t index);
-void oledEnableTouch (OledConfig *oledConfig, bool_t enable);
+		   const bool filled, const uint8_t index);
+void oledEnableTouch (OledConfig *oledConfig, bool enable);
 uint16_t oledTouchGetStatus (OledConfig *oledConfig);
 uint16_t oledTouchGetXcoord (OledConfig *oledConfig);
 uint16_t oledTouchGetYcoord (OledConfig *oledConfig);
@@ -101,7 +101,7 @@ struct OledConfig {
   SerialConfig serialConfig;
   Mutex omutex ;
   BaseSequentialStream *serial;
-  GPIO_TypeDef *rstGpio;
+  ioportid_t rstGpio;
   uint32_t rstPin;
   enum OledConfig_Device deviceType;
   // =============
