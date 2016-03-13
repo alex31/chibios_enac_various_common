@@ -12,6 +12,7 @@ typedef mutex_t Mutex;
 #define CH_USE_DYNAMIC CH_CFG_USE_DYNAMIC
 #define THD_STATE_NAMES CH_STATE_NAMES
 #define THD_WA_SIZE(s) THD_WORKING_AREA_SIZE(s)
+#define WORKING_AREA THD_WORKING_AREA
 
 #define chTimeNow chVTGetSystemTimeX
 #define chThdTerminated chThdTerminatedX

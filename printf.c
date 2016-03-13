@@ -34,14 +34,53 @@
 
 #include "ch.h"
 #include "printf.h"
-
-#if (CH_KERNEL_MAJOR != 2)
-typedef bool            bool_t; 
-#endif
+#include "portage.h"
+#include <stdnoreturn.h>
 
 
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 100000
+
+typedef struct {
+  union  {
+    BaseSequentialStream *chp;
+    size_t size;
+  };
+  char *destBuf;
+  const char *fmt;
+  va_list ap;
+} synchronous_print_arg_t;
+
+static Thread *printThreadPtr = NULL;
+
+static WORKING_AREA(waSerialPrint, 512);
+
+#if (CH_KERNEL_MAJOR != 2)
+static noreturn void serialPrint (void *arg)
+#else
+static msg_t serialPrint (void *arg)
+#endif
+{
+
+  (void)arg;
+  chRegSetThreadName("serialPrint");
+  
+  while (TRUE) { 
+    Thread *sender = chMsgWait ();
+    synchronous_print_arg_t *spat = (synchronous_print_arg_t *) chMsgGet (sender);
+    // do the print
+    if (spat->destBuf == NULL) {
+      directchvprintf(spat->chp, spat->fmt, spat->ap);
+    } else {
+      chvsnprintf (spat->destBuf, spat->size, spat->fmt, spat->ap);
+    }
+    chMsgRelease (sender, RDY_OK);
+  }
+#if (CH_KERNEL_MAJOR == 2)
+  return RDY_OK;
+#endif
+}
+
 
 #if CHPRINTF_USE_FLOAT
 static int intPow(int a, int b)
@@ -53,7 +92,7 @@ static int intPow(int a, int b)
 #endif
 
 
-// return TRUE if space exhausted
+
 
 
 static char *long_to_string_with_divisor(char *p,
@@ -134,7 +173,7 @@ static char *ftoa(char *p, double num, uint32_t precision) {
 static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, const char *fmt, va_list ap) {
   char *p, *s, c, filler;
   int i, precision, width;
-  bool_t is_long, left_align, plus_on_float;
+  bool is_long, left_align, plus_on_float;
   long l;
 #if CHPRINTF_USE_FLOAT
   int fprec=0;
@@ -144,7 +183,8 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
   char tmpbuf[MAX_FILLER + 1];
 #endif
 
-  bool_t _putChar (const char _c)  {
+  // return TRUE if space exhausted
+  bool _putChar (const char _c)  {
     if (buffer != NULL) {
       if (size) {
 	*buffer = _c;
@@ -315,7 +355,7 @@ unsigned_common:
 }
 
 
-void chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
+void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
   _chvsnprintf(NULL, chp, 0, fmt, ap);
 }
 
@@ -332,7 +372,7 @@ void chsnprintf(char *buffer, size_t size, const char *fmt, ...)
   va_end(ap);
 }
 
-void chprintf(BaseSequentialStream *chp, const char *fmt, ...) 
+void directchprintf(BaseSequentialStream *chp, const char *fmt, ...) 
 {
   va_list ap;
 
@@ -340,4 +380,71 @@ void chprintf(BaseSequentialStream *chp, const char *fmt, ...)
   _chvsnprintf(NULL, chp, 0, fmt, ap);
   va_end(ap);
 }
+
+void chprintf(BaseSequentialStream *lchp, const char *fmt, ...) 
+{
+  va_list ap;
+  
+  if (printThreadPtr == NULL)
+    printThreadPtr = chThdCreateStatic(waSerialPrint, sizeof(waSerialPrint), NORMALPRIO+1, serialPrint, NULL);
+
+  va_start(ap, fmt);
+  synchronous_print_arg_t spat = {.chp = lchp,
+				  .destBuf = NULL,
+				  .fmt = fmt,
+				  .ap = ap};
+  
+  chMsgSend (printThreadPtr, (msg_t) &spat);
+  
+  va_end(ap);
+}
+
+void chvprintf(BaseSequentialStream *lchp, const char *fmt, va_list ap)
+{
+  if (printThreadPtr == NULL)
+    printThreadPtr = chThdCreateStatic(waSerialPrint, sizeof(waSerialPrint), NORMALPRIO+1, serialPrint, NULL);
+  
+  synchronous_print_arg_t spat = {.chp = lchp,
+				  .destBuf = NULL,
+				  .fmt = fmt,
+				  .ap = ap};
+  
+  chMsgSend (printThreadPtr, (msg_t) &spat);
+}
+
+
+
+void smchsnprintf(char *buffer, size_t size, const char *fmt, ...)
+{
+  va_list ap;
+  
+  if (printThreadPtr == NULL)
+    printThreadPtr = chThdCreateStatic(waSerialPrint, sizeof(waSerialPrint), NORMALPRIO+1, serialPrint, NULL);
+
+  va_start(ap, fmt);
+  synchronous_print_arg_t spat = {.size = size,
+				  .destBuf = buffer,
+				  .fmt = fmt,
+				  .ap = ap};
+  
+  chMsgSend (printThreadPtr, (msg_t) &spat);
+  
+  va_end(ap);
+}
+  
+
+void smchvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap)
+{
+  if (printThreadPtr == NULL)
+    printThreadPtr = chThdCreateStatic(waSerialPrint, sizeof(waSerialPrint), NORMALPRIO+1, serialPrint, NULL);
+  
+  synchronous_print_arg_t spat = {.size = size,
+				  .destBuf = buffer,
+				  .fmt = fmt,
+				  .ap = ap};
+  
+  chMsgSend (printThreadPtr, (msg_t) &spat);
+}
+
+
 /** @} */

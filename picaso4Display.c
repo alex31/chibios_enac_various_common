@@ -378,7 +378,7 @@ void oledPrintBuffer (OledConfig *oledConfig, const char *buffer)
   break;
   case TERM_VT100 : 
     sendVt100Seq (oledConfig->serial, "%d;%dH",  oledConfig->curYpos+1, oledConfig->curXpos+1);
-    chprintf (oledConfig->serial, buffer);
+    directchprintf (oledConfig->serial, buffer);
   } 
 }
 
@@ -966,7 +966,7 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
   
   // send command
   va_start(ap, fmt);
-  chvprintf(oc->serial, fmt, ap); 
+  directchvprintf(oc->serial, fmt, ap); 
   va_end(ap);
   
   // get response
@@ -1018,5 +1018,5 @@ static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...)
   chvsnprintf(&(buffer[2]), sizeof (buffer)-2, fmt, ap); 
   va_end(ap);
 
-  chprintf (serial, buffer);
+  directchprintf (serial, buffer);
 }
