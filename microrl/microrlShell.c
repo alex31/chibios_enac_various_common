@@ -144,27 +144,53 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
   }
 
   chprintf(chp, "Kernel:       %s\r\n", CH_KERNEL_VERSION);
+#ifdef HAL_VERSION
+  chprintf(chp, "Hal:          %s\r\n", HAL_VERSION);
+#endif
+
 #ifdef CH_COMPILER_NAME
   chprintf(chp, "Compiler:     %s\r\n", CH_COMPILER_NAME);
 #endif
+#ifdef PORT_COMPILER_NAME
+  chprintf(chp, "Compiler:     %s\r\n", PORT_COMPILER_NAME);
+#endif
+
+#ifdef CH_ARCHITECTURE_NAME
   chprintf(chp, "Architecture: %s\r\n", CH_ARCHITECTURE_NAME);
+#endif
+#ifdef PORT_ARCHITECTURE_NAME
+  chprintf(chp, "Architecture: %s\r\n", PORT_ARCHITECTURE_NAME);
+#endif
+  
+
 #ifdef CH_CORE_VARIANT_NAME
   chprintf(chp, "Core Variant: %s\r\n", CH_CORE_VARIANT_NAME);
 #endif
+#ifdef PORT_CORE_VARIANT_NAME
+  chprintf(chp, "Core Variant: %s\r\n", PORT_CORE_VARIANT_NAME);
+#endif
+
 #ifdef CH_PORT_INFO
   chprintf(chp, "Port Info:    %s\r\n", CH_PORT_INFO);
 #endif
+#ifdef PORT_INFO
+  chprintf(chp, "Port Info:    %s\r\n", PORT_INFO);
+#endif
+
 #ifdef PLATFORM_NAME
   chprintf(chp, "Platform:     %s\r\n", PLATFORM_NAME);
 #endif
+
 #ifdef BOARD_NAME
   chprintf(chp, "Board:        %s\r\n", BOARD_NAME);
 #endif
+
 #ifdef __DATE__
 #ifdef __TIME__
   chprintf(chp, "Build time:   %s%s%s\r\n", __DATE__, " - ", __TIME__);
 #endif
 #endif
+
   chprintf(chp, "systime= %lu\r\n", (unsigned long)chTimeNow());
 }
 
