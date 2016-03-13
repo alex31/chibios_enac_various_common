@@ -53,16 +53,7 @@ static int intPow(int a, int b)
 #endif
 
 
-static bool_t writeBufferWithinSize (char **buffer, const char c, size_t *size)
-{
-  if (*size) {
-    **buffer = c;
-    (*buffer)++;
-    return (--(*size) == 0);
-  } else {
-    return TRUE;
-  }
-}
+// return TRUE if space exhausted
 
 
 static char *long_to_string_with_divisor(char *p,
@@ -138,7 +129,9 @@ static char *ftoa(char *p, double num, uint32_t precision) {
  * @param[in] fmt       formatting string
  */
 
-void chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
+
+
+static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, const char *fmt, va_list ap) {
   char *p, *s, c, filler;
   int i, precision, width;
   bool_t is_long, left_align, plus_on_float;
@@ -151,178 +144,33 @@ void chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
   char tmpbuf[MAX_FILLER + 1];
 #endif
 
-  while (TRUE) {
-    c = *fmt++;
-    if (c == 0) {
-      return;
-    }
-    if (c != '%') {
-      chSequentialStreamPut(chp, (uint8_t)c);
-      continue;
-    }
-    p = tmpbuf;
-    s = tmpbuf;
-    left_align = plus_on_float =  FALSE;
-    if (*fmt == '-') {
-      fmt++;
-      left_align = TRUE;
-    } else if (*fmt == '+') {
-      fmt++;
-      plus_on_float = TRUE;
-    }
-    filler = ' ';
-    if (*fmt == '.') {
-      fmt++;
-      filler = '0';
-#if CHPRINTF_USE_FLOAT
-      fprec = intPow (10, (*fmt)-'0');
-#endif
-    }
-    width = 0;
-    while (TRUE) {
-      c = *fmt++;
-      if (c >= '0' && c <= '9')
-        c -= '0';
-      else if (c == '*')
-        c = va_arg(ap, int);
-      else
-        break;
-      width = width * 10 + c;
-    }
-    precision = 0;
-    if (c == '.') {
-      while (TRUE) {
-        c = *fmt++;
-        if (c >= '0' && c <= '9') {
-          c -= '0';
-#if CHPRINTF_USE_FLOAT
-	  fprec = intPow (10, c);
-#endif
-	}
-        else if (c == '*')
-          c = va_arg(ap, int);
-        else
-          break;
-        precision *= 10;
-        precision += c;
+  bool_t _putChar (const char _c)  {
+    if (buffer != NULL) {
+      if (size) {
+	*buffer = _c;
+	buffer++;
+	return (--size == 0);
+      } else {
+	return TRUE;
       }
+    } else if (chp != NULL) {
+      chSequentialStreamPut(chp, _c);
+      return FALSE;
     }
-    /* Long modifier.*/
-    if (c == 'l' || c == 'L') {
-      is_long = TRUE;
-      if (*fmt)
-        c = *fmt++;
-    }
-    else
-      is_long = (c >= 'A') && (c <= 'Z');
-
-    /* Command decoding.*/
-    switch (c) {
-    case 'c':
-      filler = ' ';
-      *p++ = va_arg(ap, int);
-      break;
-    case 's':
-      filler = ' ';
-      if ((s = va_arg(ap, char *)) == 0)
-        s = "(null)";
-      if (precision == 0)
-        precision = 32767;
-      for (p = s; *p && (--precision >= 0); p++)
-        ;
-      break;
-    case 'D':
-    case 'd':
-      if (is_long)
-        l = va_arg(ap, long);
-      else
-        l = va_arg(ap, int);
-      if (l < 0) {
-        *p++ = '-';
-        l = -l;
-      }
-      p = ltoa(p, l, 10);
-      break;
-#if CHPRINTF_USE_FLOAT
-    case 'f':
-      d = (double) va_arg(ap, double);
-      if (d < 0) {
-        *p++ = '-';
-        d = -d;
-      } else if (plus_on_float) {
-	*p++ = '+';
-      }
-      p = ftoa(p, d, fprec);
-      break;
-#endif
-    case 'X':
-    case 'x':
-      c = 16;
-      goto unsigned_common;
-    case 'U':
-    case 'u':
-      c = 10;
-      goto unsigned_common;
-    case 'O':
-    case 'o':
-      c = 8;
-unsigned_common:
-      if (is_long)
-        l = va_arg(ap, long);
-      else
-        l = va_arg(ap, int);
-      p = ltoa(p, l, c);
-      break;
-    default:
-      *p++ = c;
-      break;
-    }
-    i = (int)(p - s);
-    if ((width -= i) < 0)
-      width = 0;
-    if (left_align == FALSE)
-      width = -width;
-    if (width < 0) {
-      if (*s == '-' && filler == '0') {
-        chSequentialStreamPut(chp, (uint8_t)*s++);
-        i--;
-      }
-      do
-        chSequentialStreamPut(chp, (uint8_t)filler);
-      while (++width != 0);
-    }
-    while (--i >= 0)
-      chSequentialStreamPut(chp, (uint8_t)*s++);
-
-    while (width) {
-      chSequentialStreamPut(chp, (uint8_t)filler);
-      width--;
-    }
+    return FALSE;
   }
-}
 
 
-void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
-  char *p, *s, c, filler;
-  int i, precision, width;
-  bool_t is_long, left_align, plus_on_float;
-  long l;
-#if CHPRINTF_USE_FLOAT
-  int fprec=0;
-  double d;
-  char tmpbuf[2*MAX_FILLER + 1];
-#else
-  char tmpbuf[MAX_FILLER + 1];
-#endif
 
+  
   while (TRUE) {
     c = *fmt++;
     if (c == 0) {
-      writeBufferWithinSize (&buffer, 0, &size);
+      _putChar (0);
       return;
     }
     if (c != '%') {
-      if (writeBufferWithinSize (&buffer, c, &size)) return;
+      if (_putChar ( c)) return;
       continue;
     }
     p = tmpbuf;
@@ -448,22 +296,31 @@ unsigned_common:
       width = -width;
     if (width < 0) {
       if (*s == '-' && filler == '0') {
-	if (writeBufferWithinSize (&buffer, (uint8_t)*s++, &size)) return;
+	if (_putChar ( (uint8_t)*s++)) return;
         i--;
       }
       do
-        if (writeBufferWithinSize (&buffer,  (uint8_t)filler, &size)) return;
+        if (_putChar (  (uint8_t)filler)) return;
       while (++width != 0);
     }
     while (--i >= 0)
-      if (writeBufferWithinSize (&buffer, (uint8_t)*s++, &size)) return;
+      if (_putChar ( (uint8_t)*s++)) return;
 
     while (width) {
-      if (writeBufferWithinSize (&buffer,  (uint8_t)filler, &size)) return;
+      if (_putChar (  (uint8_t)filler)) return;
       width--;
     }
   }
-  writeBufferWithinSize (&buffer, 0, &size) ;
+  _putChar (0) ;
+}
+
+
+void chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
+  _chvsnprintf(NULL, chp, 0, fmt, ap);
+}
+
+void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
+  _chvsnprintf(buffer, NULL, size, fmt, ap);
 }
 
 void chsnprintf(char *buffer, size_t size, const char *fmt, ...) 
@@ -471,7 +328,7 @@ void chsnprintf(char *buffer, size_t size, const char *fmt, ...)
   va_list ap;
 
   va_start(ap, fmt);
-  chvsnprintf(buffer, size, fmt, ap); 
+  _chvsnprintf(buffer, NULL, size, fmt, ap);
   va_end(ap);
 }
 
@@ -480,7 +337,7 @@ void chprintf(BaseSequentialStream *chp, const char *fmt, ...)
   va_list ap;
 
   va_start(ap, fmt);
-  chvprintf(chp, fmt, ap); 
+  _chvsnprintf(NULL, chp, 0, fmt, ap);
   va_end(ap);
 }
 /** @} */
