@@ -7,7 +7,6 @@ typedef thread_t Thread;
 typedef rtcnt_t	halrtcnt_t;
 typedef mutex_t Mutex;
 
-#define CH_ARCHITECTURE_NAME PORT_ARCHITECTURE_NAME
 #define RDY_OK MSG_OK
 #define CH_USE_HEAP CH_CFG_USE_HEAP
 #define CH_USE_DYNAMIC CH_CFG_USE_DYNAMIC
@@ -21,8 +20,11 @@ typedef mutex_t Mutex;
 #define chMtxInit chMtxObjectInit
 #define chCoreStatus chCoreGetStatusX
 #define chRegGetThreadName chRegGetThreadNameX
+
 #define halGetCounterValue() chSysGetRealtimeCounterX()
 #define halGetCounterFrequency()	STM32_HCLK
+#define halPolledDelay chSysPolledDelayX
+
 #define chSysLockFromIsr() chSysLockFromISR()
 #define chSysUnlockFromIsr() chSysUnlockFromISR()
 
