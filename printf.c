@@ -206,11 +206,13 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
   while (TRUE) {
     c = *fmt++;
     if (c == 0) {
-      _putChar (0);
+      // only add end of string marker when filling buffer, not when outputing on I/O channel
+      if (buffer != NULL)
+	_putChar (0);
       return;
     }
     if (c != '%') {
-      if (_putChar ( c)) return;
+      if (_putChar (c)) return;
       continue;
     }
     p = tmpbuf;
