@@ -14,7 +14,7 @@
 #define INFO_VAR(var) DO_PRAGMA(message ("INFO: " #var " = " VALUE(var)))
 
 /* only if PRINT_CONFIG is true */
-#if PRINT_CONFIG
+#if defined (PRINT_CONFIG) && PRINT_CONFIG
 #define PRINT_CONFIG_MSG(x) DO_PRAGMA(message ("Config: " x))
 #define PRINT_CONFIG_MSG_VALUE(x,v) DO_PRAGMA(message ("Config: " x VALUE(v)))
 #define PRINT_CONFIG_VAR(var) DO_PRAGMA(message ("Config: " #var " = " VALUE(var)))

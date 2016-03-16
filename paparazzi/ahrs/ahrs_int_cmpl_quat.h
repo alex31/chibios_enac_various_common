@@ -32,7 +32,7 @@
 #define AHRS_INT_CMPL_QUAT_H
 
 #include "paparazzi/ahrs.h"
-#if USE_GPS
+#if defined(USE_GPS) && USE_GPS
 #include "paparazzi/gps.h"
 #endif
 #include "paparazzi/std.h"
@@ -119,7 +119,7 @@ extern void ahrs_icq_propagate(struct Int32Rates *gyro, float dt);
 extern void ahrs_icq_update_accel(struct Int32Vect3 *accel, float dt);
 extern void ahrs_icq_update_mag(struct Int32Vect3 *mag, float dt);
 
-#if USE_GPS
+#if defined(USE_GPS) && USE_GPS
 extern void ahrs_icq_update_gps(struct GpsState *gps_s);
 #endif
 

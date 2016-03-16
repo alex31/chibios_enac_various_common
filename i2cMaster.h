@@ -2,7 +2,7 @@
 #include "ch.h"
 #include "hal.h"
 #include <math.h>
-
+#include "portage.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,8 +22,8 @@ typedef union {
 typedef struct  {
   I2CDriver	*driver;
   const I2CConfig     *i2ccfg;
-  GPIO_TypeDef  *sdaGpio;
-  GPIO_TypeDef  *sclGpio;
+  ioportid_t    sdaGpio;
+  ioportid_t    sclGpio;
   uint32_t      sdaPin;
   uint32_t      sclPin;
   iomode_t	alternateFunction;
@@ -35,7 +35,7 @@ typedef struct  {
 #define I2C_MAXSLV_REACH  -15
 
 
-bool_t initI2cDriver (const I2cMasterConfig *mconf);
+bool initI2cDriver (const I2cMasterConfig *mconf);
 
 
 #ifdef I2C_USE_ADXL345

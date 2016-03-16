@@ -2,7 +2,7 @@
 
 #include "ch.h"
 #include "hal.h"
-
+#include "portage.h"
 
 
 
@@ -20,7 +20,7 @@
 typedef void (*MsgCallBack)(const uint8_t *buffer, const size_t len,  void * const userData);
 
 // just a wrapper to send message
-bool_t simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
+bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
 		      const size_t len);
 
 // launch a thread which read and segment message then call callback when a message is complete

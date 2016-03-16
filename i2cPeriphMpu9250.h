@@ -226,7 +226,7 @@ typedef struct
   uint8_t		slvDo; // I2C_SLV4_Dx : data to be written to slave x if way is WRITE
   TransferWay		way;
   TransferSwapMode	swapMode;
-  bool_t		useMstDlyPrev;
+  bool		useMstDlyPrev;
 } Mpu9250MasterConfig_0_to_3;
 
 typedef struct  
@@ -234,7 +234,7 @@ typedef struct
   Mpu9250Data *		mpu;
   uint8_t		slvI2cAdr;
   uint8_t		slvReg;
-  bool_t		enable;
+  bool		enable;
   uint8_t		slvDo; // I2C_SLV4_DO : data to be written to slave 4 if enabled
   uint8_t		slvDi; // I2C_SLV4_DI : data read from i2c slave 4
   uint8_t		mstDlay; // master sample slave every (1+mstDlay) samples 
@@ -283,7 +283,7 @@ typedef struct
   Mpu9250MasterConfig masterCfg;		  // configuration of master module
   uint32_t sampleRate;                            // imu sample rate in Hz
   uint32_t auxSampleRate;			  // sample rate on  auxiliary i2c bus
-  bool_t  useAd0;				  // I2C address offset pin enabled
+  bool  useAd0;				  // I2C address offset pin enabled
   uint8_t gyroLpf;                                // gyro low pass filter setting
   uint8_t accelLpf;                               // accel low pass filter setting
   uint8_t gyroFsr;				  // gyro scale (250 to 2000 °/second)
@@ -305,9 +305,9 @@ typedef struct
 typedef struct  
 {
   ImuVec3f mag;
-  bool_t  dataReady;
-  bool_t  overflow;
-  bool_t  overrun;
+  bool  dataReady;
+  bool  overflow;
+  bool  overrun;
 } Ak8963Value;
 
 

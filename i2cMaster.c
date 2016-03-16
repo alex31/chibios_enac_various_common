@@ -23,7 +23,7 @@
 
 
 
-static bool_t chkErrorI2cMaster (I2CDriver *i2cd);
+static bool chkErrorI2cMaster (I2CDriver *i2cd);
 static const I2cMasterConfig * getMasterConfigFromDriver (I2CDriver *i2cd);
 
 #ifdef I2C_USE_HMC5883L
@@ -34,12 +34,12 @@ static msg_t  i2cMasterControlForHMC5883L_SLV2 (I2CDriver *i2cd);
 static msg_t  i2cMasterControlForMPL3115A2_SLV_RW_01 (I2CDriver *i2cd);
 #endif
 
-static bool_t i2cMasterResetBus (I2CDriver *i2cd);
-static bool_t i2cMasterUnhangBus (I2CDriver *i2cd);
+static bool i2cMasterResetBus (I2CDriver *i2cd);
+static bool i2cMasterUnhangBus (I2CDriver *i2cd);
 static void   i2cMasterSetModePeriphI2c (I2CDriver *i2cd);
 static msg_t  i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  
 				const uint8_t regAdr, const uint8_t mask, 
-				bool_t enable);
+				bool enable);
 
 /*      
 i2cReleaseBus(i2cd);			\  
@@ -122,7 +122,7 @@ __attribute__((section(".data")))
 static const I2cMasterConfig const *i2c3=NULL;
 #endif
 
-bool_t initI2cDriver (const I2cMasterConfig *mconf)
+bool initI2cDriver (const I2cMasterConfig *mconf)
 {
 #if STM32_I2C_USE_I2C1
   if (mconf->driver == &I2CD1) {
@@ -409,7 +409,7 @@ msg_t i2cInitBaro_MPL3115A2 (I2CDriver *i2cd, MPL3115A2_Mode mode)
 msg_t i2cGetBaro_MPL3115A2_Val (I2CDriver *i2cd, int32_t  *rawBuf, float *pressure)
 {
   uint8_t rxbuf[4];
-  bool_t  notReady;
+  bool  notReady;
   msg_t status;
   uint32_t  *rawB = rawBuf != NULL ? rawBuf : alloca(sizeof(int32_t));
 
@@ -832,7 +832,7 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
 */
 
 
-static bool_t chkErrorI2cMaster (I2CDriver *i2cd)
+static bool chkErrorI2cMaster (I2CDriver *i2cd)
 {
   i2cflags_t errors = i2cGetErrors(i2cd);
   uint8_t retry=10;
@@ -870,10 +870,10 @@ static bool_t chkErrorI2cMaster (I2CDriver *i2cd)
 }
 
 
-static bool_t   i2cMasterResetBus (I2CDriver *i2cd)
+static bool   i2cMasterResetBus (I2CDriver *i2cd)
 {
   i2cStop (i2cd);
-  bool_t res = i2cMasterUnhangBus (i2cd);
+  bool res = i2cMasterUnhangBus (i2cd);
   i2cMasterSetModePeriphI2c (i2cd);
   i2cStart(i2cd, getMasterConfigFromDriver(i2cd)->i2ccfg);
   return res;
@@ -890,10 +890,10 @@ static bool_t   i2cMasterResetBus (I2CDriver *i2cd)
 /*   .alternateFunction = 4 */
 /* }; */
 
-static bool_t i2cMasterUnhangBus (I2CDriver *i2cd)
+static bool i2cMasterUnhangBus (I2CDriver *i2cd)
 {
   const I2cMasterConfig* i2cMcfg = getMasterConfigFromDriver (i2cd);
-  bool_t sdaReleased;
+  bool sdaReleased;
   
   palSetPadMode (i2cMcfg->sdaGpio, i2cMcfg->sdaPin, PAL_MODE_INPUT); 
   sdaReleased = (palReadPad (i2cMcfg->sdaGpio, i2cMcfg->sdaPin) == 1);
@@ -901,7 +901,7 @@ static bool_t i2cMasterUnhangBus (I2CDriver *i2cd)
     goto end;
   
   palSetPadMode (i2cMcfg->sclGpio, i2cMcfg->sclPin, PAL_MODE_INPUT);
-  bool_t currentInput = palReadPad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
+  bool currentInput = palReadPad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
   if (currentInput) 
     palSetPad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
   else
@@ -943,7 +943,7 @@ static void i2cMasterSetModePeriphI2c (I2CDriver *i2cd)
 
 __attribute__((__unused__))
 static msg_t i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  const uint8_t regAdr,
-				const uint8_t mask, bool_t enable) 
+				const uint8_t mask, bool enable) 
 {
   msg_t status;
   const uint8_t txbuf[] = {regAdr};

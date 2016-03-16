@@ -14,7 +14,8 @@
 #endif
 #endif
 
-#if !USE_MAGNETOMETER && !defined(AHRS_H_X) && !defined(AHRS_H_Y)
+#if defined (USE_MAGNETOMETER) && !USE_MAGNETOMETER && \
+    !defined(AHRS_H_X) && !defined(AHRS_H_Y)
 #define AHRS_H_X 1
 #define AHRS_H_Y 0
 #define AHRS_H_Z 0

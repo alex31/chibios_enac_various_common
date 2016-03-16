@@ -27,15 +27,18 @@
 #include "serial_usb.h"
 #include "usb_serial.h"
 #include "globalVar.h"
+#include "portage.h"
 
 #if HAL_USE_SERIAL_USB
 #define USBD1_DATA_REQUEST_EP           1
 #define USBD1_DATA_AVAILABLE_EP         1
 #define USBD1_INTERRUPT_REQUEST_EP      2
 
-
-static EventListener inputAvailEL = {NULL, NULL, 0, 0};
-
+#if (CH_KERNEL_MAJOR == 2)
+  static EventListener inputAvailEL = {NULL, NULL, 0, 0};
+#else
+  static event_listener_t inputAvailEL = {NULL, NULL, 0, 0, 0};
+#endif
 /*===========================================================================*/
 /* USB related stuff.                                                        */
 /*===========================================================================*/
@@ -309,8 +312,16 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
     chSysUnlockFromIsr();
     return;
   case USB_EVENT_SUSPEND:
+    chSysLockFromIsr();
+    
+    /* Disconnection event on suspend.*/
+#if (CH_KERNEL_MAJOR > 2)
+    sduDisconnectI(&SDU1);
+#endif
+    
+    chSysUnlockFromIsr();
     return;
-  case USB_EVENT_WAKEUP:
+ case USB_EVENT_WAKEUP:
     return;
   case USB_EVENT_STALLED:
     return;
@@ -319,14 +330,27 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
 }
 
 /*
+ * Handles the USB driver global events.
+ */
+static void sof_handler(USBDriver *usbp)
+{
+  (void)usbp;
+
+  chSysLockFromIsr();
+#if (CH_KERNEL_MAJOR > 2)
+  sduSOFHookI(&SDU1);
+#endif
+  chSysUnlockFromIsr();
+}
+
+/*
  * Serial over USB driver configuration.
  */
-
 static const USBConfig usbcfg = {
   usb_event,
   get_descriptor,
   sduRequestsHook,
-  NULL
+  sof_handler
 };
 
 static SerialUSBConfig serusbcfg ;
@@ -336,24 +360,11 @@ USBDriver *usbGetDriver (void)
   return serusbcfg.usbp;
 }
 
-// chnAddFlagsI(sdup, CHN_INPUT_AVAILABLE);
-//#define chnGetAndClearFlags(ip) ((ip)->vmt->getflags(ip))
 
-/*
-#define chnAddFlagsI(ip, flags) {                                           \
-  chEvtBroadcastFlagsI(&(ip)->event, flags);                                \
-}
 
-void chEvtBroadcastFlagsI(EventSource *esp, flagsmask_t flags) {...}
-
- flagsmask_t chEvtGetAndClearFlags(EventListener *elp);
- 
-
-*/
-
-bool_t isUsbConnected(void)
+bool isUsbConnected(void)
 {
-  static bool_t hasEverReceive = FALSE;
+  static bool hasEverReceive = FALSE;
 
   if (inputAvailEL.el_listener == NULL)
     return FALSE; 

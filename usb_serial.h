@@ -8,7 +8,7 @@
 void usbSerialInit(SerialUSBDriver *sdu, USBDriver *usbDriver) ;
 void usbSerialReset(SerialUSBDriver *sdu) ;
 USBDriver *usbGetDriver (void);
-bool_t isUsbConnected(void);
+bool isUsbConnected(void);
 
 #endif // HAL_USE_SERIAL_USB
 

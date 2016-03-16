@@ -216,7 +216,7 @@ void ahrs_float_invariant_propagate(struct Int32Rates* gyro, float dt)
 
   //------------------------------------------------------------//
 
-#if SEND_INVARIANT_FILTER
+#if defined (SEND_INVARIANT_FILTER) && SEND_INVARIANT_FILTER
   struct FloatEulers eulers;
   float foo = 0.f;
   FLOAT_EULERS_OF_QUAT(eulers, ahrs_float_inv.state.quat);

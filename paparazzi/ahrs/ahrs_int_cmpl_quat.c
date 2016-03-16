@@ -41,7 +41,7 @@
 #include "paparazzi/ahrs/ahrs_int_cmpl_quat.h"
 #include "paparazzi/ahrs/ahrs_int_utils.h"
 
-#if USE_GPS
+#if defined (USE_GPS) && USE_GPS
 #include "paparazzi/gps.h"
 #endif
 #include "paparazzi/math/pprz_trig_int.h"
@@ -55,15 +55,15 @@ PRINT_CONFIG_MSG("LOW PASS FILTER ON GYRO RATES")
 #error "The define AHRS_MAG_UPDATE_YAW_ONLY doesn't exist anymore, please remove it. This is the default behaviour. Define AHRS_MAG_UPDATE_ALL_AXES to use mag for all axes and not only yaw."
 #endif
 
-#if USE_MAGNETOMETER && AHRS_USE_GPS_HEADING
+#if defined (USE_MAGNETOMETER) && USE_MAGNETOMETER  && defined (AHRS_USE_GPS_HEADING) && AHRS_USE_GPS_HEADING
 #warning "Using both magnetometer and GPS course to update heading. Probably better to configure USE_MAGNETOMETER=0 if you want to use GPS course."
 #endif
 
-#if !USE_MAGNETOMETER && !AHRS_USE_GPS_HEADING
+#if !USE_MAGNETOMETER && (defined (AHRS_USE_GPS_HEADING) && !AHRS_USE_GPS_HEADING)
 #warning "Please use either USE_MAGNETOMETER or AHRS_USE_GPS_HEADING."
 #endif
 
-#if AHRS_USE_GPS_HEADING && !USE_GPS
+#if (defined (AHRS_USE_GPS_HEADING) && !AHRS_USE_GPS_HEADING) && !USE_GPS
 #error "AHRS_USE_GPS_HEADING needs USE_GPS to be TRUE"
 #endif
 
@@ -142,7 +142,7 @@ void ahrs_icq_init(void)
   /* set default gravity heuristic */
   ahrs_icq.gravity_heuristic_factor = AHRS_GRAVITY_HEURISTIC_FACTOR;
 
-#if AHRS_GRAVITY_UPDATE_COORDINATED_TURN
+#if defined (AHRS_GRAVITY_UPDATE_COORDINATED_TURN) && AHRS_GRAVITY_UPDATE_COORDINATED_TURN
   ahrs_icq.correct_gravity = TRUE;
 #else
   ahrs_icq.correct_gravity = FALSE;
@@ -517,7 +517,7 @@ static inline void ahrs_icq_update_mag_2d(struct Int32Vect3 *mag, float dt)
 
 }
 
-#if USE_GPS
+#if defined (USE_GPS) && USE_GPS
 void ahrs_icq_update_gps(struct GpsState *gps_s __attribute__((unused)))
 {
 #if AHRS_GRAVITY_UPDATE_COORDINATED_TURN && USE_GPS

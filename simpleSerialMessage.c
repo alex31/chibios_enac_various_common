@@ -4,6 +4,9 @@
 #include "stdutil.h"
 #include "simpleSerialMessage.h"
 
+
+
+
 typedef enum  {WAIT_FOR_SYNC, WAIT_FOR_LEN, WAIT_FOR_PAYLOAD, WAIT_FOR_CHECKSUM} SerialCmdState ;
 
 
@@ -29,13 +32,20 @@ typedef struct {
   SerialCmdState state;
 } CmdMesgState;
 
-static msg_t readAndProcessChannel(void *arg);
+
+
 static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes);
 static MUTEX_DECL(sendMtx);
 
 
+#if (CH_KERNEL_MAJOR == 2)
+static msg_t readAndProcessChannel(void *arg);
+#define chMtxUnlock(x) chMtxUnlock()
+#else
+static void readAndProcessChannel(void *arg);
+#endif
 
-bool_t simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
+bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
 		      const size_t len)
 {
   if (len > 255) 
@@ -55,11 +65,11 @@ bool_t simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffe
 			       sizeof(crc)) != sizeof(crc))
     goto exitFail;
   
-  chMtxUnlock();
+  chMtxUnlock(&sendMtx);
   return true;
   
  exitFail:
-  chMtxUnlock();
+  chMtxUnlock(&sendMtx);
   return false;
 }
 
@@ -114,8 +124,12 @@ static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes)
 
 
 
-
+#if (CH_KERNEL_MAJOR == 2)
 static msg_t readAndProcessChannel(void *arg)
+#define chMtxUnlock(x) chMtxUnlock()
+#else
+static void readAndProcessChannel(void *arg)
+#endif
 {
   MsgBindParams *mbp = (MsgBindParams *) arg;
 
@@ -171,5 +185,7 @@ static msg_t readAndProcessChannel(void *arg)
   }
   
   free_m (mbp); // was allocated by simpleMsgBind
+#if (CH_KERNEL_MAJOR == 2)
   return RDY_OK;
+#endif
 }
