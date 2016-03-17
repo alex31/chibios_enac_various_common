@@ -34,6 +34,7 @@ BUGS : static init of ccm ram array not done by gcc init stub
 #include "ch.h"
 #include "hal.h"
 #include "ringBuffer.h"
+#include "portage.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -105,7 +106,7 @@ void		varLenMsgDynamicInit   (VarLenMsgQueue* que);
   parameters : queue object
   return value: TRUE if queue if full, FALSE otherwise
  */
-bool_t		varLenMsgQueueIsFull   (VarLenMsgQueue* que);
+bool		varLenMsgQueueIsFull   (VarLenMsgQueue* que);
 
 /*
   goal : test if queue is empty
@@ -113,7 +114,7 @@ bool_t		varLenMsgQueueIsFull   (VarLenMsgQueue* que);
   parameters : queue object
   return value:  TRUE if queue if empty, FALSE otherwise
  */
-bool_t 		varLenMsgQueueIsEmpty  (VarLenMsgQueue* que);
+bool 		varLenMsgQueueIsEmpty  (VarLenMsgQueue* que);
 
 /*
   goal :  return used size in circular buffer,
@@ -239,7 +240,7 @@ void		varLenMsgQueueFreeChunk (VarLenMsgQueue* que, const ChunkBufferRO *cbuf);
   parameters : queue object
   return value: TRUE if OK, FALSE if ERROR
  */
-bool_t		varLenMsgQueueTestIntegrityIfEmpty(VarLenMsgQueue* que);
+bool		varLenMsgQueueTestIntegrityIfEmpty(VarLenMsgQueue* que);
 
 /*
   goal : give literal message from a status error code
@@ -271,7 +272,7 @@ typedef union {
 
 struct VarLenMsgQueue {
   const uint16_t mbAndSparseChunkSize;
-  const bool_t useZeroCopyApi;
+  const bool useZeroCopyApi;
   uint16_t mbReservedSlot;
   Mutex mtx ;
   Mailbox mb;

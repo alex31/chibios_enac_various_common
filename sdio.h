@@ -6,9 +6,9 @@ extern "C" {
 #endif
 
 
-bool_t sdioConnect (void);
-bool_t sdioDisconnect (void);
-bool_t isCardInserted  (void);
+bool sdioConnect (void);
+bool sdioDisconnect (void);
+bool isCardInserted  (void);
 void cmd_sdiotest(BaseSequentialStream *chp, int argc,const char * const argv[]);
 
 #ifdef __cplusplus

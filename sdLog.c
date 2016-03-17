@@ -14,12 +14,22 @@
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
 #define MAX(x , y)  (((x) > (y)) ? (x) : (y))
 
+
+#if _FATFS < 8000
+
 #if _FS_SHARE == 0
 #define SDLOG_NUM_BUFFER 1
 #else
 #define SDLOG_NUM_BUFFER _FS_SHARE
 #endif
 
+#else
+#if _FS_LOCK == 0
+#define SDLOG_NUM_BUFFER 1
+#else
+#define SDLOG_NUM_BUFFER _FS_LOCK
+#endif
+#endif
 
 #ifndef  SDLOG_ALL_BUFFERS_SIZE
 #error SDLOG_ALL_BUFFERS_SIZE should be defined in mcuconf.h
@@ -91,11 +101,17 @@ static FATFS fatfs; /* File system object */
 #ifdef SDLOG_NEED_QUEUE
 static size_t logMessageLen (const LogMessage *lm);
 static size_t logRawLen (const size_t len);
-static msg_t thdSdLog(void *arg) ;
 static SdioError sdLoglaunchThread (void);
 static SdioError sdLogStopThread (void);
 static Thread *sdLogThd = NULL;
 static SdioError  getNextFIL (FileDes *fd);
+
+#if (CH_KERNEL_MAJOR > 2)
+static void thdSdLog(void *arg) ;
+#else
+static msg_t thdSdLog(void *arg) ;
+#endif
+
 #endif
 
 
@@ -123,7 +139,12 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
   if (sdioConnect () == FALSE)
     return  SDLOG_NOCARD;
 
+#if _FATFS < 8000
   FRESULT rc = f_mount(0, &fatfs);
+#else
+  FRESULT rc = f_mount(&fatfs, "", 0);
+#endif
+  
   if (rc != FR_OK) {
     return SDLOG_FATFS_ERROR;
   }
@@ -148,7 +169,11 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
 
 SdioError sdLogFinish (void)
 {
+#if _FATFS < 8000
   FRESULT rc = f_mount(0, NULL);
+#else
+  FRESULT rc = f_mount(NULL, "", 0);
+#endif
   if (rc != FR_OK) {
     return SDLOG_FATFS_ERROR;
   }
@@ -164,7 +189,7 @@ SdioError sdLogFinish (void)
 
 #ifdef SDLOG_NEED_QUEUE
 SdioError sdLogOpenLog (FileDes *fd, const char* directoryName, const char* prefix,
-			bool_t appendTagAtClose)
+			bool appendTagAtClose)
 {
   FRESULT rc; /* fatfs result code */
   SdioError sde; /* sdio result code */
@@ -499,7 +524,11 @@ int32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName)
 
 
 #ifdef SDLOG_NEED_QUEUE
-static msg_t thdSdLog(void *arg)
+#if (CH_KERNEL_MAJOR > 2)
+static void thdSdLog(void *arg) 
+#else
+static msg_t thdSdLog(void *arg) 
+#endif
 {
   (void) arg;
   struct PerfBuffer {
@@ -562,9 +591,9 @@ static msg_t thdSdLog(void *arg)
 	    FRESULT rc = f_write(fo, perfBuffer, SDLOG_WRITE_BUFFER_SIZE, &bw);
 	    f_sync (fo);
 	    if (rc) {
-	      return SDLOG_FATFS_ERROR;
+	      chThdExit (SDLOG_FATFS_ERROR);
 	    } else if (bw != SDLOG_WRITE_BUFFER_SIZE) {
-	      return SDLOG_FSFULL;
+	      chThdExit (SDLOG_FSFULL);
 	    }
 
 	    memcpy (perfBuffer, &(lm->mess[stayLen]),  (uint32_t) (messLen-stayLen));
@@ -578,8 +607,9 @@ static msg_t thdSdLog(void *arg)
       chThdExit(SDLOG_INTERNAL_ERROR);
     }
   }
-
+#if (CH_KERNEL_MAJOR == 2)
   return SDLOG_OK;
+#endif
 }
 
 static size_t logMessageLen (const LogMessage *lm)

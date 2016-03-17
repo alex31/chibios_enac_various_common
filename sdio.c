@@ -33,6 +33,8 @@
 #include "stdutil.h"
 #include "globalVar.h"
 #include "sdio.h"
+#include "portage.h"
+
 
 
 /*
@@ -82,11 +84,16 @@ static uint8_t  inbuf[MMCSD_BLOCK_SIZE * SDC_BURST_SIZE + 1];
  *                      read.
  * @retval SDC_FAILED   operation failed, the state of the buffer is uncertain.
  */
-bool_t badblocks(uint32_t start, uint32_t end, uint32_t blockatonce, uint8_t pattern){
+bool badblocks(uint32_t start, uint32_t end, uint32_t blockatonce, uint8_t pattern){
   uint32_t position = 0;
   uint32_t i = 0;
 
-  chDbgCheck(blockatonce <= SDC_BURST_SIZE, "badblocks");
+
+#if (CH_KERNEL_MAJOR > 2)
+  chDbgCheck (blockatonce <= SDC_BURST_SIZE);
+#else
+  chDbgCheck (blockatonce <= SDC_BURST_SIZE, "badblocks");
+#endif
 
   /* fill control buffer */
   for (i=0; i < MMCSD_BLOCK_SIZE * blockatonce; i++)
@@ -141,7 +148,7 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
   (void)argv;
   uint32_t i = 0;
   FRESULT err = 0;
-  bool_t format = FALSE;
+  bool format = FALSE;
 
   if (argc == 1) {
     format = TRUE;
@@ -275,7 +282,12 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
     
     chprintf(lchp, "Register working area for filesystem... ");
     chThdSleepMilliseconds(100);
-    err = f_mount(0, &SDC_FS);
+#if _FATFS < 8000
+   err = f_mount(0, &SDC_FS);
+#else
+   err = f_mount(&SDC_FS, "", 0);
+#endif
+
     if (err != FR_OK){
       goto error;
     }
@@ -398,7 +410,12 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
   }
   
   chprintf(lchp, "Umount filesystem... ");
-  f_mount(0, NULL);
+#if _FATFS < 8000
+   err = f_mount(0, NULL);
+#else
+   err = f_mount(NULL, "", 0);
+#endif
+
   chprintf(lchp, "OK\r\n");
   
   chprintf(lchp, "Disconnecting from SDIO...");
@@ -449,7 +466,7 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
 
 
 
-bool_t sdioConnect (void) 
+bool sdioConnect (void) 
 {
   if (!sdc_lld_is_card_inserted (NULL)) {
     DebugTrace("No sd card");
@@ -491,7 +508,7 @@ bool_t sdioConnect (void)
 }
 
 
-bool_t sdioDisconnect (void)
+bool sdioDisconnect (void)
 {
   if (cnxState == STOP) 
     return TRUE;
@@ -503,7 +520,7 @@ bool_t sdioDisconnect (void)
   return TRUE;
 }
 
-bool_t isCardInserted  (void)
+bool isCardInserted  (void)
 {
   return sdc_lld_is_card_inserted (NULL);
 }
