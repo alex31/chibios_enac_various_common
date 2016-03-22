@@ -143,6 +143,62 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
     return;
   }
 
+  /*
+    Bits 31:16 REV_ID[15:0] Revision identifier
+    This field indicates the revision of the device.
+    STM32F405xx/07xx and STM32F415xx/17xx devices:
+    0x1000 = Revision A
+    0x1001 = Revision Z
+    0x1003 = Revision 1
+    0x1007 = Revision 2
+    0x100F= Revision Y
+    STM32F42xxx and STM32F43xxx devices:
+    0x1000 = Revision A
+    0x1003 = Revision Y
+    0x1007 = Revision 1
+    0x2001= Revision 3
+    Bits 15:12 Reserved, must be kept at reset value.
+    Bits 11:0 DEV_ID[11:0]: Device identifier (STM32F405xx/07xx and STM32F415xx/17xx)
+    The device ID is 0x413.
+    Bits 11:0 DEV_ID[11:0]: Device identifier (STM32F42xxx and STM32F43xxx)
+    The device ID is 0x419
+   */
+  
+
+  const uint16_t mcu_revid = (DBGMCU->IDCODE &  DBGMCU_IDCODE_REV_ID) >> 16;
+  const uint16_t mcu_devid =  DBGMCU->IDCODE &  DBGMCU_IDCODE_DEV_ID;
+  char *mcu_devid_str ="not known, please fix microrlShell.c";
+  char mcu_revid_chr = '?';
+
+  switch (mcu_devid) {
+  case  0x411 : mcu_devid_str = "STM32F2xx and *EARLY* STM32F40x and 41x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x2000 : mcu_revid_chr = 'B'; break;
+    case 0x2001 : mcu_revid_chr = 'Y'; break;
+    case 0x2003 : mcu_revid_chr = 'X'; break;
+    }
+    break;
+  case  0x413 : mcu_devid_str = "STM32F40x and 41x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x1003 : mcu_revid_chr = '1'; break;
+    case 0x1007 : mcu_revid_chr = '2'; break;
+    case 0x100F : mcu_revid_chr = 'Y'; break;
+    }
+    break;
+  case  0x419 : mcu_devid_str = "STM32F42x and F43x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1003 : mcu_revid_chr = 'Y'; break;
+    case 0x1007 : mcu_revid_chr = '1'; break;
+    case 0x2001 : mcu_revid_chr = '3'; break;
+    }
+    break;
+  }
+  
   chprintf(chp, "Kernel:       %s\r\n", CH_KERNEL_VERSION);
 #ifdef HAL_VERSION
   chprintf(chp, "Hal:          %s\r\n", HAL_VERSION);
@@ -185,6 +241,15 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
   chprintf(chp, "Board:        %s\r\n", BOARD_NAME);
 #endif
 
+  chprintf(chp, "Chip Revision: %s REV '%c' (0x%x:0x%x)\r\n", mcu_devid_str, mcu_revid_chr, mcu_devid, mcu_revid);
+
+#if (!defined STM32_USE_REVISION_A_FIX) || (STM32_USE_REVISION_A_FIX == 0)
+  if ((mcu_devid == 0x413) && (mcu_revid_chr == 'A')) {
+    chprintf(chp, "Chip Revision: %s REV '%c' PLEASE define STM32_USE_REVISION_A_FIX in mcuconf.h !!\r\n",
+	     mcu_devid_str, mcu_revid_chr);
+  }
+#endif
+  
 #ifdef __DATE__
 #ifdef __TIME__
   chprintf(chp, "Build time:   %s%s%s\r\n", __DATE__, " - ", __TIME__);
