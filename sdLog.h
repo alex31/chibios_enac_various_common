@@ -20,8 +20,8 @@ extern "C" {
     FATFS (ffconf.h) :
     ° _FS_SHARE : number of simultaneously open file
     ° _FS_REENTRANT : If you need to open / close file during log, this should be set to 1 at
-                       the expense of more used cam and cpu.
-                    If you open all files prior to log data on them, it should be left to 0
+                       the expense of more used ram and cpu.
+                      If you open all files prior to log data on them, it should be left to 0
 
    MCUCONF.H (or any other header included before sdLog.h
    ° SDLOG_ALL_BUFFERS_SIZE : (in bytes) performance ram buffer size shared between all opened log file
@@ -62,6 +62,7 @@ typedef enum {
   SDLOG_OK,
   SDLOG_NOCARD,
   SDLOG_FATFS_ERROR,
+  SDLOG_FATFS_NOENT,
   SDLOG_FSFULL,
   SDLOG_FDFULL,
   SDLOG_QUEUEFULL,
@@ -99,6 +100,21 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo);
 SdioError getFileName(const char* prefix, const char* directoryName,
 		      char* nextFileName, const size_t nameLength, const int indexOffset);
 
+
+
+
+/**
+ * @brief	remove spurious log file left on sd
+ * @details	when tuning firmware, log files are created at each tries, and we consider
+ *		that empty or nearly empty log are of no value
+ *              this function remove log file whose size is less than a given value
+ *		  
+ * @param[in]	prefix : the pattern for the file : example LOG_
+ * @param[in]	directoryName : root directory where to find file
+ * @param[in]	sizeConsideredEmpty : file whose size is less or equal to that value will be removed
+ */
+SdioError removeEmptyLogs(const char* prefix, const char* directoryName,
+			  const size_t sizeConsideredEmpty);
 /**
  * @brief	unmount filesystem
  * @details	unmount filesystem, free sdio peripheral

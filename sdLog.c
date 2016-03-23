@@ -16,18 +16,17 @@
 
 
 #if _FATFS < 8000
-
 #if _FS_SHARE == 0
 #define SDLOG_NUM_BUFFER 1
 #else
 #define SDLOG_NUM_BUFFER _FS_SHARE
 #endif
 
-#else
+#else // _FATFS > 8000
 #if _FS_LOCK == 0
-#define SDLOG_NUM_BUFFER 1
+#define SDLOG_NUM_BUFFER 2
 #else
-#define SDLOG_NUM_BUFFER _FS_LOCK
+#define SDLOG_NUM_BUFFER (_FS_LOCK/2)
 #endif
 #endif
 
@@ -58,7 +57,7 @@
 #ifdef SDLOG_NEED_QUEUE
 #include "varLengthMsgQ.h"
 VARLEN_MSGQUEUE_DECL(static, TRUE, messagesQueue,  SDLOG_QUEUE_SIZE, SDLOG_QUEUE_BUCKETS,
-		     __attribute__ ((section(".ccmram"), aligned(8))));
+		     __attribute__((section(".ccmram"),aligned(8))));
 
 struct FilePoolUnit {
   FIL   fil;
@@ -387,7 +386,7 @@ SdioError sdLoglaunchThread ()
   chThdSleepMilliseconds(100);
 
   sdLogThd = chThdCreateStatic(waThdSdLog, sizeof(waThdSdLog),
-			       NORMALPRIO, thdSdLog, NULL);
+			       NORMALPRIO+1, thdSdLog, NULL);
   if (sdLogThd == NULL)
     return SDLOG_INTERNAL_ERROR;
   else
@@ -479,6 +478,11 @@ SdioError getFileName(const char* prefix, const char* directoryName,
     return SDLOG_FATFS_ERROR;
   }
 
+  rc = f_closedir (&dir);
+  if (rc) {
+    return SDLOG_FATFS_ERROR;
+  }
+  
   if (maxCurrentIndex < NUMBERMAX) {
     chsnprintf (nextFileName, nameLength, NUMBERFMF,
 		directoryName, prefix, maxCurrentIndex+indexOffset);
@@ -490,7 +494,60 @@ SdioError getFileName(const char* prefix, const char* directoryName,
   }
 }
 
+SdioError removeEmptyLogs(const char* prefix, const char* directoryName, const size_t sizeConsideredEmpty)
+{
+  DIR dir; /* Directory object */
+  FRESULT rc; /* Result code */
+  FILINFO fno; /* File information object */
+  char *fn;   /* This function is assuming non-Unicode cfg. */
+#if _USE_LFN
+  char lfn[_MAX_LFN + 1];
+  fno.lfname = lfn;
+  fno.lfsize = sizeof lfn;
+#endif
 
+  rc = f_opendir(&dir, directoryName);
+  if (rc != FR_OK) {
+    return SDLOG_FATFS_NOENT;
+  }
+
+  for (;;) {
+    rc = f_readdir(&dir, &fno); /* Read a directory item */
+    if (rc != FR_OK || fno.fname[0] ==  0) break; /* Error or end of dir */
+#if _USE_LFN
+    fn = *fno.lfname ? fno.lfname : fno.fname;
+#else
+    fn = fno.fname;
+#endif
+    if (fn[0] == '.') continue;
+
+    if (!(fno.fattrib & AM_DIR)) {
+      //      DebugTrace ("fno.fsize=%d  fn=%s\n", fno.fsize, fn);
+      if ((strncmp (fn, prefix, strlen(prefix)) == 0) && (fno.fsize <= sizeConsideredEmpty)) {
+	char absPathName[128];
+	strlcpy (absPathName, directoryName, sizeof(absPathName));
+	strlcat (absPathName, "/", sizeof(absPathName));
+	strlcat (absPathName, fn, sizeof(absPathName));
+	rc = f_unlink (absPathName);
+	DebugTrace ("fno.fsize=%d  fn=%s abspath=%s rc=%d ADDR(mqueue) = 0x%x\n",
+		    fno.fsize, fn, absPathName, rc, messagesQueue.circBuf.keys);
+	if (rc) 
+	  break;
+      }
+    }
+  }
+  
+  if (rc) {
+    return SDLOG_FATFS_ERROR;
+  }
+  
+  rc = f_closedir (&dir);
+  if (rc) {
+    return SDLOG_FATFS_ERROR;
+  }
+
+  return SDLOG_OK;
+}
 
 /*
 #                 _____           _                    _
