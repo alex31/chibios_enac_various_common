@@ -113,7 +113,7 @@ SdioError getFileName(const char* prefix, const char* directoryName,
  * @param[in]	directoryName : root directory where to find file
  * @param[in]	sizeConsideredEmpty : file whose size is less or equal to that value will be removed
  */
-SdioError removeEmptyLogs(const char* prefix, const char* directoryName,
+SdioError removeEmptyLogs(const char* directoryName, const char* prefix, 
 			  const size_t sizeConsideredEmpty);
 /**
  * @brief	unmount filesystem

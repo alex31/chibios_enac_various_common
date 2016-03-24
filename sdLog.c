@@ -494,7 +494,7 @@ SdioError getFileName(const char* prefix, const char* directoryName,
   }
 }
 
-SdioError removeEmptyLogs(const char* prefix, const char* directoryName, const size_t sizeConsideredEmpty)
+SdioError removeEmptyLogs(const char* directoryName, const char* prefix, const size_t sizeConsideredEmpty)
 {
   DIR dir; /* Directory object */
   FRESULT rc; /* Result code */
@@ -529,8 +529,6 @@ SdioError removeEmptyLogs(const char* prefix, const char* directoryName, const s
 	strlcat (absPathName, "/", sizeof(absPathName));
 	strlcat (absPathName, fn, sizeof(absPathName));
 	rc = f_unlink (absPathName);
-	DebugTrace ("fno.fsize=%d  fn=%s abspath=%s rc=%d ADDR(mqueue) = 0x%x\n",
-		    fno.fsize, fn, absPathName, rc, messagesQueue.circBuf.keys);
 	if (rc) 
 	  break;
       }
