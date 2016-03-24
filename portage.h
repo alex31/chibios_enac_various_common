@@ -50,6 +50,9 @@ typedef binary_semaphore_t	BinarySemaphore;
 #define chSysLockFromIsr() chSysLockFromISR()
 #define chSysUnlockFromIsr() chSysUnlockFromISR()
 
-#define S2RTT(sec) (sec * STM32_SYSCLK)
+#define S2RTT(sec) S2RTC(STM32_SYSCLK, sec)
+#define MS2RTT(msec) MS2RTC(STM32_SYSCLK, msec)
+#define US2RTT(usec) US2RTC(STM32_SYSCLK, usec)
+
 #define CH_FREQUENCY CH_CFG_ST_FREQUENCY
 #endif
