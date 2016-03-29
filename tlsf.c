@@ -80,22 +80,21 @@
 
 #if TLSF_USE_LOCKS
 #include <ch.h>
-#include "portage.h"
-#define TLSF_MLOCK_T            Mutex
-#define TLSF_CREATE_LOCK(l)     chMtxInit (l)
-#define TLSF_DESTROY_LOCK(l)
-#define TLSF_ACQUIRE_LOCK(l)    chMtxLock (l)
+#define TLSF_DESTROY_LOCK(_unused_)     do{}while(0)
+#define TLSF_ACQUIRE_LOCK(l)		chMtxLock (l)
 
 #if (CH_KERNEL_MAJOR == 2)
-#define TLSF_RELEASE_LOCK(l)    chMtxUnlock ()
-#else
-#define TLSF_RELEASE_LOCK(l)    chMtxUnlock (l)
+#define TLSF_MLOCK_T			Mutex
+#define TLSF_CREATE_LOCK(l)     	chMtxInit (l)
+#define TLSF_RELEASE_LOCK(_unused_)    	chMtxUnlock ()
+#else // CH_KERNEL_MAJOR >= 3
+#define TLSF_MLOCK_T			mutex_t
+#define TLSF_CREATE_LOCK(l)     	chMtxObjectInit (l)
+#define TLSF_RELEASE_LOCK(l)    	chMtxUnlock (l)
 #endif
 
 
-#else
-
-
+#else // TLSF DO NOT USE LOCKS
 
 #define TLSF_CREATE_LOCK(_unused_)   do{}while(0)
 #define TLSF_DESTROY_LOCK(_unused_)  do{}while(0) 
