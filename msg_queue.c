@@ -166,6 +166,43 @@ int32_t		msgqueue_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
   return  MsgQueue_MAILBOX_FULL;
 }
 
+/*
+  goal : 
+         send a chunk of memory copying buffer
+
+  parameters : queue object, pointer to reserved memory
+               urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
+  return value: if > 0 : requested length
+                if < 0 : error status (see errors at begining of this header file)
+ */
+int32_t		msgqueue_copy_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
+					    const MsgQueueUrgency urgency, const systime_t timout)
+{
+  void *dst = msgqueue_malloc_before_send (que, msgLen);
+
+  if (dst == NULL) {
+    return MsgQueue_MAILBOX_FULL;
+  }
+
+  memcpy (dst, msg, msgLen);
+  return msgqueue_send_timeout (que, dst, msgLen, urgency, timout);
+}
+
+/*
+  goal : 
+         send a chunk of memory copying buffer
+
+  parameters : queue object, pointer to reserved memory
+               urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
+  return value: if > 0 : requested length
+                if < 0 : error status (see errors at begining of this header file)
+ */
+int32_t		msgqueue_copy_send (MsgQueue* que, void *msg, const uint16_t msgLen,
+					    const MsgQueueUrgency urgency)
+{
+  return msgqueue_copy_send_timeout (que, msg, msgLen, urgency, TIME_IMMEDIATE);
+}
+
 
 /*
   goal : (zero copy api)

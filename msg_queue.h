@@ -90,9 +90,42 @@ int32_t	 msgqueue_send (MsgQueue* que, void *msg, const uint16_t msgLen,
 			const MsgQueueUrgency urgency);
 
 
-int32_t	 msgqueue_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
-				       const MsgQueueUrgency urgency, const systime_t timout);
 /*
+  goal : (zero copy api)
+         send a chunk of memory prevoiously reserved and filled as a message
+
+  parameters : queue object, pointer to reserved memory
+               urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
+  return value: if > 0 : requested length
+                if < 0 : error status (see errors at begining of this header file)
+ */
+int32_t	 msgqueue_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
+				const MsgQueueUrgency urgency, const systime_t timout);
+
+ /*
+  goal :        send a chunk of memory copying a buffer
+
+  parameters : queue object, pointer to reserved memory
+               urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
+  return value: if > 0 : requested length
+                if < 0 : error status (see errors at begining of this header file)
+ */
+int32_t	 msgqueue_copy_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
+				     const MsgQueueUrgency urgency, const systime_t timout);
+
+/*
+goal :        send a chunk of memory copying a buffer
+
+parameters : queue object, pointer to reserved memory
+             urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
+return value: if > 0 : requested length
+              if < 0 : error status (see errors at begining of this header file)
+*/
+int32_t	 msgqueue_copy_send (MsgQueue* que, void *msg, const uint16_t msgLen,
+			     const MsgQueueUrgency urgency);
+
+
+  /*
   goal : (zero copy api)
   get a message to be processed without copy (blocking)
 
@@ -110,7 +143,7 @@ int32_t	msgqueue_pop (MsgQueue* que, void **msgPtr);
   parameters : INOUT queue object
 	       OUT pointer to msg
 	       IN  timeout (or TIME_IMMEDIATE or TIME_INFINITE)
-  return value: if > 0 : length od received msg
+  return value: if > 0 : length of received msg
                 if < 0 : error status (see errors at begining of this header file)
 
  */
