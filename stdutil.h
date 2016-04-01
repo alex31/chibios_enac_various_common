@@ -66,6 +66,9 @@
 #define REINTERPRET_CAST(type, val) ({_Static_assert(sizeof(val) <= sizeof(type), \
 						    "sizeof (type) is too small");  \
 				       *((type *) (&val));}
+
+#define likely(x)      __builtin_expect(!!(x), 1)
+#define unlikely(x)    __builtin_expect(!!(x), 0)
   
 /* #define RotL(x,shift) ((x << shift) | (x >> (sizeof(x) - shift))) */
 /* #define RotR(x,shift) ((x >> shift) | (x << (sizeof(x) - shift))) */

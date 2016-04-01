@@ -6,8 +6,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
+  
+  
 typedef enum {MsgQueue_MAILBOX_FULL=-100, 
 	      MsgQueue_MAILBOX_FAIL, 
 	      MsgQueue_MAILBOX_TIMEOUT,
@@ -22,107 +22,137 @@ typedef enum  {MsgQueue_REGULAR, MsgQueue_OUT_OF_BAND} MsgQueueUrgency;
 typedef struct  MsgQueue MsgQueue;
 
 
-/*
-  goal : dynamically initialise memory. should be used to workaround a bug if queue is located to ccmram
-         not mandatory is queue is not in ccmram
-  parameters : queue object
-  return value: no
+/**
+ * @brief	initialise MsgQueue
+ * @details	init sdQueue objet, tie memory pool buffer, tie mailbox buffer 
+ *              initialize mailbox
+ * @param[out] 	que:		opaque object to be initialized
+ * @param[in]	mp_base:	address of memory pool used by tlsf allocator
+ * @param[in]	mp_size:	size of previous memory pool in bytes
+ * @param[in]	mb_buff:	internal buffer used by MailBox (see Chibios Doc)
+ * @param[in]	mb_size:	size of previous buffer (length of MailBox queue)
  */
-  void		msgqueue_init   (MsgQueue* que,
+void		msgqueue_init   (MsgQueue* que,
 				 void *mp_base, const size_t mp_size,
 				 msg_t *mb_buf, const cnt_t mb_size);
 
-/*
-  goal : test if queue is full
-
-  parameters : queue object
-  return value: TRUE if queue if full, FALSE otherwise
+/**
+ * @brief	test if queue is full
+ * @param[in] 	que:		pointer to opaque MsgQueue object 
+ * @return	true if full, false otherwise
  */
 bool		msgqueue_is_full   (MsgQueue* que);
 
-/*
-  goal : test if queue is empty
-
-  parameters : queue object
-  return value:  TRUE if queue if empty, FALSE otherwise
+/**
+ * @brief	test if queue is empty
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @return	true if empty, false otherwise
  */
 bool 		msgqueue_is_empty  (MsgQueue* que);
 
-/*
-  goal :  return used size in memory pool,
-         does take into account used mailbox slots
-
-  parameters : queue object
-  return value: size in byte of used memory
+/**
+ * @brief	return used size in memory pool
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @return	size in byte of used memory
  */
 size_t 	msgqueue_get_used_size (MsgQueue* que);
 
-/*
-  goal : return free size in memory pool,
-         does take into account used mailbox slots
-
-  parameters : queue object
-  return value: size in byte of free memory
+/**
+ * @brief	return free size in memory pool
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @return	size in byte of free memory
  */
 size_t 	msgqueue_get_free_size (MsgQueue* que);
 
 
-/*
-  goal : (zero copy api)
-         reserve a chunk of memory on the memory pool to be filled eventually
-
-  parameters : queue object, reserved buffer length
-  return value: if NULL => error
-                if non NULL : pointer to memory
+/**
+ * @brief	allocate a buffer prior to send it
+ * @details	to limit the number of buffer copies, this api is provided and
+ *		should be used like this
+ *		ptr = msgqueue_malloc_before_send
+ *		if (ptr) { fill  ptr }
+ *		msgqueue_sendxxx ()
+ *		deallocation is done by the caching thread which actually write data to sd card
+ *		from the sender point of view, ptr should be considered invalid after beeing sent
+ *
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @param[in] 	msgLen:	length of requested buffer
+ * @return	if NULL => error	       
+ *		if non NULL : pointer to memory
  */
 void *	 msgqueue_malloc_before_send (MsgQueue* que, const uint16_t msgLen);
 
-/*
-  goal : (zero copy api)
-         send a chunk of memory prevoiously reserved and filled as a message
-
-  parameters : queue object, pointer to reserved memory
-               urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
-  return value: if > 0 : requested length
-                if < 0 : error status (see errors at begining of this header file)
+/**
+ * @brief	send a buffer previously allocated by msgqueue_malloc_before_send
+ * @details	deallocation is done by the caching thread which actually write data to sd card
+ *		from the sender point of view, ptr should be considered invalid after beeing sent.
+ *		Even if msgqueue_send fail, deallocation is done
+ *		Non blocking, if queue is full, report error and immediately return
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @param[in] 	msg:	pointer to buffer given by msgqueue_malloc_before_send
+ * @param[in] 	msgLen:	length of buffer (the same param that has been 
+ *		given to msgqueue_malloc_before_send)
+ * @param[in] 	urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
+ * @return	if > 0 : requested length
+ *		if < 0 : error status (see errors at begining of this header file)
  */
 int32_t	 msgqueue_send (MsgQueue* que, void *msg, const uint16_t msgLen,
 			const MsgQueueUrgency urgency);
 
 
-/*
-  goal : (zero copy api)
-         send a chunk of memory prevoiously reserved and filled as a message
-
-  parameters : queue object, pointer to reserved memory
-               urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
-  return value: if > 0 : requested length
-                if < 0 : error status (see errors at begining of this header file)
+/**
+ * @brief	send a buffer previously allocated by msgqueue_malloc_before_send
+ * @details	deallocation is done by the caching thread which actually write data to sd card
+ *		from the sender point of view, ptr should be considered invalid after beeing sent.
+ *		Even if msgqueue_send fail, deallocation is done
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @param[in] 	msg:	pointer to buffer given by msgqueue_malloc_before_send
+ * @param[in] 	msgLen:	length of buffer (the same param that has been 
+ *		given to msgqueue_malloc_before_send)
+ * @param[in] 	urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
+ * @param[in] 	timout : time to wait for MailBox avaibility (can be TIME_INFINITE or TIME_IMMEDIATE)
+ * @return	if > 0 : requested length
+ *		if < 0 : error status (see errors at begining of this header file)
  */
 int32_t	 msgqueue_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
 				const MsgQueueUrgency urgency, const systime_t timout);
 
- /*
-  goal :        send a chunk of memory copying a buffer
 
-  parameters : queue object, pointer to reserved memory
-               urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
-  return value: if > 0 : requested length
-                if < 0 : error status (see errors at begining of this header file)
+/**
+ * @brief	send a buffer *NOT* previously allocated
+ * @details	buffer is copied before beeing sent, buffer is still valid after this function
+ *		returns. Less effective that zero copy alternatives which has been to be preferably
+ *              used
+ *		Non blocking, if queue is full, report error and immediately return
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @param[in] 	msg:	pointer to buffer
+ * @param[in] 	msgLen:	length of buffer (the same param that has been 
+ *		given to msgqueue_malloc_before_send)
+ * @param[in] 	urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
+ * @return	if > 0 : requested length
+ *		if < 0 : error status (see errors at begining of this header file)
  */
-int32_t	 msgqueue_copy_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
+int32_t	 msgqueue_copy_send (MsgQueue* que, const void *msg, const uint16_t msgLen,
+			     const MsgQueueUrgency urgency);
+
+
+/**
+ * @brief	send a buffer *NOT* previously allocated
+ * @details	buffer is copied before beeing sent, buffer is still valid after this function
+ *		returns. Less effective that zero copy alternatives which has been to be preferably
+ *              used
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @param[in] 	msg:	pointer to buffer
+ * @param[in] 	msgLen:	length of buffer (the same param that has been 
+ *		given to msgqueue_malloc_before_send)
+ * @param[in] 	urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
+ * @param[in] 	timout : time to wait for MailBox avaibility (can be TIME_INFINITE or TIME_IMMEDIATE)
+ * @return	if > 0 : requested length
+ *		if < 0 : error status (see errors at begining of this header file)
+ */
+int32_t	 msgqueue_copy_send_timeout (MsgQueue* que, const void *msg, const uint16_t msgLen,
 				     const MsgQueueUrgency urgency, const systime_t timout);
 
-/*
-goal :        send a chunk of memory copying a buffer
-
-parameters : queue object, pointer to reserved memory
-             urgency  regular=queued at end of fifo or out_of_band queued at start of fifo
-return value: if > 0 : requested length
-              if < 0 : error status (see errors at begining of this header file)
-*/
-int32_t	 msgqueue_copy_send (MsgQueue* que, void *msg, const uint16_t msgLen,
-			     const MsgQueueUrgency urgency);
 
 
   /*
@@ -131,21 +161,36 @@ int32_t	 msgqueue_copy_send (MsgQueue* que, void *msg, const uint16_t msgLen,
 
   parameters : INOUT queue object
 	       OUT msg pointer
-  return value: if > 0 : length of received msg
-                if < 0 : error status (see errors at begining of this header file)
+  return value: 
+                
+ */
+
+/**
+ * @brief	wait then receive message
+ * @details	this is zero copy api, blocking call
+ *		usage : struct MyStruct *msg
+ *                      msgqueue_pop (&que, void (void **) &msg);
+ *                      use msg->myField etc etc
+                        msgqueue_free_after_pop (&que, msg);
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @param[out] 	msgPtr:	pointer to pointer to buffer
+ * @return	if > 0 : length of received msg					  
+ *		if < 0 : error status (see errors at begining of this header file)
  */
 int32_t	msgqueue_pop (MsgQueue* que, void **msgPtr);
 
-/*
-  goal : (zero copy api)
-  get a message to be processed without copy (blocking)
-
-  parameters : INOUT queue object
-	       OUT pointer to msg
-	       IN  timeout (or TIME_IMMEDIATE or TIME_INFINITE)
-  return value: if > 0 : length of received msg
-                if < 0 : error status (see errors at begining of this header file)
-
+/**
+ * @brief	receive message specifying timeout
+ * @details	this is zero copy api, blocking call
+ *		usage : struct MyStruct *msg
+ *                      msgqueue_pop (&que, void (void **) &msg);
+ *                      use msg->myField etc etc
+                        msgqueue_free_after_pop (&que, msg);
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @param[out] 	msgPtr:	pointer to pointer to buffer
+ * @param[in] 	timout : time to wait for MailBox avaibility (can be TIME_INFINITE or TIME_IMMEDIATE)
+ * @return	if > 0 : length of received msg					  
+ *		if < 0 : error status (see errors at begining of this header file)
  */
 int32_t	msgqueue_pop_timeout (MsgQueue* que, void **msgPtr, const systime_t timout);
 
@@ -157,23 +202,29 @@ int32_t	msgqueue_pop_timeout (MsgQueue* que, void **msgPtr, const systime_t timo
   parameters : INOUT queue object
                IN    ChunkBufferRO pointer
  */
+/**
+ * @brief	free message after using it to give back memory to dynamic allocator
+ * @details	this is zero copy api
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @param[in] 	msg:	pointer to buffer to free
+ */
 void	msgqueue_free_after_pop (MsgQueue* que, void *msg);
 
 
 
-/*
-  goal : helper function to fix queue : verify that a empty queue is in coherent state
-
-  parameters : queue object
-  return value: TRUE if OK, FALSE if ERROR
+/**
+ * @brief	test and debug api
+ * @details	test that when mailbox is empty, memory pool is unused too
+ * @param[in] 	que:	pointer to opaque MsgQueue object 
+ * @return	MsgQueue_OK or MsgQueue_MAILBOX_NOT_EMPTY or MsgQueue_MAILBOX_FAIL in case of internal error
  */
 MsgQueueStatus	msgqueue_test_integrity_if_empty(MsgQueue* que);
 
-/*
-  goal : give literal message from a status error code
-
-  parameters : status error code
-  return value: pointer to const message
+/**
+ * @brief	debug api
+ * @details	give ascii string corresponding to the given errno
+ * @param[in] 	errno : staus
+ * @return	pointer to error string
  */
 const char*     msgqueue_strerror (const MsgQueueStatus errno);
 

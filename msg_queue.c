@@ -175,7 +175,7 @@ int32_t		msgqueue_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
   return value: if > 0 : requested length
                 if < 0 : error status (see errors at begining of this header file)
  */
-int32_t		msgqueue_copy_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
+int32_t		msgqueue_copy_send_timeout (MsgQueue* que, const void *msg, const uint16_t msgLen,
 					    const MsgQueueUrgency urgency, const systime_t timout)
 {
   void *dst = msgqueue_malloc_before_send (que, msgLen);
@@ -197,7 +197,7 @@ int32_t		msgqueue_copy_send_timeout (MsgQueue* que, void *msg, const uint16_t ms
   return value: if > 0 : requested length
                 if < 0 : error status (see errors at begining of this header file)
  */
-int32_t		msgqueue_copy_send (MsgQueue* que, void *msg, const uint16_t msgLen,
+int32_t		msgqueue_copy_send (MsgQueue* que, const void *msg, const uint16_t msgLen,
 					    const MsgQueueUrgency urgency)
 {
   return msgqueue_copy_send_timeout (que, msg, msgLen, urgency, TIME_IMMEDIATE);

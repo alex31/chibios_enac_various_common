@@ -17,16 +17,13 @@ extern "C" {
     This module is highly coupled with fatfs, and mcuconf.h
     several MACRO should be defined before use
 
-    FATFS (ffconf.h) :
-    ° _FS_SHARE : number of simultaneously open file
-    ° _FS_REENTRANT : If you need to open / close file during log, this should be set to 1 at
-                       the expense of more used ram and cpu.
-                      If you open all files prior to log data on them, it should be left to 0
+    FATFS (ffconf.h) 
+
 
    MCUCONF.H (or any other header included before sdLog.h
-   ° SDLOG_ALL_BUFFERS_SIZE : (in bytes) performance ram buffer size shared between all opened log file
+   ° SDLOG_ALL_BUFFERS_SIZE : (in bytes) cache buffer size shared between all opened log file
    ° SDLOG_MAX_MESSAGE_LEN  : (in bytes) maximum length of a message
-   ° SDLOG_QUEUE_SIZE       : (in bytes) size of the message queue
+   ° SDLOG_QUEUE_SIZE       : (in bytes) size of the memory pool associated with message queue
    ° SDLOG_QUEUE_BUCKETS    : number of entries in queue
 
 
@@ -150,7 +147,7 @@ SdioError sdLogFlushLog (const FileDes fileObject);
  * @brief	flush ram buffer then close file.
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  */
-  SdioError sdLogCloseLog (const FileDes fileObject);
+SdioError sdLogCloseLog (const FileDes fileObject);
 
 /**
  * @brief	close all opened logs then stop worker thread
