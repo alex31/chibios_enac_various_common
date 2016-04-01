@@ -11,6 +11,9 @@
 #include "stdutil.h"
 #include "globalVar.h"
 
+#define likely(x)      __builtin_expect(!!(x), 1)
+#define unlikely(x)    __builtin_expect(!!(x), 0)
+
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
 #define MAX(x , y)  (((x) > (y)) ? (x) : (y))
 
@@ -62,23 +65,7 @@ static uint8_t quePoolBuffer[SDLOG_QUEUE_SIZE] __attribute__ ((section(".ccmram"
 static msg_t   queMbBuffer[SDLOG_QUEUE_BUCKETS] __attribute__ ((section(".ccmram"), aligned(8))) ;
 static MsgQueue messagesQueue;
 
-struct FilePoolUnit {
-  FIL   fil;
-  bool  inUse;
-  bool  tagAtClose;
-};
-
-static  struct FilePoolUnit fileDes[SDLOG_NUM_BUFFER] =
-  {[0 ... SDLOG_NUM_BUFFER-1] = {.fil = {0}, .inUse = false, .tagAtClose=false}};
-
-typedef enum {
-  FCNTL_WRITE = 0b00,
-  FCNTL_FLUSH = 0b01,
-  FCNTL_CLOSE = 0b10,
-  FCNTL_EXIT =  0b11
-} FileFcntl;
-
-
+#define WRITE_BYTE_CACHE_SIZE 16
 typedef struct {
   uint8_t fcntl:2;
   uint8_t fd:6;
@@ -88,6 +75,29 @@ struct LogMessage {
   FileOp op;
   char mess[0];
 };
+
+struct FilePoolUnit {
+  FIL   fil;
+  bool  inUse;
+  bool  tagAtClose;
+  // optimise write byte by caching at send level now that we are based upon tlsf where
+  // allocation granularity is 16 bytes
+  LogMessage *writeByteCache;
+  uint8_t writeByteSeek;
+};
+
+static  struct FilePoolUnit fileDes[SDLOG_NUM_BUFFER] =
+  {[0 ... SDLOG_NUM_BUFFER-1] = {.fil = {0}, .inUse = false, .tagAtClose=false,
+				 .writeByteCache=NULL, .writeByteSeek=0}};
+
+typedef enum {
+  FCNTL_WRITE = 0b00,
+  FCNTL_FLUSH = 0b01,
+  FCNTL_CLOSE = 0b10,
+  FCNTL_EXIT =  0b11
+} FileFcntl;
+
+
 
 #define LOG_MESSAGE_PREBUF_LEN (SDLOG_MAX_MESSAGE_LEN+sizeof(LogMessage))
 #endif //  SDLOG_NEED_QUEUE
@@ -115,6 +125,7 @@ static msg_t thdSdLog(void *arg) ;
 
 
 static int32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName) ;
+static inline SdioError flushWriteByteBuffer (const FileDes fd);
 
 SdioError sdLogInit (uint32_t* freeSpaceInKo)
 {
@@ -154,6 +165,8 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
 #ifdef SDLOG_NEED_QUEUE
   for (uint8_t i=0; i<SDLOG_NUM_BUFFER; i++) {
     fileDes[i].inUse = fileDes[i].tagAtClose = false;
+    fileDes[i].writeByteCache = NULL;
+    fileDes[i].writeByteSeek = 0;
   }
 
   return sdLoglaunchThread ();
@@ -253,13 +266,14 @@ SdioError sdLogCloseAllLogs (bool flush)
     // queue flush + close order, then stop worker thread
     for (FileDes fd=0; fd<SDLOG_NUM_BUFFER; fd++) {
       if (fileDes[fd].inUse) {
+	flushWriteByteBuffer (fd);
 	sdLogCloseLog (fd);
       }
     }
 
     LogMessage *lm = msgqueue_malloc_before_send (&messagesQueue, sizeof(LogMessage));
     lm->op.fcntl = FCNTL_EXIT;
-
+    
     if (msgqueue_send (&messagesQueue, lm, sizeof(LogMessage), MsgQueue_REGULAR) < 0) {
       return SDLOG_QUEUEFULL;
     } else {
@@ -278,22 +292,24 @@ SdioError sdLogWriteLog (const FileDes fd, const char* fmt, ...)
   if ((fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false))
     return SDLOG_FATFS_ERROR;
 
+  flushWriteByteBuffer (fd);
+  
   va_list ap;
   va_start(ap, fmt);
-
+  
   LogMessage *lm = alloca (LOG_MESSAGE_PREBUF_LEN);
-
+  
   lm->op.fcntl = FCNTL_WRITE;
   lm->op.fd = fd & 0x1f;
-
+  
   chvsnprintf (lm->mess, SDLOG_MAX_MESSAGE_LEN-1,  fmt, ap);
   lm->mess[SDLOG_MAX_MESSAGE_LEN-1]=0;
   va_end(ap);
-
+  
   if (msgqueue_copy_send (&messagesQueue, lm, logMessageLen(lm), MsgQueue_REGULAR) < 0) {
     return SDLOG_QUEUEFULL;
   }
-
+  
   return SDLOG_OK;
 }
 
@@ -301,7 +317,8 @@ SdioError sdLogFlushLog (const FileDes fd)
 {
   if ((fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false))
     return SDLOG_FATFS_ERROR;
-
+  
+  flushWriteByteBuffer (fd);
   LogMessage *lm = msgqueue_malloc_before_send (&messagesQueue, sizeof(LogMessage));
 
   lm->op.fcntl = FCNTL_FLUSH;
@@ -335,11 +352,28 @@ SdioError sdLogCloseLog (const FileDes fd)
 
 
 
+static inline SdioError flushWriteByteBuffer (const FileDes fd)
+{
+  if ((fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false))
+    return SDLOG_FATFS_ERROR;
+  
+  if (unlikely (fileDes[fd].writeByteCache != NULL)) {
+    if (msgqueue_send (&messagesQueue, fileDes[fd].writeByteCache,
+		       sizeof(LogMessage) + fileDes[fd].writeByteSeek,
+		       MsgQueue_REGULAR) < 0) {
+      return SDLOG_QUEUEFULL;
+    }
+    fileDes[fd].writeByteCache = NULL;
+  }
+  return SDLOG_OK;
+}
+
 SdioError sdLogWriteRaw (const FileDes fd, const uint8_t * buffer, const size_t len)
 {
   if ((fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false))
     return SDLOG_FATFS_ERROR;
 
+  flushWriteByteBuffer (fd);
   LogMessage *lm = msgqueue_malloc_before_send (&messagesQueue, LOG_MESSAGE_PREBUF_LEN);
 
   lm->op.fcntl = FCNTL_WRITE;
@@ -358,17 +392,25 @@ SdioError sdLogWriteByte (const FileDes fd, const uint8_t value)
 {
   if ((fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false))
     return SDLOG_FATFS_ERROR;
-
-  LogMessage *lm = msgqueue_malloc_before_send (&messagesQueue, sizeof(LogMessage)+1);
-
-  lm->op.fcntl = FCNTL_WRITE;
-  lm->op.fd = fd & 0x1f;
-  lm->mess[0] = value;
-
-  if (msgqueue_send (&messagesQueue, lm, sizeof(LogMessage)+1, MsgQueue_REGULAR) < 0) {
-    return SDLOG_QUEUEFULL;
+  LogMessage *lm;
+  
+  if  (fileDes[fd].writeByteCache == NULL) {
+    lm = msgqueue_malloc_before_send (&messagesQueue,
+				      sizeof(LogMessage) + WRITE_BYTE_CACHE_SIZE);
+    lm->op.fcntl = FCNTL_WRITE;
+    lm->op.fd = fd & 0x1f;
+    
+    fileDes[fd].writeByteCache = lm;
+    fileDes[fd].writeByteSeek = 0;
+  } else {
+    lm = fileDes[fd].writeByteCache;
   }
+  
+  lm->mess[fileDes[fd].writeByteSeek++] = value;
 
+  if (fileDes[fd].writeByteSeek == WRITE_BYTE_CACHE_SIZE) {
+    return flushWriteByteBuffer (fd);
+  } 
   return SDLOG_OK;
 }
 
@@ -403,6 +445,7 @@ SdioError sdLogStopThread (void)
   // ask for closing (after flushing) all opened files
   for (uint8_t i=0; i<SDLOG_NUM_BUFFER; i++) {
     if (fileDes[i].inUse) {
+      flushWriteByteBuffer (i);
       lm.op.fcntl = FCNTL_CLOSE;
       lm.op.fd = i & 0x1f;
       if (msgqueue_copy_send (&messagesQueue, &lm, sizeof(LogMessage), MsgQueue_OUT_OF_BAND) < 0) {
