@@ -32,6 +32,7 @@ void		msgqueue_init   (MsgQueue* que,
   }
 #endif
   chMBObjectInit (&que->mb, mb_buf, mb_size);
+  chMtxObjectInit (&que->mtx);
   que->mp_base = mp_base;
   que->mp_size = mp_size;
   memset (mp_base, 0, mp_size);
@@ -107,7 +108,10 @@ size_t 	msgqueue_get_free_size (MsgQueue* que)
  */
 void *		msgqueue_malloc_before_send (MsgQueue* que, const uint16_t msgLen)
 {
-  return malloc_ex (msgLen, que->mp_base);
+  chMtxLock (&que->mtx);
+  void * const ret = malloc_ex (msgLen, que->mp_base);
+  chMtxUnlock (&que->mtx);
+  return ret;
 }
 
 /*
@@ -162,7 +166,9 @@ int32_t		msgqueue_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
   return msgLen;
   
  fail:
+  chMtxLock (&que->mtx);
   free_ex (msg, que->mp_base);
+  chMtxUnlock (&que->mtx);
   return  MsgQueue_MAILBOX_FULL;
 }
 
@@ -261,8 +267,9 @@ void		msgqueue_free_after_pop (MsgQueue* que, void *msg)
 #endif
   }
 #endif
-  
+  chMtxLock (&que->mtx);
   free_ex (msg, que->mp_base);
+  chMtxUnlock (&que->mtx);
 }
 
 
