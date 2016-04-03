@@ -238,7 +238,6 @@ const char*     msgqueue_strerror (const MsgQueueStatus errno);
 */
 
 struct MsgQueue {
-  mutex_t	mtx;
   mailbox_t	mb;
   void *	mp_base;
   size_t	mp_size;

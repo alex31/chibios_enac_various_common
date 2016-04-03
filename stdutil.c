@@ -5,7 +5,7 @@
 #include "globalVar.h"
 #include "stdutil.h"
 #if CH_HEAP_USE_TLSF
-#include "tlsf.h"
+#include "tlsf_malloc.h"
 #endif
 
 
@@ -81,10 +81,9 @@ float powi(int x, int y)
 #error CH_HEAP_SIZE should be defined if  CH_USE_HEAP or CH_HEAP_USE_TLSF are defined
 #endif
 
-static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(".ccmram"), aligned(8))) ;
+
 
 #if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
-MemoryHeap ccmHeap;
 #endif
 
 #endif // if CH_USE_HEAP || CH_HEAP_USE_TLSF
@@ -97,8 +96,8 @@ MemoryHeap ccmHeap;
 #error CH_HEAP_SIZE should be defined if  CH_CFG_USE_HEAP or CH_HEAP_USE_TLSF are defined
 #endif
 
-static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(".ccmram"), aligned(8))) ;
 #if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
+static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(".ccmram"), aligned(8))) ;
 memory_heap_t ccmHeap;
 #endif
 
@@ -110,7 +109,10 @@ memory_heap_t ccmHeap;
 size_t initHeap (void)
 {
 #if CH_HEAP_USE_TLSF
-  return init_memory_pool(sizeof (ccmHeapBuffer), ccmHeapBuffer);
+  struct  tlsf_stat_t stat;
+  tlsf_init_heaps();
+  tlsf_stat_r (&HEAP_DEFAULT, &stat);
+  return stat.mfree;
 #else
   size_t size;
 #if (CH_KERNEL_MAJOR == 2)
@@ -127,7 +129,9 @@ size_t initHeap (void)
 size_t getHeapFree (void)
 {
 #if CH_HEAP_USE_TLSF
-  return sizeof (ccmHeapBuffer) - get_used_size (ccmHeapBuffer);
+  struct  tlsf_stat_t stat;
+  tlsf_stat_r (&HEAP_DEFAULT, &stat);
+  return stat.mfree;
 #else
   size_t size;
   chHeapStatus(&ccmHeap, &size);
@@ -140,7 +144,7 @@ void *malloc_m (size_t size)
 {
 #if CH_HEAP_USE_TLSF
   //  DebugTrace ("tlsf alloc size=%d", size);
-  return malloc_ex(size, ccmHeapBuffer);
+  return tlsf_malloc_r(&HEAP_DEFAULT, size);
 #else
   return chHeapAlloc (&ccmHeap, size);
 #endif
@@ -150,7 +154,7 @@ void free_m(void *p)
 {
 #if CH_HEAP_USE_TLSF
   //  DebugTrace ("tlsf free 0x%x", p);
-  free_ex (p, ccmHeapBuffer);
+  tlsf_free_r(&HEAP_DEFAULT, p);
 #else
   chHeapFree (p);
 #endif

@@ -220,7 +220,6 @@ extern "C" {
 } GpioPin;
 
 #if (CH_KERNEL_MAJOR == 2)
-extern MemoryHeap ccmHeap;
 #if CH_USE_HEAP || CH_HEAP_USE_TLSF
   size_t initHeap (void);
   size_t getHeapFree (void);
@@ -228,7 +227,6 @@ extern MemoryHeap ccmHeap;
   void free_m(void *p);
 #endif
 #else
-extern memory_heap_t ccmHeap;
 #if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
   size_t initHeap (void);
   size_t getHeapFree (void);

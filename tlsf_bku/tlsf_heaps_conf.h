@@ -1,0 +1,5 @@
+#define HEAP_BANK1_NAME		ccmHeap
+#define HEAP_BANK1_SIZE		16384
+#define HEAP_BANK1_SECTION	".ccmram"
+
+#define HEAP_DEFAULT		HEAP_BANK1_NAME
