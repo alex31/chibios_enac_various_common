@@ -29,6 +29,7 @@ typedef struct  MsgQueue MsgQueue;
  * @details	init sdQueue objet, tie memory pool buffer, tie mailbox buffer 
  *              initialize mailbox
  * @param[out] 	que:		opaque object to be initialized
+ * @param[in]	heap:		reference to the tlsf heap object (needed if module should free memory)
  * @param[in]	mb_buff:	internal buffer used by MailBox (see Chibios Doc)
  * @param[in]	mb_size:	size of previous buffer (length of MailBox queue)
  */

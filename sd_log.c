@@ -388,7 +388,7 @@ SdioError sdLogWriteRaw (const FileDes fd, const uint8_t * buffer, const size_t 
 
   flushWriteByteBuffer (fd);
   LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, logRawLen(len));
-  if (lm == NULL) 
+  if (lm == NULL)
     return SDLOG_QUEUEFULL;
 
   lm->op.fcntl = FCNTL_WRITE;
@@ -401,6 +401,7 @@ SdioError sdLogWriteRaw (const FileDes fd, const uint8_t * buffer, const size_t 
 
   return SDLOG_OK;
 }
+
 
 
 SdioError sdLogWriteByte (const FileDes fd, const uint8_t value)
