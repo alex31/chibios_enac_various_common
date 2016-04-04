@@ -8,16 +8,16 @@
 struct _tlsf_memory_heap_t;
 typedef struct _tlsf_memory_heap_t tlsf_memory_heap_t;
 
-#ifdef HEAP_BANK1_NAME
-extern tlsf_memory_heap_t HEAP_BANK1_NAME;
+#ifdef HEAP_CCM
+extern tlsf_memory_heap_t HEAP_CCM;
 #endif
 
-#ifdef HEAP_BANK2_NAME
-extern tlsf_memory_heap_t HEAP_BANK2_NAME;
+#ifdef HEAP_SRAM
+extern tlsf_memory_heap_t HEAP_SRAM;
 #endif
 
-#ifdef HEAP_BANK3_NAME
-extern tlsf_memory_heap_t HEAP_BANK3_NAME;
+#ifdef HEAP_EXTERN
+extern tlsf_memory_heap_t HEAP_EXTERN;
 #endif
 
 
@@ -42,6 +42,12 @@ void  tlsf_free_r(tlsf_memory_heap_t *heap, void* ptr);
 
 /* Debugging. */
 void tlsf_stat_r (tlsf_memory_heap_t *heap, struct tlsf_stat_t *stat);
+
+/* get memory heap base addr*/
+void* tlsf_get_heap_addr(const tlsf_memory_heap_t *heap);
+
+/* Returns nonzero if any internal consistency check fails. */
+int tlsf_check_r (tlsf_memory_heap_t *heap);
 
 #if defined(__cplusplus)
 };

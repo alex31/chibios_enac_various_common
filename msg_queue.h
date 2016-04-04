@@ -2,6 +2,8 @@
 
 #include "ch.h"
 #include "hal.h"
+#include "tlsf_malloc.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,13 +29,10 @@ typedef struct  MsgQueue MsgQueue;
  * @details	init sdQueue objet, tie memory pool buffer, tie mailbox buffer 
  *              initialize mailbox
  * @param[out] 	que:		opaque object to be initialized
- * @param[in]	mp_base:	address of memory pool used by tlsf allocator
- * @param[in]	mp_size:	size of previous memory pool in bytes
  * @param[in]	mb_buff:	internal buffer used by MailBox (see Chibios Doc)
  * @param[in]	mb_size:	size of previous buffer (length of MailBox queue)
  */
-void		msgqueue_init   (MsgQueue* que,
-				 void *mp_base, const size_t mp_size,
+  void		msgqueue_init   (MsgQueue* que, tlsf_memory_heap_t *heap,
 				 msg_t *mb_buf, const cnt_t mb_size);
 
 /**
@@ -50,37 +49,6 @@ bool		msgqueue_is_full   (MsgQueue* que);
  */
 bool 		msgqueue_is_empty  (MsgQueue* que);
 
-/**
- * @brief	return used size in memory pool
- * @param[in] 	que:	pointer to opaque MsgQueue object 
- * @return	size in byte of used memory
- */
-size_t 	msgqueue_get_used_size (MsgQueue* que);
-
-/**
- * @brief	return free size in memory pool
- * @param[in] 	que:	pointer to opaque MsgQueue object 
- * @return	size in byte of free memory
- */
-size_t 	msgqueue_get_free_size (MsgQueue* que);
-
-
-/**
- * @brief	allocate a buffer prior to send it
- * @details	to limit the number of buffer copies, this api is provided and
- *		should be used like this
- *		ptr = msgqueue_malloc_before_send
- *		if (ptr) { fill  ptr }
- *		msgqueue_sendxxx ()
- *		deallocation is done by the caching thread which actually write data to sd card
- *		from the sender point of view, ptr should be considered invalid after beeing sent
- *
- * @param[in] 	que:	pointer to opaque MsgQueue object 
- * @param[in] 	msgLen:	length of requested buffer
- * @return	if NULL => error	       
- *		if non NULL : pointer to memory
- */
-void *	 msgqueue_malloc_before_send (MsgQueue* que, const uint16_t msgLen);
 
 /**
  * @brief	send a buffer previously allocated by msgqueue_malloc_before_send
@@ -88,6 +56,9 @@ void *	 msgqueue_malloc_before_send (MsgQueue* que, const uint16_t msgLen);
  *		from the sender point of view, ptr should be considered invalid after beeing sent.
  *		Even if msgqueue_send fail, deallocation is done
  *		Non blocking, if queue is full, report error and immediately return
+ *		usage : msg = tlsf_malloc(MSGQ_HEAP, msg, msgLen);
+ *                            msgqueue_send (que, msg, msgLen, urgency);
+ *
  * @param[in] 	que:	pointer to opaque MsgQueue object 
  * @param[in] 	msg:	pointer to buffer given by msgqueue_malloc_before_send
  * @param[in] 	msgLen:	length of buffer (the same param that has been 
@@ -105,6 +76,9 @@ int32_t	 msgqueue_send (MsgQueue* que, void *msg, const uint16_t msgLen,
  * @details	deallocation is done by the caching thread which actually write data to sd card
  *		from the sender point of view, ptr should be considered invalid after beeing sent.
  *		Even if msgqueue_send fail, deallocation is done
+ *		usage : msg = tlsf_malloc(MSGQ_HEAP, msg, msgLen);
+ *                            msgqueue_send (que, msg, msgLen, urgency);
+ *
  * @param[in] 	que:	pointer to opaque MsgQueue object 
  * @param[in] 	msg:	pointer to buffer given by msgqueue_malloc_before_send
  * @param[in] 	msgLen:	length of buffer (the same param that has been 
@@ -171,7 +145,7 @@ int32_t	 msgqueue_copy_send_timeout (MsgQueue* que, const void *msg, const uint1
  *		usage : struct MyStruct *msg
  *                      msgqueue_pop (&que, void (void **) &msg);
  *                      use msg->myField etc etc
-                        msgqueue_free_after_pop (&que, msg);
+                        tlsf_free(MSGQ_HEAP, msg);
  * @param[in] 	que:	pointer to opaque MsgQueue object 
  * @param[out] 	msgPtr:	pointer to pointer to buffer
  * @return	if > 0 : length of received msg					  
@@ -202,23 +176,8 @@ int32_t	msgqueue_pop_timeout (MsgQueue* que, void **msgPtr, const systime_t timo
   parameters : INOUT queue object
                IN    ChunkBufferRO pointer
  */
-/**
- * @brief	free message after using it to give back memory to dynamic allocator
- * @details	this is zero copy api
- * @param[in] 	que:	pointer to opaque MsgQueue object 
- * @param[in] 	msg:	pointer to buffer to free
- */
-void	msgqueue_free_after_pop (MsgQueue* que, void *msg);
 
 
-
-/**
- * @brief	test and debug api
- * @details	test that when mailbox is empty, memory pool is unused too
- * @param[in] 	que:	pointer to opaque MsgQueue object 
- * @return	MsgQueue_OK or MsgQueue_MAILBOX_NOT_EMPTY or MsgQueue_MAILBOX_FAIL in case of internal error
- */
-MsgQueueStatus	msgqueue_test_integrity_if_empty(MsgQueue* que);
 
 /**
  * @brief	debug api
@@ -239,9 +198,7 @@ const char*     msgqueue_strerror (const MsgQueueStatus errno);
 
 struct MsgQueue {
   mailbox_t	mb;
-  void *	mp_base;
-  size_t	mp_size;
-  size_t	mp_initialy_used;
+  tlsf_memory_heap_t *heap;
 } ;
 
 

@@ -11,46 +11,51 @@ struct _tlsf_memory_heap_t
 };
 
 
-#ifdef HEAP_BANK1_NAME
-#define HEAP_BANK1_BUFFER HEAP_BANK1_NAME ## _buffer
-#define HEAP_BANK1_MTX    HEAP_BANK1_NAME ## _mtx 
-static uint8_t HEAP_BANK1_BUFFER[HEAP_BANK1_SIZE] __attribute__ ((section(HEAP_BANK1_SECTION), aligned(8))) ;
-static MUTEX_DECL(HEAP_BANK1_MTX);
-tlsf_memory_heap_t HEAP_BANK1_NAME;
+#ifdef HEAP_CCM
+#define HEAP_CCM_BUFFER HEAP_CCM ## _buffer
+#define HEAP_CCM_MTX    HEAP_CCM ## _mtx 
+static uint8_t HEAP_CCM_BUFFER[HEAP_CCM_SIZE] __attribute__ ((section(HEAP_CCM_SECTION), aligned(8))) ;
+static MUTEX_DECL(HEAP_CCM_MTX);
+tlsf_memory_heap_t HEAP_CCM;
 #endif
 
-#ifdef HEAP_BANK2_NAME
-#define HEAP_BANK2_BUFFER HEAP_BANK2_NAME ## _buffer
-#define HEAP_BANK2_MTX    HEAP_BANK2_NAME ## _mtx 
-static uint8_t HEAP_BANK2_BUFFER[HEAP_BANK2_SIZE] __attribute__ ((section(HEAP_BANK2_SECTION), aligned(8))) ;
-static MUTEX_DECL(HEAP_BANK2_MTX);
-tlsf_memory_heap_t HEAP_BANK2_NAME;
+#ifdef HEAP_SRAM
+#define HEAP_SRAM_BUFFER HEAP_SRAM ## _buffer
+#define HEAP_SRAM_MTX    HEAP_SRAM ## _mtx 
+static uint8_t HEAP_SRAM_BUFFER[HEAP_SRAM_SIZE] __attribute__ ((section(HEAP_SRAM_SECTION), aligned(8))) ;
+static MUTEX_DECL(HEAP_SRAM_MTX);
+tlsf_memory_heap_t HEAP_SRAM;
 #endif
 
-#ifdef HEAP_BANK3_NAME
-#define HEAP_BANK3_BUFFER HEAP_BANK3_NAME ## _buffer
-#define HEAP_BANK3_MTX    HEAP_BANK3_NAME ## _mtx 
-static uint8_t HEAP_BANK3_BUFFER[HEAP_BANK3_SIZE] __attribute__ ((section(HEAP_BANK3_SECTION), aligned(8))) ;
-static MUTEX_DECL(HEAP_BANK3_MTX);
-tlsf_memory_heap_t HEAP_BANK3_NAME;
+#ifdef HEAP_EXTERN
+#define HEAP_EXTERN_BUFFER HEAP_EXTERN ## _buffer
+#define HEAP_EXTERN_MTX    HEAP_EXTERN ## _mtx 
+static uint8_t HEAP_EXTERN_BUFFER[HEAP_EXTERN_SIZE] __attribute__ ((section(HEAP_EXTERN_SECTION), aligned(8))) ;
+static MUTEX_DECL(HEAP_EXTERN_MTX);
+tlsf_memory_heap_t HEAP_EXTERN;
 #endif
 
 static void stat_tlsf_walker (void* ptr, size_t size, int used, void* user);
 
 void tlsf_init_heaps(void)
 {
-#ifdef HEAP_BANK1_NAME
-  HEAP_BANK1_NAME.mtx = &HEAP_BANK1_MTX;
-  HEAP_BANK1_NAME.tlsf = tlsf_create_with_pool(HEAP_BANK1_BUFFER, HEAP_BANK1_SIZE);
+#ifdef HEAP_CCM
+  HEAP_CCM.mtx = &HEAP_CCM_MTX;
+  HEAP_CCM.tlsf = tlsf_create_with_pool(HEAP_CCM_BUFFER, HEAP_CCM_SIZE);
 #endif
-#ifdef HEAP_BANK2_NAME
-  HEAP_BANK2_NAME.mtx = &HEAP_BANK2_MTX;
-  HEAP_BANK2_NAME.tlsf = tlsf_create_with_pool(HEAP_BANK2_BUFFER, HEAP_BANK2_SIZE);
+#ifdef HEAP_SRAM
+  HEAP_SRAM.mtx = &HEAP_SRAM_MTX;
+  HEAP_SRAM.tlsf = tlsf_create_with_pool(HEAP_SRAM_BUFFER, HEAP_SRAM_SIZE);
 #endif
-#ifdef HEAP_BANK3_NAME
-  HEAP_BANK3_NAME.mtx = &HEAP_BANK3_MTX;
-  HEAP_BANK3_NAME_NAME.tlsf = tlsf_create_with_pool(HEAP_BANK3_BUFFER, HEAP_BANK3_SIZE);
+#ifdef HEAP_EXTERN
+  HEAP_EXTERN.mtx = &HEAP_EXTERN_MTX;
+  HEAP_EXTERN.tlsf = tlsf_create_with_pool(HEAP_EXTERN_BUFFER, HEAP_EXTERN_SIZE);
 #endif
+}
+
+void* tlsf_get_heap_addr(const tlsf_memory_heap_t *heap)
+{
+  return heap->tlsf;
 }
 
 void* tlsf_malloc_r(tlsf_memory_heap_t *heap, size_t bytes)
@@ -92,6 +97,21 @@ void tlsf_stat_r (tlsf_memory_heap_t *heap, struct tlsf_stat_t *stat)
   tlsf_walk_pool (tlsf_get_pool(heap->tlsf),  &stat_tlsf_walker, stat);
   chMtxUnlock (heap->mtx);
 }
+
+
+/* Returns nonzero if any internal consistency check fails. */
+int tlsf_check_r (tlsf_memory_heap_t *heap)
+{
+  int ret=0;
+  chMtxLock (heap->mtx);
+  ret = tlsf_check(heap->tlsf);
+  if (ret == 0) 
+    ret = tlsf_check_pool (tlsf_get_pool(heap->tlsf));
+  
+  chMtxUnlock (heap->mtx);
+  return ret;
+}
+
 
 static void stat_tlsf_walker (void* ptr, size_t size, int used, void* user)
 {
