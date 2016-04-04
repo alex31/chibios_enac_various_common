@@ -61,7 +61,6 @@
 #include "msg_queue.h"
 
 
-static uint8_t quePoolBuffer[SDLOG_QUEUE_SIZE] __attribute__ ((section(".ccmram"), aligned(8))) ;
 static msg_t   queMbBuffer[SDLOG_QUEUE_BUCKETS] __attribute__ ((section(".ccmram"), aligned(8))) ;
 static MsgQueue messagesQueue;
 
@@ -133,7 +132,7 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
   FATFS *fsp=NULL;
 
 #ifdef SDLOG_NEED_QUEUE
-  msgqueue_init (&messagesQueue, quePoolBuffer, SDLOG_QUEUE_SIZE, queMbBuffer, SDLOG_QUEUE_BUCKETS);
+  msgqueue_init (&messagesQueue, &HEAP_DEFAULT, queMbBuffer, SDLOG_QUEUE_BUCKETS);
 #endif
 
   if  (!sdc_lld_is_card_inserted (NULL))
@@ -271,7 +270,10 @@ SdioError sdLogCloseAllLogs (bool flush)
       }
     }
 
-    LogMessage *lm = msgqueue_malloc_before_send (&messagesQueue, sizeof(LogMessage));
+    LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
+    if (lm == NULL) 
+      return SDLOG_QUEUEFULL;
+
     lm->op.fcntl = FCNTL_EXIT;
     
     if (msgqueue_send (&messagesQueue, lm, sizeof(LogMessage), MsgQueue_REGULAR) < 0) {
@@ -297,16 +299,23 @@ SdioError sdLogWriteLog (const FileDes fd, const char* fmt, ...)
   va_list ap;
   va_start(ap, fmt);
   
-  LogMessage *lm = alloca (LOG_MESSAGE_PREBUF_LEN);
-  
+  LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, LOG_MESSAGE_PREBUF_LEN);
+  if (lm == NULL) 
+    return SDLOG_QUEUEFULL;
+    
   lm->op.fcntl = FCNTL_WRITE;
   lm->op.fd = fd & 0x1f;
   
   chvsnprintf (lm->mess, SDLOG_MAX_MESSAGE_LEN-1,  fmt, ap);
   lm->mess[SDLOG_MAX_MESSAGE_LEN-1]=0;
   va_end(ap);
+
+  const size_t msgLen =  logMessageLen(lm);
+  lm = tlsf_realloc_r (&HEAP_DEFAULT, lm, msgLen);
+  if (lm == NULL) 
+    return SDLOG_QUEUEFULL;
   
-  if (msgqueue_copy_send (&messagesQueue, lm, logMessageLen(lm), MsgQueue_REGULAR) < 0) {
+  if (msgqueue_send (&messagesQueue, lm, msgLen, MsgQueue_REGULAR) < 0) {
     return SDLOG_QUEUEFULL;
   }
   
@@ -319,7 +328,9 @@ SdioError sdLogFlushLog (const FileDes fd)
     return SDLOG_FATFS_ERROR;
   
   flushWriteByteBuffer (fd);
-  LogMessage *lm = msgqueue_malloc_before_send (&messagesQueue, sizeof(LogMessage));
+  LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
+  if (lm == NULL) 
+    return SDLOG_QUEUEFULL;
 
   lm->op.fcntl = FCNTL_FLUSH;
   lm->op.fd = fd & 0x1f;
@@ -336,7 +347,9 @@ SdioError sdLogCloseLog (const FileDes fd)
   if ((fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false))
     return SDLOG_FATFS_ERROR;
 
-   LogMessage *lm = msgqueue_malloc_before_send (&messagesQueue, sizeof(LogMessage));
+  LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
+  if (lm == NULL) 
+    return SDLOG_QUEUEFULL;
 
   lm->op.fcntl = FCNTL_CLOSE;
   lm->op.fd = fd & 0x1f;
@@ -374,7 +387,9 @@ SdioError sdLogWriteRaw (const FileDes fd, const uint8_t * buffer, const size_t 
     return SDLOG_FATFS_ERROR;
 
   flushWriteByteBuffer (fd);
-  LogMessage *lm = msgqueue_malloc_before_send (&messagesQueue, LOG_MESSAGE_PREBUF_LEN);
+  LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, logRawLen(len));
+  if (lm == NULL) 
+    return SDLOG_QUEUEFULL;
 
   lm->op.fcntl = FCNTL_WRITE;
   lm->op.fd = fd & 0x1f;
@@ -395,8 +410,10 @@ SdioError sdLogWriteByte (const FileDes fd, const uint8_t value)
   LogMessage *lm;
   
   if  (fileDes[fd].writeByteCache == NULL) {
-    lm = msgqueue_malloc_before_send (&messagesQueue,
-				      sizeof(LogMessage) + WRITE_BYTE_CACHE_SIZE);
+    lm = tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage) + WRITE_BYTE_CACHE_SIZE);
+    if (lm == NULL) 
+      return SDLOG_QUEUEFULL;
+
     lm->op.fcntl = FCNTL_WRITE;
     lm->op.fd = fd & 0x1f;
     
@@ -706,7 +723,7 @@ static msg_t thdSdLog(void *arg)
 	  }
 	}
       }
-      msgqueue_free_after_pop (&messagesQueue, lm);
+      tlsf_free_r(&HEAP_DEFAULT, lm);
     } else {
       chThdExit(SDLOG_INTERNAL_ERROR);
     }
