@@ -4,6 +4,9 @@
 #include "tlsf.h"
 #include "portage.h"
 
+
+#if (defined CH_HEAP_USE_TLSF) && (CH_HEAP_USE_TLSF != 0)
+
 struct _tlsf_memory_heap_t
 {
   tlsf_t tlsf;
@@ -126,3 +129,5 @@ static void stat_tlsf_walker (void* ptr, size_t size, int used, void* user)
   else
     tstat->mfree += size;
 }
+
+#endif

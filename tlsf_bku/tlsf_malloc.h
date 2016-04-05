@@ -1,9 +1,13 @@
 #pragma once
+#include "ch.h"
+#include "hal.h"
 #include "tlsf_heaps_conf.h"
 
 #if defined(__cplusplus)
-//extern "C" {
+extern "C" {
 #endif
+
+#if (defined CH_HEAP_USE_TLSF) && (CH_HEAP_USE_TLSF != 0)
 
 struct _tlsf_memory_heap_t;
 typedef struct _tlsf_memory_heap_t tlsf_memory_heap_t;
@@ -49,6 +53,9 @@ void* tlsf_get_heap_addr(const tlsf_memory_heap_t *heap);
 /* Returns nonzero if any internal consistency check fails. */
 int tlsf_check_r (tlsf_memory_heap_t *heap);
 
+#endif
+
 #if defined(__cplusplus)
 };
 #endif
+

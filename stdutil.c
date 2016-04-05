@@ -84,6 +84,8 @@ float powi(int x, int y)
 
 
 #if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
+static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(".ccmram"), aligned(8))) ;
+MemoryHeap ccmHeap;
 #endif
 
 #endif // if CH_USE_HEAP || CH_HEAP_USE_TLSF
