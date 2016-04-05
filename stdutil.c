@@ -171,7 +171,7 @@ void systemReset(void)
 /* to lower consumption until reset */
 void systemDeepSleep (void)
 {
-#ifdef STM32F746xx
+#if defined STM32F746xx || defined STM32F756xx
   /* clear PDDS and LPDS bits */
   PWR->CR1 &= ~(PWR_CR1_PDDS | PWR_CR1_LPDS);
   

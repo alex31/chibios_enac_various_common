@@ -25,10 +25,11 @@ extern "C" {
 /* pool_t: a block of memory that TLSF can manage. */
 typedef void* tlsf_t;
 typedef void* pool_t;
+typedef void (*error_cb_t) (const char *msg);
 
 /* Create/destroy a memory pool. */
-tlsf_t tlsf_create(void* mem);
-tlsf_t tlsf_create_with_pool(void* mem, size_t bytes);
+tlsf_t tlsf_create(void* mem, error_cb_t error_cb);
+tlsf_t tlsf_create_with_pool(void* mem, size_t bytes, error_cb_t error_cb);
 void tlsf_destroy(tlsf_t tlsf);
 pool_t tlsf_get_pool(tlsf_t tlsf);
 

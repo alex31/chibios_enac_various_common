@@ -37,19 +37,23 @@ tlsf_memory_heap_t HEAP_EXTERN;
 
 static void stat_tlsf_walker (void* ptr, size_t size, int used, void* user);
 
+static void error_cb (const char* msg) {
+  chSysHalt(msg);
+}
+
 void tlsf_init_heaps(void)
 {
 #ifdef HEAP_CCM
   HEAP_CCM.mtx = &HEAP_CCM_MTX;
-  HEAP_CCM.tlsf = tlsf_create_with_pool(HEAP_CCM_BUFFER, HEAP_CCM_SIZE);
+  HEAP_CCM.tlsf = tlsf_create_with_pool(HEAP_CCM_BUFFER, HEAP_CCM_SIZE, &error_cb);
 #endif
 #ifdef HEAP_SRAM
   HEAP_SRAM.mtx = &HEAP_SRAM_MTX;
-  HEAP_SRAM.tlsf = tlsf_create_with_pool(HEAP_SRAM_BUFFER, HEAP_SRAM_SIZE);
+  HEAP_SRAM.tlsf = tlsf_create_with_pool(HEAP_SRAM_BUFFER, HEAP_SRAM_SIZE, &error_cb);
 #endif
 #ifdef HEAP_EXTERN
   HEAP_EXTERN.mtx = &HEAP_EXTERN_MTX;
-  HEAP_EXTERN.tlsf = tlsf_create_with_pool(HEAP_EXTERN_BUFFER, HEAP_EXTERN_SIZE);
+  HEAP_EXTERN.tlsf = tlsf_create_with_pool(HEAP_EXTERN_BUFFER, HEAP_EXTERN_SIZE, &error_cb);
 #endif
 }
 

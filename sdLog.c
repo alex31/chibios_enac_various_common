@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
-#include "sd_log.h"
+#include "sdLog.h"
 #include "ch.h"
 #include "hal.h"
 #include "ff.h"
@@ -64,7 +64,8 @@
 static msg_t   queMbBuffer[SDLOG_QUEUE_BUCKETS] __attribute__ ((section(".ccmram"), aligned(8))) ;
 static MsgQueue messagesQueue;
 
-#define WRITE_BYTE_CACHE_SIZE 16
+#define WRITE_BYTE_CACHE_SIZE 15 // limit overhead :
+				 // malloc (15+1) occupies 20bytes
 typedef struct {
   uint8_t fcntl:2;
   uint8_t fd:6;
