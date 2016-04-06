@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "tlsf.h"
+#include "tlsf_conf.h"
 
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
