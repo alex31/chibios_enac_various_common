@@ -130,8 +130,8 @@ static const char* _strerror[] = {"MsgQueue_MAILBOX_FULL",
 				 "MsgQueue_MAILBOX_TIMEOUT",	  
 				 "MsgQueue_MAILBOX_NOT_EMPTY",   
 				 "MsgQueue_OK",
-				 "MsgQueue_INVALID_ERRNO",
-};
+				 "MsgQueue_INVALID_PTR", 
+				  "MsgQueue_INVALID_ERRNO"};
 
 const char*     msgqueue_strerror (const MsgQueueStatus _errno)
 {
