@@ -1,13 +1,10 @@
-#include <assert.h>
 #include <limits.h>
 #include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-
 #include "tlsf.h"
-#include "tlsf_conf.h"
-#include "ch.h"
+
+#define likely(x)      __builtin_expect(!!(x), 1)
+#define unlikely(x)    __builtin_expect(!!(x), 0)
 
 static inline int tlsf_ffs(unsigned int word)
 {
@@ -69,7 +66,7 @@ enum tlsf_private
     */
     FL_INDEX_MAX = 32,
 #elif defined  MAX_FLI
-    FL_INDEX_MAX = MAX_FLI, 
+    FL_INDEX_MAX = MAX_FLI,
 #else
     FL_INDEX_MAX = 30,
 #endif
@@ -79,6 +76,14 @@ enum tlsf_private
 
     SMALL_BLOCK_SIZE = (1 << FL_INDEX_SHIFT),
   };
+
+
+static error_cb_t error_cb =NULL;
+#define tlsf_error(msg) {			\
+    if (unlikely (error_cb != NULL))		\
+      error_cb(msg);				\
+  }
+
 
 /*
 ** Cast and min/max macros.
@@ -92,7 +97,8 @@ enum tlsf_private
 ** Set assert macro, if it has not been provided by the user.
 */
 #if !defined (tlsf_assert)
-#define tlsf_assert assert
+//#define tlsf_assert(x) assert(x)
+#define tlsf_assert(x) {if (!(x)) tlsf_error(#x);}
 #endif
 
 /*
@@ -158,16 +164,14 @@ static const size_t block_header_prev_free_bit = 1 << 1;
 static const size_t block_header_overhead = sizeof(size_t);
 
 /* User data starts directly after the size field in a used block. */
-static const size_t block_start_offset =
-  offsetof(block_header_t, size) + sizeof(size_t);
+static const size_t block_start_offset = offsetof(block_header_t, size) + sizeof(size_t);
 
-				 /*
-				 ** A free block must be large enough to store its header minus the size of
-				 ** the prev_phys_block field, and no larger than the number of addressable
-				 ** bits for FL_INDEX.
-				 */
-				 static const size_t block_size_min = 
-				   sizeof(block_header_t) - sizeof(block_header_t*);
+/*
+ ** A free block must be large enough to store its header minus the size of
+ ** the prev_phys_block field, and no larger than the number of addressable
+ ** bits for FL_INDEX.
+ */
+static const size_t block_size_min = sizeof(block_header_t) - sizeof(block_header_t*);
 static const size_t block_size_max = tlsf_cast(size_t, 1) << FL_INDEX_MAX;
 
 
@@ -183,7 +187,6 @@ typedef struct control_t
 
   /* Head of free lists. */
   block_header_t* blocks[FL_INDEX_COUNT][SL_INDEX_COUNT];
-  error_cb_t error_cb;
 } control_t;
 
 /* A type used for casting when doing pointer arithmetic. */
@@ -608,7 +611,7 @@ static void* block_prepare_used(control_t* control, block_header_t* block, size_
 }
 
 /* Clear structure and point all empty lists at the null block. */
-static void control_construct(control_t* control, error_cb_t error_cb)
+static void control_construct(control_t* control)
 {
   int i, j;
 
@@ -624,7 +627,6 @@ static void control_construct(control_t* control, error_cb_t error_cb)
 	  control->blocks[i][j] = &control->block_null;
 	}
     }
-   control->error_cb = error_cb;
 }
 
 /*
@@ -795,19 +797,16 @@ pool_t tlsf_add_pool(tlsf_t tlsf, void* mem, size_t bytes)
 
   const size_t pool_overhead = tlsf_pool_overhead();
   const size_t pool_bytes = align_down(bytes - pool_overhead, ALIGN_SIZE);
-  const control_t* control = tlsf_cast(control_t*, tlsf);
 
   if (((ptrdiff_t)mem % ALIGN_SIZE) != 0)
     {
-      if (control->error_cb != NULL) 
-      control->error_cb("tlsf_add_pool: Memory must be aligned by ALIGN_SIZE bytes");
+      tlsf_error("tlsf_add_pool: Memory must be aligned by ALIGN_SIZE bytes");
       return 0;
     }
 
   if (pool_bytes < block_size_min || pool_bytes > block_size_max)
     {
-      if (control->error_cb != NULL) 
-      control->error_cb("tlsf_add_pool: Memory size error, adjust MAX_FLI constant");
+      tlsf_error("tlsf_add_pool: Memory size error, adjust MAX_FLI constant");
       return 0;
     }
 
@@ -851,7 +850,7 @@ void tlsf_remove_pool(tlsf_t tlsf, pool_t pool)
 */
 
 #if defined TLSF_DEBUG && TLSF_DEBUG
-int test_ffs_fls(error_cb_t error_cb)
+int test_ffs_fls(void)
 {
   /* Verify ffs/fls work properly. */
   int rv = 0;
@@ -870,16 +869,18 @@ int test_ffs_fls(error_cb_t error_cb)
   rv += (tlsf_fls_sizet(0xffffffffffffffff) == 63) ? 0 : 0x400; 
 #endif
 
-  if (rv && error_cb)
+  if (rv)
     {
-      error_cb("tlsf_create: ffs/fls tests failed");
+      tlsf_error("tlsf_create: ffs/fls tests failed");
     }
   return rv;
 }
 #endif
 
-tlsf_t tlsf_create(void* mem, error_cb_t error_cb)
+tlsf_t tlsf_create(void* mem, error_cb_t _error_cb)
 {
+  error_cb = _error_cb;
+
 #if defined TLSF_DEBUG && TLSF_DEBUG
   if (test_ffs_fls())
     {
@@ -889,19 +890,18 @@ tlsf_t tlsf_create(void* mem, error_cb_t error_cb)
 
   if (((tlsfptr_t)mem % ALIGN_SIZE) != 0)
     {
-      if (error_cb)
-	error_cb("tlsf_create: Memory must be aligned to ALIGN_SIZE bytes");
+      tlsf_error("tlsf_create: Memory must be aligned to ALIGN_SIZE bytes");
       return 0;
     }
 
-  control_construct(tlsf_cast(control_t*, mem), error_cb);
+  control_construct(tlsf_cast(control_t*, mem));
 
   return tlsf_cast(tlsf_t, mem);
 }
 
-tlsf_t tlsf_create_with_pool(void* mem, size_t bytes, error_cb_t error_cb)
+tlsf_t tlsf_create_with_pool(void* mem, size_t bytes, error_cb_t _error_cb)
 {
-  tlsf_t tlsf = tlsf_create(mem, error_cb);
+  tlsf_t tlsf = tlsf_create(mem, _error_cb);
   tlsf_add_pool(tlsf, (char*)mem + tlsf_size(), bytes - tlsf_size());
   return tlsf;
 }
