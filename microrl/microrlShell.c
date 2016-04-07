@@ -162,6 +162,16 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
     The device ID is 0x413.
     Bits 11:0 DEV_ID[11:0]: Device identifier (STM32F42xxx and STM32F43xxx)
     The device ID is 0x419
+
+
+    F7
+    Bits 31:16 REV_ID[15:0] Revision identifier
+    This field indicates the revision of the device:
+    0x1000 = Revision A
+    0x1001 = Revision Z
+    Bits 15:12 Reserved, must be kept at reset value.
+    Bits 11:0 DEV_ID[11:0]: Device identifier
+    The device ID is 0x449.
    */
   
 
@@ -195,6 +205,12 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
     case 0x1003 : mcu_revid_chr = 'Y'; break;
     case 0x1007 : mcu_revid_chr = '1'; break;
     case 0x2001 : mcu_revid_chr = '3'; break;
+    }
+    break;
+  case  0x449 : mcu_devid_str = "STM32F74x and STM32F75x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
     }
     break;
   }

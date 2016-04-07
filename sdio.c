@@ -35,6 +35,14 @@
 #include "sdio.h"
 #include "portage.h"
 
+#ifndef GPIOC_SDIO_D0
+#define	GPIOC_SDIO_D0  PC08_SDIO_D0
+#define	GPIOC_SDIO_D1  PC09_SDIO_D1
+#define	GPIOC_SDIO_D2  PC10_SDIO_D2
+#define	GPIOC_SDIO_D3  PC11_SDIO_D3
+#define GPIOC_SDIO_CK  PC12_SDIO_CK
+#define GPIOD_SDIO_CMD PD02_SDIO_CMD
+#endif
 
 
 /*

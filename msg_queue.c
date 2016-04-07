@@ -55,8 +55,8 @@ int32_t		msgqueue_send (MsgQueue* que, void *msg, const uint16_t msgLen,
 int32_t		msgqueue_send_timeout (MsgQueue* que, void *msg, const uint16_t msgLen,
 				       const MsgQueueUrgency urgency, const systime_t timout)
 {
-  const MsgPtrLen mpl = {.ptrOfst =  (uint32_t) msg - (uint32_t) tlsf_get_heap_addr(&MSGQ_HEAP),
-			 .len = msgLen};
+  const MsgPtrLen mpl = {{.ptrOfst = (uint32_t) msg - (uint32_t) tlsf_get_heap_addr(&MSGQ_HEAP),
+			  .len = msgLen}};
 
 #if CH_DBG_ENABLE_CHECKS
   if (((uint32_t) msg < (uint32_t) tlsf_get_heap_addr(&MSGQ_HEAP)) ||

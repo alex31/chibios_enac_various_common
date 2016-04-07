@@ -43,11 +43,6 @@
 #error  SDLOG_MAX_MESSAGE_LENshould be defined in mcuconf.h
 #endif
 
-#ifndef  SDLOG_QUEUE_SIZE
-#error  SDLOG_QUEUE_SIZE should be defined in mcuconf.h
-#endif
-
-
 #ifndef SDLOG_QUEUE_BUCKETS
 #error  SDLOG_QUEUE_BUCKETS should be defined in mcuconf.h
 #endif
@@ -150,7 +145,7 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
 #if _FATFS < 8000
   FRESULT rc = f_mount(0, &fatfs);
 #else
-  FRESULT rc = f_mount(&fatfs, "", 0);
+  FRESULT rc = f_mount(&fatfs, "/", 1);
 #endif
   
   if (rc != FR_OK) {
