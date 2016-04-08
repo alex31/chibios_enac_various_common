@@ -31,9 +31,9 @@ typedef enum {
 typedef struct  {
   SPIDriver       *driver;
   GPTDriver	  *timer;
-  GPIO_TypeDef    *misoGpio;
-  GPIO_TypeDef    *mosiGpio;
-  GPIO_TypeDef    *sckGpio;
+  ioportid_t	  misoGpio;
+  ioportid_t 	  mosiGpio;
+  ioportid_t 	  sckGpio;
   uint32_t        misoPin;
   uint32_t        mosiPin;
   uint32_t        sckPin;

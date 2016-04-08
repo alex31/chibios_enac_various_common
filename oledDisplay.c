@@ -59,7 +59,7 @@ static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
 }
 
 void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
-	       GPIO_TypeDef *rstGpio, uint32_t rstPin)
+	       ioportid_t rstGpio, uint32_t rstPin)
 {
   oledConfig->rstGpio = rstGpio;
   oledConfig->rstPin = rstPin;

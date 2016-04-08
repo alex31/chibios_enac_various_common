@@ -49,8 +49,8 @@ struct I2cChannel  {
   I2CDriver		&driver;
   const char		*name;
   const I2CConfig	i2ccfg;
-  GPIO_TypeDef  * const sdaGpio;
-  GPIO_TypeDef  * const sclGpio;
+  ioportid_t            const sdaGpio;
+  ioportid_t            const sclGpio;
   const uint8_t         sdaPin;
   const uint8_t         sclPin;
   const uint8_t	        alternateFunction;

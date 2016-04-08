@@ -91,7 +91,7 @@ static inline void bb_peri_set_bit(volatile void * const address,
  * @param gpio (with chibios type) 
  * @param bit Bit in gpio to write to
  */
-static inline void bb_palSetPad   (GPIO_TypeDef *gpio,
+static inline void bb_palSetPad   (ioportid_t gpio,
                                    const uint32_t bit) {
    bb_peri_set_bit(&(gpio->ODR), bit, 1); 
 }
@@ -101,7 +101,7 @@ static inline void bb_palSetPad   (GPIO_TypeDef *gpio,
  * @param gpio (with chibios type) 
  * @param bit Bit in gpio to write to
  */
-static inline void bb_palWritePad   (GPIO_TypeDef *gpio,
+static inline void bb_palWritePad   (ioportid_t gpio,
 				     const uint32_t bit,
 				     const uint32_t val) {
    bb_peri_set_bit(&(gpio->ODR), bit, val); 
@@ -112,7 +112,7 @@ static inline void bb_palWritePad   (GPIO_TypeDef *gpio,
  * @param gpio (with chibios type) 
  * @param bit Bit in gpio to write to
  */
-static inline void bb_palClearPad   (GPIO_TypeDef *gpio,
+static inline void bb_palClearPad   (ioportid_t gpio,
                                    const uint32_t bit) {
   bb_peri_set_bit(&(gpio->ODR), bit, 0); 
 }
@@ -122,7 +122,7 @@ static inline void bb_palClearPad   (GPIO_TypeDef *gpio,
  * @param gpio (with chibios type) 
  * @param bit Bit in gpio to write to
  */
-static inline void bb_palTogglePad   (GPIO_TypeDef *gpio,
+static inline void bb_palTogglePad   (ioportid_t gpio,
                                    const uint32_t bit) {
   bb_peri_set_bit(&(gpio->ODR), bit, !bb_peri_get_bit(&(gpio->IDR), bit)); 
 }
@@ -132,7 +132,7 @@ static inline void bb_palTogglePad   (GPIO_TypeDef *gpio,
  * @param gpio (with chibios type) 
  * @param bit Bit in gpio to write to
  */
-static inline uint32_t bb_palReadPad   (GPIO_TypeDef *gpio,
+static inline uint32_t bb_palReadPad   (ioportid_t gpio,
 					const uint32_t bit) {
   return bb_peri_get_bit(&(gpio->IDR), bit); 
 }

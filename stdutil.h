@@ -69,6 +69,7 @@
 
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
+
   
 /* #define RotL(x,shift) ((x << shift) | (x >> (sizeof(x) - shift))) */
 /* #define RotR(x,shift) ((x >> shift) | (x << (sizeof(x) - shift))) */
@@ -215,10 +216,22 @@ extern "C" {
 #endif
 
  typedef struct  {
-   GPIO_TypeDef	*gpio;
+   ioportid_t  gpio;
    uint32_t	pin;
 } GpioPin;
 
+
+#if defined STM32F4XX
+#define NODMA_SECTION ".ram4"
+#define DMA_SECTION ".ram0"
+#elif  defined STM32F7XX
+#define NODMA_SECTION ".ram0"
+#define DMA_SECTION ".ram3"
+#else
+#error "section defined only for STM32F4 and STM32F7"
+#endif
+
+  
 #if (CH_KERNEL_MAJOR == 2)
 #if CH_USE_HEAP || CH_HEAP_USE_TLSF
   size_t initHeap (void);

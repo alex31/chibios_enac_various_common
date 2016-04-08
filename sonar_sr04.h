@@ -8,7 +8,7 @@ extern "C" {
   typedef struct   {
     PWMDriver     *driver;
     uint32_t      channel;
-    GPIO_TypeDef  *gpio;
+    ioportid_t    gpio;
     uint32_t      pin;
     uint8_t	alt;
   } SonarGen ;
@@ -16,7 +16,7 @@ extern "C" {
   typedef struct   {
     ICUDriver     *driver;
     uint32_t      channel;
-    GPIO_TypeDef  *gpio;
+    ioportid_t    gpio;
     uint32_t      pin;
     uint8_t	alt;
   } SonarInput;

@@ -7,7 +7,7 @@
 // when finish to debug (printf need big stack), shrink  WORKING_AREA to 256
 static WORKING_AREA(waThdKeypadScan, 256);
 
-static GPIO_TypeDef  * getGpioPtrFromEnum (const Keypad_Gpio kpg);
+static ioportid_t getGpioPtrFromEnum (const Keypad_Gpio kpg);
 static void configureGpio (const Keypad_Def *kd);
 static Keypad_key scanKeypad (const Keypad_Def *kd);
 static bool  keypadKeyAreEqual (const Keypad_key k1, const Keypad_key k2);
@@ -44,7 +44,7 @@ void launchScanKeypad (keypadCbType keyCb, void *userData)
 
 
 
-static GPIO_TypeDef  * getGpioPtrFromEnum (const Keypad_Gpio kpg)
+static ioportid_t getGpioPtrFromEnum (const Keypad_Gpio kpg)
 {
   switch (kpg) {
      case Keypad_GpioA : return GPIOA;

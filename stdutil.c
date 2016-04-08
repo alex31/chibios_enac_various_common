@@ -73,15 +73,6 @@ float powi(int x, int y)
   return p;   
 }   
 
-#if defined STM32F4XX
-#define NODMA_SECTION ".ram4"
-#define DMA_SECTION ".ram0"
-#elif  defined STM32F7XX
-#define NODMA_SECTION ".ram0"
-#define DMA_SECTION ".ram3"
-#else
-#error "section defined only for STM32F4 and STM32F7"
-#endif
 
 #if (CH_KERNEL_MAJOR == 2)
 

@@ -8,7 +8,7 @@ typedef struct OledConfig  OledConfig;
 #define COLOR_TABLE_SIZE 8
 
 void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
-	       GPIO_TypeDef *rstGpio, uint32_t rstPin);
+	       ioportid_t rstGpio, uint32_t rstPin);
 void oledHardReset (OledConfig *oledConfig);
 
 void oledAcquireLock (OledConfig *oledConfig);
@@ -51,7 +51,7 @@ struct OledConfig {
   SerialConfig serialConfig;
   Mutex omutex ;
   BaseSequentialStream *serial;
-  GPIO_TypeDef *rstGpio;
+  ioportid_t rstGpio;
   uint32_t rstPin;
   // =============
   uint16_t bg;
