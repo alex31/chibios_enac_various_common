@@ -73,14 +73,6 @@ float powi(int x, int y)
   return p;   
 }   
 
-#if (CH_KERNEL_MAJOR == 2)
-
-#if CH_USE_HEAP || CH_HEAP_USE_TLSF
-
-#ifndef CH_HEAP_SIZE
-#error CH_HEAP_SIZE should be defined if  CH_USE_HEAP or CH_HEAP_USE_TLSF are defined
-#endif
-
 #if defined STM32F4XX
 #define NODMA_SECTION ".ram4"
 #define DMA_SECTION ".ram0"
@@ -91,6 +83,13 @@ float powi(int x, int y)
 #error "section defined only for STM32F4 and STM32F7"
 #endif
 
+#if (CH_KERNEL_MAJOR == 2)
+
+#if CH_USE_HEAP || CH_HEAP_USE_TLSF
+
+#ifndef CH_HEAP_SIZE
+#error CH_HEAP_SIZE should be defined if  CH_USE_HEAP or CH_HEAP_USE_TLSF are defined
+#endif
 
 #if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
 static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(NODMA_SECTION), aligned(8))) ;
