@@ -54,7 +54,6 @@ chMtxInit(&i2cd->mutex);		\
 		  " status =%s", status == RDY_RESET ?			\
 		  "RDY_RESET" : "RDY_TIMEOUT");				\
       chkErrorI2cMaster (i2cd);						\
-      i2cReleaseBus(i2cd);						\
       return status; }							\
   }
 
@@ -63,7 +62,6 @@ chMtxInit(&i2cd->mutex);		\
       DebugTrace ("I2C error read  " #r_array  " write " #w_array " status =%s", \
 		  status == RDY_RESET ? "RDY_RESET" : "RDY_TIMEOUT");	\
       chkErrorI2cMaster (i2cd);						\
-      i2cReleaseBus(i2cd);						\
       return status; }							\
   }
 
@@ -835,7 +833,7 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
 static bool chkErrorI2cMaster (I2CDriver *i2cd)
 {
   i2cflags_t errors = i2cGetErrors(i2cd);
-  uint8_t retry=10;
+  uint8_t retry=3;
 
   do {
     if (errors & I2CD_BUS_ERROR) {
