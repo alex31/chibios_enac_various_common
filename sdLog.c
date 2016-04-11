@@ -55,15 +55,6 @@
 #ifdef SDLOG_NEED_QUEUE
 #include "msg_queue.h"
 
-#if defined STM32F4XX
-#define NODMA_SECTION ".ram4"
-#define DMA_SECTION ".ram0"
-#elif  defined STM32F7XX
-#define NODMA_SECTION ".ram0"
-#define DMA_SECTION ".ram3"
-#else
-#error "section defined only for STM32F4 and STM32F7"
-#endif
 
 /*
   The buffers that do DMA are the caches (named buf) in the FIL and FATFS struct of fatfs library
@@ -81,7 +72,7 @@
 
 
 
-static msg_t   queMbBuffer[SDLOG_QUEUE_BUCKETS] __attribute__ ((section(NODMA_SECTION), aligned(8))) ;
+static msg_t   IN_STD_SECTION (queMbBuffer[SDLOG_QUEUE_BUCKETS]);
 static MsgQueue messagesQueue;
 
 #define WRITE_BYTE_CACHE_SIZE 15 // limit overhead :
@@ -106,8 +97,7 @@ struct FilePoolUnit {
   uint8_t writeByteSeek;
 };
 
-static  struct FilePoolUnit fileDes[SDLOG_NUM_BUFFER]
-			    __attribute__ ((section(DMA_SECTION), aligned(8))) =
+static  struct FilePoolUnit IN_DMA_SECTION (fileDes[SDLOG_NUM_BUFFER]) =
   {[0 ... SDLOG_NUM_BUFFER-1] = {.fil = {0}, .inUse = false, .tagAtClose=false,
 				 .writeByteCache=NULL, .writeByteSeek=0}};
 
@@ -124,7 +114,7 @@ typedef enum {
 #endif //  SDLOG_NEED_QUEUE
 
 /* File system object */
-static FATFS fatfs  __attribute__ ((section(DMA_SECTION), aligned(8))); 
+static IN_DMA_SECTION (FATFS fatfs); 
 
 #ifdef SDLOG_NEED_QUEUE
 static size_t logMessageLen (const LogMessage *lm);
@@ -678,8 +668,7 @@ static msg_t thdSdLog(void *arg)
   } ;
 
   UINT bw;
-  static struct PerfBuffer perfBuffers[SDLOG_NUM_BUFFER] __attribute__ ((section(NODMA_SECTION),
-									 aligned(8))) =
+  static IN_STD_SECTION (struct PerfBuffer perfBuffers[SDLOG_NUM_BUFFER]) =
     {[0 ... SDLOG_NUM_BUFFER-1] = {.buffer = {0}, .size = 0}};
 
   chRegSetThreadName("thdSdLog");

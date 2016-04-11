@@ -221,16 +221,40 @@ extern "C" {
 } GpioPin;
 
 
+/*
+ F4
+ ram4: 64ko ccm, fast, no dma	 
+ ram0: 128Ko     std               
+
+
+F7
+ ram0: std, fast, nodma
+ ram3: dma
+
+ 256 ko 
+
+
+
+ */
+
+
 #if defined STM32F4XX
-#define NODMA_SECTION ".ram4"
-#define DMA_SECTION ".ram0"
+#define STD_SECTION ".ram0" 
+#define FAST_SECTION ".ram4" 
+#define DMA_SECTION ".ram0"    
 #elif  defined STM32F7XX
-#define NODMA_SECTION ".ram0"
-#define DMA_SECTION ".ram3"
+#define STD_SECTION ".ram0" 
+#define FAST_SECTION ".ram0" 
+#define DMA_SECTION ".ram3"    
 #else
 #error "section defined only for STM32F4 and STM32F7"
 #endif
 
+
+#define IN_STD_SECTION(var) var __attribute__ ((section(STD_SECTION), aligned(8)))
+#define IN_FAST_SECTION(var) var __attribute__ ((section(FAST_SECTION), aligned(8)))
+#define IN_DMA_SECTION(var) var __attribute__ ((section(DMA_SECTION), aligned(8)))
+ 
   
 #if (CH_KERNEL_MAJOR == 2)
 #if CH_USE_HEAP || CH_HEAP_USE_TLSF

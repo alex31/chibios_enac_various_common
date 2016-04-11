@@ -83,7 +83,7 @@ float powi(int x, int y)
 #endif
 
 #if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
-static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(NODMA_SECTION), aligned(8))) ;
+static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(STD_SECTION), aligned(8))) ;
 MemoryHeap ccmHeap;
 #endif
 
@@ -98,7 +98,7 @@ MemoryHeap ccmHeap;
 #endif
 
 #if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
-static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(NODMA_SECTION), aligned(8))) ;
+static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(STD_SECTION), aligned(8))) ;
 memory_heap_t ccmHeap;
 #endif
 

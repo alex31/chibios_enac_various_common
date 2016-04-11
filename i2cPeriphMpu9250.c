@@ -536,7 +536,7 @@ static msg_t setCompassCntl (Ak8963Data *compass);
 msg_t ak8963_init (Ak8963Data *compass,  I2CDriver *i2cd)
 {
   msg_t status = RDY_OK;
-  uint8_t asa[3];
+  static uint8_t IN_DMA_SECTION (asa[3]);
   compass->cacheTimestamp = halGetCounterValue();
   compass->i2cd = i2cd;
   compass->mstConfig = NULL;
@@ -563,10 +563,14 @@ msg_t ak8963_init (Ak8963Data *compass,  I2CDriver *i2cd)
 msg_t ak8963_getDevid (Ak8963Data *compass, uint8_t *devid)
 {
   msg_t status = RDY_OK;
+  static IN_DMA_SECTION (uint8_t did);
+
+  
   i2cAcquireBus(compass->i2cd);
-  I2C_READ_REGISTER(compass->i2cd, AK8963_ADDRESS, AK8963_WHO_AM_I, devid);
+  I2C_READ_REGISTER(compass->i2cd, AK8963_ADDRESS, AK8963_WHO_AM_I, &did);
   i2cReleaseBus(compass->i2cd);
 
+  *devid = did;
   if (*devid != AK8963_ID)
     status = I2C_BADID;
   return status;
