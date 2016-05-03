@@ -1,6 +1,7 @@
 #include "msg_queue.h"
 #include "stdutil.h"
 #include "tlsf_malloc.h"
+#include "revportage.h"
 #include <string.h>
 
 #define MSGQ_HEAP HEAP_CCM

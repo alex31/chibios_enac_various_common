@@ -27,6 +27,7 @@
 #define ARRAY_LEN(a) (sizeof(a)/sizeof(a[0]))
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
 #define MAX(x , y)  (((x) > (y)) ? (x) : (y))
+#define ABS(val) ((val) < 0 ? -(val) : (val))
 #define INRANGE(min,max,x) MAX(min,MIN(max,x))
 #define  CLAMP_TO(l, h, v) (clampToVerify (__FILE__, __LINE__, l, h, v))
 
@@ -294,7 +295,7 @@ F7
   char *binary_fmt(uintmax_t x);
   uint16_t fletcher16 (uint8_t const *data, size_t bytes);
   float powi(int x, int y) ;
-
+  const char* getGpioName (const ioportid_t p);
 #ifdef __cplusplus
 }
 #endif

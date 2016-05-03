@@ -48,12 +48,24 @@
  */
 
 typedef enum  {SEVSEG_SDCORRUPT=0, SEVSEG_NOSD,
-	       SEVSEG_SDFULL, SEVSEG_IMU, SEVSEG_SPI, SEVSEG_I2C,
-	       SEVSEG_GPS, SEVSEG_RC, SEVSEG_TELEMETRY, SEVSEG_END } SevSegErrorState;
+	       SEVSEG_SDFULL, SEVSEG_IMU, SEVSEG_MAG, 
+	       SEVSEG_BARO, SEVSEG_PITOT,
+	       SEVSEG_SPI, SEVSEG_I2C,
+	       SEVSEG_GPS, SEVSEG_RC, SEVSEG_TELEMETRY,
+	       SEVSEG_RCINV,
+	       SEVSEG_PWRSWITCH, SEVSEG_BAT, SEVSEG_ADC,
+	       SEVSEG_GPIO_CONTINUITY, SEVSEG_GPIO_SHORT, 
+	       SEVSEG_LSE, SEVSEG_HSE,
+	       
+	       SEVSEG_END } SevSegErrorState;
 
 
 void sevseg_register_error (SevSegErrorState err);
 
 void sevseg_unregister_error (SevSegErrorState err);
 
-void sevseg_set_battery_level (uint8_t level);
+void sevseg_set_info_digit (uint8_t digit);
+
+void sevseg_display_digit (const unsigned char c, const bool dp);
+
+void sevseg_blink (uint32_t periodInMilliseconds);

@@ -98,7 +98,7 @@ MemoryHeap ccmHeap;
 #endif
 
 #if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
-static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(STD_SECTION), aligned(8))) ;
+static uint8_t ccmHeapBuffer[CH_HEAP_SIZE]  __attribute__ ((section(STD_SECTION), aligned(8))) ;
 memory_heap_t ccmHeap;
 #endif
 
@@ -308,6 +308,21 @@ uint16_t fletcher16 (uint8_t const *data, size_t bytes)
 }
 
 
+#define _GPIOTEST(P) if (P == p) return #P
+const char* getGpioName (const ioportid_t p)
+{
+  _GPIOTEST(GPIOA);
+  _GPIOTEST(GPIOB);
+  _GPIOTEST(GPIOC);
+  _GPIOTEST(GPIOD);
+  _GPIOTEST(GPIOE);
+  _GPIOTEST(GPIOF);
+  _GPIOTEST(GPIOG);
+  _GPIOTEST(GPIOH);
+
+  return "Unknown GPIO";
+}
+#undef _GPIOTEST
 
 
 // obviously not reentrant
@@ -322,6 +337,7 @@ char *binary_fmt(uintmax_t x)
   return s;
 }
 #undef FMT_BUF_SIZE // don't pullute namespace
+
 
 
 /* libc stub */

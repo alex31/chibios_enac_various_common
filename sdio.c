@@ -69,8 +69,6 @@
  * SDIO configuration.
  */
 
-static enum {STOP, CONNECT} cnxState = STOP;
-
 #define SDC_DATA_DESTRUCTIVE_TEST   TRUE
 
 #define SDC_BURST_SIZE      8 /* how many sectors reads at once */
@@ -481,7 +479,7 @@ bool sdioConnect (void)
     return FALSE;
   }
 
-  if (cnxState == CONNECT) {
+  if (SDCD1.state == BLK_READY) {
     DebugTrace ("allready connected");
     return TRUE;
   }
@@ -511,20 +509,18 @@ bool sdioConnect (void)
 
   //  DebugTrace ("SDC START");
   
-  cnxState = CONNECT;
   return TRUE;
 }
 
 
 bool sdioDisconnect (void)
 {
-  if (cnxState == STOP) 
+  if (SDCD1.state == BLK_STOP) 
     return TRUE;
   if (sdcDisconnect(&SDCD1)) {
     return FALSE;
   }
   sdcStop (&SDCD1);
-  cnxState = STOP;
   return TRUE;
 }
 

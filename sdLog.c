@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include "stdutil.h"
 #include "globalVar.h"
+#include "revportage.h"
 
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
@@ -671,6 +672,9 @@ static msg_t thdSdLog(void *arg)
   static IN_STD_SECTION (struct PerfBuffer perfBuffers[SDLOG_NUM_BUFFER]) =
     {[0 ... SDLOG_NUM_BUFFER-1] = {.buffer = {0}, .size = 0}};
 
+  // FIXME : depending on section, the static initialisation is not done ...
+  memset (perfBuffers, 0, sizeof(perfBuffers));
+  
   chRegSetThreadName("thdSdLog");
   while (!chThdShouldTerminateX()) {
     LogMessage *lm;

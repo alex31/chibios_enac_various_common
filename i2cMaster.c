@@ -55,6 +55,7 @@ chMtxInit(&i2cd->mutex);		\
 		  " on " #i2cd                                          \
 		  " status =%s", status == RDY_RESET ?			\
 		  "RDY_RESET" : "RDY_TIMEOUT");				\
+      i2cReleaseBus (i2cd);						\
       chkErrorI2cMaster (i2cd);						\
       return status; }							\
   }
@@ -63,6 +64,7 @@ chMtxInit(&i2cd->mutex);		\
     if (status != RDY_OK) {						\
       DebugTrace ("I2C error read  " #r_array  " write " #w_array " status =%s", \
 		  status == RDY_RESET ? "RDY_RESET" : "RDY_TIMEOUT");	\
+      i2cReleaseBus (i2cd);						\
       chkErrorI2cMaster (i2cd);						\
       return status; }							\
   }
@@ -823,6 +825,7 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
 
 #include "i2cPeriphMpu9250.c"
 #include "i2cPeriphMPL3115A2.c"
+#include "i2cPeriphMS5611.c"
 /*
 #                 _ __           _                    _                   
 #                | '_ \         (_)                  | |                  

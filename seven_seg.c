@@ -1,6 +1,9 @@
 #include <ch.h>
 #include <hal.h>
 #include "seven_seg.h"
+#include "stdutil.h"
+#include "globalVar.h"
+#include <stdnoreturn.h>
 
 typedef struct  {
   IOBus cdedp;
@@ -23,6 +26,8 @@ static  SeptSeg digitBuses = {
   .cdedp = _IOBUS_DATA (1, GPIOB, 4, 12),
   .bafg =  _IOBUS_DATA (2, GPIOE, 4, 2)
 };
+
+static volatile uint32_t blinkPeriod=0;
 
 typedef union {
   struct {
@@ -82,39 +87,53 @@ static const uint8_t symbolLookUp[] = {
   ['A'] = 0b11101110,
   ['B'] = 0b00111010,
   ['C'] = 0b10011100,
-  ['D'] = 0b00111010,
+  ['D'] = 0b01111010,
   ['E'] = 0b10011110,
   ['F'] = 0b10001110,
   ['H'] = 0b01101110,
+  ['h'] = 0b00101110,
   ['I'] = 0b00001100, 
   ['J'] = 0b01101100,
   ['L'] = 0b00011100,
+  ['M'] = 0b11101100,
   ['O'] = 0b11111100,
+  ['o'] = 0b00111010,
   ['P'] = 0b11001110,
   ['R'] = 0b00001010,
   ['T'] = 0b00011110,
   ['U'] = 0b01111100,
-  ['Y'] = 0b01110110
+  ['Y'] = 0b01110110,
+  ['-'] = 0b00000010,  
 };
 
 static uint32_t errorState = 0;
-static unsigned char batteryLevel = '0';
+static unsigned char infoDigit = '0';
 
 static const uint8_t errorLookUp[] = {
   [SEVSEG_SDCORRUPT]   = 'D',
   [SEVSEG_NOSD]   = 'E',
   [SEVSEG_SDFULL]   = 'F',
   [SEVSEG_IMU]   = 'U',
+  [SEVSEG_MAG] = 'M',
+  [SEVSEG_BARO] ='B',
+  [SEVSEG_PITOT] ='-',
   [SEVSEG_SPI]   = 'I',
   [SEVSEG_I2C]   = 'J',
   [SEVSEG_GPS]   = 'P',
   [SEVSEG_RC]   = 'R',
-  [SEVSEG_TELEMETRY]   = 'T'
+  [SEVSEG_TELEMETRY] = 'T',
+  [SEVSEG_RCINV] = 'Y',
+  [SEVSEG_PWRSWITCH] ='P',
+  [SEVSEG_BAT] ='B',
+  [SEVSEG_ADC] ='A',
+  [SEVSEG_GPIO_CONTINUITY] ='C',
+  [SEVSEG_GPIO_SHORT] ='5',
+  [SEVSEG_LSE] = 'o',
+  [SEVSEG_HSE] = 'h'
 };
 
 static void sevseg_display_segments (const uint8_t _disp);
-
-static void sevseg_display_digit (const unsigned char c, const bool dp);
+static void displayBlinkThd(void *arg);
 
 
 /*
@@ -149,7 +168,7 @@ static void sevseg_display_segments (const uint8_t _disp)
   palWriteBus (&digitBuses.bafg, busE.data4);
 }
 
-static void sevseg_display_digit (const unsigned char c, const bool dp)
+void sevseg_display_digit (const unsigned char c, const bool dp)
 {
   if (c < sizeof (symbolLookUp)) {
     sevseg_display_segments (symbolLookUp[c] | dp);
@@ -164,7 +183,7 @@ static void sevseg_update_digit (void)
   const bool dp = __builtin_popcount (errorState) > 1;
 
   if (batteryDisplay) {
-    sevseg_display_digit (batteryLevel, dp);
+    sevseg_display_digit (infoDigit, dp);
   } else {
     // get the most priority error
     const int errIdx = ((sizeof(errorState)*8)-1) - __builtin_clz (errorState);
@@ -190,10 +209,45 @@ void sevseg_unregister_error (SevSegErrorState err)
   }
 }
 
-void sevseg_set_battery_level (uint8_t level)
+void sevseg_set_info_digit (uint8_t digit)
 {
-  if (level < 10) {
-    batteryLevel = '0' + level;
-  }
+  if (digit < ARRAY_LEN(symbolLookUp))
+    infoDigit = digit;
+  
   sevseg_update_digit();
+}
+
+
+static THD_WORKING_AREA(waDisplayBlink, 512);
+void sevseg_blink (uint32_t periodInMilliseconds)
+{
+  static bool threadLaunched=false;
+  blinkPeriod = periodInMilliseconds;
+
+  if (threadLaunched == false && periodInMilliseconds != 0) {
+     chThdCreateStatic(waDisplayBlink, sizeof(waDisplayBlink), NORMALPRIO, displayBlinkThd, NULL);
+     threadLaunched = true;
+  }
+}
+
+
+
+static noreturn void displayBlinkThd(void *arg) 
+{
+  (void) arg;
+  
+  while (true) {
+    if (blinkPeriod) {
+      palSetBusMode (&digitBuses.cdedp, PAL_MODE_OUTPUT_OPENDRAIN);
+      palSetBusMode (&digitBuses.bafg, PAL_MODE_OUTPUT_OPENDRAIN);
+      chThdSleepMilliseconds (blinkPeriod);
+      palSetBusMode (&digitBuses.cdedp, PAL_MODE_OUTPUT_PUSHPULL);
+      palSetBusMode (&digitBuses.bafg, PAL_MODE_OUTPUT_PUSHPULL);
+      chThdSleepMilliseconds (blinkPeriod);
+    } else {
+      palSetBusMode (&digitBuses.cdedp, PAL_MODE_OUTPUT_PUSHPULL);
+      palSetBusMode (&digitBuses.bafg, PAL_MODE_OUTPUT_PUSHPULL);
+      chThdSleepMilliseconds (100);
+    }
+  }
 }
