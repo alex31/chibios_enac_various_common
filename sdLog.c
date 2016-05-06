@@ -677,7 +677,7 @@ static msg_t thdSdLog(void *arg)
   
   chRegSetThreadName("thdSdLog");
   while (!chThdShouldTerminateX()) {
-    LogMessage *lm;
+    LogMessage *lm=NULL;
     const int32_t retLen = ( int32_t) (msgqueue_pop (&messagesQueue, (void **) &lm));
     if (retLen > 0) {
       FIL *fo =  &fileDes[lm->op.fd].fil;
