@@ -60,6 +60,17 @@ chMtxInit(&i2cd->mutex);		\
       return status; }							\
   }
 
+#define STATUS_TEST_READ(i2cd,array)  { \
+    if (status != RDY_OK) {						\
+      DebugTrace ("I2C error read " #array                             \
+		  " on " #i2cd                                          \
+		  " status =%s", status == RDY_RESET ?			\
+		  "RDY_RESET" : "RDY_TIMEOUT");				\
+      i2cReleaseBus (i2cd);						\
+      chkErrorI2cMaster (i2cd);						\
+      return status; }							\
+  }
+
 #define STATUS_TEST_READ_WRITE(i2cd,r_array,w_array)  { \
     if (status != RDY_OK) {						\
       DebugTrace ("I2C error read  " #r_array  " write " #w_array " status =%s", \
@@ -68,6 +79,11 @@ chMtxInit(&i2cd->mutex);		\
       chkErrorI2cMaster (i2cd);						\
       return status; }							\
   }
+
+#define I2C_READ(i2cd,adr,array)   {					\
+    status = i2cMasterTransmitTimeout(i2cd, adr, NULL, 0,		\
+				      array, sizeof(array), 100) ;	\
+    STATUS_TEST_WRITE(i2cd,array)}
 
 #define I2C_WRITE(i2cd,adr,array)   {					\
     status = i2cMasterTransmitTimeout(i2cd, adr, array, sizeof(array),	\
@@ -826,6 +842,7 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
 #include "i2cPeriphMpu9250.c"
 #include "i2cPeriphMPL3115A2.c"
 #include "i2cPeriphMS5611.c"
+#include "i2cPeriphMS45XX.c"
 /*
 #                 _ __           _                    _                   
 #                | '_ \         (_)                  | |                  
