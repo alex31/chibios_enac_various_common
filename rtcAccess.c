@@ -105,6 +105,10 @@ uint32_t getWeekDay (void)
   return utime.tm_wday;
 }
 
+time_t getTimeUnixSec(void)
+{
+  return rtcGetTimeUnixSec();
+}
 
 #else // CH_KERNEL_MAJOR > 2
 
@@ -240,6 +244,16 @@ uint32_t getWeekDay (void)
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
 
   return utime.tm_wday;
+}
+
+time_t getTimeUnixSec(void)
+{
+  struct tm tim;
+  RTCDateTime timespec;
+  
+  rtcGetTime(&RTCD1, &timespec);
+  rtcConvertDateTimeToStructTm(&timespec, &tim, NULL);
+  return mktime(&tim);
 }
 
 

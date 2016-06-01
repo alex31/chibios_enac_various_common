@@ -1,7 +1,8 @@
-#ifndef __RTC_ACCESS_H__
-#define __RTC_ACCESS_H__
+#pragma once
 
 #include <ch.h>
+#include <stdlib.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,10 +28,10 @@ uint32_t	getWeekDay (void);
 const char*	getWeekDayAscii (void);
 uint32_t	getDstOffset (void);
 
+time_t getTimeUnixSec(void);
+
 
 #ifdef __cplusplus
 }
 #endif
 
-
-#endif //  __RTC_ACCESS_H__

@@ -569,8 +569,8 @@ static inline double double_vect_norm(const double* a, const int n)
 #define MAKE_MATRIX_PTR(_ptr, _mat, _rows) \
   double * _ptr[_rows]; \
   { \
-    int i; \
-    for (i = 0; i < _rows; i++) { _ptr[i] = &_mat[i][0]; } \
+    int _i; \
+    for (_i = 0; _i < _rows; _i++) { _ptr[_i] = &_mat[_i][0]; } \
   }
 
 /** a = 0 */
