@@ -93,11 +93,12 @@ MemoryHeap ccmHeap;
 
 #if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
 
+
+#if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
 #ifndef CH_HEAP_SIZE
 #error CH_HEAP_SIZE should be defined if  CH_CFG_USE_HEAP or CH_HEAP_USE_TLSF are defined
 #endif
 
-#if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
 static uint8_t ccmHeapBuffer[CH_HEAP_SIZE]  __attribute__ ((section(STD_SECTION), aligned(8))) ;
 memory_heap_t ccmHeap;
 #endif
