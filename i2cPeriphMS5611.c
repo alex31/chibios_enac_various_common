@@ -1,6 +1,6 @@
 #include <ch.h>
 #include <hal.h>
-#include "hardwareTestDisplay.h"
+//#include "hardwareTestDisplay.h"
 
 #if defined I2C_USE_MS5611 && I2C_USE_MS5611 != 0
 #include "i2cPeriphMS5611.h"
