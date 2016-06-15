@@ -1,6 +1,5 @@
 #include <ch.h>
 #include <hal.h>
-//#include "hardwareTestDisplay.h"
 
 #if defined I2C_USE_MS5611 && I2C_USE_MS5611 != 0
 #include "i2cPeriphMS5611.h"
@@ -15,7 +14,7 @@ msg_t MS5611_init (MS5611Data *baro, I2CDriver *i2cd, const uint8_t i2cAddr)
   baro->cacheTimestamp = 0;
   baro->sampleInterval = 0;
   baro->i2cAddr = i2cAddr;
-  msg_t status;
+  msg_t status = MSG_OK;
   
   // reset MS5611
   i2cAcquireBus(i2cd);
@@ -36,9 +35,7 @@ msg_t MS5611_init (MS5611Data *baro, I2CDriver *i2cd, const uint8_t i2cAddr)
   i2cReleaseBus(i2cd);
 
   if (ms5611_prom_crc_ok (baro->promCoeffs) != true) {
-    sdLogWriteLog (logFile, "baro prom crc incorrect");
-    DebugTrace ("baro prom crc incorrect");
-    hardwareSetState (HW_baroBias, false);
+    status = MSG_RESET;
   }
   return status;
 }
