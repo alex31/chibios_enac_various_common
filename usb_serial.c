@@ -311,6 +311,8 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
 
     chSysUnlockFromIsr();
     return;
+  case USB_EVENT_UNCONFIGURED:
+    return;
   case USB_EVENT_SUSPEND:
     chSysLockFromIsr();
     
