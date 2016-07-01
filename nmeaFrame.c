@@ -12,7 +12,7 @@
 
 static int32_t parseNMEA (const NmeaBinder *nbs, const void * const  userData,
 			  char *nmeaFrame, ErrorCallback error_cb);
-static bool_t verifyChecksum (NmeaStateMachine *sm);
+static bool verifyChecksum (NmeaStateMachine *sm);
 
 
 void initStateMachine (NmeaStateMachine *sm)
@@ -21,7 +21,7 @@ void initStateMachine (NmeaStateMachine *sm)
   sm->state = NS_WAIT_BEGIN;
 }
 
-static bool_t verifyChecksum (NmeaStateMachine *sm)
+static bool verifyChecksum (NmeaStateMachine *sm)
 {
   const uint8_t chks1 = toupper ((int) sm->receivedChksm1);
   const uint8_t chks2 = toupper ((int) sm->receivedChksm2);
