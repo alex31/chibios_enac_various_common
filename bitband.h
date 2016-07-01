@@ -139,6 +139,59 @@ static inline uint32_t bb_palReadPad   (ioportid_t gpio,
 
 
 
+
+#if (CH_KERNEL_MAJOR > 2)
+
+    
+/**
+ * @brief Set a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type) 
+ * @param bit Bit in gpio to write to
+ */
+static inline void bb_palSetLine   (ioline_t line) {
+  bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), 1); 
+}
+
+/* 
+ * @brief Write a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type)
+ * @param bit Bit in gpio to write to
+ */
+static inline void bb_palWriteLine   (ioline_t line,
+				     const uint32_t val) {
+   bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), val);
+}
+
+/**
+ * @brief Clear a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type)
+ * @param bit Bit in gpio to write to
+ */
+static inline void bb_palClearLine   (ioline_t line) {
+  bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), 0);
+}
+
+/**
+ * @brief Toggle a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type)
+ * @param bit Bit in gpio to write to
+ */
+static inline void bb_palToggleLine   (ioline_t line) {
+  bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), !bb_peri_get_bit(&(PAL_PORT(line)->IDR), PAL_PAD(line)));
+}
+
+/**
+ * @brief Read a bit in GPIO using same api than chibios but via bitband
+ * @param gpio (with chibios type)
+ * @param bit Bit in gpio to write to
+ */
+static inline uint32_t bb_palReadLine   (ioline_t line) {
+  return bb_peri_get_bit(&(PAL_PORT(line)->IDR), PAL_PAD(line));
+}
+
+
+#endif // (CH_KERNEL_MAJOR > 2)    
+
 static inline volatile uint32_t* __bb_addr(volatile void * const address,
                                          const uint32_t bit,
                                          const uint32_t bb_base,
