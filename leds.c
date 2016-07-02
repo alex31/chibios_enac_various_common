@@ -1,6 +1,7 @@
 #include <ch.h>
 #include <hal.h>
 #include "bitband.h"
+#include "stdutil.h"
 #include "leds.h"
 #include <strings.h>
 #include <stdnoreturn.h>
@@ -10,6 +11,9 @@
 #define LED_MAX_NUMBER 8
 #endif
 
+static volatile bool blinkFast = false;
+static volatile bool blinkSlow = false;
+static thread_t *genThd = NULL;
 
 typedef struct {
   ioline_t ledL;
@@ -18,22 +22,39 @@ typedef struct {
 
 
 static void thdBlinkLed (void *arg);
+static void thdBlinkGen (void *arg);
 
 LedData ledDatas[LED_MAX_NUMBER];
 static uint32_t nbLed = 0;
 
 
+static THD_WORKING_AREA(waBlinkGen, 200);
+static THD_WORKING_AREA_ARRAY(waBlinkLed, 224, LED_MAX_NUMBER);
 
 bool ledResisterLine (ioline_t ledl, LedState iniState)
 {
+  // error if max registered line is hit
   if (nbLed >= LED_MAX_NUMBER)
     return false;
+
+  // error if already registered
+  for (uint32_t i=0; i<LED_MAX_NUMBER; i++) {
+    if  (ledDatas[i].ledL == ledl) {
+      return false;
+    }
+  }
+
+  // launch synchronous blink source thread
+  if (genThd == NULL) {
+    genThd = chThdCreateStatic (waBlinkGen, sizeof(waBlinkGen), NORMALPRIO, 
+				thdBlinkGen, NULL);
+  }
 
   ledDatas[nbLed].ledL = ledl;
   ledDatas[nbLed].ledS = iniState;
 
-  chThdCreateFromHeap (NULL, 512, NORMALPRIO, 
-		       thdBlinkLed, &ledDatas[nbLed]);
+  chThdCreateStatic (waBlinkLed[nbLed], sizeof(waBlinkLed[0]), NORMALPRIO, 
+					       thdBlinkLed, &ledDatas[nbLed]);
   nbLed++;
   
   return true;
@@ -48,6 +69,22 @@ void ledSet (ioline_t ledl, LedState iniState)
       ledDatas[i].ledS = iniState;
       break;
     }
+  }
+}
+
+static noreturn void thdBlinkGen (void *arg)
+{
+  (void) arg;
+
+  chRegSetThreadName ("blinkGen");
+
+  uint32_t c=0;
+  while (true) {
+    blinkFast = !blinkFast;
+    if ((++c%5) == 0)
+      blinkSlow = !blinkSlow;
+    
+    chThdSleepMilliseconds (200);
   }
 }
 
@@ -68,16 +105,12 @@ static noreturn void thdBlinkLed (void *arg)
   while (true) {
     switch (ledData->ledS) {
     case LED_OFF : bb_palClearLine (ledData->ledL); break;
-    case LED_BLINKSLOW : 
-    case LED_BLINKFAST : bb_palToggleLine (ledData->ledL); break;
+    case LED_BLINKSLOW : bb_palWriteLine (ledData->ledL, blinkSlow); break;
+    case LED_BLINKFAST : bb_palWriteLine (ledData->ledL, blinkFast); break;
     case LED_ON : bb_palSetLine (ledData->ledL); break;
     }
-
-    switch (ledData->ledS) {
-    case LED_BLINKSLOW : chThdSleepMilliseconds (1000); break;
-    case LED_OFF : 
-    case LED_BLINKFAST : 
-    case LED_ON : chThdSleepMilliseconds (200); break;
-    }
+    
+    chThdSleepMilliseconds (20); 
   }
+  
 }
