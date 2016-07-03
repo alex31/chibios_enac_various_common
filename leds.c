@@ -31,7 +31,7 @@ static uint32_t nbLed = 0;
 static THD_WORKING_AREA(waBlinkGen, 200);
 static THD_WORKING_AREA_ARRAY(waBlinkLed, 224, LED_MAX_NUMBER);
 
-bool ledResisterLine (ioline_t ledl, LedState iniState)
+bool ledRegisterLine (ioline_t ledl, LedState iniState)
 {
   // error if max registered line is hit
   if (nbLed >= LED_MAX_NUMBER)
