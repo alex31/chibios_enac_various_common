@@ -243,10 +243,12 @@ F7
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram4" 
 #define DMA_SECTION ".ram0"    
+#define BCKP_SECTION ".ram5"    
 #elif  defined STM32F7XX
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram0" 
 #define DMA_SECTION ".ram3"    
+#define BCKP_SECTION ".ram5"    
 #else
 #error "section defined only for STM32F4 and STM32F7"
 #endif
@@ -255,6 +257,7 @@ F7
 #define IN_STD_SECTION(var) var __attribute__ ((section(STD_SECTION), aligned(8)))
 #define IN_FAST_SECTION(var) var __attribute__ ((section(FAST_SECTION), aligned(8)))
 #define IN_DMA_SECTION(var) var __attribute__ ((section(DMA_SECTION), aligned(8)))
+#define IN_BCKP_SECTION(var) var __attribute__ ((section(BCKP_SECTION), aligned(8)))
  
   
 #if (CH_KERNEL_MAJOR == 2)
