@@ -202,7 +202,7 @@ SdioError sdLogWriteRaw (const FileDes fileObject, const uint8_t* buffer, const 
  *                    there is two accessor functions (below) to access 
  *		      buffer ptr and buffer len.
  * @details     usage of the set of 4 functions :
- *              SdLogBuffer sdb
+ *              SdLogBuffer sdb;
  *              sdLogAllocSDB (&sdb, 100);
  *              memcpy (getBufferFromSDB(&sdb), SOURCE, getBufferLenFromSDB (&sdb));
  *              sdLogWriteSDB (file, &sdb);
