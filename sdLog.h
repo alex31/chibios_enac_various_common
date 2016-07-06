@@ -64,12 +64,19 @@ typedef enum {
   SDLOG_QUEUEFULL,
   SDLOG_NOTHREAD,
   SDLOG_INTERNAL_ERROR,
-  SDLOG_LOGNUM_ERROR
+  SDLOG_LOGNUM_ERROR,
+  SDLOG_WAS_LAUNCHED
 } SdioError;
 
 
 typedef int8_t FileDes;
 
+typedef  struct  {
+   LogMessage * const __lm;
+  const size_t __len;
+} SdLogBuffer;
+
+  
 /**
  * @brief	initialise sdLog
  * @details	init sdio peripheral, verify sdCard is inserted, check and mount filesystem,
@@ -77,6 +84,7 @@ typedef int8_t FileDes;
  *              This function is available even without thread login facility : even
  *		if SDLOG_XXX macro are zeroed
  * @param[out]	freeSpaceInKo : if pointer in nonnull, return free space on filesystem
+ * @return	status (always check status)
  */
 SdioError sdLogInit (uint32_t* freeSpaceInKo);
 
@@ -92,6 +100,7 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo);
  * @param[out]	nextFileName : file with path ready to be used for f_open system call
  * @param[in]	nameLength : length of previous buffer
  * @param[in]	indexOffset : use 0 to retrieve last existent filename, 1 for next filename
+ * @return	status (always check status)
  */
 SdioError getFileName(const char* prefix, const char* directoryName,
 		      char* nextFileName, const size_t nameLength, const int indexOffset);
@@ -108,6 +117,7 @@ SdioError getFileName(const char* prefix, const char* directoryName,
  * @param[in]	prefix : the pattern for the file : example LOG_
  * @param[in]	directoryName : root directory where to find file
  * @param[in]	sizeConsideredEmpty : file whose size is less or equal to that value will be removed
+ * @return	status (always check status)
  */
 SdioError removeEmptyLogs(const char* directoryName, const char* prefix, 
 			  const size_t sizeConsideredEmpty);
@@ -116,6 +126,7 @@ SdioError removeEmptyLogs(const char* directoryName, const char* prefix,
  * @details	unmount filesystem, free sdio peripheral
  *              This function is available even without thread login facility : even
  *		if SDLOG_XXX macro are zeroed
+ * @return	status (always check status)
  */
 SdioError sdLogFinish (void);
 
@@ -130,6 +141,7 @@ SdioError sdLogFinish (void);
  * @param[in]	appendTagAtClose : at close, a marker will be added to prove that the file is complete
  *		and not corrupt. useful for text logging purpose, but probably not wanted fort binary
  *		files.
+ * @return	status (always check status)
  */
 SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const char* fileName,
 			bool appendTagAtClose);
@@ -138,6 +150,7 @@ SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const ch
 /**
  * @brief	flush ram buffer associated with file to sdCard
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
+ * @return	status (always check status)
  */
 SdioError sdLogFlushLog (const FileDes fileObject);
 
@@ -145,6 +158,7 @@ SdioError sdLogFlushLog (const FileDes fileObject);
 /**
  * @brief	flush ram buffer then close file.
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
+ * @return	status (always check status)
  */
 SdioError sdLogCloseLog (const FileDes fileObject);
 
@@ -154,6 +168,7 @@ SdioError sdLogCloseLog (const FileDes fileObject);
  *			if false : close imediatly files without flushing buffers,
  *			           more chance to keep filesystem integrity in case of
  *				   emergency close after power outage is detected
+ * @return	status (always check status)
  */
 SdioError sdLogCloseAllLogs (bool flush);
 
@@ -165,6 +180,7 @@ SdioError sdLogCloseAllLogs (bool flush);
  * @brief	log text
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  * @param[in]	fmt : format and args in printf convention
+ * @return	status (always check status)
  */
 SdioError sdLogWriteLog (const FileDes fileObject, const char* fmt, ...);
 
@@ -174,14 +190,58 @@ SdioError sdLogWriteLog (const FileDes fileObject, const char* fmt, ...);
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  * @param[in]	buffer : memory pointer on buffer
  * @param[in]	len : number of bytes to write
+ * @return	status (always check status)
  */
 SdioError sdLogWriteRaw (const FileDes fileObject, const uint8_t* buffer, const size_t len);
+  
+
+/**
+ * @brief	log binary data limiting buffer copy by preallocating space 
+ * @param[in]	len : number of bytes to write
+ * @param[out]	sdb : pointer to opaque object containing buffer
+ *                    there is two accessor functions (below) to access 
+ *		      buffer ptr and buffer len.
+ * @details     usage of the set of 4 functions :
+ *              SdLogBuffer sdb
+ *              sdLogAllocSDB (&sdb, 100);
+ *              memcpy (getBufferFromSDB(&sdb), SOURCE, getBufferLenFromSDB (&sdb));
+ *              sdLogWriteSDB (file, &sdb);
+ * @return	status (always check status)
+*/
+SdioError sdLogAllocSDB (SdLogBuffer *sdb, const size_t len);
+  
+/**
+ * @brief	return a pointer of the writable area of a preallocated message
+ * @param[in]	sdb : pointer to opaque object containing buffer
+ *                    and previously filled by sdLogAllocSDB
+ * @return	pointer to writable area		      
+*/
+char      *getBufferFromSDB (SdLogBuffer *sdb);
 
 
+/**
+ * @brief	return len of the writable area of a preallocated message
+ * @param[in]	sdb : pointer to opaque object containing buffer
+ *                    and previously filled by sdLogAllocSDB
+ * @return	len of writable area		      
+*/
+static inline size_t getBufferLenFromSDB (SdLogBuffer *sdb) {return sdb->__len;}
+  
+/**
+ * @brief	send a preallocted message after it has been filled
+ * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
+ * @param[in]	sdb : pointer to opaque object containing buffer
+ *                    and previously filled by sdLogAllocSDB
+ * @return	status (always check status)
+*/
+SdioError sdLogWriteSDB (const FileDes fd, SdLogBuffer *sdb);
+
+  
 /**
  * @brief	log one byte of binary data
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  * @param[in]	value : byte to log
+ * @return	status (always check status)
  */
 SdioError sdLogWriteByte (const FileDes fileObject, const uint8_t value);
 #endif

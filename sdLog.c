@@ -109,6 +109,11 @@ typedef enum {
   FCNTL_EXIT =  0b11
 } FileFcntl;
 
+typedef struct  {
+  LogMessage *lm;
+  size_t len;
+} MutableSdLogBuffer;
+
 
 
 #define LOG_MESSAGE_PREBUF_LEN (SDLOG_MAX_MESSAGE_LEN+sizeof(LogMessage))
@@ -144,6 +149,12 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
   DWORD clusters=0;
   FATFS *fsp=NULL;
 
+  // if init is already done, return ERROR
+  if (sdLogThd != NULL) {
+    *freeSpaceInKo=0;
+    return  SDLOG_WAS_LAUNCHED;
+  }
+  
 #ifdef SDLOG_NEED_QUEUE
   msgqueue_init (&messagesQueue, &HEAP_DEFAULT, queMbBuffer, SDLOG_QUEUE_BUCKETS);
 #endif
@@ -425,6 +436,54 @@ SdioError sdLogWriteRaw (const FileDes fd, const uint8_t * buffer, const size_t 
 
   return SDLOG_OK;
 }
+
+SdioError sdLogAllocSDB (SdLogBuffer *sdb, const size_t len)
+{
+  LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, logRawLen(len));
+  if (lm == NULL)
+    return SDLOG_QUEUEFULL;
+
+  MutableSdLogBuffer *msdb = (MutableSdLogBuffer *) sdb;
+  
+  msdb->lm = lm;
+  msdb->len = len;
+  return SDLOG_OK;
+}
+
+char *getBufferFromSDB (SdLogBuffer *sdb)
+{
+  return  sdb->__lm->mess;
+}
+
+SdioError sdLogWriteSDB (const FileDes fd, SdLogBuffer *sdb)
+{
+  MutableSdLogBuffer *usdb = (MutableSdLogBuffer *) sdb;
+  
+  if ((fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false)) {
+    tlsf_free_r (&HEAP_DEFAULT, usdb->lm);
+    return SDLOG_FATFS_ERROR;
+  }
+  
+  const SdioError status = flushWriteByteBuffer (fd);
+  if (status != SDLOG_OK) {
+    tlsf_free_r (&HEAP_DEFAULT, usdb->lm);
+    return status;
+  }
+  
+
+  usdb->lm->op.fcntl = FCNTL_WRITE;
+  usdb->lm->op.fd = fd & 0x1f;
+
+  if (msgqueue_send (&messagesQueue, usdb->lm, logRawLen(usdb->len), MsgQueue_REGULAR) < 0) {
+    return SDLOG_QUEUEFULL;
+  }
+
+  usdb->lm = NULL;
+  usdb->len = 0;
+  
+  return SDLOG_OK;
+}
+
 
 
 
@@ -744,7 +803,7 @@ static msg_t thdSdLog(void *arg)
 	      const int32_t stayLen = SDLOG_WRITE_BUFFER_SIZE-curBufFill;
 	      memcpy (&(perfBuffer[curBufFill]), lm->mess, (size_t)(stayLen));
 	      FRESULT rc = f_write(fo, perfBuffer, SDLOG_WRITE_BUFFER_SIZE, &bw);
-	      f_sync (fo);
+	      //	      f_sync (fo);
 	      if (rc) {
 		chThdExit (SDLOG_FATFS_ERROR);
 	      } else if (bw != SDLOG_WRITE_BUFFER_SIZE) {

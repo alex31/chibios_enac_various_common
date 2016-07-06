@@ -299,6 +299,9 @@ F7
   uint16_t fletcher16 (uint8_t const *data, size_t bytes);
   float powi(int x, int y) ;
   const char* getGpioName (const ioportid_t p);
+#if (CH_KERNEL_MAJOR > 2)
+  int32_t get_stack_free (const thread_t *tp);
+#endif
 #ifdef __cplusplus
 }
 #endif
