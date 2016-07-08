@@ -29,12 +29,14 @@
 #ifndef _PRINTF_H_
 #define _PRINTF_H_
 
-#include <stdarg.h>  
+#include <stdarg.h>
+#include <ch.h>
+#include <hal.h>
 /**
  * @brief   Float type support.
  */
 #if !defined(CHPRINTF_USE_FLOAT) || defined(__DOXYGEN__)
-#define CHPRINTF_USE_FLOAT          FALSE
+#define CHPRINTF_USE_FLOAT          TRUE
 #endif
 
 #ifdef __cplusplus

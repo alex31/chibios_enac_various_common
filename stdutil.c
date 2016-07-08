@@ -120,9 +120,12 @@ size_t initHeap (void)
 #if (CH_KERNEL_MAJOR == 2)
   chHeapInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
   chHeapStatus(&ccmHeap, &size);
-#else
+#elif (CH_KERNEL_MAJOR == 3)
   chHeapObjectInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
   chHeapStatus(&ccmHeap, &size);
+#else
+  chHeapObjectInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
+  chHeapStatus(&ccmHeap, &size, NULL);
 #endif
   return size;
 #endif
@@ -136,7 +139,11 @@ size_t getHeapFree (void)
   return stat.mfree;
 #else
   size_t size;
+#if (CH_KERNEL_MAJOR <= 3)
   chHeapStatus(&ccmHeap, &size);
+#else
+  chHeapStatus(&ccmHeap, &size, NULL);
+#endif
   return size;
 #endif
 }
@@ -173,7 +180,7 @@ void systemReset(void)
 /* to lower consumption until reset */
 void systemDeepSleep (void)
 {
-#if defined STM32F746xx || defined STM32F756xx
+#if defined STM32F746xx || defined STM32F756xx || defined STM32F767xx
   /* clear PDDS and LPDS bits */
   PWR->CR1 &= ~(PWR_CR1_PDDS | PWR_CR1_LPDS);
   
@@ -339,24 +346,25 @@ char *binary_fmt(uintmax_t x)
 }
 #undef FMT_BUF_SIZE // don't pullute namespace
 
-#if (CH_KERNEL_MAJOR > 2)
+#if (CH_KERNEL_MAJOR >= 3)
 int32_t get_stack_free (const thread_t *tp)
 {
   int32_t index = 0;
   extern const uint8_t __ram0_end__;
-  const int32_t internalStructSize = (CH_KERNEL_MAJOR == 2) ? 80 : 120;
   
-   unsigned long long *stkAdr =  (unsigned long long *) ((uint8_t *) tp  + internalStructSize); 
-
-   while ((stkAdr[index] == 0x5555555555555555) && ( ((uint8_t *) &(stkAdr[index])) < &__ram0_end__))
-     index++;
-   
-   const int32_t freeBytes =  index * (int32_t) sizeof(long long);
-   return MAX(0, freeBytes - internalStructSize);
+#if (CH_KERNEL_MAJOR == 3)
+  unsigned long long *stkAdr =  (unsigned long long *) ((uint8_t *) tp->p_stklimit);
+#elif (CH_KERNEL_MAJOR == 4)
+  unsigned long long *stkAdr =  (unsigned long long *) ((uint8_t *) tp->wabase);
+#endif
+  
+  while ((stkAdr[index] == 0x5555555555555555) && ( ((uint8_t *) &(stkAdr[index])) < &__ram0_end__))
+    index++;
+  
+  const int32_t freeBytes =  index * (int32_t) sizeof(long long);
+  return freeBytes;
 }
 #endif
-
-
 
 /* libc stub */
 int _getpid(void) {return 1;}

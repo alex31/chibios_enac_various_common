@@ -38,6 +38,11 @@
 
 #define printScreen(...) {chprintf (chpg, __VA_ARGS__); chprintf (chpg, "\r\n");}
 
+#if (CH_KERNEL_MAJOR > 3)
+#define chSequentialStreamPut streamPut
+#define chSequentialStreamRead streamRead
+#endif
+
 
 typedef struct {
   void (*altFunc) (uint8_t c, uint32_t mode);
@@ -208,6 +213,11 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
     }
     break;
   case  0x449 : mcu_devid_str = "STM32F74x and STM32F75x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    }
+  case  0x451 : mcu_devid_str = "STM32F76x and STM32F77x";
     switch (mcu_revid) {
     case 0x1000 : mcu_revid_chr = 'A'; break;
     case 0x1001 : mcu_revid_chr = 'Z'; break;
@@ -390,10 +400,14 @@ void shellInit(void) {
  */
 #if CH_USE_HEAP && CH_USE_DYNAMIC
 Thread *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio) {
-
+#if (CH_KERNEL_MAJOR <= 3)
   return chThdCreateFromHeap(NULL, size, prio, shell_thread, (void *)scp);
+#else
+  return chThdCreateFromHeap(NULL, size, "shell", prio, shell_thread, (void *)scp);
+#endif
 }
 #endif
+
 
 /**
  * @brief   Create statically allocated shell thread.

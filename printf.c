@@ -194,7 +194,11 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
 	return TRUE;
       }
     } else if (chp != NULL) {
+#if (CH_KERNEL_MAJOR <= 3)
       chSequentialStreamPut(chp, _c);
+#else
+      streamPut (chp, _c);
+#endif
       return FALSE;
     }
     return FALSE;
