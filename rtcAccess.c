@@ -107,7 +107,7 @@ uint32_t getWeekDay (void)
 
 time_t getTimeUnixSec(void)
 {
-  return rtcGetTimeUnixSec();
+  return rtcGetTimeUnixSec(&RTCD1);
 }
 
 #else // CH_KERNEL_MAJOR > 2
