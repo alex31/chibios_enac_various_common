@@ -109,10 +109,11 @@ typedef enum {
   FCNTL_EXIT =  0b11
 } FileFcntl;
 
-typedef struct  {
+struct  _SdLogBuffer {
   LogMessage *lm;
-  size_t len;
-} MutableSdLogBuffer;
+  size_t     len;
+  uint32_t   offset;
+} ;
 
 
 
@@ -439,51 +440,75 @@ SdioError sdLogWriteRaw (const FileDes fd, const uint8_t * buffer, const size_t 
   return SDLOG_OK;
 }
 
-SdioError sdLogAllocSDB (SdLogBuffer *sdb, const size_t len)
+SdioError sdLogAllocSDB (SdLogBuffer **sdb, const size_t len)
 {
-  LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, logRawLen(len));
-  if (lm == NULL)
+  *sdb = tlsf_malloc_r (&HEAP_DEFAULT, logRawLen(len));
+  if (*sdb == NULL)
     return SDLOG_QUEUEFULL;
-
-  MutableSdLogBuffer *msdb = (MutableSdLogBuffer *) sdb;
   
-  msdb->lm = lm;
-  msdb->len = len;
+  LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, logRawLen(len));
+  if (lm == NULL) {
+    tlsf_free_r (&HEAP_DEFAULT, *sdb);
+    return SDLOG_QUEUEFULL;
+  }
+
+  (*sdb)->lm = lm;
+  (*sdb)->len = len;
+  (*sdb)->offset = 0;
   return SDLOG_OK;
 }
 
-char *getBufferFromSDB (SdLogBuffer *sdb)
+char *sdLogGetBufferFromSDB (SdLogBuffer *sdb)
 {
-  return  sdb->__lm->mess;
+  return  sdb->lm->mess + sdb->offset;
+}
+
+bool   sdLogSeekBufferFromSDB (SdLogBuffer *sdb, uint32_t offset)
+{
+  if ((sdb->offset + offset) < sdb->len) {
+    sdb->offset += offset;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+size_t sdLogGetBufferLenFromSDB (SdLogBuffer *sdb) {
+  return sdb->len - sdb->offset;
 }
 
 SdioError sdLogWriteSDB (const FileDes fd, SdLogBuffer *sdb)
 {
-  MutableSdLogBuffer *usdb = (MutableSdLogBuffer *) sdb;
-  
+  SdioError status = SDLOG_OK;
+
   if ((fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false)) {
-    tlsf_free_r (&HEAP_DEFAULT, usdb->lm);
-    return SDLOG_FATFS_ERROR;
+    status = SDLOG_FATFS_ERROR;
+    goto fail;
   }
   
-  const SdioError status = flushWriteByteBuffer (fd);
+  status = flushWriteByteBuffer (fd);
   if (status != SDLOG_OK) {
-    tlsf_free_r (&HEAP_DEFAULT, usdb->lm);
-    return status;
+    goto fail;
   }
   
 
-  usdb->lm->op.fcntl = FCNTL_WRITE;
-  usdb->lm->op.fd = fd & 0x1f;
-
-  if (msgqueue_send (&messagesQueue, usdb->lm, logRawLen(usdb->len), MsgQueue_REGULAR) < 0) {
-    return SDLOG_QUEUEFULL;
+  sdb->lm->op.fcntl = FCNTL_WRITE;
+  sdb->lm->op.fd = fd & 0x1f;
+  
+  if (msgqueue_send (&messagesQueue, sdb->lm, logRawLen(sdb->len), MsgQueue_REGULAR) < 0) {
+    // msgqueue_send take care of freeing lm memory even in case of failure
+    // just need to free sdb memory
+    status = SDLOG_QUEUEFULL;
   }
 
-  usdb->lm = NULL;
-  usdb->len = 0;
+  goto exit;
   
-  return SDLOG_OK;
+ fail:
+  tlsf_free_r (&HEAP_DEFAULT, sdb->lm);
+  
+ exit:
+  tlsf_free_r (&HEAP_DEFAULT, sdb);
+  return status;
 }
 
 

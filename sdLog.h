@@ -68,13 +68,9 @@ typedef enum {
   SDLOG_WAS_LAUNCHED
 } SdioError;
 
-
+typedef struct _SdLogBuffer SdLogBuffer;
 typedef int8_t FileDes;
 
-typedef  struct  {
-   LogMessage * const __lm;
-  const size_t __len;
-} SdLogBuffer;
 
   
 /**
@@ -198,34 +194,49 @@ SdioError sdLogWriteRaw (const FileDes fileObject, const uint8_t* buffer, const 
 /**
  * @brief	log binary data limiting buffer copy by preallocating space 
  * @param[in]	len : number of bytes to write
- * @param[out]	sdb : pointer to opaque object containing buffer
+ * @param[out]	sdb : pointer to opaque object pointer containing buffer
  *                    there is two accessor functions (below) to access 
  *		      buffer ptr and buffer len.
  * @details     usage of the set of 4 functions :
- *              SdLogBuffer sdb;
+ *              SdLogBuffer *sdb;
  *              sdLogAllocSDB (&sdb, 100);
- *              memcpy (getBufferFromSDB(&sdb), SOURCE, getBufferLenFromSDB (&sdb));
- *              sdLogWriteSDB (file, &sdb);
+ *              memcpy (getBufferFromSDB(sdb), SOURCE, offset);
+ *              sdLogSeekBufferFromSDB (sdb, offset);
+ *              sdLogWriteSDB (file, sdb);
  * @return	status (always check status)
 */
-SdioError sdLogAllocSDB (SdLogBuffer *sdb, const size_t len);
+SdioError sdLogAllocSDB (SdLogBuffer **sdb, const size_t len);
   
 /**
- * @brief	return a pointer of the writable area of a preallocated message
+ * @brief	return a pointer of the writable area of a preallocated 
+ *              message + offset managed by sdLogSeekBufferFromSDB
  * @param[in]	sdb : pointer to opaque object containing buffer
  *                    and previously filled by sdLogAllocSDB
  * @return	pointer to writable area		      
 */
-char      *getBufferFromSDB (SdLogBuffer *sdb);
+char      *sdLogGetBufferFromSDB (SdLogBuffer *sdb);
 
 
 /**
- * @brief	return len of the writable area of a preallocated message
+ * @brief	manage internal offset in user buffer
+ * @param[in]	sdb : pointer to opaque object containing buffer
+ *                    and previously filled by sdLogAllocSDB
+ *              offset : increment internal offset with this value
+ * @return	true if offset is withing internal buffer boundary
+                false if offset is NOT withing internal buffer boundary, in this case,
+                no keek is done		      
+*/
+bool      sdLogSeekBufferFromSDB (SdLogBuffer *sdb, uint32_t offset);
+
+
+/**
+ * @brief	return len of the writable area of a preallocated message (this take into account
+ *		the offset)
  * @param[in]	sdb : pointer to opaque object containing buffer
  *                    and previously filled by sdLogAllocSDB
  * @return	len of writable area		      
 */
-static inline size_t getBufferLenFromSDB (SdLogBuffer *sdb) {return sdb->__len;}
+size_t sdLogGetBufferLenFromSDB (SdLogBuffer *sdb);
   
 /**
  * @brief	send a preallocted message after it has been filled
