@@ -327,9 +327,11 @@ SdioError sdLogWriteLog (const FileDes fd, const char* fmt, ...)
   va_start(ap, fmt);
   
   LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, LOG_MESSAGE_PREBUF_LEN);
-  if (lm == NULL) 
+  if (lm == NULL) {
+    va_end(ap);
     return SDLOG_QUEUEFULL;
-    
+  }
+  
   lm->op.fcntl = FCNTL_WRITE;
   lm->op.fd = fd & 0x1f;
   
@@ -385,7 +387,7 @@ SdioError sdLogCloseLog (const FileDes fd)
   lm->op.fcntl = FCNTL_CLOSE;
   lm->op.fd = fd & 0x1f;
 
-  if (msgqueue_send (&messagesQueue, lm, sizeof(lm), MsgQueue_REGULAR) < 0) {
+  if (msgqueue_send (&messagesQueue, lm, sizeof(LogMessage), MsgQueue_REGULAR) < 0) {
     return SDLOG_QUEUEFULL;
   }
 
