@@ -1,3 +1,7 @@
+#ifndef I2C_USE_MS45XX
+#define I2C_USE_MS45XX 0
+#endif
+
 #if I2C_USE_MS45XX
 
 #pragma once

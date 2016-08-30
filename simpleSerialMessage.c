@@ -4,6 +4,11 @@
 #include "stdutil.h"
 #include "simpleSerialMessage.h"
 
+#if (CH_KERNEL_MAJOR > 3)
+#define chSequentialStreamWrite  streamWrite
+#define chSequentialStreamRead   streamRead
+#define chSequentialStreamGet    streamGet
+#endif
 
 
 
@@ -82,8 +87,14 @@ Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callbac
   mbp->callback = callback;
   mbp->userData = userData;
 
-  Thread *tp = chThdCreateFromHeap(NULL,  THD_WA_SIZE(1024), NORMALPRIO,
+#if (CH_KERNEL_MAJOR <= 3)
+  Thread *tp = chThdCreateFromHeap(NULL,  THD_WA_SIZE(1024), NORMALPRIO, 
   				   readAndProcessChannel, mbp);
+#else
+  Thread *tp = chThdCreateFromHeap(NULL,  THD_WA_SIZE(1024), "readAndProcessChannel", NORMALPRIO, 
+  				   readAndProcessChannel, mbp);
+#endif
+
 
   /* Thread *tp = chThdCreateStatic(waMsgBind, sizeof(waMsgBind), NORMALPRIO, */
   /* 				   readAndProcessChannel, &mbp); */

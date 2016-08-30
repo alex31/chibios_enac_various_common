@@ -81,9 +81,8 @@ chMtxInit(&i2cd->mutex);		\
   }
 
 #define I2C_READ(i2cd,adr,array)   {					\
-    status = i2cMasterTransmitTimeout(i2cd, adr, NULL, 0,		\
-				      array, sizeof(array), 100) ;	\
-    STATUS_TEST_WRITE(i2cd,array)}
+    status = i2cMasterReceiveTimeout(i2cd, adr, array, sizeof(array), 100) ;	\
+    STATUS_TEST_READ(i2cd,array)}
 
 #define I2C_WRITE(i2cd,adr,array)   {					\
     status = i2cMasterTransmitTimeout(i2cd, adr, array, sizeof(array),	\

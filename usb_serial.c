@@ -24,7 +24,11 @@
 #include <string.h>
 #include "ch.h"
 #include "hal.h"
+#if (CH_KERNEL_MAJOR <= 3)
 #include "serial_usb.h"
+#else
+#include "hal_serial_usb.h"
+#endif
 #include "usb_serial.h"
 #include "globalVar.h"
 #include "portage.h"
@@ -368,7 +372,11 @@ bool isUsbConnected(void)
 {
   static bool hasEverReceive = FALSE;
 
+#if (CH_KERNEL_MAJOR <= 3)
   if (inputAvailEL.el_listener == NULL)
+#else
+  if (inputAvailEL.listener == NULL)
+#endif
     return FALSE; 
 
   if (hasEverReceive) 

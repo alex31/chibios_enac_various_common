@@ -217,6 +217,7 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
     case 0x1000 : mcu_revid_chr = 'A'; break;
     case 0x1001 : mcu_revid_chr = 'Z'; break;
     }
+    break;
   case  0x451 : mcu_devid_str = "STM32F76x and STM32F77x";
     switch (mcu_revid) {
     case 0x1000 : mcu_revid_chr = 'A'; break;

@@ -72,6 +72,7 @@ msg_t MS45XX_init (MS45XXData *ms, I2CDriver *i2cd, const uint8_t i2cAddr)
   ms->pressure_offset = MS45XX_PRESSURE_OFFSET;
   ms->airspeed_scale = MS45XX_AIRSPEED_SCALE;
 
+  
   return MSG_OK;
 }
 
@@ -83,7 +84,9 @@ msg_t MS45XX_getVal  (MS45XXData *ms, float *temp, float *pressure)
   msg_t status;
   *temp = 0.0f;
   *pressure = 0.0f;
+
   
+  ms->raw[0] = ms->raw[1] = ms->raw[2] = ms->raw[3] = 0;
   i2cAcquireBus(ms->i2cd);
   I2C_READ (ms->i2cd, ms->i2cAddr, ms->raw);
   i2cReleaseBus(ms->i2cd);
@@ -108,7 +111,7 @@ static bool ms45XX_calc(MS45XXData *ms)
 
   if (status == 0) {
     /* 14bit raw pressure */
-    uint16_t p_raw = 0x3FFF & (((uint16_t)(ms->raw[0]) << 8) |
+    uint16_t p_raw = 0x3FFF & (( ((uint16_t)(ms->raw[0])) << 8) |
 			       (uint16_t)(ms->raw[1]));
     /* Output is proportional to the difference between Port 1 and Port 2. Output
      * swings positive when Port 1> Port 2. Output is 50% of total counts
