@@ -180,7 +180,7 @@ void systemReset(void)
 /* to lower consumption until reset */
 void systemDeepSleep (void)
 {
-#if defined STM32F746xx || defined STM32F756xx || defined STM32F767xx
+#if defined(STM32F7XX)
   /* clear PDDS and LPDS bits */
   PWR->CR1 &= ~(PWR_CR1_PDDS | PWR_CR1_LPDS);
   
@@ -200,7 +200,7 @@ void systemDeepSleep (void)
   
   /* clear the deepsleep mask */
   SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
-#else
+#elif defined(STM32F4XX)
   /* clear PDDS and LPDS bits */
   PWR->CR &= ~(PWR_CR_PDDS | PWR_CR_LPDS);
   
@@ -220,6 +220,8 @@ void systemDeepSleep (void)
   
   /* clear the deepsleep mask */
   SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+#else
+#error neither STM32F4XX or STM32F7XX
 #endif
 }
 
