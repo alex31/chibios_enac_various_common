@@ -13,7 +13,7 @@
 #endif
 
 
-#if defined(STM32F746xx)  || defined(STM32F756xx) || defined(STM32F767xx) || defined(STM32F769xx)
+#ifdef STM32F7XX
  #error "STM32F7  is not bitbanding capable"
 #endif
 
