@@ -21,6 +21,7 @@
 #else
 #define THD_WORKING_AREA_ARRAY(s, n, al) stkalign_t s[al] [THD_WORKING_AREA_SIZE(n) \
 						       / sizeof(stkalign_t)]
+#define SYSTEM_CLOCK_MHZ (STM32_PLLN_VALUE/STM32_PLLP_VALUE)
 #endif
 
 
@@ -248,7 +249,7 @@ F7
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram0" 
 #define DMA_SECTION ".ram3"    
-#define BCKP_SECTION ".ram5"    
+#define BCKP_SECTION ".ram5"
 #else
 #error "section defined only for STM32F4 and STM32F7"
 #endif
