@@ -1,5 +1,6 @@
 #include <ctype.h>  
 #include <math.h>   
+#include <string.h>
 #include "ch.h"
 #include "printf.h"
 #include "globalVar.h"
@@ -337,14 +338,21 @@ const char* getGpioName (const ioportid_t p)
 
 // obviously not reentrant
 #define FMT_BUF_SIZE (sizeof(uintmax_t) * 8)
-char *binary_fmt(uintmax_t x)
+char *binary_fmt(uintmax_t x, int fill)
 {
   static char buf[FMT_BUF_SIZE];
   char *s = buf + FMT_BUF_SIZE;
   *--s = 0;
   if (!x) *--s = '0';
   for(; x; x/=2) *--s = (char) ('0' + x%2);
-  return s;
+  if (fill == 0) {
+    return s;
+  } else {
+    char * const bg = buf + FMT_BUF_SIZE - fill -1;
+    if (s != bg)
+      memset (bg, '0', s -bg);
+    return bg;
+  }
 }
 #undef FMT_BUF_SIZE // don't pullute namespace
 
