@@ -48,12 +48,13 @@ msg_t MS5611_getVal  (MS5611Data *baro, float *temp, float *pressure)
   msg_t status;
   *temp = 0.0f;
   *pressure = 0.0f;
+  const uint32_t timeToConvert = 8300;
   
   /* LAUNCH D1 conversion. We use OSR=4096 for maximum resolution */
   i2cAcquireBus(baro->i2cd);
   I2C_WRITE_REGISTERS (baro->i2cd, baro->i2cAddr, MS5611_REG_D1OSR4096);
   i2cReleaseBus(baro->i2cd);
-  chThdSleepMicroseconds (9000);
+  chThdSleepMicroseconds (timeToConvert);
 
   i2cAcquireBus(baro->i2cd);
   baro->dmaTmpBuf1[0] = MS5611_ADC_READ;
@@ -73,7 +74,7 @@ msg_t MS5611_getVal  (MS5611Data *baro, float *temp, float *pressure)
   i2cAcquireBus(baro->i2cd);
   I2C_WRITE_REGISTERS (baro->i2cd, baro->i2cAddr, MS5611_REG_D2OSR4096);
   i2cReleaseBus(baro->i2cd);
-  chThdSleepMicroseconds (9000);
+  chThdSleepMicroseconds (timeToConvert);
 
   i2cAcquireBus(baro->i2cd);
   baro->dmaTmpBuf1[0] = MS5611_ADC_READ;
