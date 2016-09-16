@@ -41,6 +41,17 @@
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 100000
 
+#ifdef CHPRINTF_USE_STDLIB
+#ifndef CHPRINTF_BUFFER_SIZE
+#define CHPRINTF_BUFFER_SIZE 160
+#endif
+#include <stdio.h>
+#include <stdarg.h>
+#else
+#define CHPRINTF_USE_STDLIB 0
+#endif
+
+
 typedef struct {
   union  {
     BaseSequentialStream *chp;
@@ -53,7 +64,7 @@ typedef struct {
 
 static Thread *printThreadPtr = NULL;
 
-static WORKING_AREA(waSerialPrint, 512);
+static WORKING_AREA(waSerialPrint, CHPRINTF_USE_STDLIB ? 1024 : 420);
 
 #if (CH_KERNEL_MAJOR != 2)
 static noreturn void serialPrint (void *arg)
@@ -362,7 +373,13 @@ unsigned_common:
 
 
 void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
+#if CHPRINTF_USE_STDLIB
+  uint8_t buffer[CHPRINTF_BUFFER_SIZE];
+  const uint32_t len = vsnprintf ((char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
+  streamWrite (chp, buffer, len);
+#else
   _chvsnprintf(NULL, chp, 0, fmt, ap);
+#endif
 }
 
 void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
@@ -390,7 +407,7 @@ void directchprintf(BaseSequentialStream *chp, const char *fmt, ...)
 void chprintf(BaseSequentialStream *lchp, const char *fmt, ...) 
 {
   va_list ap;
-  
+
   if (printThreadPtr == NULL)
     printThreadPtr = chThdCreateStatic(waSerialPrint, sizeof(waSerialPrint), NORMALPRIO+1, serialPrint, NULL);
 

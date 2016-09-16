@@ -174,8 +174,7 @@ void free_m(void *p)
 
 void systemReset(void)
 {
-  *((unsigned long *)0x0E000ED0C) = 0x05FA0004;
-  while(1);
+  NVIC_SystemReset();
 }
 
 /* to lower consumption until reset */
