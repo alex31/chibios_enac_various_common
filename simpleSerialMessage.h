@@ -8,12 +8,22 @@
 
 /*
   protocole de com :
+  INNER FRAME (and only one if encryption is not used)
   2 octets entête   : #FEED
-  1 octet  longueur de payload
+  1 octets  longueur de payload (if encrypted, max len is 255-5 = 250)
   payload
   chk_A, chk_B 
   where checksum is computed over length and payload:
-     
+    
+  if encrypted :
+  OUTER FRAME :
+  2 octets entête   : #FEED
+  1 octets  longueur de payload
+  payload => which is previous INNER FRAME, encrypted
+  chk_A, chk_B 
+  where checksum is computed over length and payload:
+  
+ 
  */
 
 // callback fonction type

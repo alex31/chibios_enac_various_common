@@ -3,6 +3,7 @@
 #include "globalVar.h"
 #include "stdutil.h"
 #include "simpleSerialMessage.h"
+#include <string.h>
 
 #if (CH_KERNEL_MAJOR > 3)
 #define chSequentialStreamWrite  streamWrite
@@ -10,6 +11,13 @@
 #define chSequentialStreamGet    streamGet
 #endif
 
+#define MAX_CLEAR_LEN 255
+#define MAX_CYPHER_LEN 240
+
+
+static void simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *buffer,
+				   const size_t len);
+static size_t simpleMsgBufferDecapsulate (const uint8_t *outBuffer, const uint8_t **buffer);
 
 
 typedef enum  {WAIT_FOR_SYNC, WAIT_FOR_LEN, WAIT_FOR_PAYLOAD, WAIT_FOR_CHECKSUM} SerialCmdState ;
@@ -30,12 +38,19 @@ typedef struct {
 } MsgBindParams;
 
 typedef struct {
-  //  std::array<uint8_t, 255> payload __attribute__((aligned(4)));
-  uint8_t payload[255] __attribute__((aligned(4)));
+  uint8_t payload[MAX_CLEAR_LEN] __attribute__((aligned(4)));
   uint8_t len;
   uint16_t crc;
   SerialCmdState state;
 } CmdMesgState;
+
+typedef struct {
+  struct {
+    MsgHeader header;
+    uint8_t payload[MAX_CLEAR_LEN] __attribute__((aligned(4)));
+    uint16_t crc;
+  };
+} EncapsulatedFrame;
 
 
 
@@ -50,10 +65,25 @@ static msg_t readAndProcessChannel(void *arg);
 static void readAndProcessChannel(void *arg);
 #endif
 
-bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
-		      const size_t len)
+static void simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *buffer,
+				   const size_t len)
 {
-  if (len > 255) 
+  if (len > 250) 
+    return ;
+  EncapsulatedFrame *ec = (EncapsulatedFrame *) outBuffer;
+  ec->header.sync[0] = 0xED;
+  ec->header.sync[1] = 0xFE;
+  ec->header.len = len;
+  ec->crc = fletcher16WithLen (buffer, len);
+
+  memcpy (ec->payload, buffer, len);
+}
+
+  
+bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
+		    const size_t len)
+{
+  if (len > MAX_CLEAR_LEN) 
     return false;
   
   const MsgHeader msgHeader = {.sync = {0xED, 0xFE},
@@ -106,6 +136,22 @@ Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callbac
   return tp;
 }
 
+static size_t simpleMsgBufferDecapsulate (const uint8_t *outBuffer, const uint8_t **buffer)
+{
+  EncapsulatedFrame *ec = (EncapsulatedFrame *) outBuffer;
+  if ((ec->header.sync[0] != 0xED) || (ec->header.sync[1] != 0xFE))
+    goto fail;
+  uint16_t crc =  fletcher16WithLen (ec->payload, ec->header.len);
+  if (crc != ec->crc)
+    goto fail;
+  *buffer = ec->payload;
+  return ec->header.len;
+
+  
+ fail:
+  *buffer = NULL;
+  return 0;
+}
 
 
 static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes)
