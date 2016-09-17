@@ -54,7 +54,7 @@ typedef struct {
 
 typedef struct {
   struct {
-    MsgHeader header;
+    uint8_t len;
     uint16_t crc;
     uint8_t payload[MAX_CLEAR_LEN];
   };
@@ -78,17 +78,17 @@ static void readAndProcessChannel(void *arg);
 #endif
 
 
-bool simpleMsgCypherInit (const uint8_t *_key, const size_t keyLen, const uint8_t *_iv, const size_t ivLen)
+bool simpleMsgCypherInit (const uint8_t *_key, const size_t keyLen, const uint8_t *iv, const size_t ivLen)
 {
   if ((keyLen != sizeof(key)) || (ivLen != sizeof(ivSource)))
     return false;
       
   memcpy (key, _key, keyLen);
-  memcpy (key, _iv, ivLen);
+  memcpy (ivSource, iv, ivLen);
   mbedtls_aes_init (&aesEnc);
   mbedtls_aes_init (&aesDec);
-  mbedtls_aes_setkey_enc(&aesEnc, key, 128);
-  mbedtls_aes_setkey_dec(&aesDec, key, 128);
+  mbedtls_aes_setkey_enc(&aesEnc, key, sizeof(key) * 8);
+  mbedtls_aes_setkey_dec(&aesDec, key, sizeof(key) * 8);
 
   doCypher = true;
   return true;  
@@ -103,9 +103,7 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
   if ((payloadLen+ENCAP_OVH) > outBufferSize)
     return false;
   
-  ec->header.sync[0] = 0xED;
-  ec->header.sync[1] = 0xFE;
-  ec->header.len = payloadLen;
+  ec->len = payloadLen;
   memcpy (ec->payload, inBuffer, payloadLen);
   ec->crc = fletcher16WithLen (ec->payload, payloadLen);
 
@@ -206,15 +204,12 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
 {
   EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
 
-  if ((ec->header.sync[0] != 0xED) || (ec->header.sync[1] != 0xFE))
-    goto fail;
-  
-  uint16_t crc =  fletcher16WithLen (ec->payload, ec->header.len);
+  uint16_t crc =  fletcher16WithLen (ec->payload, ec->len);
   if (crc != ec->crc)
     goto fail;
 
   *payload = ec->payload;
-  return ec->header.len;
+  return ec->len;
   
  fail:
   *payload = NULL;
