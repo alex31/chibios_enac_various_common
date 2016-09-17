@@ -46,4 +46,4 @@ size_t simpleMsgBufferDecypherAndDecapsulate (uint8_t *outBuffer, const uint8_t 
 					      const size_t outBufferSize, const size_t msgLen,
 					      uint8_t **payload);
 
-size_t simpleMsgGetLen (const uint8_t *msg);
+

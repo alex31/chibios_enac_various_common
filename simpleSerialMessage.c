@@ -323,12 +323,13 @@ static void readAndProcessChannel(void *arg)
       const uint16_t calculatedCrc = fletcher16WithLen (messState.payload, messState.len);
       if (calculatedCrc == messState.crc) {
 	if (doCypher) {
-	  uint8_t *clearTextBuf;
+	  uint8_t clearTextBuf[messState.len];
+	  uint8_t *clearText;
 	  const size_t len = simpleMsgBufferDecypherAndDecapsulate (clearTextBuf, messState.payload,
-								    sizeof(clearTextBuf), messState.len,
-								    &clearTextBuf);
+								    messState.len, messState.len,
+								    &clearText);
 	  if (len) {
-	    mbp->callback (clearTextBuf, len, mbp->userData);
+	    mbp->callback (clearText, len, mbp->userData);
 	  }
 	} else {
 	  mbp->callback (messState.payload, messState.len, mbp->userData);
@@ -365,7 +366,3 @@ static size_t padWithZeroes (uint8_t *input, const size_t inputSize,
   }
 }
 
-size_t simpleMsgGetLen (const uint8_t *msg) {
-  EncapsulatedFrame *ec = (EncapsulatedFrame *) msg;
-  return ec->header.len;
-}
