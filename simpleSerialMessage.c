@@ -15,9 +15,18 @@
 #define MAX_CLEAR_LEN 255
 #define MAX_CYPHER_LEN 240
 
-
 static size_t padWithZeroes (uint8_t *input, const size_t inputSize,
 			     const size_t payloadLen, const size_t blockSize);
+static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuffer,
+					const size_t outBufferSize, const size_t payloadLen);
+
+static size_t simpleMsgBufferCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
+				   const size_t outBufferSize, const size_t payloadLen);
+
+static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **payload);
+
+static bool simpleMsgBufferDecypher (uint8_t *outBuffer, const uint8_t *inBuffer,
+				     const size_t outBufferSize, const size_t msgLen);
 
 typedef enum  {WAIT_FOR_SYNC, WAIT_FOR_LEN, WAIT_FOR_PAYLOAD, WAIT_FOR_CHECKSUM} SerialCmdState ;
 
@@ -46,10 +55,11 @@ typedef struct {
 typedef struct {
   struct {
     MsgHeader header;
-    uint8_t payload[MAX_CLEAR_LEN] __attribute__((aligned(4)));
     uint16_t crc;
+    uint8_t payload[MAX_CLEAR_LEN];
   };
 } EncapsulatedFrame;
+#define ENCAP_OVH (sizeof(EncapsulatedFrame)-MAX_CLEAR_LEN)
 
 
 
@@ -68,7 +78,7 @@ static void readAndProcessChannel(void *arg);
 #endif
 
 
-bool cypherInit (const uint8_t *_key, const size_t keyLen, const uint8_t *_iv, const size_t ivLen)
+bool simpleMsgCypherInit (const uint8_t *_key, const size_t keyLen, const uint8_t *_iv, const size_t ivLen)
 {
   if ((keyLen != sizeof(key)) || (ivLen != sizeof(ivSource)))
     return false;
@@ -85,40 +95,59 @@ bool cypherInit (const uint8_t *_key, const size_t keyLen, const uint8_t *_iv, c
 }
 
 
-bool simpleMsgBufferCypherAndEncapsulate (uint8_t *outBuffer, uint8_t *inBuffer,
-						 const size_t outBufferSize, const size_t inBufferSize,
-						 const size_t payloadLen)
+static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuffer,
+				 const size_t outBufferSize, const size_t payloadLen)
 {
   EncapsulatedFrame *ec = (EncapsulatedFrame *) outBuffer;
-  uint8_t iv[sizeof(ivSource)];
 
-  const size_t paddedLen = padWithZeroes (inBuffer, inBufferSize, payloadLen, 16);
-  if (paddedLen+5 > outBufferSize) 
+  if ((payloadLen+ENCAP_OVH) > outBufferSize)
     return false;
-
+  
   ec->header.sync[0] = 0xED;
   ec->header.sync[1] = 0xFE;
-  ec->header.len = paddedLen;
-  ec->crc = fletcher16WithLen (inBuffer, paddedLen);
+  ec->header.len = payloadLen;
+  memcpy (ec->payload, inBuffer, payloadLen);
+  ec->crc = fletcher16WithLen (ec->payload, payloadLen);
 
-  memcpy (iv, ivSource, sizeof(iv));
-  mbedtls_aes_crypt_cbc (&aesEnc, MBEDTLS_AES_ENCRYPT, paddedLen, iv, inBuffer, ec->payload);
-  //  memcpy (ec->payload, inBuffer, payloadLen);
   return true;
 }
 
+static size_t simpleMsgBufferCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
+			    const size_t outBufferSize, const size_t payloadLen)
+{
+  uint8_t iv[sizeof(ivSource)];
+
+  const size_t paddedLen = padWithZeroes (outBuffer, outBufferSize, payloadLen, 16);
+  if (paddedLen > outBufferSize) 
+    return 0;
+
+  memcpy (iv, ivSource, sizeof(iv));
+  mbedtls_aes_crypt_cbc (&aesEnc, MBEDTLS_AES_ENCRYPT, paddedLen, iv, inBuffer, outBuffer);
+  //  memcpy (ec->payload, inBuffer, payloadLen);
+  return paddedLen;
+}
+
+size_t simpleMsgBufferEncapsulateAndCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
+					  const size_t outBufferSize, const size_t payloadLen)
+{
+  uint8_t encapMsg[payloadLen+ENCAP_OVH];
+  
+  if (!simpleMsgBufferEncapsulate (encapMsg, inBuffer, payloadLen+ENCAP_OVH, payloadLen))
+    return 0;
+  return simpleMsgBufferCypher (outBuffer, encapMsg, outBufferSize, payloadLen+ENCAP_OVH);
+}
   
 bool simpleMsgSend (BaseSequentialStream * const channel, uint8_t *inBuffer,
-		    const size_t inBufferSize, const size_t len)
+		    const size_t len)
 {
   if (len > MAX_CLEAR_LEN) 
     return false;
 
-  uint8_t cypherBuffer[doCypher ? len+5 : 0];
+  uint8_t cypherBuffer[doCypher ? len+ENCAP_OVH : 0];
   const uint8_t *buffer = doCypher ? cypherBuffer : inBuffer;
 
   if (doCypher) {
-    if (!simpleMsgBufferCypherAndEncapsulate (cypherBuffer, inBuffer, len+5, inBufferSize, len))
+    if (!simpleMsgBufferEncapsulateAndCypher (cypherBuffer, inBuffer, len+ENCAP_OVH, len))
       return false;
   }
   
@@ -172,31 +201,51 @@ Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callbac
   return tp;
 }
 
-size_t simpleMsgBufferDecapsulateAndDecypher (uint8_t *outBuffer, const uint8_t *inBuffer,
-						     const size_t outBufferSize)
+
+static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **payload)
 {
   EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
-  uint8_t iv[sizeof(ivSource)];
 
   if ((ec->header.sync[0] != 0xED) || (ec->header.sync[1] != 0xFE))
     goto fail;
-  if (ec->header.len > outBufferSize)
-    goto fail;
   
-  memcpy (iv, ivSource, sizeof(iv));
-  mbedtls_aes_crypt_cbc (&aesDec, MBEDTLS_AES_DECRYPT, ec->header.len, iv, ec->payload, outBuffer);
-
-  uint16_t crc =  fletcher16WithLen (outBuffer, ec->header.len);
+  uint16_t crc =  fletcher16WithLen (ec->payload, ec->header.len);
   if (crc != ec->crc)
     goto fail;
- 
+
+  *payload = ec->payload;
   return ec->header.len;
   
  fail:
+  *payload = NULL;
   return 0;
 }
 
+static bool simpleMsgBufferDecypher (uint8_t *outBuffer, const uint8_t *inBuffer,
+				       const size_t outBufferSize, const size_t msgLen)
+{
+  uint8_t iv[sizeof(ivSource)];
 
+  if (msgLen > outBufferSize)
+    return false;
+  
+  memcpy (iv, ivSource, sizeof(iv));
+  mbedtls_aes_crypt_cbc (&aesDec, MBEDTLS_AES_DECRYPT, msgLen, iv, inBuffer, outBuffer);
+  return true;
+}
+
+size_t simpleMsgBufferDecypherAndDecapsulate (uint8_t *outBuffer, const uint8_t *inBuffer,
+					      const size_t outBufferSize, const size_t msgLen, uint8_t **payload)
+{
+  if (!simpleMsgBufferDecypher (outBuffer, inBuffer, outBufferSize, msgLen)) {
+    *payload = NULL;
+    return 0;
+  }
+
+  return simpleMsgBufferDecapsulate (outBuffer, payload);
+}
+  
+ 
 static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes)
 {
   uint16_t sum1 = 0xff, sum2 = 0xff;
@@ -274,8 +323,10 @@ static void readAndProcessChannel(void *arg)
       const uint16_t calculatedCrc = fletcher16WithLen (messState.payload, messState.len);
       if (calculatedCrc == messState.crc) {
 	if (doCypher) {
-	  uint8_t clearTextBuf[messState.len];
-	  const size_t len = simpleMsgBufferDecapsulateAndDecypher (clearTextBuf, messState.payload, messState.len);
+	  uint8_t *clearTextBuf;
+	  const size_t len = simpleMsgBufferDecypherAndDecapsulate (clearTextBuf, messState.payload,
+								    sizeof(clearTextBuf), messState.len,
+								    &clearTextBuf);
 	  if (len) {
 	    mbp->callback (clearTextBuf, len, mbp->userData);
 	  }
@@ -312,4 +363,9 @@ static size_t padWithZeroes (uint8_t *input, const size_t inputSize,
   } else {
     return 0;
   }
+}
+
+size_t simpleMsgGetLen (const uint8_t *msg) {
+  EncapsulatedFrame *ec = (EncapsulatedFrame *) msg;
+  return ec->header.len;
 }

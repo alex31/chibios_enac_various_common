@@ -30,18 +30,20 @@
 typedef void (*MsgCallBack)(const uint8_t *buffer, const size_t len,  void * const userData);
 
 // just a wrapper to send message
-bool simpleMsgSend (BaseSequentialStream * const channel, uint8_t *inBuffer, const size_t inBufferSize, 
+bool simpleMsgSend (BaseSequentialStream * const channel, uint8_t *inBuffer,
 		      const size_t len);
 
 // launch a thread which read and segment message then call callback when a message is complete
 Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callback, 
 			 void * const userData);
 
-bool cypherInit (const uint8_t *key, const size_t keyLen, const uint8_t *iv, const size_t ivLen);
+bool simpleMsgCypherInit (const uint8_t *key, const size_t keyLen, const uint8_t *iv, const size_t ivLen);
 
-bool simpleMsgBufferCypherAndEncapsulate (uint8_t *outBuffer, uint8_t *inBuffer,
-					  const size_t outBufferSize, const size_t inBufferSize,
-					  const size_t payloadLen);
+size_t simpleMsgBufferEncapsulateAndCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
+					  const size_t outBufferSize, const size_t payloadLen);
 
-size_t simpleMsgBufferDecapsulateAndDecypher (uint8_t *outBuffer, const uint8_t *inBuffer,
-					      const size_t outBufferSize);
+size_t simpleMsgBufferDecypherAndDecapsulate (uint8_t *outBuffer, const uint8_t *inBuffer,
+					      const size_t outBufferSize, const size_t msgLen,
+					      uint8_t **payload);
+
+size_t simpleMsgGetLen (const uint8_t *msg);
