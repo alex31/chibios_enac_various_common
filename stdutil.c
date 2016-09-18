@@ -179,50 +179,42 @@ void systemReset(void)
 
 /* to lower consumption until reset */
 void systemDeepSleep (void)
-{
-#if defined(STM32F7XX)
-  /* clear PDDS and LPDS bits */
-  PWR->CR1 &= ~(PWR_CR1_PDDS | PWR_CR1_LPDS);
-  
-  /* set LPDS and clear  */
-  PWR->CR1 |= (PWR_CR1_LPDS | PWR_CR1_CSBF);
-  
-  /* Setup the deepsleep mask */
-  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-  
-  __disable_irq();
-  
-  __SEV();
-  __WFE();
-  __WFE();
-  
-  __enable_irq();
-  
-  /* clear the deepsleep mask */
-  SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
-#elif defined(STM32F4XX)
-  /* clear PDDS and LPDS bits */
-  PWR->CR &= ~(PWR_CR_PDDS | PWR_CR_LPDS);
-  
-  /* set LPDS and clear  */
-  PWR->CR |= (PWR_CR_LPDS | PWR_CR_CSBF | PWR_CR_CWUF);
-  
-  /* Setup the deepsleep mask */
-  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-  
-  __disable_irq();
-  
-  __SEV();
-  __WFE();
-  __WFE();
-  
-  __enable_irq();
-  
-  /* clear the deepsleep mask */
-  SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+#if defined(STM32F4XX)
+#define __CR CR
+#define __PWR_CR_PDDS PWR_CR_PDDS
+#define __PWR_CR_LPDS PWR_CR_LPDS
+#define __PWR_CR_CSBF PWR_CR_CSBF
+#elif defined(STM32F7XX)
+#define __CR CR1
+#define __PWR_CR_PDDS PWR_CR1_PDDS
+#define __PWR_CR_LPDS PWR_CR1_LPDS
+#define __PWR_CR_CSBF PWR_CR1_CSBF
 #else
 #error neither STM32F4XX or STM32F7XX
 #endif
+{
+  chSysLock();
+
+  /* clear PDDS and LPDS bits */
+  PWR->__CR &= ~(__PWR_CR_PDDS | __PWR_CR_LPDS);
+  
+  /* set LPDS and clear  */
+  PWR->__CR |= (__PWR_CR_LPDS | __PWR_CR_CSBF);
+  
+  /* Setup the deepsleep mask */
+  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+  
+  __disable_irq();
+  
+  __SEV();
+  __WFE();
+  __WFE();
+  
+  __enable_irq();
+  
+  /* clear the deepsleep mask */
+  SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+  chSysUnlock();
 }
 
 
