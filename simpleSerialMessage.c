@@ -32,11 +32,11 @@ typedef enum  {WAIT_FOR_SYNC, WAIT_FOR_LEN, WAIT_FOR_PAYLOAD, WAIT_FOR_CHECKSUM}
 
 
 typedef struct {
-  uint8_t sync[2];
+  uint8_t sync;
   uint8_t len;
 } __attribute__ ((__packed__))  MsgHeader;
 
-_Static_assert(sizeof(MsgHeader) == 3, "MsgHeader struct is not packed");
+_Static_assert(sizeof(MsgHeader) == 2, "MsgHeader struct is not packed");
 
 
 typedef struct {
@@ -152,7 +152,7 @@ bool simpleMsgSend (BaseSequentialStream * const channel, uint8_t *inBuffer,
       return false;
   }
   
-  const MsgHeader msgHeader = {.sync = {0xED, 0xFE},
+  const MsgHeader msgHeader = {.sync = 0x99,
 			       .len = len & 0xff};
   uint16_t crc =  fletcher16WithLen (buffer, len);
   
@@ -292,12 +292,11 @@ static void readAndProcessChannel(void *arg)
       
     case WAIT_FOR_SYNC :
       // DebugTrace ("WAIT_FOR_SYNC");
-      messState.payload[0] = messState.payload[1];
-      messState.payload[1] = (uint8_t) chSequentialStreamGet (mbp->channel);
+      messState.payload[0] = (uint8_t) chSequentialStreamGet (mbp->channel);
       /* if ( (*((uint16_t *) &messState.payload[0]) & 0xffff) == 0xFEED) { */
       /* 	messState.state = WAIT_FOR_LEN; */
       /* }  */
-      if ((messState.payload[0]  == 0xED) &&  (messState.payload[1]  == 0xFE)) {
+      if (messState.payload[0]  == 0x99) {
 	messState.state = WAIT_FOR_LEN;
       } 
       break;
