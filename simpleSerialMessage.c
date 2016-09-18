@@ -55,8 +55,8 @@ typedef struct {
 typedef struct {
   struct {
     uint8_t len;
-    uint16_t crc;
-    uint8_t payload[MAX_CLEAR_LEN];
+    uint8_t payload[MAX_CLEAR_LEN]; // crc is add at end of payload
+    // CRC is here after payload
   };
 } EncapsulatedFrame;
 #define ENCAP_OVH (sizeof(EncapsulatedFrame)-MAX_CLEAR_LEN)
@@ -105,7 +105,8 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
   
   ec->len = payloadLen;
   memcpy (ec->payload, inBuffer, payloadLen);
-  ec->crc = fletcher16WithLen (ec->payload, payloadLen);
+  // put the crc after payload
+  *((uint16_t *) (&ec->payload[payloadLen])) = fletcher16WithLen (ec->payload, payloadLen);
 
   return true;
 }
@@ -208,7 +209,8 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
   EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
 
   uint16_t crc =  fletcher16WithLen (ec->payload, ec->len);
-  if (crc != ec->crc)
+  // test aigainst embedded crc which is after payload
+  if (crc !=   *((uint16_t *) (&ec->payload[ec->len])))
     goto fail;
 
   *payload = ec->payload;
