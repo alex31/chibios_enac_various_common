@@ -136,16 +136,19 @@ size_t simpleMsgBufferEncapsulateAndCypher (uint8_t *outBuffer, const uint8_t *i
 }
   
 bool simpleMsgSend (BaseSequentialStream * const channel, uint8_t *inBuffer,
-		    const size_t len)
+		    const size_t slen)
 {
-  if (len > MAX_CLEAR_LEN) 
+  if (slen > MAX_CLEAR_LEN) 
     return false;
 
-  uint8_t cypherBuffer[doCypher ? len+ENCAP_OVH : 0];
+  size_t len = slen;
+  uint8_t cypherBuffer[doCypher ? len+ENCAP_OVH+16 : 0];
   const uint8_t *buffer = doCypher ? cypherBuffer : inBuffer;
 
   if (doCypher) {
-    if (!simpleMsgBufferEncapsulateAndCypher (cypherBuffer, inBuffer, len+ENCAP_OVH, len))
+    len = simpleMsgBufferEncapsulateAndCypher (cypherBuffer, inBuffer, slen+ENCAP_OVH+16, slen);
+    
+    if (len == 0)
       return false;
   }
   
