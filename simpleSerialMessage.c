@@ -122,7 +122,6 @@ static size_t simpleMsgBufferCypher (uint8_t *outBuffer, const uint8_t *inBuffer
 
   memcpy (iv, ivSource, sizeof(iv));
   mbedtls_aes_crypt_cbc (&aesEnc, MBEDTLS_AES_ENCRYPT, paddedLen, iv, inBuffer, outBuffer);
-  //  memcpy (ec->payload, inBuffer, payloadLen);
   return paddedLen;
 }
 
