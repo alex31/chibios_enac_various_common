@@ -54,6 +54,7 @@ typedef struct {
 
 typedef struct {
   struct {
+    uint16_t cnt;
     uint8_t len;
     uint8_t payload[MAX_CLEAR_LEN]; // crc is add at end of payload
     // CRC is here after payload
@@ -99,10 +100,16 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
 				 const size_t outBufferSize, const size_t payloadLen)
 {
   EncapsulatedFrame *ec = (EncapsulatedFrame *) outBuffer;
+  static uint16_t count=0;
 
   if ((payloadLen+ENCAP_OVH) > outBufferSize)
     return false;
+
+  // zero is special meaning : reserved for "not yet receive message", should never be issued
+  if (++count == 0)
+    count++;
   
+  ec->cnt = count;
   ec->len = payloadLen;
   memcpy (ec->payload, inBuffer, payloadLen);
   // put the crc after payload
@@ -202,16 +209,31 @@ Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callbac
   return tp;
 }
 
+static inline uint16_t udiff (const uint16_t a, const uint16_t b) {
+  return (b>a) ? b-a : (65535-a)+b;
+}
 
 static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **payload)
 {
   EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
-
+  static uint16_t count=0; // special value : not yet receive a message
+  
   uint16_t crc =  fletcher16WithLen (ec->payload, ec->len);
   // test aigainst embedded crc which is after payload
-  if (crc !=   *((uint16_t *) (&ec->payload[ec->len])))
+  if (crc !=   *((uint16_t *) (&ec->payload[ec->len]))) {
+    DebugTrace ("decypher CRC error");
     goto fail;
-
+  }
+  
+  // we trust the first message
+  if (!count) {
+    count = ec->cnt;
+  } else if ((count == ec->cnt) || (udiff (count, ec->cnt) > 10000)) {
+    DebugTrace ("Replay Detected local=%d cnt=%d diff=%d", count, ec->cnt, udiff (ec->cnt, count));
+    goto fail;
+  }
+  
+  count = ec->cnt;
   *payload = ec->payload;
   return ec->len;
   
