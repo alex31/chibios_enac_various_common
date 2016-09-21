@@ -8,6 +8,16 @@
 #include <string.h>
 
 
+/*
+
+ * anti replay algo 
+   ° 4 bytes : window of possible replay attack : 1/100eme second, max mission duration 497 Days
+   ° 3 bytes : window of possible replay attack : 1/10eme second, max mission duration 19 Days
+   ° 2 bytes : window of possible replay attack : 1/10eme second, max mission duration less than two hours
+   ° should probably not be used for downlink message
+ * 
+
+*/
 #if (CH_KERNEL_MAJOR > 3)
 #define chSequentialStreamWrite  streamWrite
 #define chSequentialStreamRead   streamRead
@@ -16,7 +26,6 @@
 
 #define MAX_CLEAR_LEN 255
 #define MAX_CYPHER_LEN 240
-#define NO_REPLAY_MAX_DRIFT 60
 
 static size_t padWithZeroes (uint8_t *input, const size_t inputSize,
 			     const size_t payloadLen, const size_t blockSize);
@@ -407,8 +416,8 @@ static uint32_t getTimeHundredthOfSeconds()
 static void  initRtcWithCompileTime(void)
 {
   // if the RTC date is less than date of compilation, obviously RTC is not accurate
-  // so let set it to date of compilation which is less false RTC
-  // since we sent RTC-EPOCHTS as anti replay mecanism, RTC-EPOCHTS should alway be positive
+  // so let set to date of compilation.
+  // Since we send (RTC - EPOCHTS) as anti replay mecanism, RTC-EPOCHTS should alway be positive
   // if afterward RTC is set to accurate (GPS) time, it will go further forward and that will
   // not affect anti replay algorithm
   if (getTimeUnixSec() < EPOCHTS) {
