@@ -256,9 +256,31 @@ time_t getTimeUnixSec(void)
   return mktime(&tim);
 }
 
+void setTimeUnixSec(time_t tt)
+{
+  // convert from time_t to struct tm
+  // convert from  struct tm to RTCDateTime
+  // set RTCDateTime
+ RTCDateTime timespec;
+ rtcConvertStructTmToDateTime (gmtime (&tt), 0, &timespec);
+ rtcSetTime (&RTCD1, &timespec);
+}
+
 
 
 #endif
+
+
+uint64_t getTimeUnixMillisec(void)
+{
+  //  return (getTimeUnixSec()*1000) +  RTC_GetSubSecond();
+  struct tm tim;
+  RTCDateTime timespec;
+  
+  rtcGetTime(&RTCD1, &timespec);
+  rtcConvertDateTimeToStructTm(&timespec, &tim, NULL);
+  return  ((mktime(&tim)) * 1000ULL) +  (timespec.millisecond % 1000);
+}
 
 
 const char *getWeekDayAscii (void)
@@ -289,7 +311,20 @@ static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const u
 	   - 32045) % 7;
 }
 
+/* static uint32_t RTC_GetSubSecond(void) */
+/* { */
+/*   uint32_t tmpreg = 0; */
+  
+/*   /\* Get sub seconds values from the correspondent registers*\/ */
+/*   tmpreg = (uint32_t)(RTC->SSR); */
+  
+/*   /\* Read DR register to unfroze calendar registers *\/ */
+/*   (void) (RTC->DR); */
+  
+/*   return 1000 - ((tmpreg * 1000) / 0x3FF); */
+/* } */
 
+  
 uint32_t getDstOffset (void)
 {
   const  uint32_t startMonth=3;
@@ -320,3 +355,5 @@ uint32_t getDstOffset (void)
   else
     return (day < lastSundayOfMonth) ? 1 : 0;
 }
+
+

@@ -28,8 +28,9 @@ uint32_t	getWeekDay (void);
 const char*	getWeekDayAscii (void);
 uint32_t	getDstOffset (void);
 
-time_t getTimeUnixSec(void);
-
+time_t   getTimeUnixSec(void);
+uint64_t getTimeUnixMillisec(void);
+void     setTimeUnixSec(time_t tt);
 
 #ifdef __cplusplus
 }
