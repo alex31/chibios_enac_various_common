@@ -37,7 +37,7 @@ bool simpleMsgSend (BaseSequentialStream * const channel, uint8_t *inBuffer,
 Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callback, 
 			 void * const userData);
 
-bool simpleMsgCypherInit (const uint8_t *key, const size_t keyLen, const uint8_t *iv, const size_t ivLen);
+bool simpleMsgCypherInit (void);
 
 size_t simpleMsgBufferEncapsulateAndCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
 					  const size_t outBufferSize, const size_t payloadLen);

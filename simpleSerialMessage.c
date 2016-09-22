@@ -5,6 +5,7 @@
 #include "simpleSerialMessage.h"
 #include "rtcAccess.h"
 #include "mbedtls/aes.h"
+#include "aes_key.h"
 #include <string.h>
 
 
@@ -82,8 +83,6 @@ typedef struct {
 static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes);
 static MUTEX_DECL(sendMtx);
 static  mbedtls_aes_context aesEnc, aesDec;
-static  uint8_t key[16] = {0};
-static  uint8_t ivSource[16] = {0};
 static bool doCypher = false;
 
 #if (CH_KERNEL_MAJOR == 2)
@@ -94,19 +93,15 @@ static void readAndProcessChannel(void *arg);
 #endif
 
 
-bool simpleMsgCypherInit (const uint8_t *_key, const size_t keyLen, const uint8_t *iv, const size_t ivLen)
+bool simpleMsgCypherInit (void)
 {
-  if ((keyLen != sizeof(key)) || (ivLen != sizeof(ivSource)))
-    return false;
 
   initRtcWithCompileTime();
   
-  memcpy (key, _key, keyLen);
-  memcpy (ivSource, iv, ivLen);
   mbedtls_aes_init (&aesEnc);
   mbedtls_aes_init (&aesDec);
-  mbedtls_aes_setkey_enc(&aesEnc, key, sizeof(key) * 8);
-  mbedtls_aes_setkey_dec(&aesDec, key, sizeof(key) * 8);
+  mbedtls_aes_setkey_enc(&aesEnc, aes_key, sizeof(aes_key) * 8);
+  mbedtls_aes_setkey_dec(&aesDec, aes_key, sizeof(aes_key) * 8);
 
   doCypher = true;
   return true;  
@@ -133,7 +128,7 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
 static size_t simpleMsgBufferCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
 			    const size_t outBufferSize, const size_t payloadLen)
 {
-  uint8_t iv[sizeof(ivSource)];
+  uint8_t iv[sizeof(aes_iv)];
 
   const size_t paddedLen = padWithZeroes (outBuffer, outBufferSize, payloadLen, 16);
   if (paddedLen == 0) {
@@ -141,7 +136,7 @@ static size_t simpleMsgBufferCypher (uint8_t *outBuffer, const uint8_t *inBuffer
 		payloadLen, paddedLen, outBufferSize);
     return 0;
   }
-  memcpy (iv, ivSource, sizeof(iv));
+  memcpy (iv, aes_iv, sizeof(iv));
   mbedtls_aes_crypt_cbc (&aesEnc, MBEDTLS_AES_ENCRYPT, paddedLen, iv, inBuffer, outBuffer);
   return paddedLen;
 }
@@ -262,12 +257,12 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
 static bool simpleMsgBufferDecypher (uint8_t *outBuffer, const uint8_t *inBuffer,
 				       const size_t outBufferSize, const size_t msgLen)
 {
-  uint8_t iv[sizeof(ivSource)];
+  uint8_t iv[sizeof(aes_iv)];
 
   if (msgLen > outBufferSize)
     return false;
   
-  memcpy (iv, ivSource, sizeof(iv));
+  memcpy (iv, aes_iv, sizeof(iv));
   mbedtls_aes_crypt_cbc (&aesDec, MBEDTLS_AES_DECRYPT, msgLen, iv, inBuffer, outBuffer);
   return true;
 }
