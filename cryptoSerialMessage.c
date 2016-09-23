@@ -35,7 +35,7 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
 
 static bool simpleMsgBufferDecypher (uint8_t *outBuffer, const uint8_t *inBuffer,
 				     const size_t outBufferSize, const size_t msgLen);
-static uint32_t getTimeMilliSeconds(void);
+static uint32_t getTimeFractionSeconds(void);
 
 static void  initRtcWithCompileTime(void);
 
@@ -260,7 +260,7 @@ static void readAndProcessChannel(void *arg)
 */
 
 #define MAX_CYPHER_LEN (MAX_CLEAR_LEN-16-ENCAP_OVH)
-#define MAX_CLOCK_DRIFT (120 * 1000) // 120 seconds exprimed in milliseconds
+#define MAX_CLOCK_DRIFT (120 * 1000) // 120 seconds exprimed in fractionseconds
 static  mbedtls_aes_context aesEnc, aesDec;
 
 
@@ -287,9 +287,11 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
     return false;
 
   static int lastClock=0;
-  int ts = getTimeMilliSeconds();
+  int ts = getTimeFractionSeconds();
 
-  // if burst messages are sent in the same millisecond, we need to cheat to defeat anti replay algo
+  // if burst messages are sent in the same hundredth of second,
+  //  we need to cheat to defeat anti replay algo
+  // this won't work is data is continuelsy flooded, but is ok to absorb burst of data
   if (lastClock == 0) {
     lastClock = ts;
   } else if (lastClock >= ts) {
@@ -310,7 +312,7 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
   EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
   static time_t lastClock=0; // to detect attack based on replay
   static time_t diffClock=0; // to detect attack based on flowding until crc match
-  const  time_t localTime = getTimeMilliSeconds();
+  const  time_t localTime = getTimeFractionSeconds();
   
   uint16_t crc =  fletcher16WithLen (ec->payload, ec->len);
   // test against embedded crc which is after payload
@@ -426,12 +428,12 @@ static size_t padWithZeroes (uint8_t *input, const size_t inputSize,
   }
 }
 
-static uint32_t getTimeMilliSeconds()
+static uint32_t getTimeFractionSeconds()
 {
   /* DebugTrace ("getTimeUnixMilliSec() - (EPOCHTS*1000) = %d", */
   /* 	      (uint32_t) (getTimeUnixMillisec() - ((uint64_t)(EPOCHTS)*1000ULL) / 10ULL)); */
   
-   return (getTimeUnixMillisec() - (EPOCHTS*1000ULL));
+  return (getTimeUnixMillisec() - (EPOCHTS*1000ULL)) / 10;
 }
 
 
