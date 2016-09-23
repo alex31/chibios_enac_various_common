@@ -35,7 +35,7 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
 
 static bool simpleMsgBufferDecypher (uint8_t *outBuffer, const uint8_t *inBuffer,
 				     const size_t outBufferSize, const size_t msgLen);
-static uint32_t getTimeHundredthOfSeconds(void);
+static uint32_t getTimeMilliSeconds(void);
 
 static void  initRtcWithCompileTime(void);
 
@@ -260,7 +260,7 @@ static void readAndProcessChannel(void *arg)
 */
 
 #define MAX_CYPHER_LEN (MAX_CLEAR_LEN-16-ENCAP_OVH)
-#define MAX_CLOCK_DRIFT 120
+#define MAX_CLOCK_DRIFT (120 * 1000) // 120 seconds exprimed in milliseconds
 static  mbedtls_aes_context aesEnc, aesDec;
 
 
@@ -283,25 +283,34 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
 				 const size_t outBufferSize, const size_t payloadLen)
 {
   EncapsulatedFrame *ec = (EncapsulatedFrame *) outBuffer;
-  
-  if ((payloadLen+ENCAP_OVH) > outBufferSize) {
+  if ((payloadLen+ENCAP_OVH) > outBufferSize)
     return false;
+
+  static int lastClock=0;
+  int ts = getTimeMilliSeconds();
+
+  // if burst messages are sent in the same millisecond, we need to cheat to defeat anti replay algo
+  if (lastClock == 0) {
+    lastClock = ts;
+  } else if (lastClock >= ts) {
+    ts = lastClock+1;
   }
-  ec->hos = getTimeHundredthOfSeconds();
+  
+  ec->hos = lastClock = ts;
   ec->len = payloadLen;
   memcpy (ec->payload, inBuffer, payloadLen);
   // put the crc after payload
   *((uint16_t *) (&ec->payload[payloadLen])) = fletcher16WithLen (ec->payload, payloadLen);
-  
+
   return true;
 }
 
 static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **payload)
 {
   EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
-  static int lastClock=0; // to detect attack based on replay
-  static int diffClock=0; // to detect attack based on flowding until crc match
-  const  int localTime = getTimeHundredthOfSeconds();
+  static time_t lastClock=0; // to detect attack based on replay
+  static time_t diffClock=0; // to detect attack based on flowding until crc match
+  const  time_t localTime = getTimeMilliSeconds();
   
   uint16_t crc =  fletcher16WithLen (ec->payload, ec->len);
   // test against embedded crc which is after payload
@@ -318,11 +327,12 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
     // received clock has to grow forever (2^32 hundreds of seconds = 497 days max)
     // if we want to flight more, we have to manage clock wrapping
   } else if (ec->hos <= lastClock) {
-    DebugTrace ("Replay Detected");
+    DebugTrace ("Replay Detected : diff=%d", lastClock - ec->hos);
     goto fail;
   } else {
-    const int estimatedRemoteTime = (localTime - diffClock);
-    const int diff = estimatedRemoteTime-ec->hos;
+    const time_t  estimatedRemoteTime = (localTime - diffClock);
+    const time_t  diff = ec->hos-estimatedRemoteTime;
+    //    DebugTrace ("diff = %d", diff);
     if (ABS(diff) > MAX_CLOCK_DRIFT) {
       DebugTrace ("flood Replay Detected");
       goto fail;
@@ -416,12 +426,12 @@ static size_t padWithZeroes (uint8_t *input, const size_t inputSize,
   }
 }
 
-static uint32_t getTimeHundredthOfSeconds()
+static uint32_t getTimeMilliSeconds()
 {
   /* DebugTrace ("getTimeUnixMilliSec() - (EPOCHTS*1000) = %d", */
   /* 	      (uint32_t) (getTimeUnixMillisec() - ((uint64_t)(EPOCHTS)*1000ULL) / 10ULL)); */
   
-   return ((getTimeUnixMillisec() - (EPOCHTS*1000ULL)) / 10ULL);
+   return (getTimeUnixMillisec() - (EPOCHTS*1000ULL));
 }
 
 
