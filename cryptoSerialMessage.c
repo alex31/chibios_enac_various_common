@@ -20,13 +20,8 @@
 
 */
 
-#define chSequentialStreamWrite  streamWrite
-#define chSequentialStreamRead   streamRead
-#define chSequentialStreamGet    streamGet
-
-
 #define MAX_CLEAR_LEN 255
-#define MAX_CYPHER_LEN 240
+
 
 static size_t padWithZeroes (uint8_t *input, const size_t inputSize,
 			     const size_t payloadLen, const size_t blockSize);
@@ -82,69 +77,12 @@ typedef struct {
 
 static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes);
 static MUTEX_DECL(sendMtx);
-static  mbedtls_aes_context aesEnc, aesDec;
 static bool doCypher = false;
 
 static void readAndProcessChannel(void *arg);
 
 
-bool simpleMsgCypherInit (void)
-{
 
-  initRtcWithCompileTime();
-  
-  mbedtls_aes_init (&aesEnc);
-  mbedtls_aes_init (&aesDec);
-  mbedtls_aes_setkey_enc(&aesEnc, aes_key, sizeof(aes_key) * 8);
-  mbedtls_aes_setkey_dec(&aesDec, aes_key, sizeof(aes_key) * 8);
-
-  doCypher = true;
-  return true;  
-}
-
-
-static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuffer,
-				 const size_t outBufferSize, const size_t payloadLen)
-{
-  EncapsulatedFrame *ec = (EncapsulatedFrame *) outBuffer;
-  
-  if ((payloadLen+ENCAP_OVH) > outBufferSize) {
-    return false;
-  }
-  ec->hos = getTimeHundredthOfSeconds();
-  ec->len = payloadLen;
-  memcpy (ec->payload, inBuffer, payloadLen);
-  // put the crc after payload
-  *((uint16_t *) (&ec->payload[payloadLen])) = fletcher16WithLen (ec->payload, payloadLen);
-  
-  return true;
-}
-
-static size_t simpleMsgBufferCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
-			    const size_t outBufferSize, const size_t payloadLen)
-{
-  uint8_t iv[sizeof(aes_iv)];
-
-  const size_t paddedLen = padWithZeroes (outBuffer, outBufferSize, payloadLen, 16);
-  if (paddedLen == 0) {
-    DebugTrace ("cypher ERROR : payloadLen[%d] paddedLen[%d] > outBufferSize[%d]",
-		payloadLen, paddedLen, outBufferSize);
-    return 0;
-  }
-  memcpy (iv, aes_iv, sizeof(iv));
-  mbedtls_aes_crypt_cbc (&aesEnc, MBEDTLS_AES_ENCRYPT, paddedLen, iv, inBuffer, outBuffer);
-  return paddedLen;
-}
-
-size_t simpleMsgBufferEncapsulateAndCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
-					  const size_t outBufferSize, const size_t payloadLen)
-{
- uint8_t encapMsg[payloadLen+ENCAP_OVH];
-  if (!simpleMsgBufferEncapsulate (encapMsg, inBuffer, payloadLen+ENCAP_OVH, payloadLen))
-    return 0;
-  return simpleMsgBufferCypher (outBuffer, encapMsg, outBufferSize, payloadLen+ENCAP_OVH);
-}
-  
 bool simpleMsgSend (BaseSequentialStream * const channel, uint8_t *inBuffer,
 		    const size_t slen)
 {
@@ -168,12 +106,12 @@ bool simpleMsgSend (BaseSequentialStream * const channel, uint8_t *inBuffer,
   uint16_t crc =  fletcher16WithLen (buffer, len);
   
   chMtxLock (&sendMtx);
-  if (chSequentialStreamWrite (channel, (uint8_t *) &msgHeader, 
+  if (streamWrite (channel, (uint8_t *) &msgHeader, 
 			       sizeof(MsgHeader)) != sizeof(MsgHeader))
     goto exitFail;
-  if (chSequentialStreamWrite (channel, buffer, len) != len)
+  if (streamWrite (channel, buffer, len) != len)
     goto exitFail;
-  if (chSequentialStreamWrite (channel, (uint8_t *) &crc, 
+  if (streamWrite (channel, (uint8_t *) &crc, 
 			       sizeof(crc)) != sizeof(crc))
     goto exitFail;
   
@@ -213,61 +151,6 @@ thread_t * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callb
 /*   return (b>a) ? b-a : (65535-a)+b; */
 /* } */
 
-static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **payload)
-{
-  EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
-  static time_t lastClock=0;
-  
-  uint16_t crc =  fletcher16WithLen (ec->payload, ec->len);
-  // test against embedded crc which is after payload
-  if (crc !=   *((uint16_t *) (&ec->payload[ec->len]))) {
-    DebugTrace ("decypher CRC error");
-    goto fail;
-  }
-  
-  // we trust the first message
-  if (lastClock == 0) {
-    lastClock = ec->hos;
-    // received clock has to grow forever (2^32 hundreds of seconds = 497 days max)
-    // if we want to flight more, we have to manage clock wrapping
-  } else if (ec->hos <= lastClock) {
-    DebugTrace ("Replay Detected");
-    goto fail;
-  } else {
-    lastClock = ec->hos;
-  }
-
-  *payload = ec->payload;
-  return ec->len;
-  
- fail:
-  *payload = NULL;
-  return 0;
-}
-
-static bool simpleMsgBufferDecypher (uint8_t *outBuffer, const uint8_t *inBuffer,
-				       const size_t outBufferSize, const size_t msgLen)
-{
-  uint8_t iv[sizeof(aes_iv)];
-
-  if (msgLen > outBufferSize)
-    return false;
-  
-  memcpy (iv, aes_iv, sizeof(iv));
-  mbedtls_aes_crypt_cbc (&aesDec, MBEDTLS_AES_DECRYPT, msgLen, iv, inBuffer, outBuffer);
-  return true;
-}
-
-size_t simpleMsgBufferDecypherAndDecapsulate (uint8_t *outBuffer, const uint8_t *inBuffer,
-					      const size_t outBufferSize, const size_t msgLen, uint8_t **payload)
-{
-  if (!simpleMsgBufferDecypher (outBuffer, inBuffer, outBufferSize, msgLen)) {
-    *payload = NULL;
-    return 0;
-  }
-
-  return simpleMsgBufferDecapsulate (outBuffer, payload);
-}
   
  
 static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes)
@@ -313,7 +196,7 @@ static void readAndProcessChannel(void *arg)
       
     case WAIT_FOR_SYNC :
       //DebugTrace ("WAIT_FOR_SYNC");
-      messState.payload[0] = (uint8_t) chSequentialStreamGet (mbp->channel);
+      messState.payload[0] = (uint8_t) streamGet (mbp->channel);
       /* if ( (*((uint16_t *) &messState.payload[0]) & 0xffff) == 0xFEED) { */
       /* 	messState.state = WAIT_FOR_LEN; */
       /* }  */
@@ -324,20 +207,20 @@ static void readAndProcessChannel(void *arg)
       
     case WAIT_FOR_LEN :
       //DebugTrace ("WAIT_FOR_LEN");
-      messState.len = (uint8_t) chSequentialStreamGet (mbp->channel);
+      messState.len = (uint8_t) streamGet (mbp->channel);
       // DebugTrace ("LEN = %d", messState.len);
       messState.state = WAIT_FOR_PAYLOAD;
       break;
 
     case WAIT_FOR_PAYLOAD :
       //DebugTrace ("WAIT_FOR_PAYLOAD");
-      chSequentialStreamRead (mbp->channel, messState.payload,  messState.len);
+      streamRead (mbp->channel, messState.payload,  messState.len);
       messState.state = WAIT_FOR_CHECKSUM;
       break;
 
     case WAIT_FOR_CHECKSUM :
       //DebugTrace ("WAIT_FOR_CHECKSUM");
-      chSequentialStreamRead (mbp->channel, (uint8_t *) &messState.crc,  sizeof(messState.crc));
+      streamRead (mbp->channel, (uint8_t *) &messState.crc,  sizeof(messState.crc));
       const uint16_t calculatedCrc = fletcher16WithLen (messState.payload, messState.len);
       if (calculatedCrc == messState.crc) {
 	if (doCypher) {
@@ -365,6 +248,156 @@ static void readAndProcessChannel(void *arg)
   free_m (mbp); // was allocated by simpleMsgBind
 }
 
+
+
+/*
+#                               _   _    _ __    _                    
+#                              | | | |  | '_ \  | |                   
+#                  ___   _ __  | |_| |  | |_) | | |_     ___          
+#                 / __| | '__|  \__, |  | .__/  | __|   / _ \         
+#                | (__  | |      __/ |  | |     \ |_   | (_) |        
+#                 \___| |_|     |___/   |_|      \__|   \___/         
+*/
+
+#define MAX_CYPHER_LEN (MAX_CLEAR_LEN-16-ENCAP_OVH)
+#define MAX_CLOCK_DRIFT 120
+static  mbedtls_aes_context aesEnc, aesDec;
+
+
+bool simpleMsgCypherInit (void)
+{
+
+  initRtcWithCompileTime();
+  
+  mbedtls_aes_init (&aesEnc);
+  mbedtls_aes_init (&aesDec);
+  mbedtls_aes_setkey_enc(&aesEnc, aes_key, sizeof(aes_key) * 8);
+  mbedtls_aes_setkey_dec(&aesDec, aes_key, sizeof(aes_key) * 8);
+
+  doCypher = true;
+  return true;  
+}
+
+
+static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuffer,
+				 const size_t outBufferSize, const size_t payloadLen)
+{
+  EncapsulatedFrame *ec = (EncapsulatedFrame *) outBuffer;
+  
+  if ((payloadLen+ENCAP_OVH) > outBufferSize) {
+    return false;
+  }
+  ec->hos = getTimeHundredthOfSeconds();
+  ec->len = payloadLen;
+  memcpy (ec->payload, inBuffer, payloadLen);
+  // put the crc after payload
+  *((uint16_t *) (&ec->payload[payloadLen])) = fletcher16WithLen (ec->payload, payloadLen);
+  
+  return true;
+}
+
+static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **payload)
+{
+  EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
+  static int lastClock=0; // to detect attack based on replay
+  static int diffClock=0; // to detect attack based on flowding until crc match
+  const  int localTime = getTimeHundredthOfSeconds();
+  
+  uint16_t crc =  fletcher16WithLen (ec->payload, ec->len);
+  // test against embedded crc which is after payload
+  if (crc !=   *((uint16_t *) (&ec->payload[ec->len]))) {
+    DebugTrace ("decypher CRC error");
+    goto fail;
+  }
+  
+  // we trust the first message
+  if (lastClock == 0) {
+    lastClock = ec->hos;
+    diffClock = localTime - ec->hos;
+    
+    // received clock has to grow forever (2^32 hundreds of seconds = 497 days max)
+    // if we want to flight more, we have to manage clock wrapping
+  } else if (ec->hos <= lastClock) {
+    DebugTrace ("Replay Detected");
+    goto fail;
+  } else {
+    const int estimatedRemoteTime = (localTime - diffClock);
+    const int diff = estimatedRemoteTime-ec->hos;
+    if (ABS(diff) > MAX_CLOCK_DRIFT) {
+      DebugTrace ("flood Replay Detected");
+      goto fail;
+    }
+    lastClock = ec->hos;
+    diffClock = localTime - ec->hos;
+  }
+
+  *payload = ec->payload;
+  return ec->len;
+  
+ fail:
+  *payload = NULL;
+  return 0;
+}
+
+static size_t simpleMsgBufferCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
+			    const size_t outBufferSize, const size_t payloadLen)
+{
+  uint8_t iv[sizeof(aes_iv)];
+
+  const size_t paddedLen = padWithZeroes (outBuffer, outBufferSize, payloadLen, 16);
+  if (paddedLen == 0) {
+    DebugTrace ("cypher ERROR : payloadLen[%d] paddedLen[%d] > outBufferSize[%d]",
+		payloadLen, paddedLen, outBufferSize);
+    return 0;
+  }
+  memcpy (iv, aes_iv, sizeof(iv));
+  mbedtls_aes_crypt_cbc (&aesEnc, MBEDTLS_AES_ENCRYPT, paddedLen, iv, inBuffer, outBuffer);
+  return paddedLen;
+}
+
+static bool simpleMsgBufferDecypher (uint8_t *outBuffer, const uint8_t *inBuffer,
+				       const size_t outBufferSize, const size_t msgLen)
+{
+  uint8_t iv[sizeof(aes_iv)];
+
+  if (msgLen > outBufferSize)
+    return false;
+  
+  memcpy (iv, aes_iv, sizeof(iv));
+  mbedtls_aes_crypt_cbc (&aesDec, MBEDTLS_AES_DECRYPT, msgLen, iv, inBuffer, outBuffer);
+  return true;
+}
+
+
+
+size_t simpleMsgBufferEncapsulateAndCypher (uint8_t *outBuffer, const uint8_t *inBuffer,
+					  const size_t outBufferSize, const size_t payloadLen)
+{
+ uint8_t encapMsg[payloadLen+ENCAP_OVH];
+  if (!simpleMsgBufferEncapsulate (encapMsg, inBuffer, payloadLen+ENCAP_OVH, payloadLen))
+    return 0;
+  return simpleMsgBufferCypher (outBuffer, encapMsg, outBufferSize, payloadLen+ENCAP_OVH);
+}
+  
+
+
+
+
+
+size_t simpleMsgBufferDecypherAndDecapsulate (uint8_t *outBuffer, const uint8_t *inBuffer,
+					      const size_t outBufferSize, const size_t msgLen,
+					      uint8_t **payload)
+{
+  if (!simpleMsgBufferDecypher (outBuffer, inBuffer, outBufferSize, msgLen)) {
+    *payload = NULL;
+    return 0;
+  }
+
+  return simpleMsgBufferDecapsulate (outBuffer, payload);
+}
+
+
+
 static size_t padWithZeroes (uint8_t *input, const size_t inputSize,
 			   const size_t payloadLen, const size_t blockSize)
 {
@@ -391,6 +424,7 @@ static uint32_t getTimeHundredthOfSeconds()
    return ((getTimeUnixMillisec() - (EPOCHTS*1000ULL)) / 10ULL);
 }
 
+
 static void  initRtcWithCompileTime(void)
 {
   // if the RTC date is less than date of compilation, obviously RTC is not accurate
@@ -402,3 +436,5 @@ static void  initRtcWithCompileTime(void)
     setTimeUnixSec (EPOCHTS);
   }
 }
+
+
