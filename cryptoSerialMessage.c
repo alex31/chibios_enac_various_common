@@ -47,7 +47,7 @@ static uint32_t getTimeFractionSeconds(void);
 
 static void  initRtcWithCompileTime(void);
 
-static RemoteClockState remoteClockIsNotInit (const RemoteClock *rc);
+static RemoteClockState remoteClockGetState (const RemoteClock *rc);
 static RemoteClockState remoteClockIsReplay (const RemoteClock *rc, const uint32_t remoteTime);
 static RemoteClockState remoteClockSet (RemoteClock *rc, const uint32_t localTime,
 					const uint32_t remoteTime);
@@ -336,26 +336,17 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
   }
   
   // we trust the first message
-  if (remClock.last == 0) {
-    remClock.last = ec->hos;
-    remClock.diff = localTime - ec->hos;
+  if (remoteClockGetState (&remClock) == NOT_INIT) {
+    remoteClockSet (&remClock, localTime, ec->hos);
     
     // received clock has to grow forever (2^32 hundreds of seconds = 497 days max)
     // if we want to flight more, we have to manage clock wrapping
-  } else if (ec->hos <= remClock.last) {
+  } else if (remoteClockIsReplay (&remClock, ec->hos) == REPLAY) {
     DebugTrace ("Replay Detected : diff=%d", remClock.last - ec->hos);
     goto fail;
-  } else {
-    const uint32_t  estimatedRemoteTime = (localTime - remClock.diff);
-    const uint32_t diff = ec->hos > estimatedRemoteTime ?
-      ec->hos-estimatedRemoteTime : estimatedRemoteTime - ec->hos;
-    //    DebugTrace ("diff = %d", diff);
-    if (diff > MAX_CLOCK_DRIFT) {
-      DebugTrace ("flood Replay Detected");
-      goto fail;
-    }
-    remClock.last = ec->hos;
-    remClock.diff = localTime - ec->hos;
+  } else if (remoteClockSet (&remClock, localTime, ec->hos) == NOT_SYNC) {
+    DebugTrace ("flood Replay Detected");
+    goto fail;
   }
 
   *payload = ec->payload;
@@ -472,7 +463,7 @@ typedef struct {
 } RemoteClock;
 
  */
-static RemoteClockState remoteClockIsNotInit (const RemoteClock *rc)
+static RemoteClockState remoteClockGetState (const RemoteClock *rc)
 {
   return rc->last == 0 ? NOT_INIT : CLK_OK;
 }
