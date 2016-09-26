@@ -260,7 +260,8 @@ static void readAndProcessChannel(void *arg)
 */
 
 #define MAX_CYPHER_LEN (MAX_CLEAR_LEN-16-ENCAP_OVH)
-#define MAX_CLOCK_DRIFT (120 * 1000) // 120 seconds exprimed in fractionseconds
+#define TIME_TICK_MS 10
+#define MAX_CLOCK_DRIFT (120 * 1000 / TIME_TICK_MS) // 120 seconds exprimed in fractionseconds
 static  mbedtls_aes_context aesEnc, aesDec;
 
 
@@ -433,7 +434,7 @@ static uint32_t getTimeFractionSeconds()
   /* DebugTrace ("getTimeUnixMilliSec() - (EPOCHTS*1000) = %d", */
   /* 	      (uint32_t) (getTimeUnixMillisec() - ((uint64_t)(EPOCHTS)*1000ULL) / 10ULL)); */
   
-  return (getTimeUnixMillisec() - (EPOCHTS*1000ULL)) / 10;
+  return (getTimeUnixMillisec() - (EPOCHTS*1000ULL)) / TIME_TICK_MS;
 }
 
 
