@@ -7,11 +7,16 @@ static uint32_t weekDay (void);
 static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const uint32_t year);
 
 static struct tm utime;
+static RtcChangedCB callback = NULL;
+static void cbCheck (void) {
+  if (callback)
+    callback ();
+}
+
+
 #if (CH_KERNEL_MAJOR == 2)
 
 #include <chrtclib.h>
-
-
 
 
 void setHour (uint32_t val)
@@ -123,6 +128,7 @@ void setHour (uint32_t val)
   utime.tm_isdst = 0;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
+  cbCheck();
 }
 
 void setMinute (uint32_t val)
@@ -133,7 +139,7 @@ void setMinute (uint32_t val)
   utime.tm_min = val;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
-
+  cbCheck();
 }
 
 void setSecond (uint32_t val)
@@ -144,7 +150,7 @@ void setSecond (uint32_t val)
   utime.tm_sec = val;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
-
+  cbCheck();
 }
 
 void setYear (uint32_t val)
@@ -157,6 +163,7 @@ void setYear (uint32_t val)
   rtcSetTime (&RTCD1, &rtctime);
 
   setWeekDay (weekDay());
+  cbCheck();
 }
 
 void setMonth (uint32_t val)
@@ -169,6 +176,7 @@ void setMonth (uint32_t val)
   rtcSetTime (&RTCD1, &rtctime);
 
   setWeekDay (weekDay());
+  cbCheck();
 }
 
 void setMonthDay (uint32_t val)
@@ -181,6 +189,7 @@ void setMonthDay (uint32_t val)
   rtcSetTime (&RTCD1, &rtctime);
 
   setWeekDay (weekDay());
+  cbCheck();
 }
 
 void setWeekDay (uint32_t val)
@@ -191,7 +200,7 @@ void setWeekDay (uint32_t val)
   utime.tm_wday = val;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
-
+  cbCheck();
 }
 
 uint32_t getHour (void)
@@ -264,6 +273,7 @@ void setTimeUnixSec(time_t tt)
  RTCDateTime timespec;
  rtcConvertStructTmToDateTime (gmtime (&tt), 0, &timespec);
  rtcSetTime (&RTCD1, &timespec);
+ cbCheck();
 }
 
 
@@ -357,3 +367,7 @@ uint32_t getDstOffset (void)
 }
 
 
+void	 registerRtcChanged (RtcChangedCB cb)
+{
+  callback = cb;
+}

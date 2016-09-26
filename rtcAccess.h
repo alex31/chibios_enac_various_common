@@ -8,6 +8,9 @@
 extern "C" {
 #endif
 
+// callback fonction type
+typedef void (*RtcChangedCB) (void);
+
 
 void setHour (uint32_t val);
 void setMinute (uint32_t val);
@@ -31,6 +34,7 @@ uint32_t	getDstOffset (void);
 time_t   getTimeUnixSec(void);
 uint64_t getTimeUnixMillisec(void);
 void     setTimeUnixSec(time_t tt);
+void	 registerRtcChanged (RtcChangedCB cb);
 
 #ifdef __cplusplus
 }

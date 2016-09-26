@@ -47,10 +47,14 @@ static uint32_t getTimeFractionSeconds(void);
 
 static void  initRtcWithCompileTime(void);
 
+static void             remoteClockReset (RemoteClock *rc);
 static RemoteClockState remoteClockGetState (const RemoteClock *rc);
 static RemoteClockState remoteClockIsReplay (const RemoteClock *rc, const uint32_t remoteTime);
+static void	        remoteClockInit (RemoteClock *rc, const uint32_t localTime,
+					const uint32_t remoteTime);
 static RemoteClockState remoteClockSet (RemoteClock *rc, const uint32_t localTime,
 					const uint32_t remoteTime);
+static void rtcHasBeenResetCB (void);
 
 
 typedef struct {
@@ -92,6 +96,12 @@ typedef struct {
 static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes);
 static MUTEX_DECL(sendMtx);
 static bool doCypher = false;
+
+#define RTC_RST_ENCAP_ACK 0b01
+#define RTC_RST_DECAP_ACK  0b10
+#define RTC_RST_RESET    0b00
+#define RTC_RST_SHOULD_RESET  0b11
+static uint32_t rtcHasBeenReset=0;
 
 static void readAndProcessChannel(void *arg);
 
@@ -301,13 +311,16 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
   if ((payloadLen+ENCAP_OVH) > outBufferSize)
     return false;
 
-  static int lastClock=0;
-  int ts = getTimeFractionSeconds();
-
+  static uint32_t lastClock=0;
+  uint32_t ts = getTimeFractionSeconds();
+   
   // if burst messages are sent in the same hundredth of second,
   //  we need to cheat to defeat anti replay algo
   // this won't work is data is continuelsy flooded, but is ok to absorb burst of data
-  if (lastClock == 0) {
+  if (rtcHasBeenReset &  RTC_RST_ENCAP_ACK) {
+    ts=lastClock=0;
+    rtcHasBeenReset &= ~RTC_RST_ENCAP_ACK;
+  } else  if (lastClock == 0) {
     lastClock = ts;
   } else if (lastClock >= ts) {
     ts = lastClock+1;
@@ -325,7 +338,7 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
 static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **payload)
 {
   EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
-  static RemoteClock remClock = {0,0,0};
+  static RemoteClock remClock = {0,0xdeadbeef,0};
   const  uint32_t localTime = getTimeFractionSeconds();
   
   uint16_t crc =  fletcher16WithLen (ec->payload, ec->len);
@@ -334,10 +347,20 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
     DebugTrace ("decypher CRC error");
     goto fail;
   }
-  
-  // we trust the first message
-  if (remoteClockGetState (&remClock) == NOT_INIT) {
-    remoteClockSet (&remClock, localTime, ec->hos);
+
+  // local rtc has been reset
+  if (rtcHasBeenReset &  RTC_RST_DECAP_ACK) {
+    remoteClockReset (&remClock);
+    rtcHasBeenReset &= ~RTC_RST_DECAP_ACK;
+  }
+
+  if (ec->hos == 0) {
+    // this as a special meaning : remote RTC has been reset, so accept this message
+    // and next message will give new time
+    remoteClockReset (&remClock);
+    // we trust the first message
+  } else if (remoteClockGetState (&remClock) == NOT_INIT) {
+    remoteClockInit (&remClock, localTime, ec->hos);
     
     // received clock has to grow forever (2^32 hundreds of seconds = 497 days max)
     // if we want to flight more, we have to manage clock wrapping
@@ -348,7 +371,7 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
     DebugTrace ("flood Replay Detected");
     goto fail;
   }
-
+  
   *payload = ec->payload;
   return ec->len;
   
@@ -439,10 +462,10 @@ static uint32_t getTimeFractionSeconds()
   /* DebugTrace ("getTimeUnixMilliSec() - (EPOCHTS*1000) = %d", */
   /* 	      (uint32_t) (getTimeUnixMillisec() - ((uint64_t)(EPOCHTS)*1000ULL) / 10ULL)); */
   
-  return (getTimeUnixMillisec() - (EPOCHTS*1000ULL)) / TIME_TICK_MS;
+  return (getTimeUnixMillisec() & 0xffffffff) / TIME_TICK_MS;
 }
 
-
+// in pprz, should not be done in crypto module but in early init
 static void  initRtcWithCompileTime(void)
 {
   // if the RTC date is less than date of compilation, obviously RTC is not accurate
@@ -450,39 +473,67 @@ static void  initRtcWithCompileTime(void)
   // Since we send (RTC - EPOCHTS) as anti replay mecanism, RTC-EPOCHTS should alway be positive
   // if afterward RTC is set to accurate (GPS) time, it will go further forward and that will
   // not affect anti replay algorithm
+  registerRtcChanged (&rtcHasBeenResetCB);
   if (getTimeUnixSec() < EPOCHTS) {
     setTimeUnixSec (EPOCHTS);
   }
 }
 
-/*
-typedef struct {
-  uint32_t init;
-  uint32_t last;
-  uint32_t diff;
-} RemoteClock;
 
- */
 static RemoteClockState remoteClockGetState (const RemoteClock *rc)
 {
-  return rc->last == 0 ? NOT_INIT : CLK_OK;
+  return rc->last == 0xdeadbeef ? NOT_INIT : CLK_OK;
 }
 
-static RemoteClockState remoteClockIsReplay (const RemoteClock *rc, const uint32_t remoteTime)
+static void remoteClockReset (RemoteClock *rc)
 {
+  rc->last = 0xdeadbeef;
+}
+
+static RemoteClockState remoteClockIsReplay (const RemoteClock *rc, const uint32_t rawRemoteTime)
+{
+  if (rawRemoteTime < rc->init)
+    return REPLAY;
+  
+  const uint32_t remoteTime = rawRemoteTime - rc->init;  // shift remote time
   return remoteTime <= rc->last ? REPLAY : CLK_OK;
 }
 
-static RemoteClockState remoteClockSet (RemoteClock *rc, const uint32_t localTime,
-					const uint32_t remoteTime)
+static void remoteClockInit (RemoteClock *rc, const uint32_t localTime,
+					const uint32_t rawRemoteTime)
 {
+  rc->init = rawRemoteTime;
+  const uint32_t remoteTime = rawRemoteTime - rc->init; // shift remote time
+  rc->last = remoteTime;
+  rc->diff = localTime > remoteTime ? localTime - remoteTime : remoteTime - localTime;
+  DebugTrace ("Clock init rawRemoteTime=%u rc->init=%u remoteTime=%u rc->diff=%u",
+	      rawRemoteTime,  rc->init, remoteTime, rc->diff);
+	      
+}
+
+static RemoteClockState remoteClockSet (RemoteClock *rc, const uint32_t localTime,
+					const uint32_t rawRemoteTime)
+{
+  const uint32_t remoteTime = rawRemoteTime - rc->init; // shift remote time
   const uint32_t  estimatedRemoteTime = (localTime - rc->diff);
-  const uint32_t  diff = remoteTime - estimatedRemoteTime;
+  const uint32_t  diff = remoteTime > estimatedRemoteTime ?
+    remoteTime - estimatedRemoteTime : estimatedRemoteTime - remoteTime;
+  
+  /* DebugTrace ("Clock set rawRemoteTime=%u remoteTime=%u estimated=%u diff=%u" , */
+  /* 	      rawRemoteTime, remoteTime, estimatedRemoteTime, diff); */
+  
   if (diff > MAX_CLOCK_DRIFT) {
     return NOT_SYNC;
   }
   rc->last = remoteTime;
   rc->diff = localTime > remoteTime ? localTime - remoteTime : remoteTime - localTime;
+  /* DebugTrace ("Clock set rawRemoteTime=%u rc->init=%u remoteTime=%u rc->diff=%u diff=%u" , */
+  /* 	      rawRemoteTime,  rc->init, remoteTime, rc->diff, diff); */
+  
   return CLK_OK;
 }
 
+static void rtcHasBeenResetCB (void)
+{
+  rtcHasBeenReset = RTC_RST_SHOULD_RESET;
+}
