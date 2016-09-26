@@ -21,6 +21,14 @@
 */
 
 #define MAX_CLEAR_LEN 255
+typedef enum {WAIT_FOR_SYNC, WAIT_FOR_LEN, WAIT_FOR_PAYLOAD, WAIT_FOR_CHECKSUM} SerialCmdState ;
+typedef enum {CLK_OK, NOT_INIT, REPLAY, NOT_SYNC} RemoteClockState; 
+
+typedef struct {
+  uint32_t init;
+  uint32_t last;
+  uint32_t diff;
+} RemoteClock;
 
 
 static size_t padWithZeroes (uint8_t *input, const size_t inputSize,
@@ -39,7 +47,10 @@ static uint32_t getTimeFractionSeconds(void);
 
 static void  initRtcWithCompileTime(void);
 
-typedef enum  {WAIT_FOR_SYNC, WAIT_FOR_LEN, WAIT_FOR_PAYLOAD, WAIT_FOR_CHECKSUM} SerialCmdState ;
+static RemoteClockState remoteClockIsNotInit (const RemoteClock *rc);
+static RemoteClockState remoteClockIsReplay (const RemoteClock *rc, const uint32_t remoteTime);
+static RemoteClockState remoteClockSet (RemoteClock *rc, const uint32_t localTime,
+					const uint32_t remoteTime);
 
 
 typedef struct {
@@ -48,6 +59,9 @@ typedef struct {
 } __attribute__ ((__packed__))  MsgHeader;
 
 _Static_assert(sizeof(MsgHeader) == 2, "MsgHeader struct is not packed");
+
+
+
 
 
 typedef struct {
@@ -65,7 +79,7 @@ typedef struct {
 
 typedef struct {
   struct {
-    time_t hos;
+    uint32_t hos;
     uint8_t len;
     uint8_t payload[MAX_CLEAR_LEN]; // crc is add at end of payload
     // CRC is here after payload
@@ -261,7 +275,7 @@ static void readAndProcessChannel(void *arg)
 
 #define MAX_CYPHER_LEN (MAX_CLEAR_LEN-16-ENCAP_OVH)
 #define TIME_TICK_MS 10
-#define MAX_CLOCK_DRIFT (120 * 1000 / TIME_TICK_MS) // 120 seconds exprimed in fractionseconds
+#define MAX_CLOCK_DRIFT (120 * (1000 / TIME_TICK_MS)) // 120 seconds exprimed in fractionseconds
 static  mbedtls_aes_context aesEnc, aesDec;
 
 
@@ -311,9 +325,8 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
 static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **payload)
 {
   EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
-  static time_t lastClock=0; // to detect attack based on replay
-  static time_t diffClock=0; // to detect attack based on flowding until crc match
-  const  time_t localTime = getTimeFractionSeconds();
+  static RemoteClock remClock = {0,0,0};
+  const  uint32_t localTime = getTimeFractionSeconds();
   
   uint16_t crc =  fletcher16WithLen (ec->payload, ec->len);
   // test against embedded crc which is after payload
@@ -323,25 +336,26 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
   }
   
   // we trust the first message
-  if (lastClock == 0) {
-    lastClock = ec->hos;
-    diffClock = localTime - ec->hos;
+  if (remClock.last == 0) {
+    remClock.last = ec->hos;
+    remClock.diff = localTime - ec->hos;
     
     // received clock has to grow forever (2^32 hundreds of seconds = 497 days max)
     // if we want to flight more, we have to manage clock wrapping
-  } else if (ec->hos <= lastClock) {
-    DebugTrace ("Replay Detected : diff=%d", lastClock - ec->hos);
+  } else if (ec->hos <= remClock.last) {
+    DebugTrace ("Replay Detected : diff=%d", remClock.last - ec->hos);
     goto fail;
   } else {
-    const time_t  estimatedRemoteTime = (localTime - diffClock);
-    const time_t  diff = ec->hos-estimatedRemoteTime;
+    const uint32_t  estimatedRemoteTime = (localTime - remClock.diff);
+    const uint32_t diff = ec->hos > estimatedRemoteTime ?
+      ec->hos-estimatedRemoteTime : estimatedRemoteTime - ec->hos;
     //    DebugTrace ("diff = %d", diff);
-    if (ABS(diff) > MAX_CLOCK_DRIFT) {
+    if (diff > MAX_CLOCK_DRIFT) {
       DebugTrace ("flood Replay Detected");
       goto fail;
     }
-    lastClock = ec->hos;
-    diffClock = localTime - ec->hos;
+    remClock.last = ec->hos;
+    remClock.diff = localTime - ec->hos;
   }
 
   *payload = ec->payload;
@@ -450,4 +464,34 @@ static void  initRtcWithCompileTime(void)
   }
 }
 
+/*
+typedef struct {
+  uint32_t init;
+  uint32_t last;
+  uint32_t diff;
+} RemoteClock;
+
+ */
+static RemoteClockState remoteClockIsNotInit (const RemoteClock *rc)
+{
+  return rc->last == 0 ? NOT_INIT : CLK_OK;
+}
+
+static RemoteClockState remoteClockIsReplay (const RemoteClock *rc, const uint32_t remoteTime)
+{
+  return remoteTime <= rc->last ? REPLAY : CLK_OK;
+}
+
+static RemoteClockState remoteClockSet (RemoteClock *rc, const uint32_t localTime,
+					const uint32_t remoteTime)
+{
+  const uint32_t  estimatedRemoteTime = (localTime - rc->diff);
+  const uint32_t  diff = remoteTime - estimatedRemoteTime;
+  if (diff > MAX_CLOCK_DRIFT) {
+    return NOT_SYNC;
+  }
+  rc->last = remoteTime;
+  rc->diff = localTime > remoteTime ? localTime - remoteTime : remoteTime - localTime;
+  return CLK_OK;
+}
 
