@@ -8,9 +8,9 @@ static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const u
 
 static struct tm utime;
 static RtcChangedCB callback = NULL;
-static void cbCheck (void) {
+static void cbCheck (int delta) {
   if (callback)
-    callback ();
+    callback (delta);
 }
 
 
@@ -124,72 +124,73 @@ void setHour (uint32_t val)
 {
   rtcGetTime (&RTCD1, &rtctime);
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+  const int delta = ((val-getDstOffset()) - utime.tm_hour) * 3600;
   utime.tm_hour = val-getDstOffset();
   utime.tm_isdst = 0;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
-  cbCheck();
+  cbCheck (delta);
 }
 
 void setMinute (uint32_t val)
 {
   rtcGetTime (&RTCD1, &rtctime);
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
-
+  const int delta = (val - utime.tm_min) * 60;
   utime.tm_min = val;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
-  cbCheck();
+  cbCheck (delta);
 }
 
 void setSecond (uint32_t val)
 {
   rtcGetTime (&RTCD1, &rtctime);
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
-
+  const int delta = val - utime.tm_sec;
   utime.tm_sec = val;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
-  cbCheck();
+  cbCheck (delta);
 }
 
 void setYear (uint32_t val)
 {
   rtcGetTime (&RTCD1, &rtctime);
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
-
+  const int delta = (val - utime.tm_year) * 365 * 86400;
   utime.tm_year = val-1900;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
 
   setWeekDay (weekDay());
-  cbCheck();
+  cbCheck (delta);
 }
 
 void setMonth (uint32_t val)
 {
   rtcGetTime (&RTCD1, &rtctime);
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
-
+  const int delta = (val - utime.tm_mon) * 30 * 86400;
   utime.tm_mon = val-1;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
 
   setWeekDay (weekDay());
-  cbCheck();
+  cbCheck (delta);
 }
 
 void setMonthDay (uint32_t val)
 {
   rtcGetTime (&RTCD1, &rtctime);
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
-
+  const int delta = (val - utime.tm_mday) * 86400;
   utime.tm_mday = val;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
 
   setWeekDay (weekDay());
-  cbCheck();
+  cbCheck (delta);
 }
 
 void setWeekDay (uint32_t val)
@@ -200,7 +201,6 @@ void setWeekDay (uint32_t val)
   utime.tm_wday = val;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
-  cbCheck();
 }
 
 uint32_t getHour (void)
@@ -270,10 +270,11 @@ void setTimeUnixSec(time_t tt)
   // convert from time_t to struct tm
   // convert from  struct tm to RTCDateTime
   // set RTCDateTime
- RTCDateTime timespec;
- rtcConvertStructTmToDateTime (gmtime (&tt), 0, &timespec);
- rtcSetTime (&RTCD1, &timespec);
- cbCheck();
+  const time_t previousVal =  getTimeUnixSec();
+  RTCDateTime timespec;
+  rtcConvertStructTmToDateTime (gmtime (&tt), 0, &timespec);
+  rtcSetTime (&RTCD1, &timespec);
+  cbCheck (tt-previousVal);
 }
 
 

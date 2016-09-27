@@ -54,7 +54,7 @@ static void	        remoteClockInit (RemoteClock *rc, const uint32_t localTime,
 					const uint32_t remoteTime);
 static RemoteClockState remoteClockSet (RemoteClock *rc, const uint32_t localTime,
 					const uint32_t remoteTime);
-static void rtcHasBeenResetCB (void);
+static void rtcHasBeenResetCB (int delta);
 
 
 typedef struct {
@@ -63,9 +63,6 @@ typedef struct {
 } __attribute__ ((__packed__))  MsgHeader;
 
 _Static_assert(sizeof(MsgHeader) == 2, "MsgHeader struct is not packed");
-
-
-
 
 
 typedef struct {
@@ -314,12 +311,16 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
   static uint32_t lastClock=0;
   uint32_t ts = getTimeFractionSeconds();
    
-  // if burst messages are sent in the same hundredth of second,
-  //  we need to cheat to defeat anti replay algo
-  // this won't work is data is continuelsy flooded, but is ok to absorb burst of data
+  // if local rtc has been reset we should reinit local data in use for detecting
+  // intrusion. we will send a special timestamp value to remote to let him knows that
+  // next value is valid
   if (rtcHasBeenReset &  RTC_RST_ENCAP_ACK) {
     ts=lastClock=0;
     rtcHasBeenReset &= ~RTC_RST_ENCAP_ACK;
+
+  // if burst messages are sent in the same hundredth of second,
+  //  we need to cheat to defeat anti replay algo
+  // this won't work is data is continuelsy flooded, but is ok to absorb burst of data
   } else  if (lastClock == 0) {
     lastClock = ts;
   } else if (lastClock >= ts) {
@@ -533,7 +534,10 @@ static RemoteClockState remoteClockSet (RemoteClock *rc, const uint32_t localTim
   return CLK_OK;
 }
 
-static void rtcHasBeenResetCB (void)
+static void rtcHasBeenResetCB (int delta)
 {
-  rtcHasBeenReset = RTC_RST_SHOULD_RESET;
+  const int deltaNorm= delta > 0 ? delta : -delta;
+  if (deltaNorm > 60) {
+    rtcHasBeenReset = RTC_RST_SHOULD_RESET;
+  }
 }

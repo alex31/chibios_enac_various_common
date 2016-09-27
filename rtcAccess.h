@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 // callback fonction type
-typedef void (*RtcChangedCB) (void);
+typedef void (*RtcChangedCB) (int delta);
 
 
 void setHour (uint32_t val);
