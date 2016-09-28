@@ -463,7 +463,7 @@ static uint32_t getTimeFractionSeconds()
   /* DebugTrace ("getTimeUnixMilliSec() - (EPOCHTS*1000) = %d", */
   /* 	      (uint32_t) (getTimeUnixMillisec() - ((uint64_t)(EPOCHTS)*1000ULL) / 10ULL)); */
   
-  return (getTimeUnixMillisec() & 0xffffffff) / TIME_TICK_MS;
+  return getTimeUnixMillisec() / TIME_TICK_MS;
 }
 
 // in pprz, should not be done in crypto module but in early init
