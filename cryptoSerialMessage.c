@@ -8,7 +8,7 @@
 #include "aes_key.h"
 #include <string.h>
 
-
+//#define ANTI_REPLAY_ON_DOWNLINK 1
 /*
 
  * anti replay algo 
@@ -80,13 +80,24 @@ typedef struct {
 
 typedef struct {
   struct {
-    uint32_t hos;
+    uint32_t remoteClk;
     uint8_t len;
     uint8_t payload[MAX_CLEAR_LEN]; // crc is add at end of payload
     // CRC is here after payload
   };
-} EncapsulatedFrame;
-#define ENCAP_OVH ((sizeof(EncapsulatedFrame)-MAX_CLEAR_LEN)+2/*CRC*/)
+} EncapsulatedUpFrame;
+
+typedef struct {
+  struct {
+#ifdef ANTI_REPLAY_ON_DOWNLINK
+    uint32_t remoteClk;
+#endif
+    uint8_t len;
+    uint8_t payload[MAX_CLEAR_LEN]; // crc is add at end of payload
+    // CRC is here after payload
+  };
+} EncapsulatedDownFrame;
+#define ENCAP_OVH ((sizeof(EncapsulatedDownFrame)-MAX_CLEAR_LEN)+2/*CRC*/)
 
 
 
@@ -94,11 +105,15 @@ static uint16_t fletcher16WithLen (uint8_t const *data, size_t bytes);
 static MUTEX_DECL(sendMtx);
 static bool doCypher = false;
 
+#ifdef ANTI_REPLAY_ON_DOWNLINK
 #define RTC_RST_ENCAP_ACK 0b01
 #define RTC_RST_DECAP_ACK  0b10
 #define RTC_RST_RESET    0b00
 #define RTC_RST_SHOULD_RESET  0b11
 static uint32_t rtcHasBeenReset=0;
+#else
+static bool rtcHasBeenReset=false;
+#endif
 
 static void readAndProcessChannel(void *arg);
 
@@ -304,13 +319,13 @@ bool simpleMsgCypherInit (void)
 static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuffer,
 				 const size_t outBufferSize, const size_t payloadLen)
 {
-  EncapsulatedFrame *ec = (EncapsulatedFrame *) outBuffer;
+  EncapsulatedDownFrame *ec = (EncapsulatedDownFrame *) outBuffer;
   if ((payloadLen+ENCAP_OVH) > outBufferSize)
     return false;
 
-  static uint32_t lastClock=0;
+#ifdef ANTI_REPLAY_ON_DOWNLINK
   uint32_t ts = getTimeFractionSeconds();
-   
+  static uint32_t lastClock=0;
   // if local rtc has been reset we should reinit local data in use for detecting
   // intrusion. we will send a special timestamp value to remote to let him knows that
   // next value is valid
@@ -326,8 +341,10 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
   } else if (lastClock >= ts) {
     ts = lastClock+1;
   }
+  ec->remoteClk = lastClock = ts;
+#endif
   
-  ec->hos = lastClock = ts;
+
   ec->len = payloadLen;
   memcpy (ec->payload, inBuffer, payloadLen);
   // put the crc after payload
@@ -338,7 +355,7 @@ static bool simpleMsgBufferEncapsulate (uint8_t *outBuffer, const uint8_t *inBuf
 
 static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **payload)
 {
-  EncapsulatedFrame *ec = (EncapsulatedFrame *) inBuffer;
+  EncapsulatedUpFrame *ec = (EncapsulatedUpFrame *) inBuffer;
   static RemoteClock remClock = {0,0xdeadbeef,0};
   const  uint32_t localTime = getTimeFractionSeconds();
   
@@ -350,25 +367,32 @@ static size_t simpleMsgBufferDecapsulate (const uint8_t *inBuffer, uint8_t **pay
   }
 
   // local rtc has been reset
+#ifdef ANTI_REPLAY_ON_DOWNLINK
   if (rtcHasBeenReset &  RTC_RST_DECAP_ACK) {
     remoteClockReset (&remClock);
     rtcHasBeenReset &= ~RTC_RST_DECAP_ACK;
   }
-
-  if (ec->hos == 0) {
+#else
+ if (rtcHasBeenReset) {
+   remoteClockReset (&remClock);
+   rtcHasBeenReset = false;
+ }
+#endif
+ 
+  if (ec->remoteClk == 0) {
     // this as a special meaning : remote RTC has been reset, so accept this message
     // and next message will give new time
     remoteClockReset (&remClock);
     // we trust the first message
   } else if (remoteClockGetState (&remClock) == NOT_INIT) {
-    remoteClockInit (&remClock, localTime, ec->hos);
+    remoteClockInit (&remClock, localTime, ec->remoteClk);
     
     // received clock has to grow forever (2^32 hundreds of seconds = 497 days max)
     // if we want to flight more, we have to manage clock wrapping
-  } else if (remoteClockIsReplay (&remClock, ec->hos) == REPLAY) {
-    DebugTrace ("Replay Detected : diff=%d", remClock.last - ec->hos);
+  } else if (remoteClockIsReplay (&remClock, ec->remoteClk) == REPLAY) {
+    DebugTrace ("Replay Detected : diff=%d", remClock.last - ec->remoteClk);
     goto fail;
-  } else if (remoteClockSet (&remClock, localTime, ec->hos) == NOT_SYNC) {
+  } else if (remoteClockSet (&remClock, localTime, ec->remoteClk) == NOT_SYNC) {
     DebugTrace ("flood Replay Detected");
     goto fail;
   }
@@ -538,6 +562,10 @@ static void rtcHasBeenResetCB (int delta)
 {
   const int deltaNorm= delta > 0 ? delta : -delta;
   if (deltaNorm > 60) {
+#ifdef ANTI_REPLAY_ON_DOWNLINK
     rtcHasBeenReset = RTC_RST_SHOULD_RESET;
+#else
+    rtcHasBeenReset = true;
+#endif
   }
 }
