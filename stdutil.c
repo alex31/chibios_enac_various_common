@@ -5,6 +5,7 @@
 #include "printf.h"
 #include "globalVar.h"
 #include "stdutil.h"
+
 #if CH_HEAP_USE_TLSF
 #include "tlsf_malloc.h"
 #endif
@@ -77,7 +78,7 @@ float powi(int x, int y)
 
 #if (CH_KERNEL_MAJOR == 2)
 
-#if CH_USE_HEAP || CH_HEAP_USE_TLSF
+#if   CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
 
 #ifndef CH_HEAP_SIZE
 #error CH_HEAP_SIZE should be defined if  CH_USE_HEAP or CH_HEAP_USE_TLSF are defined
@@ -108,7 +109,7 @@ memory_heap_t ccmHeap;
 #endif // if (CH_KERNEL_MAJOR == 2)
 
 
-
+#if CH_CFG_USE_HEAP
 size_t initHeap (void)
 {
 #if CH_HEAP_USE_TLSF
@@ -170,7 +171,7 @@ void free_m(void *p)
 #endif
 }
 
-
+#endif // CH_CFG_USE_HEAP
 
 void systemReset(void)
 {
