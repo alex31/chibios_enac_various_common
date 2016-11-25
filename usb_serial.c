@@ -321,8 +321,10 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
     chSysLockFromIsr();
     
     /* Disconnection event on suspend.*/
-#if (CH_KERNEL_MAJOR > 2)
+#if (CH_KERNEL_MAJOR == 3)
     sduDisconnectI(&SDU1);
+#elif (CH_KERNEL_MAJOR == 4)
+    sduSuspendHookI(&SDU1);
 #endif
     
     chSysUnlockFromIsr();
