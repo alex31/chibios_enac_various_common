@@ -69,7 +69,7 @@ msg_t MPL3115A2_cacheVal  (MPL3115A2Data *baro)
 {
   msg_t status = RDY_OK;
   uint8_t baroStatus;
-  bool_t  notReady;
+  bool  notReady;
 
  if (baro->mstConfig == NULL) {
    i2cAcquireBus(baro->i2cd);

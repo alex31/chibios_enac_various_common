@@ -769,7 +769,7 @@ static msg_t thdSdLog(void *arg)
   } ;
 
   UINT bw;
-  static IN_STD_SECTION (struct PerfBuffer perfBuffers[SDLOG_NUM_BUFFER]) =
+  static IN_STD_SECTION_INIT (struct PerfBuffer perfBuffers[SDLOG_NUM_BUFFER]) =
     {[0 ... SDLOG_NUM_BUFFER-1] = {.buffer = {0}, .size = 0}};
 
   // FIXME : depending on section, the static initialisation is not done ...
