@@ -250,8 +250,16 @@ F7
 #define FAST_SECTION ".ram0" 
 #define DMA_SECTION ".ram3"    
 #define BCKP_SECTION ".ram5"
+#elif (defined (STM32L431xx) || defined (STM32L432xx) || defined (STM32L433xx) || defined (STM32L442xx) || defined (STM32L443xx))
+#define STD_SECTION ".ram0" 
+#define FAST_SECTION ".ram0" 
+#define DMA_SECTION ".ram0"    
+#elif  (defined (STM32L471xx) || defined (STM32L475xx) || defined (STM32L476xx) || defined (STM32L485xx) && defined (STM32L486xx))
+#define STD_SECTION ".ram0" 
+#define FAST_SECTION ".ram4" 
+#define DMA_SECTION ".ram0"    
 #else
-#error "section defined only for STM32F4 and STM32F7"
+#error "section defined only for STM32F4, STM32L4 and STM32F7"
 #endif
 
 

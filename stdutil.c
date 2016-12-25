@@ -191,9 +191,10 @@ void systemDeepSleep (void)
 #define __PWR_CR_LPDS PWR_CR1_LPDS
 #define __PWR_CR_CSBF PWR_CR1_CSBF
 #else
-#error neither STM32F4XX or STM32F7XX
+//#warning neither STM32F4XX or STM32F7XX : should be implemented
 #endif
 {
+  #if defined(STM32F4XX) | defined(STM32F7XX)
   chSysLock();
 
   /* clear PDDS and LPDS bits */
@@ -216,6 +217,7 @@ void systemDeepSleep (void)
   /* clear the deepsleep mask */
   SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
   chSysUnlock();
+  #endif
 }
 
 
@@ -317,10 +319,12 @@ const char* getGpioName (const ioportid_t p)
   _GPIOTEST(GPIOA);
   _GPIOTEST(GPIOB);
   _GPIOTEST(GPIOC);
+#ifndef STM32L432xx
   _GPIOTEST(GPIOD);
   _GPIOTEST(GPIOE);
   _GPIOTEST(GPIOF);
   _GPIOTEST(GPIOG);
+#endif
   _GPIOTEST(GPIOH);
 
   return "Unknown GPIO";
