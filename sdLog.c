@@ -73,7 +73,7 @@
 
 
 
-static msg_t   IN_STD_SECTION (queMbBuffer[SDLOG_QUEUE_BUCKETS]);
+static msg_t   IN_STD_SECTION_CLEAR (queMbBuffer[SDLOG_QUEUE_BUCKETS]);
 static MsgQueue messagesQueue;
 
 #define WRITE_BYTE_CACHE_SIZE 15 // limit overhead :
@@ -769,11 +769,10 @@ static msg_t thdSdLog(void *arg)
   } ;
 
   UINT bw;
-  static IN_STD_SECTION_INIT (struct PerfBuffer perfBuffers[SDLOG_NUM_BUFFER]) =
-    {[0 ... SDLOG_NUM_BUFFER-1] = {.buffer = {0}, .size = 0}};
+  static IN_STD_SECTION_CLEAR (struct PerfBuffer perfBuffers[SDLOG_NUM_BUFFER]);
 
   // FIXME : depending on section, the static initialisation is not done ...
-  memset (perfBuffers, 0, sizeof(perfBuffers));
+  //  memset (perfBuffers, 0, sizeof(perfBuffers));
   
   chRegSetThreadName("thdSdLog");
   while (!chThdShouldTerminateX()) {
