@@ -21,7 +21,10 @@
 */
 
 
-
+// compatibility between GPIOV2 and GPIOV3
+#ifdef PAL_STM32_OSPEED_HIGH
+#define  PAL_STM32_OSPEED_HIGHEST PAL_STM32_OSPEED_HIGH
+#endif
 
 static bool chkErrorI2cMaster (I2CDriver *i2cd);
 static const I2cMasterConfig * getMasterConfigFromDriver (I2CDriver *i2cd);
@@ -936,7 +939,7 @@ static bool i2cMasterUnhangBus (I2CDriver *i2cd)
     palTogglePad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
     halPolledDelay (US2ST(10)) ; // 10µs : 100 khz
     
-    sdaReleased = (palReadPad (i2cMcfg->sdaGpio, i2cMcfg->sdaPin) == 1);
+    sdaReleased = palReadPad (i2cMcfg->sdaGpio, i2cMcfg->sdaPin);
     if (sdaReleased) 
       break;
   }
