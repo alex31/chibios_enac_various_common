@@ -224,6 +224,12 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
     case 0x1001 : mcu_revid_chr = 'Z'; break;
     }
     break;
+  case  0x435 : mcu_devid_str = "STM32L43x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    }
+    break;
   }
   
   chprintf(chp, "Kernel:       %s\r\n", CH_KERNEL_VERSION);
