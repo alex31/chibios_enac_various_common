@@ -230,29 +230,29 @@ msg_t mpu9250_setBypass( Mpu9250Data *imu, const Mpu9250_PassThroughMode mode)
 
 msg_t mpu9250_setPwr (Mpu9250Data *imu, const Mpu9250_PowerMode pMode)
 {
-  if ((pMode | MPU9250_ACC_ENABLED) && (pMode | MPU9250_ACC_DISABLED)) {
+  if ((pMode & MPU9250_ACC_ENABLED) && (pMode & MPU9250_ACC_DISABLED)) {
     DebugTrace ("cannot have  MPU9250_ACC enabled AND disabled");
     return I2C_EINVAL;
   }
-  if (!((pMode | MPU9250_ACC_ENABLED) || (pMode | MPU9250_ACC_DISABLED))) {
+  if (!((pMode & MPU9250_ACC_ENABLED) || (pMode & MPU9250_ACC_DISABLED))) {
     DebugTrace ("cannot have  MPU9250_ACC neither enabled nor disabled");
     return I2C_EINVAL;
   }
 
-  if ((pMode | MPU9250_GYRO_ENABLED) && (pMode | MPU9250_GYRO_DISABLED)) {
+  if ((pMode & MPU9250_GYRO_ENABLED) && (pMode & MPU9250_GYRO_DISABLED)) {
     DebugTrace ("cannot have  MPU9250_GYRO enabled AND disabled");
     return I2C_EINVAL;
   }
-  if (!((pMode | MPU9250_GYRO_ENABLED) || (pMode | MPU9250_GYRO_DISABLED))) {
+  if (!((pMode & MPU9250_GYRO_ENABLED) || (pMode & MPU9250_GYRO_DISABLED))) {
     DebugTrace ("cannot have  MPU9250_GYRO neither enabled nor disabled");
     return I2C_EINVAL;
   }
 
-  if ((pMode | MPU9250_MAG_ENABLED) && (pMode | MPU9250_MAG_DISABLED)) {
+  if ((pMode & MPU9250_MAG_ENABLED) && (pMode & MPU9250_MAG_DISABLED)) {
     DebugTrace ("cannot have  MPU9250_MAG enabled AND disabled");
     return I2C_EINVAL;
   }
-  if (!((pMode | MPU9250_MAG_ENABLED) || (pMode | MPU9250_MAG_DISABLED))) {
+  if (!((pMode & MPU9250_MAG_ENABLED) || (pMode & MPU9250_MAG_DISABLED))) {
     DebugTrace ("cannot have  MPU9250_MAG neither enabled nor disabled");
     return I2C_EINVAL;
   }
