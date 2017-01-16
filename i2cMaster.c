@@ -44,7 +44,7 @@ static msg_t  i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,
 				const uint8_t regAdr, const uint8_t mask, 
 				bool enable);
 
-static IN_DMA_SECTION(uint8_t dmaArray[128]);
+//static IN_DMA_SECTION(uint8_t dmaArray[128]);
 
 /*      
 i2cReleaseBus(i2cd);			\  
@@ -94,8 +94,7 @@ chMtxInit(&i2cd->mutex);		\
 
 #define I2C_WRITE_REGISTERS(i2cd,adr,regAdr,...)   {				\
     const uint8_t array[] = {regAdr, __VA_ARGS__};				\
-    memcpy (dmaArray, array, sizeof(array));					\
-    status = i2cMasterTransmitTimeout(i2cd, adr, dmaArray, sizeof(array),	\
+    status = i2cMasterTransmitTimeout(i2cd, adr, array, sizeof(array),	\
 				      NULL, 0, 100) ;				\
     STATUS_TEST_WRITE(i2cd,array)}
 
@@ -110,20 +109,20 @@ chMtxInit(&i2cd->mutex);		\
     STATUS_TEST_READ_WRITE(i2cd,r_array,w_array) }
 
 #define I2C_READ_REGISTERS(i2cd,adr,regAdr,w_array)   {				\
-    dmaArray[0] = regAdr;							\
-    status = i2cMasterTransmitTimeout(i2cd, adr, dmaArray, sizeof(dmaArray[0]),	\
+    const uint8_t r_array[] = {regAdr};					        \
+    status = i2cMasterTransmitTimeout(i2cd, adr, r_array, sizeof(r_array),	\
 				      w_array, sizeof(w_array), 100) ;		\
     STATUS_TEST_READ_WRITE(i2cd,r_array,w_array) }
 
 #define I2C_READLEN_REGISTERS(i2cd,adr,regAdr,w_array,w_len)   {		\
-    dmaArray[0] = regAdr;							\
-    status = i2cMasterTransmitTimeout(i2cd, adr, dmaArray, sizeof(dmaArray[0]),	\
+    const uint8_t r_array[] = {regAdr};					        \
+    status = i2cMasterTransmitTimeout(i2cd, adr, r_array, sizeof(r_array),      \
 				      w_array, w_len, 100) ;			\
     STATUS_TEST_READ_WRITE(i2cd,r_array,w_array) }
 
 #define I2C_READ_REGISTER(i2cd,adr,regAdr,w_val)   {				\
-    dmaArray[0] = regAdr;							\
-    status = i2cMasterTransmitTimeout(i2cd, adr, dmaArray, sizeof(dmaArray[0]),	\
+    const uint8_t r_array[] = {regAdr};						\
+    status = i2cMasterTransmitTimeout(i2cd, adr, r_array, sizeof(r_array),      \
 				      w_val, sizeof(*w_val), 100) ;		\
     STATUS_TEST_READ_WRITE(i2cd,r_array,w_val) }
 
