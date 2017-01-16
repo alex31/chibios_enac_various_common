@@ -28,9 +28,12 @@ TODO :
 
 
 
-static    msg_t setInitialConfig ( Mpu9250Data *imu);
-static    msg_t setGyroConfig( Mpu9250Data *imu);
-static    msg_t setAccelConfig( Mpu9250Data *imu);
+static    msg_t setInitialConfig (Mpu9250Data *imu);
+static    msg_t setGyroConfig (Mpu9250Data *imu);
+static    msg_t setAccelConfig (Mpu9250Data *imu);
+static    msg_t setPowerConfig (Mpu9250Data *imu);
+static    msg_t setBehaviorConfig (Mpu9250Data *imu);
+static    msg_t setInterruptConfig (Mpu9250Data *imu);
 static    msg_t setSampleRate( Mpu9250Data *imu);
 //static    msg_t setCompassRate( Mpu9250Data *imu);
 static    msg_t resetFifo( Mpu9250Data *imu);
@@ -47,6 +50,7 @@ msg_t mpu9250_init( Mpu9250Data *imu, const Mpu9250Config* initParam)
   msg_t status;
 
   imu->i2cd =  initParam->i2cd;
+  
   imu->slaveAddr = initParam->useAd0 ? MPU9250_ADDRESS1 :  MPU9250_ADDRESS0;
   imu->registerSegmentLen = MPU9250_JUSTIMU_LAST -  MPU9250_REGISTER_BASE +1;
   imu->cacheTimestamp = halGetCounterValue();
@@ -79,6 +83,15 @@ msg_t mpu9250_init( Mpu9250Data *imu, const Mpu9250Config* initParam)
   if (status == RDY_OK)
     status = mpu9250_setBypass(imu, IMU_BYPASS);
 
+  if (status == RDY_OK)
+    status = mpu9250_setPwr(imu, initParam->pwrMode);
+
+  if (status == RDY_OK)
+    status = mpu9250_setBehavior(imu, initParam->behaviorMode);
+
+  if (status == RDY_OK)
+    status = mpu9250_setInterrupt(imu, initParam->itrMode);
+  
   return status;
 }
 
@@ -207,11 +220,111 @@ msg_t mpu9250_setAuxSampleRate (Mpu9250Data *imu, const uint32_t rate)
 
 
 
-msg_t mpu9250_setBypass( Mpu9250Data *imu, const PassThroughMode mode)  
+msg_t mpu9250_setBypass( Mpu9250Data *imu, const Mpu9250_PassThroughMode mode)  
 {
   imu->byPass = mode;
   return setByPassConfig (imu);
 }
+
+
+
+msg_t mpu9250_setPwr (Mpu9250Data *imu, const Mpu9250_PowerMode pMode)
+{
+  if ((pMode | MPU9250_ACC_ENABLED) && (pMode | MPU9250_ACC_DISABLED)) {
+    DebugTrace ("cannot have  MPU9250_ACC enabled AND disabled");
+    return I2C_EINVAL;
+  }
+  if (!((pMode | MPU9250_ACC_ENABLED) || (pMode | MPU9250_ACC_DISABLED))) {
+    DebugTrace ("cannot have  MPU9250_ACC neither enabled nor disabled");
+    return I2C_EINVAL;
+  }
+
+  if ((pMode | MPU9250_GYRO_ENABLED) && (pMode | MPU9250_GYRO_DISABLED)) {
+    DebugTrace ("cannot have  MPU9250_GYRO enabled AND disabled");
+    return I2C_EINVAL;
+  }
+  if (!((pMode | MPU9250_GYRO_ENABLED) || (pMode | MPU9250_GYRO_DISABLED))) {
+    DebugTrace ("cannot have  MPU9250_GYRO neither enabled nor disabled");
+    return I2C_EINVAL;
+  }
+
+  if ((pMode | MPU9250_MAG_ENABLED) && (pMode | MPU9250_MAG_DISABLED)) {
+    DebugTrace ("cannot have  MPU9250_MAG enabled AND disabled");
+    return I2C_EINVAL;
+  }
+  if (!((pMode | MPU9250_MAG_ENABLED) || (pMode | MPU9250_MAG_DISABLED))) {
+    DebugTrace ("cannot have  MPU9250_MAG neither enabled nor disabled");
+    return I2C_EINVAL;
+  }
+
+
+  const Mpu9250_PowerMode pwrBitmask = pMode & (MPU9250_POWERMAX | MPU9250_POWERLOW |
+						MPU9250_STANDBY | MPU9250_SLEEP);
+
+  if (__builtin_popcount(pwrBitmask) > 1) {
+    DebugTrace ("only one of MPU9250_POWERMAX, MPU9250_POWERLOW, MPU9250_STANDBY, MPU9250_SLEEP can be selected");
+    return I2C_EINVAL;
+  } else if (__builtin_popcount(pwrBitmask) == 0) {
+    DebugTrace ("one of MPU9250_POWERMAX, MPU9250_POWERLOW, MPU9250_STANDBY, MPU9250_SLEEP should be selected");
+    return I2C_EINVAL;
+  }
+
+  
+  imu->pwrMode = pMode;
+
+  return setPowerConfig (imu);
+}
+
+msg_t mpu9250_setBehavior (Mpu9250Data *imu, const Mpu9250_BehaviourMode bMode)
+{
+  switch (bMode) {
+  case MPU9250_MODE_I2C:
+  case MPU9250_MODE_MOTION_DETECT: break;
+  default: 
+    DebugTrace ("incorrect value (correct are MPU9250_MODE_I2C, MPU9250_MODE_MOTION_DETECT");
+    return I2C_EINVAL;
+  }
+  
+  imu->behaviorMode = bMode;
+  return setBehaviorConfig (imu);
+}
+
+msg_t mpu9250_setInterrupt (Mpu9250Data *imu, const Mpu9250_ItrMode itrMode)
+{
+  switch (itrMode) {
+  case MPU9250_NO_ITR:
+  case MPU9250_ITR_ON_MOTION:
+  case MPU9250_ITR_ON_DATA_READY: break;
+  default:
+    DebugTrace ("incorrect value (correct are MPU9250_NO_ITR, MPU9250_ITR_ON_MOTION, MPU9250_ITR_ON_DATA_READY");
+    return I2C_EINVAL;
+  }
+
+  imu->itrMode = itrMode;
+  return setInterruptConfig (imu);
+}
+
+static    msg_t setPowerConfig (Mpu9250Data *imu)
+{
+  (void) imu;
+#warning "do real power config";
+  return MSG_OK;
+}
+
+static    msg_t setBehaviorConfig (Mpu9250Data *imu)
+{
+  (void) imu;
+#warning "do real behaviour config";
+  return MSG_OK;
+}
+
+static    msg_t setInterruptConfig (Mpu9250Data *imu)
+{
+  (void) imu;
+#warning "do real interrupt config";
+  return MSG_OK;
+}
+
 
 msg_t mpu9250_cacheVal ( Mpu9250Data *imu)
 {
@@ -425,8 +538,8 @@ static    msg_t setByPassConfig ( Mpu9250Data *imu)
   
   I2C_READ_REGISTER  (imu->i2cd, imu->slaveAddr, MPU9250_USER_CTRL, &userControl);
   if (imu->byPass == IMU_BYPASS) {
-    userControl = (uint8_t) (userControl & ~0x20U); // I2C_MST_EN = 0 : disable Master
-    userControl = (uint8_t) (userControl | 0x02U); // Reset I2C Master Module
+    userControl &= ~0x20U;    // I2C_MST_EN = 0 : disable Master
+    userControl |=  0x02U;    // Reset I2C Master Module
     I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_USER_CTRL, userControl);
     I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_PIN_CFG, 0x2);
   } else {

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////
 //
-//  This file is sinspired from RTIMULib-Arduino
+//  This file is inspired from RTIMULib-Arduino
 //
 //  Copyright (c) 2014-2015, richards-tech
 //
@@ -31,16 +31,19 @@
 #         \__|   \___/   \__,_|   \___/
 
 
-° structure et fonctions pour le 9250
-° structure et fonctions pour le AK8963
-° structure de passage de param : mapping registre entre 9250 et 8963 partagé entre les deux objets
-    mapping : [adr AK <-> adr 9250 <-> adr cache] + len
-    fonction de recherche par adr magneto donne un ptr sur l'objet
-° sur le AK8963 : api de recuperation de valeurs qui fait l'abstraction du mode (esclave ou transparent)
-° le 9250 contient un tableau de structure de mapping et des fonctions pour retourner un pointeur sur
-  un mapping en fonction de son index [0-4]
-° le AK8963 a un ptr sur le 9250 et l'index de mapping
-  fonction de mapping imu9250AssociateSlave (IV9250* iv, index, AK8363* ak) (faudra la même pour le baro ...)
+ ° gestion de la consommation
+	ø sous modules alimentés : champ power avec MPU9250_ACC_ENABLED(DISABLED) | MPU9250_GYRO_ENABLED(D) |
+						    MPU9250_MAG_ENABLED(D) | 
+						    MPU9250_POWERMAX | MPU9250_POWERLOW | MPU9250_STANDBY
+
+	ø mode de fonctionnement : champ mode avec  MPU9250_MODE_I2C  MPU9250_MODE_MOTION_DETECT
+
+	ø generation d'interruption : champ interrupt avec  MPU9250_NO_ITR, MPU9250_ITR_ON_MOTION, MPU9250_ITR_ON_DATA_READY
+
+	ø fonctions  :
+		* mpu9250_setPwr (Mpu9250Data *imu, const Mpu9250_PowerSpec pspec);
+		* mpu9250_setBehavior (Mpu9250Data *imu, const Mpu9250_BehaviourMode bmode);
+		* mpu9250_setInterrupt (Mpu9250Data *imu, const Mpu9250_InterruptMode bmode);
 
 
 
@@ -198,10 +201,21 @@
 
 #define MPU9250_FIFO_CHUNK_SIZE     12U                      // gyro and accels take 12 bytes
 
-typedef enum {IMU_MASTER,  IMU_BYPASS} PassThroughMode;
-typedef enum {IMU_TRANSFER_WRITE=0, IMU_TRANSFER_READ=I2C_SLV_RNW} TransferWay;
-typedef enum {IMU_NO_SWAP=0, IMU_SWAP_0_1=0b01000000, IMU_SWAP_1_2=0b01010000} TransferSwapMode;
+// bitmask, obiousvly cannot have enabled and disabled bit at same time
+typedef enum {MPU9250_ACC_ENABLED=1<<0, MPU9250_GYRO_ENABLED=1<<1, MPU9250_MAG_ENABLED=1<<2,
+	      MPU9250_ACC_DISABLED=1<<3, MPU9250_GYRO_DISABLED=1<<4, MPU9250_MAG_DISABLED=1<<5,
+	      MPU9250_POWERMAX=1<<6, MPU9250_POWERLOW=1<<7, MPU9250_STANDBY=1<<8, MPU9250_SLEEP=1<<9} Mpu9250_PowerMode;
 
+
+typedef enum {MPU9250_MODE_I2C,  MPU9250_MODE_MOTION_DETECT} Mpu9250_BehaviourMode;
+
+typedef enum {MPU9250_NO_ITR, MPU9250_ITR_ON_MOTION, MPU9250_ITR_ON_DATA_READY} Mpu9250_ItrMode;
+
+typedef enum {IMU_MASTER,  IMU_BYPASS} Mpu9250_PassThroughMode;
+
+typedef enum {IMU_TRANSFER_WRITE=0, IMU_TRANSFER_READ=I2C_SLV_RNW} Mpu9250_TransferWay;
+
+typedef enum {IMU_NO_SWAP=0, IMU_SWAP_0_1=0b01000000, IMU_SWAP_1_2=0b01010000} Mpu9250_TransferSwapMode;
 
 
 /*
@@ -218,28 +232,28 @@ typedef struct _Mpu9250Data  Mpu9250Data;
 
 typedef struct  
 {
-  Mpu9250Data *		mpu;
-  const uint8_t *	cacheAdr;
-  uint8_t		slvI2cAdr;
-  uint8_t		slvRegStart;
-  uint8_t		mapLen;
-  uint8_t		slvDo; // I2C_SLV4_Dx : data to be written to slave x if way is WRITE
-  TransferWay		way;
-  TransferSwapMode	swapMode;
-  bool		useMstDlyPrev;
+  Mpu9250Data *			mpu;
+  const uint8_t *		cacheAdr;
+  uint8_t			slvI2cAdr;
+  uint8_t			slvRegStart;
+  uint8_t			mapLen;
+  uint8_t			slvDo; // I2C_SLV4_Dx : data to be written to slave x if way is WRITE
+  Mpu9250_TransferWay		way;
+  Mpu9250_TransferSwapMode	swapMode;
+  bool				useMstDlyPrev;
 } Mpu9250MasterConfig_0_to_3;
 
 typedef struct  
 {
-  Mpu9250Data *		mpu;
-  uint8_t		slvI2cAdr;
-  uint8_t		slvReg;
-  bool		enable;
-  uint8_t		slvDo; // I2C_SLV4_DO : data to be written to slave 4 if enabled
-  uint8_t		slvDi; // I2C_SLV4_DI : data read from i2c slave 4
-  uint8_t		mstDlay; // master sample slave every (1+mstDlay) samples 
-  TransferWay		way;
-  TransferSwapMode	swapMode;
+  Mpu9250Data *			mpu;
+  uint8_t			slvI2cAdr;
+  uint8_t			slvReg;
+  bool				enable;
+  uint8_t			slvDo; // I2C_SLV4_DO : data to be written to slave 4 if enabled
+  uint8_t			slvDi; // I2C_SLV4_DI : data read from i2c slave 4
+  uint8_t			mstDlay; // master sample slave every (1+mstDlay) samples 
+  Mpu9250_TransferWay		way;
+  Mpu9250_TransferSwapMode	swapMode;
 } Mpu9250MasterConfig_4;
 
 
@@ -251,63 +265,69 @@ typedef struct
 
 struct _Mpu9250Data
 {
-  Mpu9250MasterConfig mc;
-  I2CDriver *i2cd;
+  Mpu9250MasterConfig	 mc;
+  I2CDriver		*i2cd;
 
-  uint32_t sampleRate;                             // imu sample rate in Hz
-  uint32_t auxSampleRate;			  // sample rate on  auxiliary i2c bus
-  uint32_t sampleInterval;                       // interval between samples in tick
-  uint32_t cacheTimestamp;			  // time stamp for raw data cache
-  float gyroScale;
-  float accelScale;
-  uint8_t rawCache[MPU9250_REGISTER_LAST-MPU9250_REGISTER_BASE]; // can cache all of readable segment
+  uint32_t	sampleRate;     // imu sample rate in Hz
+  uint32_t	auxSampleRate;	// sample rate on  auxiliary i2c bus
+  uint32_t	sampleInterval; // interval between samples in tick
+  uint32_t	cacheTimestamp;	// time stamp for raw data cache
+  float		gyroScale;
+  float		accelScale;
+  uint8_t	rawCache[MPU9250_REGISTER_LAST-MPU9250_REGISTER_BASE];	// can cache all of readable segment
 
-  PassThroughMode byPass;			  // pathrough mode or bypass mode
-  uint8_t nextSlvFreeSlot;			 // next slot for i2c slv managing
-  uint8_t slaveAddr;                             // I2C address of MPU9250
+  Mpu9250_PassThroughMode	byPass;	// pathrough mode or bypass mode
+  Mpu9250_PowerMode		pwrMode;	// submodules to power, energy saving
+  Mpu9250_BehaviourMode		behaviorMode;	// behaviour mode
+  Mpu9250_ItrMode		itrMode;	// interruption generation mode
+  uint8_t			nextSlvFreeSlot;	// next slot for i2c slv managing
+  uint8_t			slaveAddr;	// I2C address of MPU9250
   
-  uint8_t gyroLpf;                                // gyro low pass filter setting
-  uint8_t accelLpf;                               // accel low pass filter setting
+  uint8_t	gyroLpf;        // gyro low pass filter setting
+  uint8_t	accelLpf;       // accel low pass filter setting
   //  int32_t compassRate;                        // compass sample rate in Hz
 
-  uint8_t gyroFsr;				  // gyro scale (250 to 2000 °/second)
-  uint8_t accelFsr;				  // accel scale (+/- 2g to +/- 16g)
-  uint8_t registerSegmentLen;			  // len of register to acquire 
+  uint8_t	gyroFsr;	// gyro scale (250 to 2000 °/second)
+  uint8_t	accelFsr;	// accel scale (+/- 2g to +/- 16g)
+  uint8_t	registerSegmentLen;	// len of register to acquire 
   // to be put in AK8963 register map
   //  float compassAdjust[3];                             // the compass fuse ROM values converted for use
 };
 
 typedef struct  
 {
-  I2CDriver *i2cd;
-  Mpu9250MasterConfig masterCfg;		  // configuration of master module
-  uint32_t sampleRate;                            // imu sample rate in Hz
-  uint32_t auxSampleRate;			  // sample rate on  auxiliary i2c bus
-  bool  useAd0;				  // I2C address offset pin enabled
-  uint8_t gyroLpf;                                // gyro low pass filter setting
-  uint8_t accelLpf;                               // accel low pass filter setting
-  uint8_t gyroFsr;				  // gyro scale (250 to 2000 °/second)
-  uint8_t accelFsr;				  // accel scale (+/- 2g to +/- 16g)
+  I2CDriver		*i2cd;
+  Mpu9250MasterConfig    masterCfg;	// configuration of master module
+  Mpu9250_PowerMode      pwrMode;	// submodules to power, energy saving
+  Mpu9250_BehaviourMode	 behaviorMode;	// behaviour mode
+  Mpu9250_ItrMode	 itrMode;	// interruption generation mode
+  uint32_t		 sampleRate;	// imu sample rate in Hz
+  uint32_t		 auxSampleRate;	// sample rate on  auxiliary i2c bus
+  bool			 useAd0;	// I2C address offset pin enabled
+  uint8_t		 gyroLpf;	// gyro low pass filter setting
+  uint8_t		 accelLpf;	// accel low pass filter setting
+  uint8_t		 gyroFsr;	// gyro scale (250 to 2000 °/second)
+  uint8_t		 accelFsr;	// accel scale (+/- 2g to +/- 16g)
 } Mpu9250Config;
 
 
 typedef struct  
 {
-  I2CDriver *i2cd;
-  Mpu9250MasterConfig_0_to_3 *mstConfig;
-  uint32_t cacheTimestamp; 
-  uint32_t sampleInterval;                       // interval between samples in tick
-  ImuVec3f compassAdjust;                         // the compass fuse ROM values converted for use
-  uint8_t rawCache[AK8963_REGISTER_LAST-AK8963_REGISTER_BASE+1];
-  uint8_t cntl1;                                  // down or single or continuous mode
+  I2CDriver			*i2cd;
+  Mpu9250MasterConfig_0_to_3	*mstConfig;
+  uint32_t			 cacheTimestamp; 
+  uint32_t			 sampleInterval;	// interval between samples in tick
+  ImuVec3f			 compassAdjust;	// the compass fuse ROM values converted for use
+  uint8_t			 rawCache[AK8963_REGISTER_LAST-AK8963_REGISTER_BASE+1];
+  uint8_t			 cntl1;	// down or single or continuous mode
 } Ak8963Data;
 
 typedef struct  
 {
-  ImuVec3f mag;
-  bool  dataReady;
-  bool  overflow;
-  bool  overrun;
+  ImuVec3f	mag;
+  bool		dataReady;
+  bool		overflow;
+  bool		overrun;
 } Ak8963Value;
 
 
@@ -320,7 +340,11 @@ msg_t mpu9250_setSampleRate (Mpu9250Data *imu, const uint32_t rate);
 msg_t mpu9250_setAuxSampleRate (Mpu9250Data *imu, const uint32_t rate);
 msg_t mpu9250_setGyroFsr (Mpu9250Data *imu, const uint8_t fsr);
 msg_t mpu9250_setAccelFsr (Mpu9250Data *imu, const uint8_t fsr);
-msg_t mpu9250_setBypass (Mpu9250Data *imu, const PassThroughMode mode);  
+msg_t mpu9250_setBypass (Mpu9250Data *imu, const Mpu9250_PassThroughMode mode);
+msg_t mpu9250_setPwr (Mpu9250Data *imu, const Mpu9250_PowerMode pMode);
+msg_t mpu9250_setBehavior (Mpu9250Data *imu, const Mpu9250_BehaviourMode bMode);
+msg_t mpu9250_setInterrupt (Mpu9250Data *imu, const Mpu9250_ItrMode itrMode);
+
 msg_t mpu9250_cacheVal  (Mpu9250Data *imu);
 
 // temp in celcius degree, gyro in rad/s, accel in m/s², 
