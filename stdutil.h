@@ -198,6 +198,9 @@ static inline rtcnt_t halCounterDiffNow (const rtcnt_t begin)
 
 — Built-in Function: int __builtin_parity (unsigned int x)
 
+    Returns the parity of x, i.e. the number of 1-bits in x modulo 2. 
+
+
  */
 
 
