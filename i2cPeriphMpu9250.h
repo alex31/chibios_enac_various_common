@@ -180,7 +180,8 @@
 #define AK8963_HXL                  0x03U                    // values (3 x 2 bytes)
 #define AK8963_HZH                  0x08U                    // last value
 #define AK8963_ST2                  0x09U                    // control reg
-#define AK8963_CNTL                 0x0au                    // control reg
+#define AK8963_CNTL1                0x0aU                    // control reg
+#define AK8963_CNTL2                0x0bU                    // control reg
 #define AK8963_ASAX                 0x10U                    // start of the fuse ROM data
 #define AK8963_REGISTER_BASE        AK8963_ST1
 #define AK8963_REGISTER_LAST	    AK8963_ST2
@@ -197,14 +198,24 @@
 #define AK8963_ST1_OVERRUN	    0b10U	    
 #define AK8963_ST2_OVERFLOW	    0b1000U
 
+// power management option
+#define MPU9250_PWRM2_DISABLE_ACC  0b00111000
+#define MPU9250_PWRM2_DISABLE_GYRO 0b00000111
+#define MPU9250_PWRM1_HRESET	   (1<<7)
+#define MPU9250_PWRM1_SLEEP	   (1<<6)
+#define MPU9250_PWRM1_CYCLE	   (1<<5)
+#define MPU9250_PWRM1_GYROSTANDBY  (1<<4)
+#define MPU9250_PWRM1_PDPTAT	   (1<<3)
+
+
 //  FIFO transfer size
 
 #define MPU9250_FIFO_CHUNK_SIZE     12U                      // gyro and accels take 12 bytes
 
 // bitmask, obiousvly cannot have enabled and disabled bit at same time
-typedef enum {MPU9250_ACC_ENABLED=1<<0, MPU9250_GYRO_ENABLED=1<<1, MPU9250_MAG_ENABLED=1<<2,
-	      MPU9250_ACC_DISABLED=1<<3, MPU9250_GYRO_DISABLED=1<<4, MPU9250_MAG_DISABLED=1<<5,
-	      MPU9250_POWERMAX=1<<6, MPU9250_POWERLOW=1<<7, MPU9250_STANDBY=1<<8, MPU9250_SLEEP=1<<9} Mpu9250_PowerMode;
+typedef enum {MPU9250_ACC_ENABLED=1<<0, MPU9250_GYRO_ENABLED=1<<1,
+	      MPU9250_ACC_DISABLED=1<<2, MPU9250_GYRO_DISABLED=1<<3,
+	      MPU9250_POWERMAX=1<<4, MPU9250_POWERLOW=1<<5, MPU9250_SLEEP=1<<6} Mpu9250_PowerMode;
 
 
 typedef enum {MPU9250_MODE_I2C,  MPU9250_MODE_MOTION_DETECT} Mpu9250_BehaviourMode;

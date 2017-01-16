@@ -248,24 +248,15 @@ msg_t mpu9250_setPwr (Mpu9250Data *imu, const Mpu9250_PowerMode pMode)
     return I2C_EINVAL;
   }
 
-  if ((pMode & MPU9250_MAG_ENABLED) && (pMode & MPU9250_MAG_DISABLED)) {
-    DebugTrace ("cannot have  MPU9250_MAG enabled AND disabled");
-    return I2C_EINVAL;
-  }
-  if (!((pMode & MPU9250_MAG_ENABLED) || (pMode & MPU9250_MAG_DISABLED))) {
-    DebugTrace ("cannot have  MPU9250_MAG neither enabled nor disabled");
-    return I2C_EINVAL;
-  }
-
 
   const Mpu9250_PowerMode pwrBitmask = pMode & (MPU9250_POWERMAX | MPU9250_POWERLOW |
-						MPU9250_STANDBY | MPU9250_SLEEP);
+						MPU9250_SLEEP);
 
   if (__builtin_popcount(pwrBitmask) > 1) {
-    DebugTrace ("only one of MPU9250_POWERMAX, MPU9250_POWERLOW, MPU9250_STANDBY, MPU9250_SLEEP can be selected");
+    DebugTrace ("only one of MPU9250_POWERMAX, MPU9250_POWERLOW, MPU9250_SLEEP can be selected");
     return I2C_EINVAL;
   } else if (__builtin_popcount(pwrBitmask) == 0) {
-    DebugTrace ("one of MPU9250_POWERMAX, MPU9250_POWERLOW, MPU9250_STANDBY, MPU9250_SLEEP should be selected");
+    DebugTrace ("one of MPU9250_POWERMAX, MPU9250_POWERLOW, MPU9250_SLEEP should be selected");
     return I2C_EINVAL;
   }
 
@@ -289,6 +280,10 @@ msg_t mpu9250_setBehavior (Mpu9250Data *imu, const Mpu9250_BehaviourMode bMode)
   return setBehaviorConfig (imu);
 }
 
+/*
+  msg_t status =  i2cMasterWriteBit (imu->i2cd, imu->slaveAddr,  const uint8_t regAdr,
+				     const uint8_t mask, const bool enable);
+*/
 msg_t mpu9250_setInterrupt (Mpu9250Data *imu, const Mpu9250_ItrMode itrMode)
 {
   switch (itrMode) {
@@ -306,9 +301,27 @@ msg_t mpu9250_setInterrupt (Mpu9250Data *imu, const Mpu9250_ItrMode itrMode)
 
 static    msg_t setPowerConfig (Mpu9250Data *imu)
 {
-  (void) imu;
-#warning "do real power config";
-  return MSG_OK;
+  uint8_t pwrmgmt2 = 0U;
+  msg_t status;
+  if (imu->pwrMode & MPU9250_ACC_DISABLED)
+    pwrmgmt2 = MPU9250_PWRM2_DISABLE_ACC;
+  if (imu->pwrMode & MPU9250_GYRO_DISABLED)
+    pwrmgmt2 |= MPU9250_PWRM2_DISABLE_GYRO;
+
+  i2cAcquireBus(imu->i2cd);
+  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_PWR_MGMT_2, pwrmgmt2);
+  if (imu->pwrMode & MPU9250_GYRO_DISABLED) {
+    i2cMasterWriteBit (imu->i2cd, imu->slaveAddr,  MPU9250_PWR_MGMT_1,  MPU9250_PWRM1_GYROSTANDBY, true);
+  }
+
+  if (imu->pwrMode & MPU9250_POWERMAX) {
+    i2cMasterWriteBit (imu->i2cd, imu->slaveAddr,  MPU9250_PWR_MGMT_1,  MPU9250_PWRM1_SLEEP, false);
+  } else if (imu->pwrMode &  MPU9250_POWERLOW) {
+    
+  } else if (imu->pwrMode & MPU9250_SLEEP) {
+  } 
+  i2cReleaseBus(imu->i2cd);
+  return status;
 }
 
 static    msg_t setBehaviorConfig (Mpu9250Data *imu)
@@ -655,8 +668,8 @@ msg_t ak8963_init (Ak8963Data *compass,  I2CDriver *i2cd)
   compass->mstConfig = NULL;
 
   i2cAcquireBus(compass->i2cd);
-  I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_CNTL, AK8963_POWERDOWN);
-  I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_CNTL, AK8963_FUSE_ROM);
+  I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_CNTL1, AK8963_POWERDOWN);
+  I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_CNTL1, AK8963_FUSE_ROM);
   I2C_READ_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_ASAX, asa);
   i2cReleaseBus(compass->i2cd);
 
@@ -764,7 +777,7 @@ static msg_t setCompassCntl (Ak8963Data *compass)
 {
   msg_t status = RDY_OK;
   i2cAcquireBus(compass->i2cd);
-  I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_CNTL, compass->cntl1);
+  I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_CNTL1, compass->cntl1);
   i2cReleaseBus(compass->i2cd);
   return status;
 }
