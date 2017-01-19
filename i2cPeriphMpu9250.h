@@ -73,6 +73,8 @@
 #define MPU9250_GYRO_CONFIG         0x1bU // 27
 #define MPU9250_ACCEL_CONFIG        0x1cU // 28
 #define MPU9250_ACCEL_LPF           0x1dU // 29
+#define MPU9250_ACCEL_ODR	    0x1eU // 30
+#define MPU9250_ACCEL_WOM_THRESHOLD 0x1fU // 31
 #define MPU9250_FIFO_EN             0x23U 
 #define MPU9250_I2C_MST_CTRL        0x24U
 #define MPU9250_I2C_SLV0_ADDR       0x25U
@@ -102,6 +104,7 @@
 #define MPU9250_I2C_SLV2_DO         0x65U
 #define MPU9250_I2C_SLV3_DO         0x66U
 #define MPU9250_I2C_MST_DELAY_CTRL  0x67U // 103
+#define MPU9250_ACCEL_ITR_CTRL      0x69U // 105
 #define MPU9250_USER_CTRL           0x6aU
 #define MPU9250_PWR_MGMT_1          0x6bU
 #define MPU9250_PWR_MGMT_2          0x6cU
@@ -182,6 +185,7 @@
 #define AK8963_ST2                  0x09U                    // control reg
 #define AK8963_CNTL1                0x0aU                    // control reg
 #define AK8963_CNTL2                0x0bU                    // control reg
+#define AK8963_I2CDIS               0x0fU                    // control reg
 #define AK8963_ASAX                 0x10U                    // start of the fuse ROM data
 #define AK8963_REGISTER_BASE        AK8963_ST1
 #define AK8963_REGISTER_LAST	    AK8963_ST2
@@ -206,21 +210,34 @@
 #define MPU9250_PWRM1_CYCLE	   (1<<5)
 #define MPU9250_PWRM1_GYROSTANDBY  (1<<4)
 #define MPU9250_PWRM1_PDPTAT	   (1<<3)
+#define AK8963_I2CDIS_DISABLE	   0b00011011
+
+// motion detection option
+#define MPU9250_INTEL_ENABLE	   (1<<7)
+#define MPU9250_INTEL_MODE_COMPARE (1<<6)
+
+#define MPU9250_INT_PIN_CFG_ACTIVE_LOW		(1<<7)
+#define MPU9250_INT_PIN_CFG_OPENDRAIN 		(1<<6)
+#define MPU9250_INT_PIN_CFG_LATCH_UNTIL_CLR  	(1<<5)
+#define MPU9250_INT_PIN_CFG_PULSE_50_US  	(0<<5)
+#define MPU9250_INT_PIN_CFG_CLR_ON_READ		(1<<4)
+#define MPU9250_INT_PIN_CFG_FSYNC  		(1<<3)
+#define MPU9250_INT_PIN_CFG_FSYNC_INT	 	(1<<2)
+#define MPU9250_INT_PIN_CFG_BYPASS_EN  		(1<<1)
+
+#define MPU9250_INT_ENABLE_WAKE_ON_MOTION	(1<<6)
+#define MPU9250_INT_ENABLE_FIFO_OVERFLOW	(1<<4)
+#define MPU9250_INT_ENABLE_FSYNC		(1<<3)
+#define MPU9250_INT_ENABLE_RAW_READY		(1<<0)
+
+
+
 
 
 //  FIFO transfer size
-
 #define MPU9250_FIFO_CHUNK_SIZE     12U                      // gyro and accels take 12 bytes
 
 // bitmask, obiousvly cannot have enabled and disabled bit at same time
-typedef enum {MPU9250_ACC_ENABLED=1<<0, MPU9250_GYRO_ENABLED=1<<1,
-	      MPU9250_ACC_DISABLED=1<<2, MPU9250_GYRO_DISABLED=1<<3,
-	      MPU9250_POWERMAX=1<<4, MPU9250_POWERLOW=1<<5, MPU9250_SLEEP=1<<6} Mpu9250_PowerMode;
-
-
-typedef enum {MPU9250_MODE_I2C,  MPU9250_MODE_MOTION_DETECT} Mpu9250_BehaviourMode;
-
-typedef enum {MPU9250_NO_ITR, MPU9250_ITR_ON_MOTION, MPU9250_ITR_ON_DATA_READY} Mpu9250_ItrMode;
 
 typedef enum {IMU_MASTER,  IMU_BYPASS} Mpu9250_PassThroughMode;
 
@@ -228,6 +245,23 @@ typedef enum {IMU_TRANSFER_WRITE=0, IMU_TRANSFER_READ=I2C_SLV_RNW} Mpu9250_Trans
 
 typedef enum {IMU_NO_SWAP=0, IMU_SWAP_0_1=0b01000000, IMU_SWAP_1_2=0b01010000} Mpu9250_TransferSwapMode;
 
+typedef enum {MPU9250_LOW_POWER_ACC_ODR_0_DOT_24_HZ=0,	
+	      MPU9250_LOW_POWER_ACC_ODR_0_DOT_49_HZ,	
+	      MPU9250_LOW_POWER_ACC_ODR_1_HZ,	
+	      MPU9250_LOW_POWER_ACC_ODR_2_HZ,	
+	      MPU9250_LOW_POWER_ACC_ODR_4_HZ,	
+	      MPU9250_LOW_POWER_ACC_ODR_8_HZ,	
+	      MPU9250_LOW_POWER_ACC_ODR_15_HZ,	
+	      MPU9250_LOW_POWER_ACC_ODR_31_HZ,	
+	      MPU9250_LOW_POWER_ACC_ODR_62_HZ,	
+	      MPU9250_LOW_POWER_ACC_ODR_125_HZ,
+	      MPU9250_LOW_POWER_ACC_ODR_250_HZ,
+	      MPU9250_LOW_POWER_ACC_ODR_500_HZ,
+	      MPU9250_NORMAL_POWER_ODR}  Mpu9250_LowPowerAccelerometerFrequencyCycle;
+
+
+
+  
 
 /*
 #                 __  __   _____    _    _              ___    ___    _____    ___          
@@ -288,9 +322,7 @@ struct _Mpu9250Data
   uint8_t	rawCache[MPU9250_REGISTER_LAST-MPU9250_REGISTER_BASE];	// can cache all of readable segment
 
   Mpu9250_PassThroughMode	byPass;	// pathrough mode or bypass mode
-  Mpu9250_PowerMode		pwrMode;	// submodules to power, energy saving
-  Mpu9250_BehaviourMode		behaviorMode;	// behaviour mode
-  Mpu9250_ItrMode		itrMode;	// interruption generation mode
+  bool		accOnly;
   uint8_t			nextSlvFreeSlot;	// next slot for i2c slv managing
   uint8_t			slaveAddr;	// I2C address of MPU9250
   
@@ -309,9 +341,6 @@ typedef struct
 {
   I2CDriver		*i2cd;
   Mpu9250MasterConfig    masterCfg;	// configuration of master module
-  Mpu9250_PowerMode      pwrMode;	// submodules to power, energy saving
-  Mpu9250_BehaviourMode	 behaviorMode;	// behaviour mode
-  Mpu9250_ItrMode	 itrMode;	// interruption generation mode
   uint32_t		 sampleRate;	// imu sample rate in Hz
   uint32_t		 auxSampleRate;	// sample rate on  auxiliary i2c bus
   bool			 useAd0;	// I2C address offset pin enabled
@@ -352,15 +381,13 @@ msg_t mpu9250_setAuxSampleRate (Mpu9250Data *imu, const uint32_t rate);
 msg_t mpu9250_setGyroFsr (Mpu9250Data *imu, const uint8_t fsr);
 msg_t mpu9250_setAccelFsr (Mpu9250Data *imu, const uint8_t fsr);
 msg_t mpu9250_setBypass (Mpu9250Data *imu, const Mpu9250_PassThroughMode mode);
-msg_t mpu9250_setPwr (Mpu9250Data *imu, const Mpu9250_PowerMode pMode);
-msg_t mpu9250_setBehavior (Mpu9250Data *imu, const Mpu9250_BehaviourMode bMode);
-msg_t mpu9250_setInterrupt (Mpu9250Data *imu, const Mpu9250_ItrMode itrMode);
 
 msg_t mpu9250_cacheVal  (Mpu9250Data *imu);
 
 // temp in celcius degree, gyro in rad/s, accel in m/s², 
 msg_t mpu9250_getVal  (Mpu9250Data *imu, float *temp, 
 		      ImuVec3f *gyro, ImuVec3f *acc);
+msg_t mpu9250_getItrStatus  (Mpu9250Data *imu, uint8_t *itrStatus);
 msg_t mpu9250_getDevid (Mpu9250Data *imu, uint8_t *devid);
 
 
@@ -382,6 +409,51 @@ msg_t ak8963_cacheVal  (Ak8963Data *compass);
 // mag in tesla
 msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *mag);
 msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass);
+
+
+/*
+#                 _ __                      __  __            __ _               _            
+#                | '_ \                    |  \/  |          / _` |             | |           
+#                | |_) | __      __  _ __  | \  / |  _ __   | (_| |  _ __ ___   | |_          
+#                | .__/  \ \ /\ / / | '__| | |\/| | | '_ \   \__, | | '_ ` _ \  | __|         
+#                | |      \ V  V /  | |    | |  | | | | | |   __/ | | | | | | | \ |_          
+#                |_|       \_/\_/   |_|    |_|  |_| |_| |_|  |___/  |_| |_| |_|  \__|         
+*/
+
+/*
+  In order to put the mpu in low consumption motion detection, the apu function should be 
+  called in this order :
+
+  mpu9250_setModeAccOnly (...);
+  mpu9250_activateMotionDetect (...);
+  mpu9250_setModeAutoWake (...);
+
+  if order to restore normal (without compass) operation :
+  mpu9250_init (...);
+ */
+
+
+
+// disable gyro and mag for usual (I2C) measure. Disabling compass is not reversible
+// until the mpu9250 is power cycled
+msg_t mpu9250_setModeAccOnly (Mpu9250Data *imu, Ak8963Data *compass);
+
+// Disable gyro and mag AND set imu in  low power cycle mode wich internally get acceleration
+// at lpdr frequency (cf enum Mpu9250_LowPowerAccelerometerFrequencyCycle)
+// useful if associated with MotionDetect
+msg_t mpu9250_setModeAutoWake (Mpu9250Data *imu, 
+			       Mpu9250_LowPowerAccelerometerFrequencyCycle lpodr);
+
+// mode low power with motion detection, when motion is detected, interruption is made
+// on itr pin of mpu9250 in order to awake MCU
+// when the MCU is awaked, it has to reinit MCU to get actual measure.
+// Motion detect can be used is normal or autowake mode
+msg_t mpu9250_activateMotionDetect (Mpu9250Data *imu, const uint32_t threadsholdInMilliG);
+
+
+// deep sleep (completely and definitly shutoff mpu, to be used again,
+// to be used again, MPU has to be power cycled
+msg_t mpu9250_setModeDeepSleep (Mpu9250Data *imu, Ak8963Data *compass);
 
 
 
