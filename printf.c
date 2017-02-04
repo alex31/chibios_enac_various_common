@@ -92,7 +92,7 @@ static msg_t serialPrint (void *arg)
 #endif
 }
 
-
+#if !CHPRINTF_USE_STDLIB
 #if CHPRINTF_USE_FLOAT
 static int intPow(int a, int b)
 {
@@ -144,6 +144,7 @@ static char *ltoa(char *p, long num, unsigned radix) {
   return long_to_string_with_divisor(p, num, radix, 0);
 }
 
+
 #if CHPRINTF_USE_FLOAT
 static char *ftoa(char *p, double num, uint32_t precision) {
   long l;
@@ -155,6 +156,7 @@ static char *ftoa(char *p, double num, uint32_t precision) {
   l = (num - l) * precision;
   return long_to_string_with_divisor(p, l, 10, precision / 10);
 }
+#endif
 #endif
 
 /**
@@ -180,7 +182,7 @@ static char *ftoa(char *p, double num, uint32_t precision) {
  */
 
 
-
+#if !CHPRINTF_USE_STDLIB
 static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, const char *fmt, va_list ap) {
   char *p, *s, c, filler;
   int i, precision, width;
@@ -370,7 +372,7 @@ unsigned_common:
   }
   _putChar (0) ;
 }
-
+#endif
 
 void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
 #if CHPRINTF_USE_STDLIB
@@ -383,15 +385,23 @@ void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
 }
 
 void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
+#if CHPRINTF_USE_STDLIB
+  vsnprintf (buffer, size, fmt, ap);
+#else
   _chvsnprintf(buffer, NULL, size, fmt, ap);
+#endif
 }
 
 void chsnprintf(char *buffer, size_t size, const char *fmt, ...) 
 {
   va_list ap;
-
+  
   va_start(ap, fmt);
+#if CHPRINTF_USE_STDLIB
+  vsnprintf (buffer, size, fmt, ap);
+#else
   _chvsnprintf(buffer, NULL, size, fmt, ap);
+#endif
   va_end(ap);
 }
 
@@ -400,7 +410,14 @@ void directchprintf(BaseSequentialStream *chp, const char *fmt, ...)
   va_list ap;
 
   va_start(ap, fmt);
+#if CHPRINTF_USE_STDLIB
+  uint8_t buffer[CHPRINTF_BUFFER_SIZE];
+  const uint32_t len = vsnprintf ((char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
+  streamWrite (chp, buffer, len);
+#else
   _chvsnprintf(NULL, chp, 0, fmt, ap);
+#endif
+
   va_end(ap);
 }
 
