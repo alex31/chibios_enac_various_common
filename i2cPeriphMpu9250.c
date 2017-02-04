@@ -691,11 +691,12 @@ msg_t mpu9250_setModeAccOnly (Mpu9250Data *imu, Ak8963Data *compass)
   // if compass not already set in sleep mode, do it
 
   if (imu->accOnly == false) {
+    imu->accOnly = true;
     i2cAcquireBus(compass->i2cd);
     I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_CNTL1, AK8963_POWERDOWN);
-    I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_I2CDIS, AK8963_I2CDIS_DISABLE);
+    // disabling magneto i2c doesn't give any gain in consumption, so we didn't do it
+    //    I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_I2CDIS, AK8963_I2CDIS_DISABLE);
     i2cReleaseBus(compass->i2cd);
-    imu->accOnly = true;
   }
   
   i2cAcquireBus(imu->i2cd); 
@@ -775,7 +776,8 @@ msg_t mpu9250_setModeDeepSleep (Mpu9250Data *imu, Ak8963Data *compass)
   
   i2cAcquireBus(compass->i2cd);
   I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_CNTL1, AK8963_POWERDOWN);
-  I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_I2CDIS, AK8963_I2CDIS_DISABLE);
+  // disabling magneto i2c doesn't give any gain in consumption, so we didn't do it
+  //I2C_WRITE_REGISTERS(compass->i2cd, AK8963_ADDRESS, AK8963_I2CDIS, AK8963_I2CDIS_DISABLE);
   i2cReleaseBus(compass->i2cd);
   
   return status;

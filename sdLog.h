@@ -135,7 +135,7 @@ SdioError sdLogFinish (void);
  * @param[in]	directoryName : name of directory just under ROOT, created if nonexistant
  * @param[in]	fileName : the name will be appended with 3 digits number
  * @param[in]	appendTagAtClose : at close, a marker will be added to prove that the file is complete
- *		and not corrupt. useful for text logging purpose, but probably not wanted fort binary
+ *		and not corrupt. useful for text logging purpose, but probably not wanted for binary
  *		files.
  * @return	status (always check status)
  */
