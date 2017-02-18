@@ -606,7 +606,7 @@ SdioError getFileName(const char* prefix, const char* directoryName,
   FILINFO fno; /* File information object */
   int32_t fileIndex ;
   int32_t maxCurrentIndex = 0;
-  char *fn;   /* This function is assuming non-Unicode cfg. */
+
 
   const size_t directoryNameLen = MIN(strlen (directoryName), 128);
   const size_t slashDirNameLen = directoryNameLen+2;
@@ -630,13 +630,12 @@ SdioError getFileName(const char* prefix, const char* directoryName,
     rc = f_readdir(&dir, &fno); /* Read a directory item */
     if (rc != FR_OK || fno.fname[0] ==  0) break; /* Error or end of dir */
 
-    fn = fno.fname;
 
-    if (fn[0] == '.') continue;
+    if (fno.fname[0] == '.') continue;
 
     if (!(fno.fattrib & AM_DIR)) {
       //      DebugTrace ("fno.fsize=%d  fn=%s\n", fno.fsize, fn);
-      fileIndex = uiGetIndexOfLogFile (prefix, fn);
+      fileIndex = uiGetIndexOfLogFile (prefix, fno.fname);
       maxCurrentIndex = MAX (maxCurrentIndex, fileIndex);
     }
   }
@@ -665,7 +664,6 @@ SdioError removeEmptyLogs(const char* directoryName, const char* prefix, const s
   DIR dir; /* Directory object */
   FRESULT rc; /* Result code */
   FILINFO fno; /* File information object */
-  char *fn;   /* This function is assuming non-Unicode cfg. */
 
 
   rc = f_opendir(&dir, directoryName);
@@ -676,17 +674,16 @@ SdioError removeEmptyLogs(const char* directoryName, const char* prefix, const s
   for (;;) {
     rc = f_readdir(&dir, &fno); /* Read a directory item */
     if (rc != FR_OK || fno.fname[0] ==  0) break; /* Error or end of dir */
-    fn = fno.fname;
 
-    if (fn[0] == '.') continue;
+    if (fno.fname[0] == '.') continue;
 
     if (!(fno.fattrib & AM_DIR)) {
       //      DebugTrace ("fno.fsize=%d  fn=%s\n", fno.fsize, fn);
-      if ((strncmp (fn, prefix, strlen(prefix)) == 0) && (fno.fsize <= sizeConsideredEmpty)) {
+      if ((strncmp (fno.fname, prefix, strlen(prefix)) == 0) && (fno.fsize <= sizeConsideredEmpty)) {
 	char absPathName[128];
 	strlcpy (absPathName, directoryName, sizeof(absPathName));
 	strlcat (absPathName, "/", sizeof(absPathName));
-	strlcat (absPathName, fn, sizeof(absPathName));
+	strlcat (absPathName, fno.fname, sizeof(absPathName));
 	rc = f_unlink (absPathName);
 	if (rc) 
 	  break;
