@@ -18,19 +18,19 @@
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
 #define MAX(x , y)  (((x) > (y)) ? (x) : (y))
 
-
-#if _FATFS < 8000
-#if _FS_SHARE == 0
-#define SDLOG_NUM_BUFFER 1
-#else
-#define SDLOG_NUM_BUFFER _FS_SHARE
+#ifndef SDLOG_NUM_FILES
+#error  SDLOG_NUM_FILES should be defined in mcuconf.h
 #endif
 
+#if _FATFS < 8000
+#if _FS_SHARE != 0 && _FS_SHARE < SDLOG_NUM_FILES
+#error  if _FS_SHARE is not zero, it should be equal of superior to SDLOG_NUM_FILES
+#endif
+
+
 #else // _FATFS > 8000
-#if _FS_LOCK == 0
-#define SDLOG_NUM_BUFFER 2
-#else
-#define SDLOG_NUM_BUFFER (_FS_LOCK/2)
+#if _FS_LOCK != 0 && _FS_LOCK < SDLOG_NUM_FILES
+#error  if _FS_LOCK is not zero, it should be equal of superior to SDLOG_NUM_FILES
 #endif
 #endif
 
@@ -38,7 +38,7 @@
 #error SDLOG_ALL_BUFFERS_SIZE should be defined in mcuconf.h
 #endif
 
-#define SDLOG_WRITE_BUFFER_SIZE (SDLOG_ALL_BUFFERS_SIZE/SDLOG_NUM_BUFFER)
+#define SDLOG_WRITE_BUFFER_SIZE (SDLOG_ALL_BUFFERS_SIZE/SDLOG_NUM_FILES)
 
 #ifndef SDLOG_MAX_MESSAGE_LEN
 #error  SDLOG_MAX_MESSAGE_LENshould be defined in mcuconf.h
@@ -98,8 +98,8 @@ struct FilePoolUnit {
   uint8_t writeByteSeek;
 };
 
-static  struct FilePoolUnit IN_DMA_SECTION (fileDes[SDLOG_NUM_BUFFER]) =
-{[0 ... SDLOG_NUM_BUFFER-1] = {.fil = {{0}}, .inUse = false, .tagAtClose=false,
+static  struct FilePoolUnit IN_DMA_SECTION (fileDes[SDLOG_NUM_FILES]) =
+{[0 ... SDLOG_NUM_FILES-1] = {.fil = {{0}}, .inUse = false, .tagAtClose=false,
 				 .writeByteCache=NULL, .writeByteSeek=0}};
 
 typedef enum {
@@ -188,7 +188,7 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
   }
 
 #ifdef SDLOG_NEED_QUEUE
-  for (uint8_t i=0; i<SDLOG_NUM_BUFFER; i++) {
+  for (uint8_t i=0; i<SDLOG_NUM_FILES; i++) {
     fileDes[i].inUse = fileDes[i].tagAtClose = false;
     fileDes[i].writeByteCache = NULL;
     fileDes[i].writeByteSeek = 0;
@@ -268,7 +268,7 @@ SdioError sdLogCloseAllLogs (bool flush)
     // stop worker thread then close file
     cleanQueue (10000);
     sdLogStopThread ();
-    for (FileDes fd=0; fd<SDLOG_NUM_BUFFER; fd++) {
+    for (FileDes fd=0; fd<SDLOG_NUM_FILES; fd++) {
       if (fileDes[fd].inUse) {
 	FIL *fo = &fileDes[fd].fil;
 	if (fileDes[fd].tagAtClose) {
@@ -293,7 +293,7 @@ SdioError sdLogCloseAllLogs (bool flush)
     }
     
     // queue flush + close order, then stop worker thread
-    for (FileDes fd=0; fd<SDLOG_NUM_BUFFER; fd++) {
+    for (FileDes fd=0; fd<SDLOG_NUM_FILES; fd++) {
       if (fileDes[fd].inUse) {
 	flushWriteByteBuffer (fd);
 	sdLogCloseLog (fd);
@@ -318,7 +318,7 @@ SdioError sdLogCloseAllLogs (bool flush)
 }
 
 
-#define FD_CKECK(fd)  if ((fd < 0) || (fd >= SDLOG_NUM_BUFFER) \
+#define FD_CKECK(fd)  if ((fd < 0) || (fd >= SDLOG_NUM_FILES) \
 			           || (fileDes[fd].inUse == false)) \
 		          return SDLOG_FATFS_ERROR
 
@@ -485,7 +485,7 @@ SdioError sdLogWriteSDB (const FileDes fd, SdLogBuffer *sdb)
 {
   SdioError status = SDLOG_OK;
 
-  if ((fd < 0) || (fd >= SDLOG_NUM_BUFFER) || (fileDes[fd].inUse == false)) {
+  if ((fd < 0) || (fd >= SDLOG_NUM_FILES) || (fileDes[fd].inUse == false)) {
     status = SDLOG_FATFS_ERROR;
     goto fail;
   }
@@ -580,7 +580,7 @@ SdioError sdLogStopThread (void)
   LogMessage lm;
 
   /* // ask for closing (after flushing) all opened files */
-  /* for (uint8_t i=0; i<SDLOG_NUM_BUFFER; i++) { */
+  /* for (uint8_t i=0; i<SDLOG_NUM_FILES; i++) { */
   /*   if (fileDes[i].inUse) { */
   /*     flushWriteByteBuffer (i); */
   /*     lm.op.fcntl = FCNTL_CLOSE; */
@@ -772,7 +772,7 @@ static msg_t thdSdLog(void *arg)
   } ;
 
   UINT bw;
-  static IN_STD_SECTION_CLEAR (struct PerfBuffer perfBuffers[SDLOG_NUM_BUFFER]);
+  static IN_STD_SECTION_CLEAR (struct PerfBuffer perfBuffers[SDLOG_NUM_FILES]);
 
   // FIXME : depending on section, the static initialisation is not done ...
   //  memset (perfBuffers, 0, sizeof(perfBuffers));
@@ -869,7 +869,7 @@ static SdioError  getNextFIL (FileDes *fd)
   // if there is a free slot in fileDes, use it
   // else, if all slots are buzy, maximum open files limit
   // is reach.
-  for (FileDes i=0; i<SDLOG_NUM_BUFFER; i++) {
+  for (FileDes i=0; i<SDLOG_NUM_FILES; i++) {
     if (fileDes[i].inUse ==  false) {
       *fd = i;
       fileDes[i].inUse = true;
