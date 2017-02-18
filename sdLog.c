@@ -268,6 +268,7 @@ SdioError sdLogCloseAllLogs (bool flush)
     // stop worker thread then close file
     cleanQueue (10000);
     sdLogStopThread ();
+
     for (FileDes fd=0; fd<SDLOG_NUM_FILES; fd++) {
       if (fileDes[fd].inUse) {
 	FIL *fo = &fileDes[fd].fil;
@@ -611,7 +612,6 @@ SdioError sdLogStopThread (void)
     retVal= SDLOG_QUEUEFULL;
   }
 
-  chThdTerminate (sdLogThd);
   chThdWait (sdLogThd);
   sdLogThd = NULL;
   return retVal;
@@ -841,6 +841,7 @@ static msg_t thdSdLog(void *arg)
 	break;
 	
       case FCNTL_EXIT:
+	DebugTrace ("DBG> FCNTL_EXIT");
 	tlsf_free_r(&HEAP_DEFAULT, lm); // to avoid a memory leak
 	lm = NULL;
 	chThdExit(SDLOG_OK);
