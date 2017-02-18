@@ -146,6 +146,7 @@ SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const ch
 
 /**
  * @brief	flush ram buffer associated with file to sdCard
+ * @details	*WARNING* this destroy throughtput, leading to lost messages if writing rate is high
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  * @return	status (always check status)
  */
