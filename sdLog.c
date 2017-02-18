@@ -130,6 +130,7 @@ static SdioError sdLoglaunchThread (void);
 static SdioError sdLogStopThread (void);
 static thread_t *sdLogThd = NULL;
 static SdioError  getNextFIL (FileDes *fd);
+static void cleanQueue (const size_t nbMsgToRFemov);
 
 #if (CH_KERNEL_MAJOR > 2)
 static void thdSdLog(void *arg) ;
@@ -263,13 +264,17 @@ SdioError sdLogCloseAllLogs (bool flush)
 
   //    do not flush what is in ram, close as soon as possible
   if (flush == false) {
+    UINT bw;
     // stop worker thread then close file
+    cleanQueue (10000);
     sdLogStopThread ();
     for (FileDes fd=0; fd<SDLOG_NUM_BUFFER; fd++) {
       if (fileDes[fd].inUse) {
-	FIL *fileObject = &fileDes[fd].fil;
-
-	FRESULT trc = f_close(fileObject);
+	FIL *fo = &fileDes[fd].fil;
+	if (fileDes[fd].tagAtClose) {
+	  f_write(fo, "\r\nEND_OF_LOG\r\n", 14, &bw);
+	}
+	FRESULT trc = f_close(fo);
 	fileDes[fd].inUse = false;
 	if (!rc)
 	  rc = trc;
@@ -297,7 +302,7 @@ SdioError sdLogCloseAllLogs (bool flush)
 
     LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
     if (lm == NULL) 
-      return SDLOG_QUEUEFULL;
+      return SDLOG_MEMFULL;
 
     lm->op.fcntl = FCNTL_EXIT;
     
@@ -332,7 +337,7 @@ SdioError sdLogWriteLog (const FileDes fd, const char* fmt, ...)
   LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, LOG_MESSAGE_PREBUF_LEN);
   if (lm == NULL) {
     va_end(ap);
-    return SDLOG_QUEUEFULL;
+    return SDLOG_MEMFULL;
   }
   
   lm->op.fcntl = FCNTL_WRITE;
@@ -345,7 +350,7 @@ SdioError sdLogWriteLog (const FileDes fd, const char* fmt, ...)
   const size_t msgLen =  logMessageLen(lm);
   lm = tlsf_realloc_r (&HEAP_DEFAULT, lm, msgLen);
   if (lm == NULL) 
-    return SDLOG_QUEUEFULL;
+    return SDLOG_MEMFULL;
   
   if (msgqueue_send (&messagesQueue, lm, msgLen, MsgQueue_REGULAR) < 0) {
     return SDLOG_QUEUEFULL;
@@ -365,7 +370,7 @@ SdioError sdLogFlushLog (const FileDes fd)
 
   LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
   if (lm == NULL) 
-    return SDLOG_QUEUEFULL;
+    return SDLOG_MEMFULL;
 
   lm->op.fcntl = FCNTL_FLUSH;
   lm->op.fd = fd & 0x1f;
@@ -380,10 +385,11 @@ SdioError sdLogFlushLog (const FileDes fd)
 SdioError sdLogCloseLog (const FileDes fd)
 {
   FD_CKECK(fd);
-  
+  cleanQueue (1);
+
   LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
   if (lm == NULL) 
-    return SDLOG_QUEUEFULL;
+    return SDLOG_MEMFULL;
 
   lm->op.fcntl = FCNTL_CLOSE;
   lm->op.fd = fd & 0x1f;
@@ -425,7 +431,7 @@ SdioError sdLogWriteRaw (const FileDes fd, const uint8_t * buffer, const size_t 
   
   LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, logRawLen(len));
   if (lm == NULL)
-    return SDLOG_QUEUEFULL;
+    return SDLOG_MEMFULL;
 
   lm->op.fcntl = FCNTL_WRITE;
   lm->op.fd = fd & 0x1f;
@@ -442,12 +448,12 @@ SdioError sdLogAllocSDB (SdLogBuffer **sdb, const size_t len)
 {
   *sdb = tlsf_malloc_r (&HEAP_DEFAULT, logRawLen(len));
   if (*sdb == NULL)
-    return SDLOG_QUEUEFULL;
+    return SDLOG_MEMFULL;
   
   LogMessage *lm = tlsf_malloc_r (&HEAP_DEFAULT, logRawLen(len));
   if (lm == NULL) {
     tlsf_free_r (&HEAP_DEFAULT, *sdb);
-    return SDLOG_QUEUEFULL;
+    return SDLOG_MEMFULL;
   }
 
   (*sdb)->lm = lm;
@@ -520,7 +526,7 @@ SdioError sdLogWriteByte (const FileDes fd, const uint8_t value)
   if  (fileDes[fd].writeByteCache == NULL) {
     lm = tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage) + WRITE_BYTE_CACHE_SIZE);
     if (lm == NULL) 
-      return SDLOG_QUEUEFULL;
+      return SDLOG_MEMFULL;
 
     lm->op.fcntl = FCNTL_WRITE;
     lm->op.fd = fd & 0x1f;
@@ -573,17 +579,17 @@ SdioError sdLogStopThread (void)
 
   LogMessage lm;
 
-  // ask for closing (after flushing) all opened files
-  for (uint8_t i=0; i<SDLOG_NUM_BUFFER; i++) {
-    if (fileDes[i].inUse) {
-      flushWriteByteBuffer (i);
-      lm.op.fcntl = FCNTL_CLOSE;
-      lm.op.fd = i & 0x1f;
-      if (msgqueue_copy_send (&messagesQueue, &lm, sizeof(LogMessage), MsgQueue_OUT_OF_BAND) < 0) {
-	retVal= SDLOG_QUEUEFULL;
-      }
-    }
-  }
+  /* // ask for closing (after flushing) all opened files */
+  /* for (uint8_t i=0; i<SDLOG_NUM_BUFFER; i++) { */
+  /*   if (fileDes[i].inUse) { */
+  /*     flushWriteByteBuffer (i); */
+  /*     lm.op.fcntl = FCNTL_CLOSE; */
+  /*     lm.op.fd = i & 0x1f; */
+  /*     if (msgqueue_copy_send (&messagesQueue, &lm, sizeof(LogMessage), MsgQueue_OUT_OF_BAND) < 0) { */
+  /* 	retVal= SDLOG_QUEUEFULL; */
+  /*     } */
+  /*   } */
+  /* } */
 
   lm.op.fcntl = FCNTL_EXIT;
   if (msgqueue_copy_send (&messagesQueue, &lm, sizeof(LogMessage), MsgQueue_OUT_OF_BAND) < 0) {
@@ -740,6 +746,19 @@ int32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName)
 
 
 #ifdef SDLOG_NEED_QUEUE
+
+static void cleanQueue (const size_t nbMsgToRFemove)
+{
+  LogMessage *lm=NULL;
+  for (size_t i=0; i<nbMsgToRFemove; i++) {
+    const int32_t retLen = ( int32_t) (msgqueue_pop_timeout (&messagesQueue, (void **) &lm, TIME_IMMEDIATE));
+    if (retLen < 0)
+      break;
+    tlsf_free_r(&HEAP_DEFAULT, lm);
+  }
+}
+
+
 #if (CH_KERNEL_MAJOR > 2)
 static void thdSdLog(void *arg) 
 #else
@@ -791,6 +810,8 @@ static msg_t thdSdLog(void *arg)
 	break;
 	
       case FCNTL_EXIT:
+	tlsf_free_r(&HEAP_DEFAULT, lm); // to avoid a memory leak
+	lm = NULL;
 	chThdExit(SDLOG_OK);
 	break; /* To exit from thread when asked : chThdTerminate
 		  then send special message with FCNTL_EXIT   */

@@ -115,10 +115,14 @@ int32_t	msgqueue_pop_timeout (MsgQueue* que, void **msgPtr, const systime_t timo
 {
   MsgPtrLen mpl = {.ptrOfst = 0, .len = 0};
   
-  const msg_t status = chMBFetch (&que->mb,  (msg_t *) &mpl.msg_ptr_len, timout);
+  msg_t status;
+  do  {
+    status = chMBFetch (&que->mb,  (msg_t *) &mpl.msg_ptr_len, timout);
+  } while (status == MSG_RESET);
+  
   if (status != MSG_OK)
     return MsgQueue_MAILBOX_TIMEOUT;
-
+  
   *msgPtr = (void *) (mpl.ptrOfst + (uint32_t) tlsf_get_heap_addr(&MSGQ_HEAP));
   return mpl.len;
 }
