@@ -387,17 +387,21 @@ SdioError sdLogCloseLog (const FileDes fd)
   struct tlsf_stat_t stat;
 
   FD_CKECK(fd);
-  tlsf_stat_r (&HEAP_DEFAULT, &stat);
-  const size_t freeRam = stat.mfree;
-  chSysLock();
-  const bool queue_full = chMBGetFreeCountI(&messagesQueue.mb) <= 0;
-  chSysUnlock();
 
+  do {
+    tlsf_stat_r (&HEAP_DEFAULT, &stat);
+    const size_t freeRam = stat.mfree;
+    chSysLock();
+    const bool queue_full = (chMBGetFreeCountI(&messagesQueue.mb) <= 0);
+    chSysUnlock();
+    //    DebugTrace ("sdLogCloseLog freeRam=%d queue_full=%d", freeRam, queue_full);
+    if ((freeRam < 200) || (queue_full == true)) {
+      cleanQueue (1);
+    } else {
+      break;
+    }
+  } while (true);
   
-  if ((freeRam < 200) || (queue_full == true)) {
-    cleanQueue (1);
-  }
-
   LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
   if (lm == NULL) 
     return SDLOG_MEMFULL;
@@ -760,6 +764,17 @@ int32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName)
 
 static void cleanQueue (const size_t nbMsgToRFemove)
 {
+  /* struct tlsf_stat_t stat; */
+
+  /* tlsf_stat_r (&HEAP_DEFAULT, &stat); */
+  /* size_t freeRam = stat.mfree; */
+  /* chSysLock(); */
+  /* size_t queueBuckets = chMBGetFreeCountI(&messagesQueue.mb); */
+  /* chSysUnlock(); */
+
+  /* DebugTrace ("Before cleanQueue (%d) : ram=%d buck=%d", nbMsgToRFemove, freeRam, queueBuckets); */
+  
+    
   LogMessage *lm=NULL;
   for (size_t i=0; i<nbMsgToRFemove; i++) {
     const int32_t retLen = ( int32_t) (msgqueue_pop_timeout (&messagesQueue, (void **) &lm, TIME_IMMEDIATE));
@@ -767,6 +782,14 @@ static void cleanQueue (const size_t nbMsgToRFemove)
       break;
     tlsf_free_r(&HEAP_DEFAULT, lm);
   }
+  
+  /* tlsf_stat_r (&HEAP_DEFAULT, &stat); */
+  /* freeRam = stat.mfree; */
+  /* chSysLock(); */
+  /* queueBuckets = chMBGetFreeCountI(&messagesQueue.mb); */
+  /* chSysUnlock(); */
+  
+  /* DebugTrace ("After cleanQueue (%d) : ram=%d buck=%d", nbMsgToRFemove, freeRam, queueBuckets); */
 }
 
 
@@ -785,9 +808,6 @@ static msg_t thdSdLog(void *arg)
   UINT bw;
   static IN_STD_SECTION_CLEAR (struct PerfBuffer perfBuffers[SDLOG_NUM_FILES]);
 
-  // FIXME : depending on section, the static initialisation is not done ...
-  //  memset (perfBuffers, 0, sizeof(perfBuffers));
-  
   chRegSetThreadName("thdSdLog");
   while (!chThdShouldTerminateX()) {
     LogMessage *lm=NULL;
