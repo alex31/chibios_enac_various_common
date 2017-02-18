@@ -99,7 +99,7 @@ struct FilePoolUnit {
 };
 
 static  struct FilePoolUnit IN_DMA_SECTION (fileDes[SDLOG_NUM_BUFFER]) =
-  {[0 ... SDLOG_NUM_BUFFER-1] = {.fil = {0}, .inUse = false, .tagAtClose=false,
+{[0 ... SDLOG_NUM_BUFFER-1] = {.fil = {{0}}, .inUse = false, .tagAtClose=false,
 				 .writeByteCache=NULL, .writeByteSeek=0}};
 
 typedef enum {
@@ -607,11 +607,7 @@ SdioError getFileName(const char* prefix, const char* directoryName,
   int32_t fileIndex ;
   int32_t maxCurrentIndex = 0;
   char *fn;   /* This function is assuming non-Unicode cfg. */
-#if _USE_LFN
-  char lfn[_MAX_LFN + 1];
-  fno.lfname = lfn;
-  fno.lfsize = sizeof lfn;
-#endif
+
   const size_t directoryNameLen = MIN(strlen (directoryName), 128);
   const size_t slashDirNameLen = directoryNameLen+2;
   char slashDirName[slashDirNameLen];
@@ -633,11 +629,9 @@ SdioError getFileName(const char* prefix, const char* directoryName,
   for (;;) {
     rc = f_readdir(&dir, &fno); /* Read a directory item */
     if (rc != FR_OK || fno.fname[0] ==  0) break; /* Error or end of dir */
-#if _USE_LFN
-    fn = *fno.lfname ? fno.lfname : fno.fname;
-#else
+
     fn = fno.fname;
-#endif
+
     if (fn[0] == '.') continue;
 
     if (!(fno.fattrib & AM_DIR)) {
@@ -672,11 +666,7 @@ SdioError removeEmptyLogs(const char* directoryName, const char* prefix, const s
   FRESULT rc; /* Result code */
   FILINFO fno; /* File information object */
   char *fn;   /* This function is assuming non-Unicode cfg. */
-#if _USE_LFN
-  char lfn[_MAX_LFN + 1];
-  fno.lfname = lfn;
-  fno.lfsize = sizeof lfn;
-#endif
+
 
   rc = f_opendir(&dir, directoryName);
   if (rc != FR_OK) {
@@ -686,11 +676,8 @@ SdioError removeEmptyLogs(const char* directoryName, const char* prefix, const s
   for (;;) {
     rc = f_readdir(&dir, &fno); /* Read a directory item */
     if (rc != FR_OK || fno.fname[0] ==  0) break; /* Error or end of dir */
-#if _USE_LFN
-    fn = *fno.lfname ? fno.lfname : fno.fname;
-#else
     fn = fno.fname;
-#endif
+
     if (fn[0] == '.') continue;
 
     if (!(fno.fattrib & AM_DIR)) {

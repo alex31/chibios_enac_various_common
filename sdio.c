@@ -286,12 +286,10 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
   uint32_t bytes_written=0;
   uint32_t bytes_read=0;
   FILINFO fno ;
-#if _USE_LFN
-    char lfn[_MAX_LFN + 1];
-    fno.lfname = lfn;
-    fno.lfsize = sizeof lfn;
-#endif
+  BYTE work[_MAX_SS]; /* Work area (larger is better for processing time) */
 
+
+ 
   const uint8_t teststring[] = {"This is test file\r\n"} ;
   /* FS object.*/
   static FATFS SDC_FS;
@@ -323,7 +321,8 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
   if (format) {
     chprintf(lchp, "f_mkfs starting ... ");
     chThdSleepMilliseconds(100);
-    err = f_mkfs (0,0,0);
+       /* Create FAT volume */
+    err = f_mkfs("", FM_ANY, 0, work, sizeof work);
     if (err != FR_OK){
       goto error;
     }  else {
@@ -408,11 +407,7 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
     FILINFO lfno;
     DIR dir;
     char *fn;   /* This function is assuming non-Unicode cfg. */
-#if _USE_LFN
-    char llfn[_MAX_LFN + 1];
-    lfno.lfname = llfn;
-    lfno.lfsize = sizeof llfn;
-#endif
+
     const char *path = "";
     FRESULT res =0;
 
@@ -422,11 +417,8 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
 	res = f_readdir(&dir, &lfno);                   /* Read a directory item */
 	if (res != FR_OK || lfno.fname[0] == 0) break;  /* Break on error or end of dir */
 	if (lfno.fname[0] == '.') continue;             /* Ignore dot entry */
-#if _USE_LFN
-	fn = lfno.lfname;
-#else
 	fn = lfno.fname;
-#endif
+
 	                                     /* It is a file. */
 	chprintf(lchp, "readdir %s/%s\r\n", path, fn);
       }
