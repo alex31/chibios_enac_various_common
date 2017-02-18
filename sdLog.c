@@ -384,8 +384,19 @@ SdioError sdLogFlushLog (const FileDes fd)
 
 SdioError sdLogCloseLog (const FileDes fd)
 {
+  struct tlsf_stat_t stat;
+
   FD_CKECK(fd);
-  cleanQueue (1);
+  tlsf_stat_r (&HEAP_DEFAULT, &stat);
+  const size_t freeRam = stat.mfree;
+  chSysLock();
+  const bool queue_full = chMBGetFreeCountI(&messagesQueue.mb) <= 0;
+  chSysUnlock();
+
+  
+  if ((freeRam < 200) || (queue_full == true)) {
+    cleanQueue (1);
+  }
 
   LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
   if (lm == NULL) 
