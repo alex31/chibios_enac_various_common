@@ -116,7 +116,6 @@ struct  _SdLogBuffer {
 } ;
 
 
-
 #define LOG_MESSAGE_PREBUF_LEN (SDLOG_MAX_MESSAGE_LEN+sizeof(LogMessage))
 #endif //  SDLOG_NEED_QUEUE
 
@@ -130,7 +129,8 @@ static SdioError sdLoglaunchThread (void);
 static SdioError sdLogStopThread (void);
 static thread_t *sdLogThd = NULL;
 static SdioError  getNextFIL (FileDes *fd);
-static void cleanQueue (const size_t nbMsgToRFemov);
+static void removeFromQueue (const size_t nbMsgToRFemov);
+static void cleanQueue (const bool allQueue);
 
 #if (CH_KERNEL_MAJOR > 2)
 static void thdSdLog(void *arg) ;
@@ -139,9 +139,6 @@ static msg_t thdSdLog(void *arg) ;
 #endif
 
 #endif //  SDLOG_NEED_QUEUE
-
-
-
 
 static int32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName) ;
 static inline SdioError flushWriteByteBuffer (const FileDes fd);
@@ -260,13 +257,11 @@ SdioError sdLogCloseAllLogs (bool flush)
 {
   FRESULT rc = 0; /* Result code */
 
-
-
   //    do not flush what is in ram, close as soon as possible
   if (flush == false) {
     UINT bw;
     // stop worker thread then close file
-    cleanQueue (10000);
+    cleanQueue (true);
     sdLogStopThread ();
 
     for (FileDes fd=0; fd<SDLOG_NUM_FILES; fd++) {
@@ -316,6 +311,26 @@ SdioError sdLogCloseAllLogs (bool flush)
     
   }
   return SDLOG_OK;
+}
+
+SdioError sdLogFlushAllLogs (void)
+{
+  SdioError status =  SDLOG_OK;
+  if (sdLogThd == NULL) {
+    // something goes wrong, log thread is no more working
+    return SDLOG_NOTHREAD;
+  }
+    
+  // queue flush + close order, then stop worker thread
+  for (FileDes fd=0; fd<SDLOG_NUM_FILES; fd++) {
+    if (fileDes[fd].inUse) {
+      status = sdLogFlushLog (fd);
+      if (status != SDLOG_OK)
+	break;
+      }
+    }
+
+  return status;
 }
 
 
@@ -369,6 +384,9 @@ SdioError sdLogFlushLog (const FileDes fd)
     return status;
   }
 
+  // give room to send a flush order if the queue is full
+  cleanQueue (false);
+  
   LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
   if (lm == NULL) 
     return SDLOG_MEMFULL;
@@ -385,24 +403,9 @@ SdioError sdLogFlushLog (const FileDes fd)
 
 SdioError sdLogCloseLog (const FileDes fd)
 {
-  struct tlsf_stat_t stat;
-
   FD_CKECK(fd);
 
-  do {
-    tlsf_stat_r (&HEAP_DEFAULT, &stat);
-    const size_t freeRam = stat.mfree;
-    chSysLock();
-    const bool queue_full = (chMBGetFreeCountI(&messagesQueue.mb) <= 0);
-    chSysUnlock();
-    //    DebugTrace ("sdLogCloseLog freeRam=%d queue_full=%d", freeRam, queue_full);
-    if ((freeRam < 200) || (queue_full == true)) {
-      cleanQueue (1);
-    } else {
-      break;
-    }
-  } while (true);
-  
+  cleanQueue (false);
   LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
   if (lm == NULL) 
     return SDLOG_MEMFULL;
@@ -761,8 +764,29 @@ int32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName)
 
 
 #ifdef SDLOG_NEED_QUEUE
+static void cleanQueue (const bool allQueue)
+{
+  if (allQueue == false) {
+    do {
+      struct tlsf_stat_t stat;
+      tlsf_stat_r (&HEAP_DEFAULT, &stat);
+      const size_t freeRam = stat.mfree;
+      chSysLock();
+      const bool queue_full = (chMBGetFreeCountI(&messagesQueue.mb) <= 0);
+      chSysUnlock();
+      //    DebugTrace ("sdLogCloseLog freeRam=%d queue_full=%d", freeRam, queue_full);
+      if ((freeRam < 200) || (queue_full == true)) {
+	removeFromQueue (1);
+      } else {
+	break;
+      }
+    } while (true);
+  } else {
+    removeFromQueue (10000);
+  }
+}
 
-static void cleanQueue (const size_t nbMsgToRFemove)
+static void removeFromQueue (const size_t nbMsgToRFemove)
 {
   /* struct tlsf_stat_t stat; */
 
@@ -772,9 +796,8 @@ static void cleanQueue (const size_t nbMsgToRFemove)
   /* size_t queueBuckets = chMBGetFreeCountI(&messagesQueue.mb); */
   /* chSysUnlock(); */
 
-  /* DebugTrace ("Before cleanQueue (%d) : ram=%d buck=%d", nbMsgToRFemove, freeRam, queueBuckets); */
-  
-    
+  /* DebugTrace ("Before removeFromQueue (%d) : ram=%d buck=%d", nbMsgToRFemove, freeRam, queueBuckets); */
+
   LogMessage *lm=NULL;
   for (size_t i=0; i<nbMsgToRFemove; i++) {
     const int32_t retLen = ( int32_t) (msgqueue_pop_timeout (&messagesQueue, (void **) &lm, TIME_IMMEDIATE));
@@ -789,7 +812,7 @@ static void cleanQueue (const size_t nbMsgToRFemove)
   /* queueBuckets = chMBGetFreeCountI(&messagesQueue.mb); */
   /* chSysUnlock(); */
   
-  /* DebugTrace ("After cleanQueue (%d) : ram=%d buck=%d", nbMsgToRFemove, freeRam, queueBuckets); */
+  /* DebugTrace ("After removeFromQueue (%d) : ram=%d buck=%d", nbMsgToRFemove, freeRam, queueBuckets); */
 }
 
 
