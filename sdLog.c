@@ -752,7 +752,7 @@ int32_t uiGetIndexOfLogFile (const char* prefix, const char* fileName)
 
   // we test that suffix is valid (at least begin with digit)
     if (!isdigit ((int) suffix[0])) {
-      DebugTrace ("DBG> suffix = %s", suffix);
+      //      DebugTrace ("DBG> suffix = %s", suffix);
       return 0;
     }
 
@@ -809,7 +809,7 @@ static msg_t thdSdLog(void *arg)
   static IN_STD_SECTION_CLEAR (struct PerfBuffer perfBuffers[SDLOG_NUM_FILES]);
 
   chRegSetThreadName("thdSdLog");
-  while (!chThdShouldTerminateX()) {
+  while (true) {
     LogMessage *lm=NULL;
     const int32_t retLen = ( int32_t) (msgqueue_pop (&messagesQueue, (void **) &lm));
     if (retLen > 0) {
@@ -841,9 +841,7 @@ static msg_t thdSdLog(void *arg)
 	break;
 	
       case FCNTL_EXIT:
-	DebugTrace ("DBG> FCNTL_EXIT");
 	tlsf_free_r(&HEAP_DEFAULT, lm); // to avoid a memory leak
-	lm = NULL;
 	chThdExit(SDLOG_OK);
 	break; /* To exit from thread when asked : chThdTerminate
 		  then send special message with FCNTL_EXIT   */
