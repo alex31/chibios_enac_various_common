@@ -875,7 +875,7 @@ static msg_t thdSdLog(void *arg)
 	
       case FCNTL_EXIT:
 	tlsf_free_r(&HEAP_DEFAULT, lm); // to avoid a memory leak
-	chThdExit(storageStatus = SDLOG_FINISH);
+	chThdExit(storageStatus = SDLOG_NOTHREAD);
 	break; /* To exit from thread when asked : chThdTerminate
 		  then send special message with FCNTL_EXIT   */
 	
@@ -953,7 +953,7 @@ size_t sdLogGetNbBytesWrittenToStorage (void)
   return nbBytesWritten;
 }
 
-size_t sdLogGetStorageStatus (void)
+SdioError sdLogGetStorageStatus (void)
 {
   return storageStatus;
 }

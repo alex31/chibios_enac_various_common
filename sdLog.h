@@ -67,7 +67,6 @@ typedef enum {
   SDLOG_INTERNAL_ERROR,
   SDLOG_LOGNUM_ERROR,
   SDLOG_WAS_LAUNCHED,
-  SDLOG_FINISH
 } SdioError;
 
 typedef struct _SdLogBuffer SdLogBuffer;
@@ -155,6 +154,13 @@ SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const ch
  */
 SdioError sdLogFlushLog (const FileDes fileObject);
 
+/**
+ * @brief	flush all ram buffers to sdCard
+ * @details	*WARNING* this lower throughtput by a factor of ten or more, 
+ * @details	          leading to lost messages if writing rate is high
+ * @return	status (always check status)
+ */
+SdioError sdLogFlushAllLogs (void);
 
 /**
  * @brief	flush ram buffer then close file.
@@ -272,7 +278,7 @@ size_t sdLogGetNbBytesWrittenToStorage (void);
  * @brief	return storage backend status
  * @return	storage backend status
 */
-size_t sdLogGetStorageStatus (void);
+SdioError sdLogGetStorageStatus (void);
 
 
 #endif
