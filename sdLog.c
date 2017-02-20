@@ -90,6 +90,8 @@ struct LogMessage {
 
 struct FilePoolUnit {
   FIL   fil;
+  uint32_t autoFlushPeriod;
+  systime_t lastFlushTs;
   bool  inUse;
   bool  tagAtClose;
   // optimise write byte by caching at send level now that we are based upon tlsf where
@@ -101,6 +103,9 @@ struct FilePoolUnit {
 static  struct FilePoolUnit IN_DMA_SECTION (fileDes[SDLOG_NUM_FILES]) =
 {[0 ... SDLOG_NUM_FILES-1] = {.fil = {{0}}, .inUse = false, .tagAtClose=false,
 				 .writeByteCache=NULL, .writeByteSeek=0}};
+
+static volatile size_t nbBytesWritten = 0;
+static SdioError storageStatus = SDLOG_OK;
 
 typedef enum {
   FCNTL_WRITE = 0b00,
@@ -221,7 +226,7 @@ SdioError sdLogFinish (void)
 
 #ifdef SDLOG_NEED_QUEUE
 SdioError sdLogOpenLog (FileDes *fd, const char* directoryName, const char* prefix,
-			bool appendTagAtClose)
+			const uint32_t autoFlushPeriod, const bool appendTagAtClose)
 {
   FRESULT rc; /* fatfs result code */
   SdioError sde; /* sdio result code */
@@ -247,6 +252,8 @@ SdioError sdLogOpenLog (FileDes *fd, const char* directoryName, const char* pref
     return SDLOG_FATFS_ERROR;
   } else {
     fileDes[*fd].tagAtClose = appendTagAtClose;
+    fileDes[*fd].autoFlushPeriod = autoFlushPeriod;
+    fileDes[*fd].lastFlushTs = 0;
   }
 
   return SDLOG_OK;
@@ -269,6 +276,7 @@ SdioError sdLogCloseAllLogs (bool flush)
 	FIL *fo = &fileDes[fd].fil;
 	if (fileDes[fd].tagAtClose) {
 	  f_write(fo, "\r\nEND_OF_LOG\r\n", 14, &bw);
+	  nbBytesWritten += bw;
 	}
 	FRESULT trc = f_close(fo);
 	fileDes[fd].inUse = false;
@@ -830,7 +838,7 @@ static msg_t thdSdLog(void *arg)
 
   UINT bw;
   static IN_STD_SECTION_CLEAR (struct PerfBuffer perfBuffers[SDLOG_NUM_FILES]);
-
+  storageStatus = SDLOG_OK;
   chRegSetThreadName("thdSdLog");
   while (true) {
     LogMessage *lm=NULL;
@@ -848,6 +856,7 @@ static msg_t thdSdLog(void *arg)
 	  if (fileDes[lm->op.fd].inUse) {
 	    if (curBufFill) {
 	      f_write(fo, perfBuffer, curBufFill, &bw);
+	      nbBytesWritten += bw;
 	      perfBuffers[lm->op.fd].size = 0;
 	    }
 	    if (lm->op.fcntl ==  FCNTL_FLUSH) {
@@ -855,6 +864,7 @@ static msg_t thdSdLog(void *arg)
 	    } else { // close
 	      if (fileDes[lm->op.fd].tagAtClose) {
 		f_write(fo, "\r\nEND_OF_LOG\r\n", 14, &bw);
+		nbBytesWritten += bw;
 	      }
 	      f_close (fo);
 	      fileDes[lm->op.fd].inUse = false; // store that file is closed
@@ -865,7 +875,7 @@ static msg_t thdSdLog(void *arg)
 	
       case FCNTL_EXIT:
 	tlsf_free_r(&HEAP_DEFAULT, lm); // to avoid a memory leak
-	chThdExit(SDLOG_OK);
+	chThdExit(storageStatus = SDLOG_FINISH);
 	break; /* To exit from thread when asked : chThdTerminate
 		  then send special message with FCNTL_EXIT   */
 	
@@ -884,11 +894,17 @@ static msg_t thdSdLog(void *arg)
 	      const int32_t stayLen = SDLOG_WRITE_BUFFER_SIZE-curBufFill;
 	      memcpy (&(perfBuffer[curBufFill]), lm->mess, (size_t)(stayLen));
 	      FRESULT rc = f_write(fo, perfBuffer, SDLOG_WRITE_BUFFER_SIZE, &bw);
-	      //	      f_sync (fo);
+	      nbBytesWritten += bw;
+	      systime_t now = chVTGetSystemTimeX();
+	      if ((now - fileDes[lm->op.fd].lastFlushTs) >
+		  (fileDes[lm->op.fd].autoFlushPeriod * CH_CFG_ST_FREQUENCY)) {
+		f_sync (fo);
+		fileDes[lm->op.fd].lastFlushTs = now;
+	      }
 	      if (rc) {
-		chThdExit (SDLOG_FATFS_ERROR);
+		chThdExit (storageStatus = SDLOG_FATFS_ERROR);
 	      } else if (bw != SDLOG_WRITE_BUFFER_SIZE) {
-		chThdExit (SDLOG_FSFULL);
+		chThdExit (storageStatus = SDLOG_FSFULL);
 	      }
 	      
 	      memcpy (perfBuffer, &(lm->mess[stayLen]),  (uint32_t) (messLen-stayLen));
@@ -899,7 +915,7 @@ static msg_t thdSdLog(void *arg)
       }
       tlsf_free_r(&HEAP_DEFAULT, lm);
     } else {
-      chThdExit(SDLOG_INTERNAL_ERROR);
+      chThdExit(storageStatus = SDLOG_INTERNAL_ERROR);
     }
   }
 #if (CH_KERNEL_MAJOR == 2)
@@ -931,5 +947,16 @@ static SdioError  getNextFIL (FileDes *fd)
   }
   return SDLOG_FDFULL;
 }
+
+size_t sdLogGetNbBytesWrittenToStorage (void)
+{
+  return nbBytesWritten;
+}
+
+size_t sdLogGetStorageStatus (void)
+{
+  return storageStatus;
+}
+  
 
 #endif

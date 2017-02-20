@@ -66,7 +66,8 @@ typedef enum {
   SDLOG_NOTHREAD,
   SDLOG_INTERNAL_ERROR,
   SDLOG_LOGNUM_ERROR,
-  SDLOG_WAS_LAUNCHED
+  SDLOG_WAS_LAUNCHED,
+  SDLOG_FINISH
 } SdioError;
 
 typedef struct _SdLogBuffer SdLogBuffer;
@@ -141,7 +142,8 @@ SdioError sdLogFinish (void);
  * @return	status (always check status)
  */
 SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const char* fileName,
-			bool appendTagAtClose);
+			const uint32_t autoFlushPeriod,
+			const bool appendTagAtClose);
 
 
 /**
@@ -258,6 +260,21 @@ SdioError sdLogWriteSDB (const FileDes fd, SdLogBuffer *sdb);
  * @return	status (always check status)
  */
 SdioError sdLogWriteByte (const FileDes fileObject, const uint8_t value);
+
+/**
+ * @brief	return number of bytes actually written to the mass storage
+ * @return	number of bytes actually written to the mass storage (due to buffering, this can be
+		different than number of byte sent to the logger)
+*/
+size_t sdLogGetNbBytesWrittenToStorage (void);
+
+/**
+ * @brief	return storage backend status
+ * @return	storage backend status
+*/
+size_t sdLogGetStorageStatus (void);
+
+
 #endif
 
 
