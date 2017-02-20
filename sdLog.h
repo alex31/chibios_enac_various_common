@@ -135,6 +135,8 @@ SdioError sdLogFinish (void);
  * @param[out]	fileObject : file descriptor : small integer between 0 and _FS_REENTRANT-1
  * @param[in]	directoryName : name of directory just under ROOT, created if nonexistant
  * @param[in]	fileName : the name will be appended with 3 digits number
+ * @param[in]	autoFlushPeriod : if non 0, period in second at which flush to mass storage is done
+ *              if 0, no autoflush is done.
  * @param[in]	appendTagAtClose : at close, a marker will be added to prove that the file is complete
  *		and not corrupt. useful for text logging purpose, but probably not wanted for binary
  *		files.
@@ -178,9 +180,6 @@ SdioError sdLogCloseLog (const FileDes fileObject);
  * @return	status (always check status)
  */
 SdioError sdLogCloseAllLogs (bool flush);
-
-
-
 
 
 /**

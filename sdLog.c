@@ -895,11 +895,15 @@ static msg_t thdSdLog(void *arg)
 	      memcpy (&(perfBuffer[curBufFill]), lm->mess, (size_t)(stayLen));
 	      FRESULT rc = f_write(fo, perfBuffer, SDLOG_WRITE_BUFFER_SIZE, &bw);
 	      nbBytesWritten += bw;
-	      systime_t now = chVTGetSystemTimeX();
-	      if ((now - fileDes[lm->op.fd].lastFlushTs) >
-		  (fileDes[lm->op.fd].autoFlushPeriod * CH_CFG_ST_FREQUENCY)) {
-		f_sync (fo);
-		fileDes[lm->op.fd].lastFlushTs = now;
+	      // if there an autoflush period specified, flush to the mass storage media
+	      // if timer has expired and rearm.
+	      if (fileDes[lm->op.fd].autoFlushPeriod) {
+		const systime_t now = chVTGetSystemTimeX();
+		if ((now - fileDes[lm->op.fd].lastFlushTs) >
+		    (fileDes[lm->op.fd].autoFlushPeriod * CH_CFG_ST_FREQUENCY)) {
+		  f_sync (fo);
+		  fileDes[lm->op.fd].lastFlushTs = now;
+		}
 	      }
 	      if (rc) {
 		chThdExit (storageStatus = SDLOG_FATFS_ERROR);
