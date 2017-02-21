@@ -39,9 +39,10 @@ extern "C" {
    use of the api :
    sdLogInit (initialize peripheral,  verify sdCard availibility)
    sdLogOpenLog : open file
-   sdLogWriteXXX
-   sdLogCloseLog
-   sdLogFinish
+   sdLogExpandLogFile : reserve contiguous space on storage
+   sdLogWriteXXX : write log using one off the many function of the API
+   sdLogCloseLog : close log
+   sdLogFinish : terminate logging thread
 
 
    and asynchronous emergency close (power outage detection by example) :
@@ -88,6 +89,7 @@ typedef enum {
   SDLOG_MEMFULL,
   SDLOG_NOTHREAD,
   SDLOG_INTERNAL_ERROR,
+  SDLOG_CANNOT_EXPAND,
   SDLOG_LOGNUM_ERROR,
   SDLOG_WAS_LAUNCHED,
 } SdioError;
@@ -171,6 +173,17 @@ SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const ch
 
 
 /**
+ * @brief	expand underlying file to maximise throughtput
+ * @details	ask underlying file system to prepares or allocates a contiguous data area to the file.
+ *		if expand fail, file system is still avalaible but performance may suffer
+ * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
+ * @param[in]	sizeInMo   : size of the contiguous storage
+ * @return	status (always check status)
+ */
+SdioError sdLogExpandLogFile (const FileDes fileObject, const size_t sizeInMo);
+
+
+/**
  * @brief	flush ram buffer associated with file to sdCard
  * @details	*WARNING* this lower throughtput by a factor of ten or more, 
  * @details	          leading to lost messages if writing rate is high
@@ -178,6 +191,7 @@ SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const ch
  * @return	status (always check status)
  */
 SdioError sdLogFlushLog (const FileDes fileObject);
+
 
 /**
  * @brief	flush all ram buffers to sdCard

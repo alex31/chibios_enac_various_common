@@ -268,7 +268,6 @@ SdioError sdLogOpenLog (FileDes *fd, const char* directoryName, const char* pref
   return SDLOG_OK;
 }
 
-
 SdioError sdLogCloseAllLogs (bool flush)
 {
   FRESULT rc = 0; /* Result code */
@@ -351,13 +350,23 @@ SdioError sdLogFlushAllLogs (void)
 }
 
 
-#define FD_CKECK(fd)  if ((fd < 0) || (fd >= SDLOG_NUM_FILES) \
+#define FD_CHECK(fd)  if ((fd < 0) || (fd >= SDLOG_NUM_FILES) \
 			           || (fileDes[fd].inUse == false)) \
 		          return SDLOG_FATFS_ERROR
 
+
+SdioError sdLogExpandLogFile (const FileDes fd, const size_t sizeInMo)
+{
+   FD_CHECK(fd);
+
+   // expand with opt=1 : pre allocate file now
+   const FRESULT rc = f_expand(&fileDes[fd].fil, sizeInMo*1024*1024, 1);
+   return (rc == FR_OK) ? SDLOG_OK : SDLOG_CANNOT_EXPAND;
+}
+
 SdioError sdLogWriteLog (const FileDes fd, const char* fmt, ...)
 {
-  FD_CKECK(fd);
+  FD_CHECK(fd);
 
   const SdioError status = flushWriteByteBuffer (fd);
   if (status != SDLOG_OK) {
@@ -394,7 +403,7 @@ SdioError sdLogWriteLog (const FileDes fd, const char* fmt, ...)
 
 SdioError sdLogFlushLog (const FileDes fd)
 {
-  FD_CKECK(fd);
+  FD_CHECK(fd);
   
   const SdioError status = flushWriteByteBuffer (fd);
   if (status != SDLOG_OK) {
@@ -420,7 +429,7 @@ SdioError sdLogFlushLog (const FileDes fd)
 
 SdioError sdLogCloseLog (const FileDes fd)
 {
-  FD_CKECK(fd);
+  FD_CHECK(fd);
 
   cleanQueue (false);
   LogMessage *lm =  tlsf_malloc_r (&HEAP_DEFAULT, sizeof(LogMessage));
@@ -443,7 +452,7 @@ SdioError sdLogCloseLog (const FileDes fd)
 
 static inline SdioError flushWriteByteBuffer (const FileDes fd)
 {
-  FD_CKECK(fd);
+  FD_CHECK(fd);
   
   if (unlikely (fileDes[fd].writeByteCache != NULL)) {
     if (msgqueue_send (&messagesQueue, fileDes[fd].writeByteCache,
@@ -458,7 +467,7 @@ static inline SdioError flushWriteByteBuffer (const FileDes fd)
 
 SdioError sdLogWriteRaw (const FileDes fd, const uint8_t * buffer, const size_t len)
 {
-  FD_CKECK(fd);
+  FD_CHECK(fd);
 
   const SdioError status = flushWriteByteBuffer (fd);
   if (status != SDLOG_OK) {
@@ -556,7 +565,7 @@ SdioError sdLogWriteSDB (const FileDes fd, SdLogBuffer *sdb)
 
 SdioError sdLogWriteByte (const FileDes fd, const uint8_t value)
 {
-  FD_CKECK(fd);
+  FD_CHECK(fd);
   LogMessage *lm;
   
   if  (fileDes[fd].writeByteCache == NULL) {
