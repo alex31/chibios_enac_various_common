@@ -20,17 +20,26 @@ extern "C" {
     FATFS (ffconf.h) 
 
 
-   MCUCONF.H (or any other header included before sdLog.h
+   mcuconf.h (or any other header included before sdLog.h
    ° SDLOG_ALL_BUFFERS_SIZE : (in bytes) cache buffer size shared between all opened log file
+			      minumum size by  opened log file should be at least 512 and
+			      should be a POWER OF TWO
    ° SDLOG_MAX_MESSAGE_LEN  : (in bytes) maximum length of a message
-   ° SDLOG_QUEUE_BUCKETS    : number of entries in queue
+   ° SDLOG_QUEUE_BUCKETS    : number of entries in bufering queue
+   ° SDLOG_NUM_FILES	    : number of simultaneous opened log files
+
+   EXAMPLE:
+   #define SDLOG_QUEUE_BUCKETS  1024
+   #define SDLOG_MAX_MESSAGE_LEN 252
+   #define SDLOG_NUM_FILES 1
+   #define SDLOG_ALL_BUFFERS_SIZE (SDLOG_NUM_FILES*4096)
+
 
 
    use of the api :
    sdLogInit (initialize peripheral,  verify sdCard availibility)
    sdLogOpenLog : open file
    sdLogWriteXXX
- r sdLogFlushLog : flush buffer (optional)
    sdLogCloseLog
    sdLogFinish
 
@@ -38,6 +47,20 @@ extern "C" {
    and asynchronous emergency close (power outage detection by example) :
    sdLogCloseAllLogs
    sdLogFinish
+
+   + ADVICE for maximizing throughtput by order of inportance
+   ° define STM32_SDC_SDIO_UNALIGNED_SUPPORT to  FALSE in mcuconf.h
+   ° do not use sdLogFlushXXX API but instead give a  flush period of 10 in sdLogOpenLog
+   ° SDLOG_ALL_BUFFERS_SIZE/SDLOG_NUM_FILES should be around 4096 and a power of two
+   ° use class 10 SD card
+   ° format to EXFAT instead of FAT32
+
+   +  ADVICE for maximizing reliability
+   ° survey power loss, and call sdLogCloseAllLogs (false) when power loss is detected
+     after having powered off all you can (LEDs or anything draining power from MCU pins)
+   ° always check return status of function (sdLogOpenLog will fail if filesystem is dirty)
+   ° always check filesystem health with fsck (linux) or CHKDSK (windows) when 
+     mounting sd card on a computer
 
    */
 

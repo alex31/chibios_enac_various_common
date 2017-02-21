@@ -17,6 +17,7 @@
 
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
 #define MAX(x , y)  (((x) > (y)) ? (x) : (y))
+#define IS_POWER_OF_TWO(s) ((s) && !((s) & ((s) - 1)))
 
 #ifndef SDLOG_NUM_FILES
 #error  SDLOG_NUM_FILES should be defined in mcuconf.h
@@ -52,6 +53,13 @@
 #warning "_FS_REENTRANT = 0 in ffconf.h DO NOT open close file during log"
 #endif
 
+#if SDLOG_WRITE_BUFFER_SIZE < 512
+#error SDLOG_ALL_BUFFERS_SIZE / SDLOG_NUM_FILES cannot be < 512
+#endif
+
+#if (!(IS_POWER_OF_TWO (SDLOG_WRITE_BUFFER_SIZE)))
+#error SDLOG_ALL_BUFFERS_SIZE / SDLOG_NUM_FILES should be a POWER OF 2
+#endif
 
 #ifdef SDLOG_NEED_QUEUE
 #include "msg_queue.h"
@@ -152,7 +160,8 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
 {
   DWORD clusters=0;
   FATFS *fsp=NULL;
-
+  nbBytesWritten = 0;
+  
   // if init is already done, return ERROR
   if (sdLogThd != NULL) {
     *freeSpaceInKo=0;
