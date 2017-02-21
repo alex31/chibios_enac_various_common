@@ -52,9 +52,8 @@ extern "C" {
    + ADVICE for maximizing throughtput by order of inportance
    ° define STM32_SDC_SDIO_UNALIGNED_SUPPORT to  FALSE in mcuconf.h
    ° do not use sdLogFlushXXX API but instead give a  flush period of 10 in sdLogOpenLog
-   ° SDLOG_ALL_BUFFERS_SIZE/SDLOG_NUM_FILES should be around 4096 and a power of two
+   ° SDLOG_ALL_BUFFERS_SIZE/SDLOG_NUM_FILES should be around 8192 and a power of two
    ° use class 10 SD card
-   ° format to EXFAT instead of FAT32
 
    +  ADVICE for maximizing reliability
    ° survey power loss, and call sdLogCloseAllLogs (false) when power loss is detected
