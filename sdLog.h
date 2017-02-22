@@ -175,13 +175,16 @@ SdioError sdLogOpenLog (FileDes *fileObject, const char* directoryName, const ch
 
 /**
  * @brief	expand underlying file to maximise throughtput
- * @details	ask underlying file system to prepares or allocates a contiguous data area to the file.
+ * @details	ask underlying file system to prepare a contiguous data area to the file.
  *		if expand fail, file system is still avalaible but performance may suffer
  * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
  * @param[in]	sizeInMo   : size of the contiguous storage
+ * @param[in]	preallocate   : if true, the file is preallocated at asked size, more efficient
+ *              but take room on storage ans is not easy to manipulate afterward because of big files
+ *              even if no log id recorded on file
  * @return	status (always check status)
  */
-SdioError sdLogExpandLogFile (const FileDes fileObject, const size_t sizeInMo);
+SdioError sdLogExpandLogFile (const FileDes fileObject, const size_t sizeInMo, const bool preallocate);
 
 
 /**

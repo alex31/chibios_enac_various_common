@@ -355,12 +355,13 @@ SdioError sdLogFlushAllLogs (void)
 		          return SDLOG_FATFS_ERROR
 
 
-SdioError sdLogExpandLogFile (const FileDes fd, const size_t sizeInMo)
+SdioError sdLogExpandLogFile (const FileDes fd, const size_t sizeInMo,
+			      const bool preallocate)
 {
    FD_CHECK(fd);
 
    // expand with opt=1 : pre allocate file now
-   const FRESULT rc = f_expand(&fileDes[fd].fil, sizeInMo*1024*1024, 1);
+   const FRESULT rc = f_expand(&fileDes[fd].fil, sizeInMo*1024*1024, preallocate);
    return (rc == FR_OK) ? SDLOG_OK : SDLOG_CANNOT_EXPAND;
 }
 
