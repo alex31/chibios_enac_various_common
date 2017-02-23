@@ -39,6 +39,10 @@
 #error SDLOG_ALL_BUFFERS_SIZE should be defined in mcuconf.h
 #endif
 
+#if  SDLOG_ALL_BUFFERS_SIZE > 65536
+#error constraint 512 <=  SDLOG_ALL_BUFFERS_SIZE <= 65536 not meet
+#endif
+
 #define SDLOG_WRITE_BUFFER_SIZE (SDLOG_ALL_BUFFERS_SIZE/SDLOG_NUM_FILES)
 
 #ifndef SDLOG_MAX_MESSAGE_LEN
