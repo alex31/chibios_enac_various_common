@@ -855,7 +855,8 @@ static msg_t thdSdLog(void *arg)
 {
   (void) arg;
   struct PerfBuffer {
-    uint8_t buffer[SDLOG_WRITE_BUFFER_SIZE] ;
+    // each element of buffer should be word aligned for sdio efficient write
+    ALIGNED_VAR(4) uint8_t buffer[SDLOG_WRITE_BUFFER_SIZE] ;
     uint16_t size;
   } ;
 
