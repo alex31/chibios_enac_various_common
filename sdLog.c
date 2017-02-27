@@ -813,7 +813,7 @@ static void cleanQueue (const bool allQueue)
       }
     } while (true);
   } else {
-    removeFromQueue (10000);
+    removeFromQueue (SDLOG_QUEUE_BUCKETS);
   }
 }
 
