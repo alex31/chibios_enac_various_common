@@ -602,12 +602,19 @@ SdioError sdLogWriteByte (const FileDes fd, const uint8_t value)
 }
 
 
-
-
-/* enregistrer les fichiers ouverts de manière à les fermer
-   si necessaire
-   */
-static THD_WORKING_AREA(waThdSdLog, 1024);
+/*
+  if fatfs use stack for working buffers, stack size should be reserved accordingly
+ */
+#define WA_LOG_BASE_SIZE 1024
+#if  _USE_LFN == 2
+#if _FS_EXFAT
+static THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE+((_MAX_LFN+1)*2)+(19*32));
+#else
+static THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE+((_MAX_LFN+1)*2));
+#endif
+#else
+static THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE);
+#endif
 SdioError sdLoglaunchThread ()
 {
   chThdSleepMilliseconds(100);
