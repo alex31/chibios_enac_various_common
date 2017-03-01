@@ -194,7 +194,7 @@ void systemDeepSleep (void)
 //#warning neither STM32F4XX or STM32F7XX : should be implemented
 #endif
 {
-  #if defined(STM32F4XX) | defined(STM32F7XX)
+#if defined(STM32F4XX) | defined(STM32F7XX)
   chSysLock();
 
   /* clear PDDS and LPDS bits */
@@ -217,7 +217,19 @@ void systemDeepSleep (void)
   /* clear the deepsleep mask */
   SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
   chSysUnlock();
-  #endif
+#elif defined(STM32L4XX)
+  SCB->SCR |= ((uint32_t)SCB_SCR_SLEEPDEEP_Msk);
+  PWR->CR1 =  (PWR->CR1 & (~PWR_CR1_LPMS)) | PWR_CR1_LPMS_SHUTDOWN;
+  //  __WFI();
+  __disable_irq();
+  
+  __SEV();
+  __WFE();
+  __WFE();
+  
+  __enable_irq();
+  
+#endif
 }
 
 
