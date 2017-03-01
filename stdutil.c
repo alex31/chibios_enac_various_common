@@ -193,14 +193,12 @@ void systemDeepSleep (void)
 #endif
 {
   chSysLock();
-#if defined(STM32F4XX) | defined(STM32F7XX)
 
+#if defined(STM32F4XX) | defined(STM32F7XX)
   /* clear PDDS and LPDS bits */
   PWR->__CR &= ~(__PWR_CR_PDDS | __PWR_CR_LPDS);
-  
   /* set LPDS and clear  */
   PWR->__CR |= (__PWR_CR_LPDS | __PWR_CR_CSBF);
-  
 #elif defined(STM32L4XX)
   PWR->CR1 =  (PWR->CR1 & (~PWR_CR1_LPMS)) | PWR_CR1_LPMS_SHUTDOWN;
 #else
