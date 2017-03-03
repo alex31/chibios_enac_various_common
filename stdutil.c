@@ -11,6 +11,7 @@
 #endif
 
 
+
 float atof_m(const char *s)   
 {   
   float v = 0.0f,   
@@ -261,6 +262,7 @@ uint32_t lerpu32 (const uint32_t x, const uint32_t y, const float w)
     return x - (uint32_t) (w * (float)(x-y));
   }
 }
+
 
 uint32_t lerpu32Fraction (const uint32_t x, const uint32_t y, const uint32_t numerator, 
 			    const uint32_t denumerator) 

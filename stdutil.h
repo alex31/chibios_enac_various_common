@@ -299,7 +299,13 @@ F7
 #endif
 #endif
 
+#define lerp(x,y,w)				\
+  ((y>x) ?					\
+   (x + (typeof(x)) (w * (typeof(w))(y-x))) :	\
+   (x - (typeof(x)) (w * (typeof(w))(x-y))))
 
+#define isInRange(x, min, max) \
+  ((x >= min) && (x <= max))
 
   float atof_m(const char *s);
   void systemReset (void);
