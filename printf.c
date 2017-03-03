@@ -288,7 +288,10 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
       is_long = (c >= 'A') && (c <= 'Z');
 
     /* Command decoding.*/
-    switch (c) {
+    switch (c) { 
+    case 'n': 
+      *(va_arg(ap, int*)) = p-buffer;
+      break;
     case 'c':
       filler = ' ';
       *p++ = va_arg(ap, int);
