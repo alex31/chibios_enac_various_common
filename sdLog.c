@@ -868,7 +868,7 @@ static msg_t thdSdLog(void *arg)
   } ;
 
   UINT bw;
-  static IN_STD_SECTION_CLEAR (struct PerfBuffer perfBuffers[SDLOG_NUM_FILES]);
+  static IN_DMA_SECTION_CLEAR (struct PerfBuffer perfBuffers[SDLOG_NUM_FILES]);
   storageStatus = SDLOG_OK;
   chRegSetThreadName("thdSdLog");
   while (true) {
