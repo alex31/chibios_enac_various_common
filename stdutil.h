@@ -36,7 +36,7 @@
 
 #if defined TRACE 
 #include "printf.h"
-#define DebugTrace(...) {{chprintf (chp, __VA_ARGS__); chprintf (chp, "\r\n");}}
+#define DebugTrace(fmt, ...) chprintf (chp, fmt "\r\n", ## __VA_ARGS__ )
 #else
 #define DebugTrace(...) 
 #endif // TRACE

@@ -63,6 +63,7 @@ typedef struct {
 } synchronous_print_arg_t;
 
 static Thread *printThreadPtr = NULL;
+MUTEX_DECL(printThreadMutex);
 
 static WORKING_AREA(waSerialPrint, CHPRINTF_USE_STDLIB ? 1024 : 420);
 
@@ -426,20 +427,23 @@ void directchprintf(BaseSequentialStream *chp, const char *fmt, ...)
 
 void chprintf(BaseSequentialStream *lchp, const char *fmt, ...) 
 {
-  va_list ap;
+  chMtxLock (&printThreadMutex); {
 
-  if (printThreadPtr == NULL)
-    printThreadPtr = chThdCreateStatic(waSerialPrint, sizeof(waSerialPrint), NORMALPRIO+1, serialPrint, NULL);
-
-  va_start(ap, fmt);
-  synchronous_print_arg_t spat = {.chp = lchp,
-				  .destBuf = NULL,
-				  .fmt = fmt,
-				  .ap = ap};
-  
-  chMsgSend (printThreadPtr, (msg_t) &spat);
-  
-  va_end(ap);
+    va_list ap;
+    
+    if (printThreadPtr == NULL)
+      printThreadPtr = chThdCreateStatic(waSerialPrint, sizeof(waSerialPrint), NORMALPRIO+1, serialPrint, NULL);
+    
+    va_start(ap, fmt);
+    synchronous_print_arg_t spat = {.chp = lchp,
+				    .destBuf = NULL,
+				    .fmt = fmt,
+				    .ap = ap};
+    
+    chMsgSend (printThreadPtr, (msg_t) &spat);
+    va_end(ap);
+  }
+  chMtxUnlock (&printThreadMutex);
 }
 
 void chvprintf(BaseSequentialStream *lchp, const char *fmt, va_list ap)
