@@ -726,7 +726,7 @@ bool oledInitSdCard (OledConfig *oledConfig)
     // card is present, mount fat16 fs
     DebugTrace ("oledInitSdCard sd presence=%d", oledConfig->response[2]);
     OLED_KOF (KOF_INT16, "%c%c", 0xff, 0x03);
-    DebugTrace ("oledInitSdCard fat16 mount=%d", oledConfig->response[2])
+    DebugTrace ("oledInitSdCard fat16 mount=%d", oledConfig->response[2]);
   }
   
   return (oledConfig->response[2] != 0);
