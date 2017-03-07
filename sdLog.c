@@ -145,9 +145,11 @@ static size_t logRawLen (const size_t len);
 static SdioError sdLoglaunchThread (void);
 static SdioError sdLogStopThread (void);
 static thread_t *sdLogThd = NULL;
-static SdioError  getNextFIL (FileDes *fd);
-static void removeFromQueue (const size_t nbMsgToRFemov);
-static void cleanQueue (const bool allQueue);
+static SdioError  getNextFIL(FileDes *fd);
+static void removeFromQueue(const size_t nbMsgToRFemov);
+static void cleanQueue(const bool allQueue);
+static SdioError sdLogExpandLogFile(const FileDes fileObject, const size_t sizeInMo,
+				    const bool preallocate);
 
 #if (CH_KERNEL_MAJOR > 2)
 static void thdSdLog(void *arg) ;
@@ -239,10 +241,11 @@ SdioError sdLogFinish (void)
 
 #ifdef SDLOG_NEED_QUEUE
 SdioError sdLogOpenLog(FileDes *fd, const char *directoryName, const char *prefix,
-                       const uint32_t autoFlushPeriod, const bool appendTagAtClose)
+                       const uint32_t autoFlushPeriod, const bool appendTagAtClose,
+		       const size_t sizeInMo, const bool preallocate)
 {
   FRESULT rc; /* fatfs result code */
-  SdioError sde; /* sdio result code */
+  SdioError sde = SDLOG_OK; /* sdio result code */
   //DIR dir; /* Directory object */
   //FILINFO fno; /* File information object */
   char fileName[32];
@@ -256,7 +259,7 @@ SdioError sdLogOpenLog(FileDes *fd, const char *directoryName, const char *prefi
 
   sde = getNextFIL(&ldf);
   if (sde != SDLOG_OK) {
-    return sde;
+    return storageStatus = sde;
   }
 
   sde = getFileName(prefix, directoryName, fileName, sizeof(fileName), +1);
@@ -274,10 +277,11 @@ SdioError sdLogOpenLog(FileDes *fd, const char *directoryName, const char *prefi
     fileDes[ldf].tagAtClose = appendTagAtClose;
     fileDes[ldf].autoFlushPeriod = autoFlushPeriod;
     fileDes[ldf].lastFlushTs = 0;
+    sde = sdLogExpandLogFile(ldf, sizeInMo, preallocate);
   }
-
+  
   *fd = ldf;
-  return storageStatus = SDLOG_OK;
+  return storageStatus = sde;
 }
 
 SdioError sdLogCloseAllLogs (bool flush)
@@ -628,7 +632,7 @@ SdioError sdLoglaunchThread ()
   chThdSleepMilliseconds(100);
 
   sdLogThd = chThdCreateStatic(waThdSdLog, sizeof(waThdSdLog),
-			       NORMALPRIO+1, thdSdLog, NULL);
+			       NORMALPRIO+2, thdSdLog, NULL);
   if (sdLogThd == NULL)
     return SDLOG_INTERNAL_ERROR;
   else
