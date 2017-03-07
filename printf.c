@@ -36,6 +36,7 @@
 #include "printf.h"
 #include "portage.h"
 #include <stdnoreturn.h>
+#include <ctype.h>
 
 
 #define MAX_FILLER 11
@@ -330,6 +331,10 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
       p = ftoa(p, d, fprec);
       break;
 #endif
+    case 'p':
+    case 'P':
+      _putChar ('0');
+      _putChar (islower (c) ? 'x' : 'X');
     case 'X':
     case 'x':
       c = 16;

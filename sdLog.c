@@ -238,8 +238,8 @@ SdioError sdLogFinish (void)
 
 
 #ifdef SDLOG_NEED_QUEUE
-SdioError sdLogOpenLog (FileDes *fd, const char* directoryName, const char* prefix,
-			const uint32_t autoFlushPeriod, const bool appendTagAtClose)
+SdioError sdLogOpenLog(FileDes *fd, const char *directoryName, const char *prefix,
+                       const uint32_t autoFlushPeriod, const bool appendTagAtClose)
 {
   FRESULT rc; /* fatfs result code */
   SdioError sde; /* sdio result code */
@@ -247,29 +247,37 @@ SdioError sdLogOpenLog (FileDes *fd, const char* directoryName, const char* pref
   //FILINFO fno; /* File information object */
   char fileName[32];
 
-  sde = getNextFIL (fd);
+  /* local file descriptor
+     using fd is a bad idea since fd is set before fatfs objets are coherents
+     in a multithreaded application where sdLogXXX are done before sdLogWriteLog is done
+     we can have a race condition. setting fd only when fatfs files are opened resolve the problem
+   */
+  FileDes ldf;
+
+  sde = getNextFIL(&ldf);
   if (sde != SDLOG_OK) {
     return sde;
   }
 
-  sde = getFileName(prefix, directoryName, fileName, sizeof (fileName), +1);
+  sde = getFileName(prefix, directoryName, fileName, sizeof(fileName), +1);
   if (sde != SDLOG_OK) {
     // sd card is not inserted, so logging task can be deleted
-    return SDLOG_FATFS_ERROR;
+    return storageStatus = SDLOG_FATFS_ERROR;
   }
 
 
-  rc = f_open(&fileDes[*fd].fil, fileName, FA_WRITE | FA_CREATE_ALWAYS);
+  rc = f_open(&fileDes[ldf].fil, fileName, FA_WRITE | FA_CREATE_ALWAYS);
   if (rc) {
-    fileDes[*fd].inUse = false;
-    return SDLOG_FATFS_ERROR;
+    fileDes[ldf].inUse = false;
+    return storageStatus = SDLOG_FATFS_ERROR;
   } else {
-    fileDes[*fd].tagAtClose = appendTagAtClose;
-    fileDes[*fd].autoFlushPeriod = autoFlushPeriod;
-    fileDes[*fd].lastFlushTs = 0;
+    fileDes[ldf].tagAtClose = appendTagAtClose;
+    fileDes[ldf].autoFlushPeriod = autoFlushPeriod;
+    fileDes[ldf].lastFlushTs = 0;
   }
 
-  return SDLOG_OK;
+  *fd = ldf;
+  return storageStatus = SDLOG_OK;
 }
 
 SdioError sdLogCloseAllLogs (bool flush)
@@ -937,7 +945,8 @@ static msg_t thdSdLog(void *arg)
 		}
 	      }
 	      if (rc) {
-		chThdExit (storageStatus = SDLOG_FATFS_ERROR);
+		//chThdExit (storageStatus = SDLOG_FATFS_ERROR);
+	          storageStatus = SDLOG_FATFS_ERROR;
 	      } else if (bw != SDLOG_WRITE_BUFFER_SIZE) {
 		chThdExit (storageStatus = SDLOG_FSFULL);
 	      }
