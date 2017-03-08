@@ -27,7 +27,9 @@ void oledReleaseLock (OledConfig *oledConfig);
 // replace escape color sequence by color command for respective backend
 // ESC c 0 à 9 : couleur index of background and foreground
 // replace escape n by carriage return, line feed
-void oledPrintFmt (OledConfig *oledConfig, const char *txt, ...);
+void oledPrintFmt (OledConfig *oledConfig, const char *txt, ...)
+  __attribute__ ((format (printf, 2, 3)));
+;
 void oledPrintBuffer (OledConfig *oledConfig, const char *buffer);
 void oledGetVersion (OledConfig *oledConfig, char *buffer, const size_t buflen);
 void oledChangeBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
