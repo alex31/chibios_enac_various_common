@@ -749,7 +749,7 @@ void oledListSdCardDirectory (OledConfig *oledConfig)
       remainFile = OLED_KOF (KOF_INT16LENGTH_THEN_DATA, "%c%c", 0x00, 0x25);
     
     if (remainFile) {
-      DebugTrace ("File [%d] = %s", fileNo, oledConfig->response);
+      DebugTrace ("File [%lu] = %s", fileNo, oledConfig->response);
     }
   }
 }
@@ -933,13 +933,13 @@ static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
 #if defined LCD_240_320 || defined LCD_240_400
     hardwareSetState (HW_uart1, FALSE);
 #endif
-    DebugTrace ("oledReceiveAnswer ret[%d] != expectedSize[%d] @%s : line %d", ret, size, fct, line);
+    DebugTrace ("oledReceiveAnswer ret[%lu] != expectedSize[%lu] @%s : line %lu", ret, size, fct, line);
     oledTrace (oc, "LCD Protocol error");
   } else if (response[0] != 0x6) {
 #if defined LCD_240_320 || defined LCD_240_400
     hardwareSetState (HW_uart1, FALSE);
 #endif
-    DebugTrace ("oledReceiveAnswer get NACK [%d] @%s : line %d XY=[%d,%d]", response[0], fct, line,
+    DebugTrace ("oledReceiveAnswer get NACK [%d] @%s : line %lu XY=[%d,%d]", response[0], fct, line,
 		oc->curXpos, oc->curYpos);
     oledTrace (oc, "NACK");
   } else {
