@@ -192,11 +192,11 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
   if (TRUE) {
   chprintf(lchp, "OK\r\n");
   chprintf(lchp, "*** Card CSD content is: ");
-  chprintf(lchp, "%X %X %X %X \r\n", (&SDCD1)->csd[3], (&SDCD1)->csd[2],
+  chprintf(lchp, "%lX %lX %lX %lX \r\n", (&SDCD1)->csd[3], (&SDCD1)->csd[2],
 	   (&SDCD1)->csd[1], (&SDCD1)->csd[0]);
   
 
-  chprintf(lchp, "capacity = %d sectors of 512 bytes = %d Mo\r\n", 
+  chprintf(lchp, "capacity = %lu sectors of 512 bytes = %lu Mo\r\n", 
 	   SDCD1.capacity, SDCD1.capacity / 2048);
 
   chprintf(lchp, "Single aligned read...");
