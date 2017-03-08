@@ -191,7 +191,7 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
   bool is_long, left_align, plus_on_float;
   long l;
 #if CHPRINTF_USE_FLOAT
-  int fprec=0;
+  int fprec=1000000;
   double d;
   char tmpbuf[2*MAX_FILLER + 1];
 #else

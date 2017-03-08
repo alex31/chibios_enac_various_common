@@ -48,7 +48,8 @@ extern "C" {
   void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap);
   void chsnprintf(char *buffer, size_t size, const char *fmt, ...);
   // __attribute__ ((format (printf, 3, 4)));
-  void chprintf(BaseSequentialStream *lchp, const char *fmt, ...) ;
+  void chprintf(BaseSequentialStream *lchp, const char *fmt, ...)
+    __attribute__ ((format (printf, 2, 3)));
   void chvprintf(BaseSequentialStream *lchp, const char *fmt, va_list ap);
   void smchsnprintf(char *buffer, size_t size, const char *fmt, ...);
   void smchvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap);
