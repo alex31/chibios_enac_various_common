@@ -309,6 +309,8 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
       break;
     case 'D':
     case 'd':
+    case 'I':
+    case 'i':
       if (is_long)
         l = va_arg(ap, long);
       else
@@ -320,7 +322,12 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
       p = ltoa(p, l, 10);
       break;
 #if CHPRINTF_USE_FLOAT
+    case 'e':
     case 'f':
+    case 'g':
+    case 'E':
+    case 'F':
+    case 'G':
       d = (double) va_arg(ap, double);
       if (d < 0) {
         *p++ = '-';
