@@ -181,7 +181,7 @@ void systemReset(void)
 
 /* to lower consumption until reset */
 void systemDeepSleep (void)
-#if defined(STM32F4XX)
+#if defined(STM32F4XX) || defined(STM32F3XX)
 #define __CR CR
 #define __PWR_CR_PDDS PWR_CR_PDDS
 #define __PWR_CR_LPDS PWR_CR_LPDS
@@ -195,7 +195,7 @@ void systemDeepSleep (void)
 {
   chSysLock();
 
-#if defined(STM32F4XX) | defined(STM32F7XX)
+#if defined(STM32F4XX) || defined(STM32F7XX) || defined(STM32F3XX)
   /* clear PDDS and LPDS bits */
   PWR->__CR &= ~(__PWR_CR_PDDS | __PWR_CR_LPDS);
   /* set LPDS and clear  */
@@ -203,7 +203,7 @@ void systemDeepSleep (void)
 #elif defined(STM32L4XX)
   PWR->CR1 =  (PWR->CR1 & (~PWR_CR1_LPMS)) | PWR_CR1_LPMS_SHUTDOWN;
 #else
-#warning neither STM32F4XX, STM32F7XX, STM32L4XX : should be implemented
+#warning neither STM32F3XX,STM32F4XX,  STM32F7XX, STM32L4XX : should be implemented
 #endif
 
   /* Setup the deepsleep mask */
