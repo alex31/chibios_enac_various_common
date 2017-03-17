@@ -732,7 +732,7 @@ msg_t mpu9250_setModeAutoWake (Mpu9250Data *imu,
 }
 
 
-msg_t mpu9250_activateMotionDetect (Mpu9250Data *imu, const uint32_t threadsholdInMilliG)
+msg_t mpu9250_activateMotionDetect (Mpu9250Data *imu, const uint32_t threadsholdInMilliG, const uint8_t pinConfigMask)
 {
   msg_t status;
   const uint8_t threadshold = MIN((threadsholdInMilliG/4), 255);
@@ -744,9 +744,7 @@ msg_t mpu9250_activateMotionDetect (Mpu9250Data *imu, const uint32_t threadshold
 		       MPU9250_INTEL_ENABLE | MPU9250_INTEL_MODE_COMPARE);
   
   // interrupt pin is active @level low, opendrain, 50µs pulse, clear on any register read
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_PIN_CFG,
-			MPU9250_INT_PIN_CFG_ACTIVE_LOW | MPU9250_INT_PIN_CFG_OPENDRAIN |
-			MPU9250_INT_PIN_CFG_PULSE_50_US | MPU9250_INT_PIN_CFG_CLR_ON_READ);
+  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_PIN_CFG, pinConfigMask);
   
   // interrupt pin fire on motion detection
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_ENABLE,

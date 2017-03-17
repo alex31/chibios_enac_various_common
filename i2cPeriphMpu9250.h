@@ -31,23 +31,6 @@
 #         \__|   \___/   \__,_|   \___/
 
 
- ° gestion de la consommation
-	ø sous modules alimentés : champ power avec MPU9250_ACC_ENABLED(DISABLED) | MPU9250_GYRO_ENABLED(D) |
-						    MPU9250_MAG_ENABLED(D) | 
-						    MPU9250_POWERMAX | MPU9250_POWERLOW | MPU9250_STANDBY
-
-	ø mode de fonctionnement : champ mode avec  MPU9250_MODE_I2C  MPU9250_MODE_MOTION_DETECT
-
-	ø generation d'interruption : champ interrupt avec  MPU9250_NO_ITR, MPU9250_ITR_ON_MOTION, MPU9250_ITR_ON_DATA_READY
-
-	ø fonctions  :
-		* mpu9250_setPwr (Mpu9250Data *imu, const Mpu9250_PowerSpec pspec);
-		* mpu9250_setBehavior (Mpu9250Data *imu, const Mpu9250_BehaviourMode bmode);
-		* mpu9250_setInterrupt (Mpu9250Data *imu, const Mpu9250_InterruptMode bmode);
-
-
-
-
  */
 
 #if I2C_USE_IMU9250
@@ -217,8 +200,11 @@
 #define MPU9250_INTEL_MODE_COMPARE (1<<6)
 
 #define MPU9250_INT_PIN_CFG_ACTIVE_LOW		(1<<7)
+#define MPU9250_INT_PIN_CFG_ACTIVE_HIGH		(0<<7)
 #define MPU9250_INT_PIN_CFG_OPENDRAIN 		(1<<6)
+#define MPU9250_INT_PIN_CFG_PUSHPULL 		(0<<6)
 #define MPU9250_INT_PIN_CFG_LATCH_UNTIL_CLR  	(1<<5)
+#define MPU9250_INT_PIN_CFG_OPENDRAIN 		(1<<6)
 #define MPU9250_INT_PIN_CFG_PULSE_50_US  	(0<<5)
 #define MPU9250_INT_PIN_CFG_CLR_ON_READ		(1<<4)
 #define MPU9250_INT_PIN_CFG_FSYNC  		(1<<3)
@@ -439,16 +425,18 @@ msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass);
 msg_t mpu9250_setModeAccOnly (Mpu9250Data *imu, Ak8963Data *compass);
 
 // Disable gyro and mag AND set imu in  low power cycle mode wich internally get acceleration
-// at lpdr frequency (cf enum Mpu9250_LowPowerAccelerometerFrequencyCycle)
+// at lpodr frequency (cf enum Mpu9250_LowPowerAccelerometerFrequencyCycle)
 // useful if associated with MotionDetect
 msg_t mpu9250_setModeAutoWake (Mpu9250Data *imu, 
 			       Mpu9250_LowPowerAccelerometerFrequencyCycle lpodr);
 
 // mode low power with motion detection, when motion is detected, interruption is made
 // on itr pin of mpu9250 in order to awake MCU
-// when the MCU is awaked, it has to reinit MCU to get actual measure.
-// Motion detect can be used is normal or autowake mode
-msg_t mpu9250_activateMotionDetect (Mpu9250Data *imu, const uint32_t threadsholdInMilliG);
+// when the MCU is awaked, it has to reinit IMU to get actual measure.
+// Motion detect can be used in normal or autowake mode
+// config mask of the interrupt pin has to be given
+msg_t mpu9250_activateMotionDetect (Mpu9250Data *imu, const uint32_t threadsholdInMilliG,
+				    const uint8_t pinConfigMask);
 
 
 // deep sleep (completely and definitly shutoff mpu, to be used again,
