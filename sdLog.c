@@ -887,7 +887,7 @@ static msg_t thdSdLog(void *arg)
     LogMessage *lm=NULL;
     const int32_t retLen = ( int32_t) (msgqueue_pop (&messagesQueue, (void **) &lm));
     if (retLen > 0) {
-      FIL *fo =  &fileDes[lm->op.fd].fil;
+      FIL * const fo =  &fileDes[lm->op.fd].fil;
       uint8_t * const perfBuffer = perfBuffers[lm->op.fd].buffer;
 
       switch (lm->op.fcntl) {
