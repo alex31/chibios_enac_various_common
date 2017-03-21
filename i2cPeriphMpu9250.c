@@ -37,7 +37,7 @@ static    msg_t resetFifo( Mpu9250Data *imu);
 static    msg_t setByPassConfig( Mpu9250Data *imu);
 static    msg_t setMasterDelayDivider ( Mpu9250Data *imu);
 static    msg_t addSlave (Mpu9250Data *imu, Mpu9250MasterConfig_0_to_3 *mc);
-static    msg_t mpu9250_inactiveMotionDetect (Mpu9250Data *imu);
+//static    msg_t mpu9250_inactiveMotionDetect (Mpu9250Data *imu);
 
 #define MATH_PI 3.14159265358979323846f
 
@@ -762,30 +762,30 @@ msg_t mpu9250_activateMotionDetect (Mpu9250Data *imu, const uint32_t threadshold
   return status;
 }
 
-static msg_t mpu9250_inactiveMotionDetect (Mpu9250Data *imu)
-{
-  msg_t status;
+/* static msg_t mpu9250_inactiveMotionDetect (Mpu9250Data *imu) */
+/* { */
+/*   msg_t status; */
   
-  i2cAcquireBus(imu->i2cd);
+/*   i2cAcquireBus(imu->i2cd); */
   
-  // enable wake on motion detection logic
-  I2C_WRITE_REGISTERS (imu->i2cd, imu->slaveAddr,  MPU9250_ACCEL_ITR_CTRL,
-		       MPU9250_INTEL_DISABLE);
+/*   // enable wake on motion detection logic */
+/*   I2C_WRITE_REGISTERS (imu->i2cd, imu->slaveAddr,  MPU9250_ACCEL_ITR_CTRL, */
+/* 		       MPU9250_INTEL_DISABLE); */
   
-  // interrupt pin is active @level low, opendrain, 50µs pulse, clear on any register read
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_PIN_CFG,
-			MPU9250_INT_PIN_CFG_ACTIVE_LOW | MPU9250_INT_PIN_CFG_OPENDRAIN);
+/*   // interrupt pin is active @level low, opendrain, 50µs pulse, clear on any register read */
+/*   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_PIN_CFG, */
+/* 			MPU9250_INT_PIN_CFG_ACTIVE_LOW | MPU9250_INT_PIN_CFG_OPENDRAIN); */
   
-  // interrupt pin fire on motion detection
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_ENABLE,
-			MPU9250_INT_DISABLE_WAKE_ON_MOTION);
+/*   // interrupt pin fire on motion detection */
+/*   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_ENABLE, */
+/* 			MPU9250_INT_DISABLE_WAKE_ON_MOTION); */
   
-  // set threshold
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_ACCEL_WOM_THRESHOLD, 255);
+/*   // set threshold */
+/*   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_ACCEL_WOM_THRESHOLD, 255); */
   
-  i2cReleaseBus(imu->i2cd); 
-  return status;
-}
+/*   i2cReleaseBus(imu->i2cd);  */
+/*   return status; */
+/* } */
 
 msg_t mpu9250_setModeDeepSleep (Mpu9250Data *imu, Ak8963Data *compass)
 {
