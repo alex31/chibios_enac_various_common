@@ -469,9 +469,11 @@ static    msg_t setGyroConfig ( Mpu9250Data *imu)
   msg_t status = MSG_OK;
   uint8_t gyroConfig = (uint8_t) (imu->gyroFsr + ((imu->gyroLpf >> 3U) & 3U));
   uint8_t gyroLpf = (uint8_t) (imu->gyroLpf & 7U);
-  
+
+  i2cAcquireBus(imu->i2cd);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_GYRO_CONFIG, gyroConfig);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_GYRO_LPF, gyroLpf);
+  i2cReleaseBus(imu->i2cd);
 
   return status;
 }
@@ -480,9 +482,11 @@ static    msg_t setAccelConfig ( Mpu9250Data *imu)
 {
   msg_t status = MSG_OK;
 
+  i2cAcquireBus(imu->i2cd);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_ACCEL_CONFIG, imu->accelFsr);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_ACCEL_LPF, imu->accelLpf);
-
+  i2cReleaseBus(imu->i2cd);
+  
   return status;
 }
 
@@ -491,25 +495,30 @@ static    msg_t setMasterDelayDivider ( Mpu9250Data *imu)
   msg_t status = MSG_OK;
   uint8_t delay = (uint8_t) ((imu->sampleRate / imu->auxSampleRate) -1U);
   delay = MIN (delay  , 31);
-
-
   uint8_t slv4Ctrl;
+
+  i2cAcquireBus(imu->i2cd);
   I2C_READ_REGISTER  (imu->i2cd, imu->slaveAddr, MPU9250_I2C_SLV4_CTRL, &slv4Ctrl);
   slv4Ctrl |= delay;
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_I2C_SLV4_CTRL, slv4Ctrl);
-
+  i2cReleaseBus(imu->i2cd);
+  
   return status;
 }
 
 static    msg_t setSampleRate ( Mpu9250Data *imu)
 {
   msg_t status = MSG_OK;
+
+  i2cAcquireBus(imu->i2cd);
   if (imu->sampleRate > 1000) {
     I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_SMPRT_DIV, 0);
   } else {
     I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_SMPRT_DIV, 
 			  ((uint8_t) ((1000 / imu->sampleRate) - 1)));
   }
+  
+  i2cReleaseBus(imu->i2cd);
   return status;
 }
 
@@ -522,7 +531,8 @@ static    msg_t setSampleRate ( Mpu9250Data *imu)
 static __attribute__((__unused__)) msg_t resetFifo( Mpu9250Data *imu) 
 {
   msg_t status = MSG_OK;
-
+  
+  i2cAcquireBus(imu->i2cd);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_ENABLE, 0);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_FIFO_EN, 0);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_USER_CTRL, 0);
@@ -531,7 +541,8 @@ static __attribute__((__unused__)) msg_t resetFifo( Mpu9250Data *imu)
   chThdSleepMilliseconds (50);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_INT_ENABLE, 1);
   I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU9250_FIFO_EN, 0x78);
-
+  i2cReleaseBus(imu->i2cd);
+  
   return status;
 }
 
@@ -672,7 +683,9 @@ msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *val)
 msg_t mpu9250_getItrStatus  (Mpu9250Data *imu, uint8_t *itrStatus)
 {
   msg_t status = MSG_OK;
+  i2cAcquireBus( imu->i2cd);
   I2C_READ_REGISTER(imu->i2cd, imu->slaveAddr, MPU9250_INT_STATUS, itrStatus);
+  i2cReleaseBus (imu->i2cd);
   return status;
 }
 
