@@ -1,11 +1,11 @@
 #include <ch.h>
 #include <hal.h>
-#include "globalVar.h"
 #include "printf.h"
 #include "stdutil.h"
 #include "i2cMaster.h"
 #include <alloca.h>
 
+extern BaseSequentialStream *chp;
 
 /*
   ° separer lib i2cMaster et lib de composants : objet capteur
