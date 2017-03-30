@@ -39,6 +39,7 @@
 
 /* Normal drivers.*/
 #include "hal_comp.h"
+#include "hal_opamp.h"
 
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
