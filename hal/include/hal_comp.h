@@ -54,8 +54,8 @@ typedef enum {
   COMP_READY = 2                     /**< Ready.                             */
 } compstate_t;
 
-#define COMP_NONINV_BELOW_INV (0U)
-#define COMP_INV_BELOW_NONINV (1U)
+#define COMP_PLUS_BELOW_MOINS (0U)
+#define COMP_MOINS_BELOW_PLUS (1U)
 
 /**
  * @brief   Type of a structure representing a COMP driver.
@@ -105,7 +105,7 @@ extern "C" {
 }
 #endif
 
-#define compGetOutput(compp) comp_lld_getOutput(compp)
+#define compGetOutputX(compp) comp_lld_getOutput(compp)
 
 #endif /* HAL_USE_COMP == TRUE */
 

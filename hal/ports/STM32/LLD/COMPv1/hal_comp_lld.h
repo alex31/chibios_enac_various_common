@@ -326,8 +326,8 @@
  * @details If set to @p TRUE the support for COMPD9 is included.
  * @note    The default is @p TRUE.
  */
-#if !defined(STM32_COMP_USE_COMP6) || defined(__DOXYGEN__)
-#define STM32_COMP_USE_COMP6                  FALSE
+#if !defined(STM32_COMP_USE_COMP7) || defined(__DOXYGEN__)
+#define STM32_COMP_USE_COMP7                  FALSE
 #endif
 
 /** @} */
@@ -360,7 +360,7 @@
 #error "COMP6 not present in the selected device"
 #endif
 
-#if STM32_COMP_USE_COMP6 && !STM32_HAS_COMP6
+#if STM32_COMP_USE_COMP7 && !STM32_HAS_COMP7
 #error "COMP7 not present in the selected device"
 #endif
 
@@ -389,9 +389,7 @@ typedef struct {
    */
   bool			output_inverted;
    /**
-    * @brief COMP DIER register initialization data.
-    * @note  The value of this field should normally be equal to zero.
-    * @note  Only the DMA-related bits can be specified in this field.
+    * @brief COMP CSR register initialization data.
     */
   uint32_t		csr;
 } COMPConfig;
@@ -472,7 +470,7 @@ extern "C" {
  */
 
 static inline uint32_t comp_lld_getOutput(const COMPDriver *compp) {
-  return (compp->comp->CSR | COMP_CSR_COMPxOUT) ? COMP_INV_BELOW_NONINV : COMP_NONINV_BELOW_INV;
+  return (compp->comp->CSR | COMP_CSR_COMPxOUT) ? COMP_MOINS_BELOW_PLUS : COMP_PLUS_BELOW_MOINS;
 }
 
 
