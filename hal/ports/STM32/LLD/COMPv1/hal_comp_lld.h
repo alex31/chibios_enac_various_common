@@ -468,9 +468,36 @@ extern "C" {
  * @return    output state of comparator
  * @notapi
  */
-
+#define COMP_API_GETPOUTPUT 1
 static inline uint32_t comp_lld_getOutput(const COMPDriver *compp) {
   return (compp->comp->CSR | COMP_CSR_COMPxOUT) ? COMP_MOINS_BELOW_PLUS : COMP_PLUS_BELOW_MOINS;
+}
+
+/**
+ * @brief     set polarity of the comparator
+ * @pre       The COMP unit must have been activated using @p compStart().
+ * @param[in] compp      pointer to a @p COMPDriver object
+ * @param[in] polarity   should be COMP_POLARITY_NORMAL or COMP_POLATITY_INVERTED
+ * @notapi
+ */
+#define COMP_API_SETPOLARITY 1
+static inline void comp_lld_setPolarity(const COMPDriver *compp, const uint32_t polarity) {
+  if (polarity)
+    compp->comp->CSR |= COMP_CSR_COMPxPOL;
+  else
+    compp->comp->CSR &= ~COMP_CSR_COMPxPOL;
+}
+
+/**
+ * @brief     get polarity of the comparator
+ * @pre       The COMP unit must have been activated using @p compStart().
+ * @param[in] compp      pointer to a @p COMPDriver object
+ * @return    comparator polarity : COMP_POLARITY_NORMAL or COMP_POLATITY_INVERTED
+ * @notapi
+ */
+#define COMP_API_GETPOLARITY 1
+static inline uint32_t comp_lld_getPolarity(const COMPDriver *compp) {
+  return (compp->comp->CSR  & COMP_CSR_COMPxPOL) ? COMP_POLATITY_INVERTED : COMP_POLARITY_NORMAL;
 }
 
 
