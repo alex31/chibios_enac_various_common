@@ -8,9 +8,17 @@ HALSRC += $(COMMUNITY)/hal/src/hal_community.c
 ifneq ($(findstring HAL_USE_COMP TRUE,$(HALCONF)),)
 HALSRC += $(COMMUNITY)/hal/src/hal_comp.c
 endif
-else
-HALSRC += $(COMMUNITY)/hal/src/hal_comp.c
+ifneq ($(findstring HAL_USE_OPAMP TRUE,$(HALCONF)),)
+HALSRC += $(COMMUNITY)/hal/src/hal_opamp.c
 endif
+
+
+else # ifeq ($(USE_SMART_BUILD),yes)
+HALSRC += $(COMMUNITY)/hal/src/hal_comp.c
+HALSRC += $(COMMUNITY)/hal/src/hal_opamp.c
+endif # ifeq ($(USE_SMART_BUILD),yes)
+
+
 
 # Required include directories
 HALINC += $(COMMUNITY)/hal/include

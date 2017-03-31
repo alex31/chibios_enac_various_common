@@ -35,9 +35,6 @@
 
 
 
-
-
-
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -50,7 +47,7 @@
 /**
  * @brief   OPAMPD1 driver enable switch.
  * @details If set to @p TRUE the support for OPAMPD1 is included.
- * @note    The default is @p TRUE.
+ * @note    The default is @p FALSE
  */
 #if !defined(STM32_OPAMP_USE_OPAMP1) || defined(__DOXYGEN__)
 #define STM32_OPAMP_USE_OPAMP1                  FALSE
@@ -59,7 +56,7 @@
 /**
  * @brief   OPAMPD2 driver enable switch.
  * @details If set to @p TRUE the support for OPAMPD2 is included.
- * @note    The default is @p TRUE.
+ * @note    The default is @p FALSE.
  */
 #if !defined(STM32_OPAMP_USE_OPAMP2) || defined(__DOXYGEN__)
 #define STM32_OPAMP_USE_OPAMP2                  FALSE
@@ -68,7 +65,7 @@
 /**
  * @brief   OPAMPD3 driver enable switch.
  * @details If set to @p TRUE the support for OPAMPD3 is included.
- * @note    The default is @p TRUE.
+ * @note    The default is @p FALSE.
  */
 #if !defined(STM32_OPAMP_USE_OPAMP3) || defined(__DOXYGEN__)
 #define STM32_OPAMP_USE_OPAMP3                  FALSE
@@ -77,10 +74,19 @@
 /**
  * @brief   OPAMPD4 driver enable switch.
  * @details If set to @p TRUE the support for OPAMPD4 is included.
- * @note    The default is @p TRUE.
+ * @note    The default is @p FALSE.
  */
 #if !defined(STM32_OPAMP_USE_OPAMP4) || defined(__DOXYGEN__)
 #define STM32_OPAMP_USE_OPAMP4                  FALSE
+#endif
+
+/**
+ * @brief   OPAMPD TRIM and CALIBRATION enable switch.
+ * @details If set to @p TRUE the support for USER_TRIM is included and calibration is done @init
+ * @note    The default is @p TRUE.
+ */
+#if !defined(STM32_OPAMP_USER_TRIM_ENABLED) || defined(__DOXYGEN__)
+#define STM32_OPAMP_USER_TRIM_ENABLED		TRUE
 #endif
 
 
@@ -135,15 +141,20 @@ struct OPAMPDriver {
   /**
    * @brief Driver state.
    */
-  opampstate_t                state;
+  opampstate_t			state;
   /**
    * @brief Current driver configuration data.
    */
-  const OPAMPConfig           *config;
+  const OPAMPConfig		*config;
   /**
    * @brief   Current OPAMP period in ticks.
    */
-  OPAMP_TypeDef                *opamp;
+  OPAMP_TypeDef			*opamp;
+
+#if STM32_OPAMP_USER_TRIM_ENABLED
+  uint16_t			trim_p;
+  uint16_t			trim_n;
+#endif
 };
 
 /*===========================================================================*/
