@@ -58,6 +58,10 @@ void halCommunityInit(void) {
 #if (HAL_USE_COMP == TRUE) || defined(__DOXYGEN__)
   compInit();
 #endif
+
+#if (HAL_USE_OPAMP == TRUE) || defined(__DOXYGEN__)
+  opampInit();
+#endif
   
 }
 

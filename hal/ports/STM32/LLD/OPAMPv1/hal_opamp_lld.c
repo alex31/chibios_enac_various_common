@@ -98,8 +98,8 @@ void opamp_lld_init(void) {
 #if STM32_OPAMP_USE_OPAMP2
   /* Driver initialization.*/
   opampObjectInit(&OPAMPD2);
-#if STM32_OPAMP_USER_TRIM_ENABLED
   OPAMPD2.opamp = OPAMP2;
+#if STM32_OPAMP_USER_TRIM_ENABLED
   OPAMPD2.trim_n = OPAMPD2.trim_p = 0U;
 #endif
 #endif
@@ -107,17 +107,17 @@ void opamp_lld_init(void) {
 #if STM32_OPAMP_USE_OPAMP3
   /* Driver initialization.*/
   opampObjectInit(&OPAMPD3);
-#if STM32_OPAMP_USER_TRIM_ENABLED
   OPAMPD3.opamp = OPAMP3;
+# if STM32_OPAMP_USER_TRIM_ENABLED
   OPAMPD3.trim_n = OPAMPD3.trim_p = 0U;
-#endif
+# endif
 #endif
 
 #if STM32_OPAMP_USE_OPAMP4
   /* Driver initialization.*/
   opampObjectInit(&OPAMPD4);
-#if STM32_OPAMP_USER_TRIM_ENABLED
   OPAMPD4.opamp = OPAMP4;
+#if STM32_OPAMP_USER_TRIM_ENABLED
   OPAMPD4.trim_n = OPAMPD4.trim_p = 0U;
 #endif
 #endif
@@ -493,6 +493,7 @@ static void opamp_lld_calibrate(void)
     OPAMPD1.trim_p = trimmingvaluep1;
     MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen1<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
     MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep1<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    OPAMPD1.state = OPAMP_STOP;
 #undef CSRm
 #endif
 
@@ -510,6 +511,7 @@ static void opamp_lld_calibrate(void)
     OPAMPD2.trim_p = trimmingvaluep2;
     MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen2<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
     MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep2<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    OPAMPD2.state = OPAMP_STOP;
 #undef CSRm
 #endif
 
@@ -527,6 +529,7 @@ static void opamp_lld_calibrate(void)
     OPAMPD3.trim_p = trimmingvaluep3;
     MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen3<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
     MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep3<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    OPAMPD3.state = OPAMP_STOP;
 #undef CSRm
 #endif
 
@@ -544,9 +547,9 @@ static void opamp_lld_calibrate(void)
     OPAMPD4.trim_p = trimmingvaluep4;
     MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen4<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
     MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep4<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    OPAMPD4.state = OPAMP_STOP;
 #undef CSRm
 #endif
-
 }
 #endif // STM32_OPAMP_USER_TRIM_ENABLED
 #endif /* HAL_USE_OPAMP */

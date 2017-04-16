@@ -86,15 +86,16 @@ void opampObjectInit(OPAMPDriver *opampp) {
  */
 void opampStart(OPAMPDriver *opampp, const OPAMPConfig *config) {
 
-  osalDbgCheck((opampp != NULL) && (config != NULL));
-
+  osalDbgCheck((opampp != NULL) && (config != NULL)); 
+  
   osalSysLock();
+  opampp->state = OPAMP_STOP;
   osalDbgAssert((opampp->state == OPAMP_STOP) || (opampp->state == OPAMP_READY),
-                "invalid state");
-  opampp->config = config;
-  opamp_lld_start(opampp);
-  opampp->state = OPAMP_READY;
-  osalSysUnlock();
+  		"invalid state");
+  opampp->config = config; 
+  opamp_lld_start(opampp); 
+  opampp->state = OPAMP_READY; 
+  osalSysUnlock(); 
 }
 
 /**

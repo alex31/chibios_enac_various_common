@@ -245,6 +245,16 @@ extern "C" {
  * @return    output state of comparator
  * @notapi
  */
+#ifndef COMP_CSR_COMPxOUT
+#define COMP_CSR_COMPxOUT COMP_CSR_VALUE
+#endif
+#ifndef COMP_CSR_COMPxPOL
+#define COMP_CSR_COMPxPOL COMP_CSR_POLARITY
+#endif
+#ifndef COMP_CSR_COMPxEN
+#define COMP_CSR_COMPxEN COMP_CSR_EN
+#endif
+
 #define COMP_API_GETPOUTPUT 1
 static inline uint32_t comp_lld_getOutput(const COMPDriver *compp) {
   return (compp->comp->CSR | COMP_CSR_COMPxOUT) ? COMP_MOINS_BELOW_PLUS : COMP_PLUS_BELOW_MOINS;
@@ -257,6 +267,7 @@ static inline uint32_t comp_lld_getOutput(const COMPDriver *compp) {
  * @param[in] polarity   should be COMP_POLARITY_NORMAL or COMP_POLATITY_INVERTED
  * @notapi
  */
+
 #define COMP_API_SETPOLARITY 1
 static inline void comp_lld_setPolarity(const COMPDriver *compp, const uint32_t polarity) {
   if (polarity)
