@@ -257,7 +257,7 @@ extern "C" {
 
 #define COMP_API_GETPOUTPUT 1
 static inline uint32_t comp_lld_getOutput(const COMPDriver *compp) {
-  return (compp->comp->CSR | COMP_CSR_COMPxOUT) ? COMP_MOINS_BELOW_PLUS : COMP_PLUS_BELOW_MOINS;
+  return (compp->comp->CSR & COMP_CSR_COMPxOUT) ? COMP_MOINS_BELOW_PLUS : COMP_PLUS_BELOW_MOINS;
 }
 
 /**
