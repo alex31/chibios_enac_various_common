@@ -230,6 +230,12 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
     case 0x1001 : mcu_revid_chr = 'Z'; break;
     }
     break;
+  case  0x446 : mcu_devid_str = "STM32F303xD/E and STM32F398xE";
+    switch (mcu_revid) {
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x1003 : mcu_revid_chr = 'Y'; break;
+    }
+    break;
   }
   
   chprintf(chp, "Kernel:       %s\r\n", CH_KERNEL_VERSION);
