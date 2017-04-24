@@ -4,15 +4,15 @@
 #include "stdutil.h"
 #include "keypad.h"
 
-// when finish to debug (printf need big stack), shrink  WORKING_AREA to 256
-static WORKING_AREA(waThdKeypadScan, 256);
 
-static ioportid_t getGpioPtrFromEnum (const Keypad_Gpio kpg);
-static void configureGpio (const Keypad_Def *kd);
+// when finish to debug (printf need big stack), shrink  WORKING_AREA to 256
+static THD_WORKING_AREA(waThdKeypadScan, 256);
+
+static void configureLines (const Keypad_Def *kd);
 static Keypad_key scanKeypad (const Keypad_Def *kd);
 static bool  keypadKeyAreEqual (const Keypad_key k1, const Keypad_key k2);
 static bool  keypadKeyAreNotEqual (const Keypad_key k1, const Keypad_key k2);
-static msg_t thdKeypadScan(void *arg) ;
+static void  thdKeypadScan(void *arg) ;
 static const Keypad_key noPress = {KEYPAD_NO_PRESS, KEYPAD_NO_PRESS};
 
 static const Keypad_Def keypadWiring = {
@@ -37,40 +37,19 @@ void launchScanKeypad (keypadCbType keyCb, void *userData)
   wta.userData=userData;
   wta.kd=&keypadWiring;
 
-  configureGpio ( wta.kd);
+  configureLines ( wta.kd);
   chThdCreateStatic(waThdKeypadScan, sizeof(waThdKeypadScan),
                     NORMALPRIO, thdKeypadScan, &wta);
 }
 
 
-
-static ioportid_t getGpioPtrFromEnum (const Keypad_Gpio kpg)
-{
-  switch (kpg) {
-     case Keypad_GpioA : return GPIOA;
-     case Keypad_GpioB : return GPIOB;
-     case Keypad_GpioC : return GPIOC;
-     case Keypad_GpioD : return GPIOD;
-     case Keypad_GpioE : return GPIOE;
-     case Keypad_GpioF : return GPIOF;
-     case Keypad_GpioG : return GPIOG;
-     case Keypad_GpioH : return GPIOH;
-     case Keypad_GpioI : return GPIOI;
-  }
-  return NULL;
-}
-
-
-
-
-
-static msg_t thdKeypadScan(void *arg) 
+static void thdKeypadScan(void *arg) 
 {
   WorkerThreadArgs *wta = (WorkerThreadArgs *) arg;
   chRegSetThreadName("keypadScan");
   Keypad_key lastKey = noPress;
 
-  while (!chThdShouldTerminate()) {
+  while (!chThdShouldTerminateX()) {
     Keypad_key kk = scanKeypad (wta->kd);
     if ((keypadKeyAreNotEqual(kk, noPress)) && (keypadKeyAreEqual(kk, lastKey))) {
       const Keypad_Symbol ks = (kk.row * KEYPAD_NUM_OF_COLS) + kk.col;
@@ -86,43 +65,40 @@ static msg_t thdKeypadScan(void *arg)
     }
 
   }
-  
-  return RDY_OK;
+  chThdExit (MSG_OK);
 }
 
-static void configureGpio (const Keypad_Def *kd)
+static void configureLines (const Keypad_Def *kd)
 {
   for (int r = 0; r < KEYPAD_NUM_OF_ROWS; r++) {
-    palSetPadMode (getGpioPtrFromEnum (kd->kpRow[r].kpGgpio), kd->kpRow[r].kpPin,
-		   PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_LOWEST);
+    palSetLineMode (kd->kpRow[r], PAL_MODE_OUTPUT_OPENDRAIN);
   }
   for (int c = 0; c < KEYPAD_NUM_OF_COLS; c++) {
-    palSetPadMode (getGpioPtrFromEnum (kd->kpCol[c].kpGgpio), kd->kpCol[c].kpPin,
-		   PAL_MODE_INPUT_PULLUP | PAL_STM32_OSPEED_LOWEST);
+    palSetLineMode (kd->kpCol[c],  PAL_MODE_INPUT_PULLUP);
   }
 }
 
 static Keypad_key scanKeypad (const Keypad_Def *kd)
 {
   for (int r = 0; r < KEYPAD_NUM_OF_ROWS; r++) {
-    palSetPad (getGpioPtrFromEnum (kd->kpRow[r].kpGgpio), kd->kpRow[r].kpPin);
+    palSetLine (kd->kpRow[r]);
   }
 
   for (int r = 0; r < KEYPAD_NUM_OF_ROWS; r++) {
-    palClearPad (getGpioPtrFromEnum (kd->kpRow[r].kpGgpio), kd->kpRow[r].kpPin);
+    palClearLine (kd->kpRow[r]);
  
     //chThdSleepMilliseconds (1);
-    halPolledDelay(US2RTT(2));
+    chSysPolledDelayX(US2ST(2));
     for (int c = 0; c < KEYPAD_NUM_OF_COLS; c++) {
-      int level = palReadPad (getGpioPtrFromEnum (kd->kpCol[c].kpGgpio), kd->kpCol[c].kpPin);
+      int level = palReadLine (kd->kpCol[c]);
       if (level == 0) {// keypress
-	palSetPad (getGpioPtrFromEnum (kd->kpRow[r].kpGgpio), kd->kpRow[r].kpPin);
+	palSetLine (kd->kpRow[r]);
 	const Keypad_key kk = {r,c};
 	return kk;
       }
     }
       
-    palSetPad (getGpioPtrFromEnum (kd->kpRow[r].kpGgpio), kd->kpRow[r].kpPin);
+    palSetLine (kd->kpRow[r]);
   }
   
 

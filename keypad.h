@@ -8,10 +8,10 @@
 
 #define KEYPAD_NUM_OF_COLS 4
 
-#define KEYPAD_GPIO_ROW {{Keypad_GpioE,0}, {Keypad_GpioE,1}, {Keypad_GpioE,2}, \
+#define KEYPAD_LINE_ROW {{Keypad_GpioE,0}, {Keypad_GpioE,1}, {Keypad_GpioE,2}, \
 	         	 {Keypad_GpioE,3}, {Keypad_GpioE,4}}
 
-#define KEYPAD_GPIO_COL {{Keypad_GpioE,8}, {Keypad_GpioE,7}, {Keypad_GpioE,6}, \
+#define KEYPAD_LINE_COL {{Keypad_GpioE,8}, {Keypad_GpioE,7}, {Keypad_GpioE,6}, \
 	        	 {Keypad_GpioE,5}}
 
 
@@ -59,20 +59,10 @@ extern "C" {
 typedef enum KEYPAD_SYMBOLS Keypad_Symbol;
 
 
-// store index of gpio instead of address to save memory (3*16 bytes saved) 
-typedef enum  __attribute__ ((packed)) {
-  Keypad_GpioA, Keypad_GpioB, Keypad_GpioC, 
-  Keypad_GpioD, Keypad_GpioE,  Keypad_GpioF, Keypad_GpioG, 
-  Keypad_GpioH, Keypad_GpioI}  Keypad_Gpio;
 
 typedef struct __attribute__ ((packed)) {
-  Keypad_Gpio kpGgpio;
-  uint8_t     kpPin;
-}  Keypad_Pin;
-
-typedef struct __attribute__ ((packed)) {
-  Keypad_Pin kpRow[KEYPAD_NUM_OF_ROWS]; // configure in output for selecting row
-  Keypad_Pin kpCol[KEYPAD_NUM_OF_COLS]; // configure in input for reading col
+  ioline_t kpRow[KEYPAD_NUM_OF_ROWS]; // configure in output for selecting row
+  ioline_t kpCol[KEYPAD_NUM_OF_COLS]; // configure in input for reading col
 } Keypad_Def;
 
 typedef struct {
