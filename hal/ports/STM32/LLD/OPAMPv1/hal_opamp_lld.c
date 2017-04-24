@@ -185,7 +185,7 @@ void opamp_lld_disable(OPAMPDriver *opampp) {
  * @notapi
  */
 #if STM32_OPAMP_USER_TRIM_ENABLED
-void opamp_lld_calibrate(void)
+void opamp_lld_calibrate_once(void)
 {
 #if STM32_OPAMP_USE_OPAMP1
   uint32_t trimmingvaluen1 = 16U;
@@ -581,6 +581,42 @@ void opamp_lld_calibrate(void)
 #undef CSRm
 #endif
 }
+
+
+void opamp_lld_calibrate(void)
+{
+  uint8_t trim_n[4] = {255};
+  uint8_t trim_p[4] = {255};
+  bool done;
+  do {
+    done = true;
+    opamp_lld_calibrate_once();
+#if STM32_OPAMP_USE_OPAMP1
+    done = done && (OPAMPD1.trim_n == trim_n[0]) &&  (OPAMPD1.trim_p == trim_p[0]);
+    trim_n[0] = OPAMPD1.trim_n;
+    trim_p[0] = OPAMPD1.trim_p;
+#endif
+#if STM32_OPAMP_USE_OPAMP2
+    done = done && (OPAMPD2.trim_n == trim_n[1]) &&  (OPAMPD2.trim_p == trim_p[1]);
+    trim_n[1] = OPAMPD2.trim_n;
+    trim_p[1] = OPAMPD2.trim_p;
+#endif
+#if STM32_OPAMP_USE_OPAMP3
+    done = done && (OPAMPD3.trim_n == trim_n[2]) &&  (OPAMPD3.trim_p == trim_p[2]);
+    trim_n[2] = OPAMPD3.trim_n;
+    trim_p[2] = OPAMPD3.trim_p;
+#endif
+#if STM32_OPAMP_USE_OPAMP4
+    done = done && (OPAMPD4.trim_n == trim_n[3]) &&  (OPAMPD4.trim_p == trim_p[3]);
+    trim_n[3] = OPAMPD4.trim_n;
+    trim_p[3] = OPAMPD4.trim_p;
+#endif
+  } while (!done);
+  
+}
+
+
+
 #endif // STM32_OPAMP_USER_TRIM_ENABLED
 #endif /* HAL_USE_OPAMP */
 
