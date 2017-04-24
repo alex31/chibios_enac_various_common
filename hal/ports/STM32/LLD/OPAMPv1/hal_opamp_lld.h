@@ -191,6 +191,10 @@ extern "C" {
   void opamp_lld_stop(OPAMPDriver *opampp);
   void opamp_lld_enable(OPAMPDriver *opampp);
   void opamp_lld_disable(OPAMPDriver *opampp);
+#if STM32_OPAMP_USER_TRIM_ENABLED
+void opamp_lld_calibrate(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

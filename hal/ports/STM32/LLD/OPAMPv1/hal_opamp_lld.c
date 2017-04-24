@@ -71,9 +71,6 @@ OPAMPDriver OPAMPD4;
 /* Driver local functions.                                                   */
 /*===========================================================================*/
 
-#if STM32_OPAMP_USER_TRIM_ENABLED
-static void opamp_lld_calibrate(void);
-#endif
 
 /*===========================================================================*/
 /* Driver exported functions.                                                */
@@ -188,7 +185,7 @@ void opamp_lld_disable(OPAMPDriver *opampp) {
  * @notapi
  */
 #if STM32_OPAMP_USER_TRIM_ENABLED
-static void opamp_lld_calibrate(void)
+void opamp_lld_calibrate(void)
 {
 #if STM32_OPAMP_USE_OPAMP1
   uint32_t trimmingvaluen1 = 16U;
@@ -248,20 +245,25 @@ static void opamp_lld_calibrate(void)
 #undef CSRm
 #endif
 
+  chSysPolledDelayX(MS2ST(20));
   uint32_t delta = 8U; 
   
   while (delta != 0U) {
 #if STM32_OPAMP_USE_OPAMP1
-    MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen1<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+	       trimmingvaluen1<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP2
-    MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen2<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+	       trimmingvaluen2<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP3
-    MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen3<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+	       trimmingvaluen3<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP4
-    MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen4<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+	       trimmingvaluen4<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
 #endif
 
     /* OFFTRIMmax delay 2 ms as per datasheet (electrical characteristics */ 
@@ -270,7 +272,7 @@ static void opamp_lld_calibrate(void)
     chSysPolledDelayX(MS2ST(2));
 
 #if STM32_OPAMP_USE_OPAMP1
-    if ((OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)   { 
+    if (OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL)   { 
       /* OPAMP_CSR_OUTCAL is HIGH try higher trimming */
       trimmingvaluen1 += delta;
     } else  {
@@ -280,7 +282,7 @@ static void opamp_lld_calibrate(void)
 #endif
     
 #if STM32_OPAMP_USE_OPAMP2
-    if ((OPAMPD2.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
+    if (OPAMPD2.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
       trimmingvaluen2 += delta;
     } else {
       trimmingvaluen2 -= delta;
@@ -288,7 +290,7 @@ static void opamp_lld_calibrate(void)
 #endif
     
 #if STM32_OPAMP_USE_OPAMP3
-    if ((OPAMPD3.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
+    if (OPAMPD3.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
       trimmingvaluen3 += delta;
     } else {
       trimmingvaluen3 -= delta;
@@ -296,7 +298,7 @@ static void opamp_lld_calibrate(void)
 #endif
 
 #if STM32_OPAMP_USE_OPAMP4
-    if ((OPAMPD4.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
+    if (OPAMPD4.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
       trimmingvaluen4 += delta;
     }  else {
       trimmingvaluen4 -= delta;
@@ -310,16 +312,20 @@ static void opamp_lld_calibrate(void)
   /* Still need to check if righ calibration is current value or un step below */
   /* Indeed the first value that causes the OUTCAL bit to change from 1 to 0U */
 #if STM32_OPAMP_USE_OPAMP1
-  MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen1<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+  MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+	     trimmingvaluen1<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP2
-  MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen2<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+  MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+	     trimmingvaluen2<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP3
-  MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen3<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+  MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+	     trimmingvaluen3<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP4
-  MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen4<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+  MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+	     trimmingvaluen4<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
 #endif
 
   /* OFFTRIMmax delay 2 ms as per datasheet (electrical characteristics */ 
@@ -328,31 +334,35 @@ static void opamp_lld_calibrate(void)
   chSysPolledDelayX(MS2ST(2));
   
 #if STM32_OPAMP_USE_OPAMP1
-    if ((OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)   { 
+    if (OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL)   { 
       /* OPAMP_CSR_OUTCAL is HIGH try higher trimming */
-      trimmingvaluen1 ++;
-      MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen1<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+      trimmingvaluen1  += (trimmingvaluen1 != 31);
+      MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+		 trimmingvaluen1<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
     }
 #endif
     
 #if STM32_OPAMP_USE_OPAMP2
-    if ((OPAMPD2.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
-      trimmingvaluen2 ++;
-      MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen2<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    if (OPAMPD2.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
+      trimmingvaluen2  += (trimmingvaluen2 != 31);
+      MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+		 trimmingvaluen2<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
     }
 #endif
     
 #if STM32_OPAMP_USE_OPAMP3
-    if ((OPAMPD3.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
-      trimmingvaluen3 ++;
-      MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen3<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    if (OPAMPD3.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
+      trimmingvaluen3  += (trimmingvaluen3 != 31);
+      MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+		 trimmingvaluen3<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
     }
 #endif
 
 #if STM32_OPAMP_USE_OPAMP4
-    if ((OPAMPD4.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
-      trimmingvaluen4 ++;
-      MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen4<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    if (OPAMPD4.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
+      trimmingvaluen4  += (trimmingvaluen4 != 31);
+      MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
+		 trimmingvaluen4<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
     }
 #endif
 
@@ -376,16 +386,20 @@ static void opamp_lld_calibrate(void)
 
   while (delta != 0U)   {
 #if STM32_OPAMP_USE_OPAMP1
-    MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluep1<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+	       trimmingvaluep1<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP2
-    MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluep2<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+	       trimmingvaluep2<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP3
-    MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluep3<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+	       trimmingvaluep3<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP4
-    MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETN, trimmingvaluep4<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+	       trimmingvaluep4<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
 #endif
   
 
@@ -394,7 +408,7 @@ static void opamp_lld_calibrate(void)
     /* two steps to have 1 mV accuracy */
     chSysPolledDelayX(MS2ST(2));
 #if STM32_OPAMP_USE_OPAMP1
-    if ((OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)   { 
+    if (OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL)   { 
       /* OPAMP_CSR_OUTCAL is HIGH try higher trimming */
       trimmingvaluep1 += delta;
     } else  {
@@ -404,7 +418,7 @@ static void opamp_lld_calibrate(void)
 #endif
     
 #if STM32_OPAMP_USE_OPAMP2
-    if ((OPAMPD2.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
+    if (OPAMPD2.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
       trimmingvaluep2 += delta;
     } else {
       trimmingvaluep2 -= delta;
@@ -412,7 +426,7 @@ static void opamp_lld_calibrate(void)
 #endif
     
 #if STM32_OPAMP_USE_OPAMP3
-    if ((OPAMPD3.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
+    if (OPAMPD3.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
       trimmingvaluep3 += delta;
     } else {
       trimmingvaluep3 -= delta;
@@ -420,7 +434,7 @@ static void opamp_lld_calibrate(void)
 #endif
     
 #if STM32_OPAMP_USE_OPAMP4
-    if ((OPAMPD4.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
+    if (OPAMPD4.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
       trimmingvaluep4 += delta;
     }  else {
       trimmingvaluep4 -= delta;
@@ -433,16 +447,20 @@ static void opamp_lld_calibrate(void)
   /* Still need to check if righ calibration is current value or un step below */
   /* Indeed the first value that causes the OUTCAL bit to change from 1 to 0U */
 #if STM32_OPAMP_USE_OPAMP1
-  MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep1<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+  MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+	     trimmingvaluep1<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP2
-  MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep2<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+  MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+	     trimmingvaluep2<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP3
-  MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep3<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+  MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+	     trimmingvaluep3<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
 #endif
 #if STM32_OPAMP_USE_OPAMP4
-  MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep4<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+  MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+	     trimmingvaluep4<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
 #endif
 
   /* OFFTRIMmax delay 2 ms as per datasheet (electrical characteristics */ 
@@ -451,31 +469,35 @@ static void opamp_lld_calibrate(void)
   chSysPolledDelayX(MS2ST(2));
 
 #if STM32_OPAMP_USE_OPAMP1
-    if ((OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)   { 
+    if (OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL)   { 
       /* OPAMP_CSR_OUTCAL is HIGH try higher trimming */
-      trimmingvaluep1 ++;
-      MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep1<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+      trimmingvaluep1 += (trimmingvaluep1 != 31);
+      MODIFY_REG(OPAMPD1.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+		 trimmingvaluep1<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
     }
 #endif
     
 #if STM32_OPAMP_USE_OPAMP2
-    if ((OPAMPD2.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
-      trimmingvaluep2 ++;
-      MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep2<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    if (OPAMPD2.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
+      trimmingvaluep2 += (trimmingvaluep2 != 31);
+      MODIFY_REG(OPAMPD2.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+		 trimmingvaluep2<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
     }
 #endif
     
 #if STM32_OPAMP_USE_OPAMP3
-    if ((OPAMPD3.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
-      trimmingvaluep3 ++;
-      MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep3<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    if (OPAMPD3.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
+      trimmingvaluep3 += (trimmingvaluep3 != 31);
+      MODIFY_REG(OPAMPD3.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+		 trimmingvaluep3<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
     }
 #endif
 
 #if STM32_OPAMP_USE_OPAMP4
-    if ((OPAMPD4.opamp->CSR & OPAMP_CSR_OUTCAL) != RESET)    { 
-      trimmingvaluep4 ++;
-      MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep4<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    if (OPAMPD4.opamp->CSR & OPAMP_CSR_OUTCAL)    { 
+      trimmingvaluep4 += (trimmingvaluep4 != 31);
+      MODIFY_REG(OPAMPD4.opamp->CSR, OPAMP_CSR_TRIMOFFSETP,
+		 trimmingvaluep4<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
     }
 #endif
 
@@ -491,8 +513,10 @@ static void opamp_lld_calibrate(void)
     OPAMPD1.trim_n = trimmingvaluen1;
     /* Write calibration result P */
     OPAMPD1.trim_p = trimmingvaluep1;
-    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen1<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
-    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep1<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN,
+	       trimmingvaluen1<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP,
+	       trimmingvaluep1<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
     OPAMPD1.state = OPAMP_STOP;
 #undef CSRm
 #endif
@@ -509,8 +533,10 @@ static void opamp_lld_calibrate(void)
     OPAMPD2.trim_n = trimmingvaluen2;
     /* Write calibration result P */
     OPAMPD2.trim_p = trimmingvaluep2;
-    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen2<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
-    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep2<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN,
+	       trimmingvaluen2<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP,
+	       trimmingvaluep2<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
     OPAMPD2.state = OPAMP_STOP;
 #undef CSRm
 #endif
@@ -527,8 +553,10 @@ static void opamp_lld_calibrate(void)
     OPAMPD3.trim_n = trimmingvaluen3;
     /* Write calibration result P */
     OPAMPD3.trim_p = trimmingvaluep3;
-    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen3<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
-    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep3<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN,
+	       trimmingvaluen3<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP,
+	       trimmingvaluep3<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
     OPAMPD3.state = OPAMP_STOP;
 #undef CSRm
 #endif
@@ -545,8 +573,10 @@ static void opamp_lld_calibrate(void)
     OPAMPD4.trim_n = trimmingvaluen4;
     /* Write calibration result P */
     OPAMPD4.trim_p = trimmingvaluep4;
-    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN, trimmingvaluen4<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
-    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP, trimmingvaluep4<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
+    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETN,
+	       trimmingvaluen4<<OPAMP_CSR_OPAMPx_TRIMOFFSETN_POS);
+    MODIFY_REG(CSRm, OPAMP_CSR_TRIMOFFSETP,
+	       trimmingvaluep4<<OPAMP_CSR_OPAMPx_TRIMOFFSETP_POS);
     OPAMPD4.state = OPAMP_STOP;
 #undef CSRm
 #endif

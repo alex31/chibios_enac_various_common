@@ -393,6 +393,9 @@
 #define OPAMP_CSR_OPAMPx_CALSEL_50	  (0b10 << 12)
 #define OPAMP_CSR_OPAMPx_CALSEL_90	  (0b11 << 12)
 
+_Static_assert(OPAMP_CSR_OPAMPx_CALSEL_10 == OPAMP1_CSR_CALSEL_0,
+	       "opamp macro definition mismatch");
+
 #define OPAMP_CSR_OPAMPx_PGAGAIN_2		(0b00 << 14)
 #define OPAMP_CSR_OPAMPx_PGAGAIN_4	  	(0b01 << 14)
 #define OPAMP_CSR_OPAMPx_PGAGAIN_8	  	(0b10 << 14)
