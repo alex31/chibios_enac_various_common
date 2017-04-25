@@ -5,7 +5,6 @@
 #include "keypad.h"
 
 
-// when finish to debug (printf need big stack), shrink  WORKING_AREA to 256
 static THD_WORKING_AREA(waThdKeypadScan, 256);
 
 static void configureLines (const Keypad_Def *kd);
@@ -37,7 +36,7 @@ void launchScanKeypad (keypadCbType keyCb, void *userData)
   wta.userData=userData;
   wta.kd=&keypadWiring;
 
-  configureLines ( wta.kd);
+  configureLines(wta.kd);
   chThdCreateStatic(waThdKeypadScan, sizeof(waThdKeypadScan),
                     NORMALPRIO, thdKeypadScan, &wta);
 }
@@ -53,7 +52,8 @@ static void thdKeypadScan(void *arg)
     Keypad_key kk = scanKeypad (wta->kd);
     if ((keypadKeyAreNotEqual(kk, noPress)) && (keypadKeyAreEqual(kk, lastKey))) {
       const Keypad_Symbol ks = (kk.row * KEYPAD_NUM_OF_COLS) + kk.col;
-      (wta->cb) (ks, wta->userData); 
+      (wta->cb) (ks, wta->userData);
+      // wait for release
       while (keypadKeyAreNotEqual (scanKeypad (wta->kd), noPress)) {
 	chThdSleepMilliseconds (10);
       }
@@ -87,9 +87,9 @@ static Keypad_key scanKeypad (const Keypad_Def *kd)
   for (int r = 0; r < KEYPAD_NUM_OF_ROWS; r++) {
     palClearLine (kd->kpRow[r]);
  
-    //chThdSleepMilliseconds (1);
-    chSysPolledDelayX(US2ST(2));
-    for (int c = 0; c < KEYPAD_NUM_OF_COLS; c++) {
+    chThdSleepMilliseconds (1);
+    //    chSysPolledDelayX(US2ST(2));
+    for (int c=0; c < KEYPAD_NUM_OF_COLS; c++) {
       int level = palReadLine (kd->kpCol[c]);
       if (level == 0) {// keypress
 	palSetLine (kd->kpRow[r]);
