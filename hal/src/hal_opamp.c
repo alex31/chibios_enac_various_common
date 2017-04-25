@@ -171,15 +171,6 @@ void opampDisable(OPAMPDriver *opampp) {
   osalSysUnlock();
 }
 
-void opampCalibrate(void) {
-  osalSysLock();
-
-  opamp_lld_calibrate();
-
-  osalSysUnlock();
-}
-
-
 #endif /* HAL_USE_OPAMP == TRUE */
 
 /** @} */

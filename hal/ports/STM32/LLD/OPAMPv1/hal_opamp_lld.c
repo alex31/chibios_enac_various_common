@@ -22,6 +22,7 @@
  * @{
  */
 
+#include <hal.h>
 #include "hal_community.h"
 
 #if HAL_USE_OPAMP || defined(__DOXYGEN__)
@@ -118,10 +119,6 @@ void opamp_lld_init(void) {
   OPAMPD4.trim_n = OPAMPD4.trim_p = 0U;
 #endif
 #endif
-
-#if STM32_OPAMP_USER_TRIM_ENABLED
-  opamp_lld_calibrate();
-#endif
 }
 
 /**
@@ -135,6 +132,10 @@ void opamp_lld_init(void) {
  */
 void opamp_lld_start(OPAMPDriver *opampp) {
   opampp->opamp->CSR = opampp->config->csr;
+#if  STM32_OPAMP_USER_TRIM_ENABLED   
+  opamp_lld_calibrate();
+#endif
+
 #if STM32_OPAMP_USER_TRIM_ENABLED
   opampp->opamp->CSR |= OPAMP_CSR_USERTRIM;
   MODIFY_REG(opampp->opamp->CSR, OPAMP_CSR_TRIMOFFSETN,
@@ -245,7 +246,7 @@ void opamp_lld_calibrate_once(void)
 #undef CSRm
 #endif
 
-  chSysPolledDelayX(MS2ST(20));
+  chSysPolledDelayX(MS2RTC(STM32_SYSCLK, 20));
   uint32_t delta = 8U; 
   
   while (delta != 0U) {
@@ -269,7 +270,7 @@ void opamp_lld_calibrate_once(void)
     /* OFFTRIMmax delay 2 ms as per datasheet (electrical characteristics */ 
     /* Offset trim time: during calibration, minimum time needed between */
     /* two steps to have 1 mV accuracy */
-    chSysPolledDelayX(MS2ST(2));
+    chSysPolledDelayX(MS2RTC(STM32_SYSCLK, 2));
 
 #if STM32_OPAMP_USE_OPAMP1
     if (OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL)   { 
@@ -331,7 +332,7 @@ void opamp_lld_calibrate_once(void)
   /* OFFTRIMmax delay 2 ms as per datasheet (electrical characteristics */ 
   /* Offset trim time: during calibration, minimum time needed between */
   /* two steps to have 1 mV accuracy */
-  chSysPolledDelayX(MS2ST(2));
+  chSysPolledDelayX(MS2RTC(STM32_SYSCLK, 2));
   
 #if STM32_OPAMP_USE_OPAMP1
     if (OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL)   { 
@@ -406,7 +407,7 @@ void opamp_lld_calibrate_once(void)
     /* OFFTRIMmax delay 2 ms as per datasheet (electrical characteristics */ 
     /* Offset trim time: during calibration, minimum time needed between */
     /* two steps to have 1 mV accuracy */
-    chSysPolledDelayX(MS2ST(2));
+    chSysPolledDelayX(MS2RTC(STM32_SYSCLK, 2));
 #if STM32_OPAMP_USE_OPAMP1
     if (OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL)   { 
       /* OPAMP_CSR_OUTCAL is HIGH try higher trimming */
@@ -466,7 +467,7 @@ void opamp_lld_calibrate_once(void)
   /* OFFTRIMmax delay 2 ms as per datasheet (electrical characteristics */ 
   /* Offset trim time: during calibration, minimum time needed between */
   /* two steps to have 1 mV accuracy */
-  chSysPolledDelayX(MS2ST(2));
+  chSysPolledDelayX(MS2RTC(STM32_SYSCLK, 2));
 
 #if STM32_OPAMP_USE_OPAMP1
     if (OPAMPD1.opamp->CSR & OPAMP_CSR_OUTCAL)   { 

@@ -102,7 +102,6 @@ extern "C" {
   void opampStop(OPAMPDriver *opampp);
   void opampEnable(OPAMPDriver *opampp);
   void opampDisable(OPAMPDriver *opampp);
-  void opampCalibrate();
 #ifdef __cplusplus
 }
 #endif
