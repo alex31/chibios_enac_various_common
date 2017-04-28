@@ -336,6 +336,9 @@ char *binary_fmt(uintmax_t x, const int fill);
 #if (CH_KERNEL_MAJOR > 2)
   int32_t get_stack_free (const thread_t *tp);
 #endif
+
+  pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq);
+  
 #ifdef __cplusplus
 }
 #endif

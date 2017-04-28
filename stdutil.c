@@ -359,6 +359,15 @@ uint16_t fletcher16 (uint8_t const *data, size_t bytes)
   return (uint16_t) ((sum2 % 0xff) << 8) | (sum1 % 0xff);
 }
 
+pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq)
+{
+  const pwmcnt_t newPeriod = pwmd->config->frequency / freq;
+  if (newPeriod && (newPeriod <= 65535))
+    pwmChangePeriod(pwmd, newPeriod);
+  
+  return newPeriod;
+}
+
 
 #define _GPIOTEST(P) if (P == p) return #P
 const char* getGpioName (const ioportid_t p)
