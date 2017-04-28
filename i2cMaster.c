@@ -932,11 +932,11 @@ static bool i2cMasterUnhangBus (I2CDriver *i2cd)
   palSetPadMode (i2cMcfg->sclGpio, i2cMcfg->sclPin, PAL_MODE_OUTPUT_PUSHPULL);
   
   for (uint8_t i=0; i<=8; i++) {
-    halPolledDelay (US2ST(10)) ; // 10µs : 100 khz
+    halPolledDelay (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
     palTogglePad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
-    halPolledDelay (US2ST(10)) ; // 10µs : 100 khz
+    halPolledDelay (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
     palTogglePad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
-    halPolledDelay (US2ST(10)) ; // 10µs : 100 khz
+    halPolledDelay (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
     
     sdaReleased = palReadPad (i2cMcfg->sdaGpio, i2cMcfg->sdaPin);
     if (sdaReleased) 

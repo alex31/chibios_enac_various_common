@@ -54,11 +54,15 @@ static void thdKeypadScan(void *arg)
       const Keypad_Symbol ks = (kk.row * KEYPAD_NUM_OF_COLS) + kk.col;
       (wta->cb) (ks, wta->userData);
       // wait for release
+      uint32_t cnt=0;
       while (keypadKeyAreNotEqual (scanKeypad (wta->kd), noPress)) {
+	if (cnt++ == 300) {
+	  DebugTrace ("spurious long key press row=%u col=%u", kk.row, kk.col);
+	}
 	chThdSleepMilliseconds (10);
       }
       lastKey = noPress;
-      chThdSleepMilliseconds (100);
+      chThdSleepMilliseconds (10);
     } else {
       lastKey = kk;
       chThdSleepMilliseconds (5);
@@ -88,7 +92,6 @@ static Keypad_key scanKeypad (const Keypad_Def *kd)
     palClearLine (kd->kpRow[r]);
  
     chThdSleepMilliseconds (1);
-    //    chSysPolledDelayX(US2ST(2));
     for (int c=0; c < KEYPAD_NUM_OF_COLS; c++) {
       int level = palReadLine (kd->kpCol[c]);
       if (level == 0) {// keypress

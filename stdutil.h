@@ -314,6 +314,7 @@ F7
   float atof_m(const char *s);
   void systemReset (void);
   void systemDeepSleep (void);
+  void systemDeepSleepFromISR (void);
   uint32_t revbit(uint32_t data);
   void my_assert_func (const char* file, const int line, 
 		       const char *cond);
