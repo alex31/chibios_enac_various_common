@@ -337,7 +337,9 @@ char *binary_fmt(uintmax_t x, const int fill);
   int32_t get_stack_free (const thread_t *tp);
 #endif
 
+#if HAL_USE_PWM 
   pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq);
+#endif
   
 #ifdef __cplusplus
 }
