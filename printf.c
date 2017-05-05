@@ -342,6 +342,9 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
     case 'P':
       _putChar ('0');
       _putChar (islower (c) ? 'x' : 'X');
+#if __GNUC__ >= 7
+    __attribute__ ((fallthrough));
+#endif
     case 'X':
     case 'x':
       c = 16;
