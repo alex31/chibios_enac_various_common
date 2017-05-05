@@ -131,15 +131,15 @@ chMtxInit(&i2cd->mutex);		\
 // this is formely not const, but in fact it's written only once
 #if STM32_I2C_USE_I2C1
 __attribute__((section(".data")))
-static const I2cMasterConfig const *i2c1=NULL;
+static const I2cMasterConfig  *i2c1=NULL;
 #endif
 #if STM32_I2C_USE_I2C2
 __attribute__((section(".data")))
-static const I2cMasterConfig const *i2c2=NULL;
+static const I2cMasterConfig  *i2c2=NULL;
 #endif
 #if STM32_I2C_USE_I2C3
 __attribute__((section(".data")))
-static const I2cMasterConfig const *i2c3=NULL;
+static const I2cMasterConfig  *i2c3=NULL;
 #endif
 
 bool initI2cDriver (const I2cMasterConfig *mconf)
