@@ -375,7 +375,8 @@ pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq)
 #ifndef STM32F7XX
 #include "bitband.h"
 void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
-			     const bool masked) {
+			     const bool masked)
+{
   switch (channel) {
   case 0 : bb_peri_set_bit (&(pwmd->tim->CCMR1), 5, !masked); break;
   case 1 : bb_peri_set_bit (&(pwmd->tim->CCMR1), 13, !masked); break;
@@ -385,33 +386,24 @@ void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
 }
 #else // ifndef STM32F7XX
 void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
-			     const bool masked) {
+			     const bool masked)
+{
+  inline void  peri_set_bit (volatile uint32_t *addr, const uint32_t pos,
+			     const bool level)
+  {
+    if (level)
+      *addr |= (1<<pos);
+    else
+      *addr &= ~(1<<pos);
+  };
+  
   switch (channel) {
-  case 0 :
-    if (masked)
-      pwmd->tim->CCMR1 &= ~(STM32_TIM_CCMR1_OC1M(0b010)) ;
-    else
-      pwmd->tim->CCMR1 |= STM32_TIM_CCMR1_OC1M(0b010) ;
-    break;
-  case 1 : 
-    if (masked)
-      pwmd->tim->CCMR1 &= ~(STM32_TIM_CCMR1_OC2M(0b010)) ;
-    else
-      pwmd->tim->CCMR1 |= STM32_TIM_CCMR1_OC2M(0b010) ;
-    break;
-  case 2 : 
-    if (masked)
-      pwmd->tim->CCMR2 &= ~(STM32_TIM_CCMR1_OC1M(0b010)) ;
-    else
-      pwmd->tim->CCMR2 |= STM32_TIM_CCMR1_OC1M(0b010) ;
-    break;
-  case 3 : 
-    if (masked)
-      pwmd->tim->CCMR2 &= ~(STM32_TIM_CCMR1_OC2M(0b010)) ;
-    else
-      pwmd->tim->CCMR2 |= STM32_TIM_CCMR1_OC2M(0b010) ;
-    break;
+  case 0 : peri_set_bit (&(pwmd->tim->CCMR1), 5, !masked); break;
+  case 1 : peri_set_bit (&(pwmd->tim->CCMR1), 13, !masked); break;
+  case 2 : peri_set_bit (&(pwmd->tim->CCMR2), 5, !masked); break;
+  case 3 : peri_set_bit (&(pwmd->tim->CCMR2), 13, !masked); break;
   }
+
 }
 
 #endif // ifndef STM32F7XX
