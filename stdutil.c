@@ -2,6 +2,7 @@
 #include <math.h>   
 #include <string.h>
 #include "ch.h"
+#include "hal.h"
 #include "printf.h"
 #include "globalVar.h"
 #include "stdutil.h"
@@ -359,7 +360,7 @@ uint16_t fletcher16 (uint8_t const *data, size_t bytes)
   return (uint16_t) ((sum2 % 0xff) << 8) | (sum1 % 0xff);
 }
 
-#if HAL_USE_PWM 
+#if HAL_USE_PWM
 pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq)
 {
   const pwmcnt_t newPeriod = pwmd->config->frequency / freq;
@@ -370,7 +371,51 @@ pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq)
     return -1;
   }
 }
-#endif
+
+#ifndef STM32F7XX
+#include "bitband.h"
+void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
+			     const bool masked) {
+  switch (channel) {
+  case 0 : bb_peri_set_bit (&(pwmd->tim->CCMR1), 5, !masked); break;
+  case 1 : bb_peri_set_bit (&(pwmd->tim->CCMR1), 13, !masked); break;
+  case 2 : bb_peri_set_bit (&(pwmd->tim->CCMR2), 5, !masked); break;
+  case 3 : bb_peri_set_bit (&(pwmd->tim->CCMR2), 13, !masked); break;
+  }
+}
+#else // ifndef STM32F7XX
+void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
+			     const bool masked) {
+  switch (channel) {
+  case 0 :
+    if (masked)
+      pwmd->tim->CCMR1 &= ~(STM32_TIM_CCMR1_OC1M(0b010)) ;
+    else
+      pwmd->tim->CCMR1 |= STM32_TIM_CCMR1_OC1M(0b010) ;
+    break;
+  case 1 : 
+    if (masked)
+      pwmd->tim->CCMR1 &= ~(STM32_TIM_CCMR1_OC2M(0b010)) ;
+    else
+      pwmd->tim->CCMR1 |= STM32_TIM_CCMR1_OC2M(0b010) ;
+    break;
+  case 2 : 
+    if (masked)
+      pwmd->tim->CCMR2 &= ~(STM32_TIM_CCMR1_OC1M(0b010)) ;
+    else
+      pwmd->tim->CCMR2 |= STM32_TIM_CCMR1_OC1M(0b010) ;
+    break;
+  case 3 : 
+    if (masked)
+      pwmd->tim->CCMR2 &= ~(STM32_TIM_CCMR1_OC2M(0b010)) ;
+    else
+      pwmd->tim->CCMR2 |= STM32_TIM_CCMR1_OC2M(0b010) ;
+    break;
+  }
+}
+
+#endif // ifndef STM32F7XX
+#endif // HAL_USE_PWM
 
 #define _GPIOTEST(P) if (P == p) return #P
 const char* getGpioName (const ioportid_t p)

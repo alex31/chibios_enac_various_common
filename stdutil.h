@@ -338,7 +338,9 @@ char *binary_fmt(uintmax_t x, const int fill);
 #endif
 
 #if HAL_USE_PWM 
-  pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq);
+ pwmcnt_t  pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq);
+ void	   pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
+				const bool masked);
 #endif
   
 #ifdef __cplusplus
