@@ -917,28 +917,26 @@ static bool i2cMasterUnhangBus (I2CDriver *i2cd)
   const I2cMasterConfig* i2cMcfg = getMasterConfigFromDriver (i2cd);
   bool sdaReleased;
   
-  palSetPadMode (i2cMcfg->sdaGpio, i2cMcfg->sdaPin, PAL_MODE_INPUT); 
-  sdaReleased = (palReadPad (i2cMcfg->sdaGpio, i2cMcfg->sdaPin) == 1);
+  palSetLineMode (i2cMcfg->sda, PAL_MODE_INPUT); 
+  sdaReleased = palReadLine (i2cMcfg->sda) == PAL_HIGH;
   if (sdaReleased) 
     goto end;
   
-  palSetPadMode (i2cMcfg->sclGpio, i2cMcfg->sclPin, PAL_MODE_INPUT);
-  bool currentInput = palReadPad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
-  if (currentInput) 
-    palSetPad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
-  else
-    palClearPad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
-  
-  palSetPadMode (i2cMcfg->sclGpio, i2cMcfg->sclPin, PAL_MODE_OUTPUT_PUSHPULL);
+  // BUG? : verify the purpose of recopying the level read 
+  palSetLineMode (i2cMcfg->scl, PAL_MODE_INPUT);
+  uint32_t currentInput = palReadLine (i2cMcfg->scl) == PAL_HIGH;
+  palSetLineMode (i2cMcfg->scl, PAL_MODE_OUTPUT_PUSHPULL);
+  palWriteLine (i2cMcfg->scl, currentInput);
+
   
   for (uint8_t i=0; i<=8; i++) {
     halPolledDelay (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
-    palTogglePad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
+    palToggleLine (i2cMcfg->scl);
     halPolledDelay (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
-    palTogglePad (i2cMcfg->sclGpio, i2cMcfg->sclPin);
+    palToggleLine (i2cMcfg->scl);
     halPolledDelay (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
     
-    sdaReleased = palReadPad (i2cMcfg->sdaGpio, i2cMcfg->sdaPin);
+    sdaReleased = palReadLine (i2cMcfg->sda) == PAL_HIGH;
     if (sdaReleased) 
       break;
   }
@@ -953,11 +951,11 @@ static void i2cMasterSetModePeriphI2c (I2CDriver *i2cd)
 {
   const I2cMasterConfig* i2cMcfg = getMasterConfigFromDriver (i2cd);
   
-  palSetPadMode (i2cMcfg->sclGpio, i2cMcfg->sclPin, 
+  palSetLineMode (i2cMcfg->scl, 
 		 PAL_MODE_ALTERNATE(i2cMcfg->alternateFunction) | PAL_STM32_OTYPE_OPENDRAIN |
 		 PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUDR_PULLUP);
   
-  palSetPadMode (i2cMcfg->sdaGpio, i2cMcfg->sdaPin, 
+  palSetLineMode (i2cMcfg->sda, 
   		 PAL_MODE_ALTERNATE(i2cMcfg->alternateFunction) | PAL_STM32_OTYPE_OPENDRAIN |
 		 PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUDR_PULLUP);
   

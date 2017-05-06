@@ -22,10 +22,8 @@ typedef union {
 typedef struct  {
   I2CDriver	*driver;
   const I2CConfig     *i2ccfg;
-  ioportid_t    sdaGpio;
-  ioportid_t    sclGpio;
-  uint32_t      sdaPin;
-  uint32_t      sclPin;
+  ioline_t	sda;
+  ioline_t      scl;
   iomode_t	alternateFunction;
 } I2cMasterConfig ;
 

@@ -17,8 +17,19 @@ enum OledScreenOrientation {OLED_LANDSCAPE=0, OLED_LANDSCAPE_REVERSE, OLED_PORTR
 			    OLED_PORTRAIT_REVERSE};
 #define COLOR_TABLE_SIZE 11
 
-void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
-	        ioportid_t rstGpio, uint32_t rstPin, enum OledConfig_Device dev);
+// enforce the use of oledStart over oledInit
+void __attribute__((deprecated)) oledInit (OledConfig *oledConfig,  struct SerialDriver *oled,
+					   const uint32_t baud,     ioportid_t rstGpio, uint32_t rstPin,
+					   enum OledConfig_Device dev);
+static inline void oledStart (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
+	        ioline_t reset, enum OledConfig_Device dev)
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+  oledInit (oledConfig, oled, baud, PAL_PORT(reset), PAL_PAD(reset), dev);
+#pragma GCC diagnostic pop  
+}
+  
 void   oledHardReset (OledConfig *oledConfig);
 bool oledIsCorrectDevice (OledConfig *oledConfig);
 void oledAcquireLock (OledConfig *oledConfig);
