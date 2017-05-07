@@ -13,6 +13,7 @@ typedef void (*RtcChangedCB) (int delta);
 
 
 void setHour (uint32_t val);
+void setUtcHour (uint32_t val);
 void setMinute (uint32_t val);
 void setSecond (uint32_t val);
 void setYear (uint32_t val);
@@ -22,6 +23,7 @@ void setWeekDay (uint32_t val);
 
 
 uint32_t 	getHour (void);
+uint32_t 	getUtcHour (void);
 uint32_t 	getMinute (void);
 uint32_t 	getSecond (void);
 uint32_t 	getYear (void);

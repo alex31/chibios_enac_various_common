@@ -5,6 +5,7 @@
 
 static uint32_t weekDay (void);
 static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const uint32_t year);
+static bool isInDTSPeriod (void);
 
 static struct tm utime;
 static RtcChangedCB callback = NULL;
@@ -19,12 +20,17 @@ static void cbCheck (int delta) {
 #include <chrtclib.h>
 
 
-void setHour (uint32_t val)
+void setUtcHour (uint32_t val)
 {
   rtcGetTimeTm (&RTCD1, &utime);
-  utime.tm_hour = val-getDstOffset();
+  utime.tm_hour = val;
   utime.tm_isdst = 0;
   rtcSetTimeTm (&RTCD1, &utime);
+}
+
+void setHour (uint32_t val)
+{
+  setUtcHour ((24+val-getDstOffset() % 24);
 }
 
 void setMinute (uint32_t val)
@@ -79,6 +85,14 @@ uint32_t getHour (void)
   
   return (utime.tm_hour+getDstOffset()) % 24;
 }
+
+ uint32_t getUtcHour (void)
+{
+  rtcGetTimeTm (&RTCD1, &utime);
+  mktime(&utime);
+  
+  return utime.tm_hour;
+}
 uint32_t getMinute (void)
 {
   rtcGetTimeTm (&RTCD1, &utime);
@@ -120,16 +134,21 @@ time_t getTimeUnixSec(void)
 static RTCDateTime rtctime;
 static uint32_t tv_msec;
 
-void setHour (uint32_t val)
+void setUtcHour (uint32_t val)
 {
   rtcGetTime (&RTCD1, &rtctime);
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
-  const int delta = ((val-getDstOffset()) - utime.tm_hour) * 3600;
-  utime.tm_hour = val-getDstOffset();
+  const int delta = (val - utime.tm_hour) * 3600;
+  utime.tm_hour = val;
   utime.tm_isdst = 0;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
   rtcSetTime (&RTCD1, &rtctime);
   cbCheck (delta);
+}
+
+void setHour (uint32_t val)
+{
+  setUtcHour ((24+val-getDstOffset()) % 24);
 }
 
 void setMinute (uint32_t val)
@@ -211,6 +230,16 @@ uint32_t getHour (void)
   mktime(&utime);
   
   return (utime.tm_hour+getDstOffset()) % 24;
+}
+
+  uint32_t getUtcHour (void)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  mktime(&utime);
+  
+  return utime.tm_hour;
 }
 uint32_t getMinute (void)
 {
@@ -338,6 +367,11 @@ static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const u
   
 uint32_t getDstOffset (void)
 {
+  return isInDTSPeriod() ? 2 : 1;
+}
+
+static bool isInDTSPeriod (void)
+{
   const  uint32_t startMonth=3;
   const  uint32_t endMonth=10;
   const uint32_t day = getMonthDay();
@@ -347,10 +381,10 @@ uint32_t getDstOffset (void)
 
   
   if ((month < startMonth) || (month > endMonth))
-    return 0;
+    return false;
 
   if ((month > startMonth) && (month < endMonth))
-      return 1;
+      return true;
 
   if (lastSundayOfMonth==0) {
     for (uint32_t d=31; d>=24; d--) {
@@ -362,9 +396,9 @@ uint32_t getDstOffset (void)
   }
 
   if (month == startMonth) 
-    return (day >= lastSundayOfMonth) ? 1 : 0;
+    return day >= lastSundayOfMonth;
   else
-    return (day < lastSundayOfMonth) ? 1 : 0;
+    return day < lastSundayOfMonth;
 }
 
 
