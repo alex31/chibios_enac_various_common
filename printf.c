@@ -197,7 +197,7 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
 #else
   char tmpbuf[MAX_FILLER + 1];
 #endif
-
+  const char * const bufferStart = buffer;
   // return TRUE if space exhausted
   bool _putChar (const char _c)  {
     if (buffer != NULL) {
@@ -292,7 +292,7 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
     /* Command decoding.*/
     switch (c) { 
     case 'n': 
-      *(va_arg(ap, int*)) = p-buffer;
+      *(va_arg(ap, int*)) = buffer-bufferStart;
       break;
     case 'c':
       filler = ' ';
