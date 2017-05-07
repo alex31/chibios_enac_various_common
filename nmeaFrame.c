@@ -45,7 +45,7 @@ void feedNmea (const NmeaBinder *nbs, NmeaStateMachine *sm,
 {
   static uint32_t lastTimeCall = 0;
 
-  const uint32_t timeNow = chTimeNow();
+  const uint32_t timeNow = chVTGetSystemTimeX();
   const uint32_t deltaT = timeNow - lastTimeCall;
   lastTimeCall = timeNow;
   (void) nbs;

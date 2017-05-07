@@ -88,7 +88,7 @@ typedef struct  {
 
 // type of the callback function
 typedef void (*MsgCallback) (const void * const userData, 
-			     const uint32_t argc, const NmeaParam const * argv) ;
+			     const uint32_t argc, const NmeaParam * const argv) ;
 
 // binding data
 struct  _NmeaBinder {
