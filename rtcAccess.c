@@ -173,6 +173,20 @@ void setSecond (uint32_t val)
   cbCheck (delta);
 }
 
+ void setSecondInMs (uint32_t val)
+{
+  const int sec = val/1000;
+  const int millisec = val%1000;
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+  const int delta = sec - utime.tm_sec;
+  utime.tm_sec =  sec;
+  rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
+  rtctime.millisecond += millisec;
+  rtcSetTime (&RTCD1, &rtctime);
+  cbCheck (delta);
+}
+
 void setYear (uint32_t val)
 {
   rtcGetTime (&RTCD1, &rtctime);
@@ -254,6 +268,13 @@ uint32_t getSecond (void)
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
 
   return utime.tm_sec;
+}
+uint32_t getSecondInMs (void)
+{
+  rtcGetTime (&RTCD1, &rtctime);
+  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
+
+  return (utime.tm_sec *1000) + (rtctime.millisecond % 1000);
 }
 uint32_t getYear (void)
 {
