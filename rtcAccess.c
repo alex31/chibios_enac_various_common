@@ -173,6 +173,8 @@ void setSecond (uint32_t val)
   cbCheck (delta);
 }
 
+// TODO : rewrite low level hal_rtc_lld.c to permit subsecond SSR setting via
+// RTC_SHIFTR register
  void setSecondInMs (uint32_t val)
 {
   const int sec = val/1000;
@@ -181,8 +183,8 @@ void setSecond (uint32_t val)
   rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
   const int delta = sec - utime.tm_sec;
   utime.tm_sec =  sec;
+  tv_msec = millisec;
   rtcConvertStructTmToDateTime (&utime, tv_msec, &rtctime);
-  rtctime.millisecond += millisec;
   rtcSetTime (&RTCD1, &rtctime);
   cbCheck (delta);
 }

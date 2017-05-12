@@ -29,11 +29,11 @@ static bool verifyChecksum (NmeaStateMachine *sm)
   uint8_t chksm = (chks1 - ((chks1 > '9') ? ('A'-10) : '0')) * 16;
   chksm += chks2 - ((chks2 > '9') ? ('A'- 10) : '0');
 
-  if (chksm != sm->currentChksm)
+  if (chksm != sm->currentChksm) {
     DebugTrace ("DBG> received %c%c[0x%x] ; calculated 0x%x",
 		sm->receivedChksm1, sm->receivedChksm2, chksm, 
 		sm->currentChksm);
-  
+  }
   return (chksm == sm->currentChksm);
 }
 

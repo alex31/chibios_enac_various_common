@@ -27,7 +27,7 @@ uint32_t 	getHour (void);
 uint32_t 	getUtcHour (void);
 uint32_t 	getMinute (void);
 uint32_t 	getSecond (void);
-uint32_t 	getSecondInMS (void);
+uint32_t 	getSecondInMs (void);
 uint32_t 	getYear (void);
 uint32_t 	getMonth (void);
 uint32_t 	getMonthDay (void);
