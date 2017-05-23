@@ -342,7 +342,6 @@ char *binary_fmt(uintmax_t x, const int fill);
  void	   pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
 				const bool masked);
 #endif
-  
 #ifdef __cplusplus
 }
 #endif

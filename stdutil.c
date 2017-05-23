@@ -409,6 +409,7 @@ void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
 #endif // ifndef STM32F7XX
 #endif // HAL_USE_PWM
 
+
 #define _GPIOTEST(P) if (P == p) return #P
 const char* getGpioName (const ioportid_t p)
 {

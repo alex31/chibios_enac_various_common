@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ch.h>
+#include <hal.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -39,6 +40,13 @@ time_t   getTimeUnixSec(void);
 uint64_t getTimeUnixMillisec(void);
 void     setTimeUnixSec(time_t tt);
 void	 registerRtcChanged (RtcChangedCB cb);
+
+
+bool rtcEnablePeriodicWakeup (RTCDriver *rtcp, uint32_t _second);
+bool rtcDisablePeriodicWakeup (RTCDriver *rtcp);
+
+
+  
 
 #ifdef __cplusplus
 }
