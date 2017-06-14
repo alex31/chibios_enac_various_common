@@ -48,7 +48,7 @@ msg_t MS5611_getVal  (MS5611Data *baro, float *temp, float *pressure)
   msg_t status;
   *temp = 0.0f;
   *pressure = 0.0f;
-  const uint32_t timeToConvert = 8300;
+  const uint32_t timeToConvert = 8500; // microseconds
   
   /* LAUNCH D1 conversion. We use OSR=4096 for maximum resolution */
   i2cAcquireBus(baro->i2cd);

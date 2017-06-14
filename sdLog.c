@@ -287,7 +287,8 @@ SdioError sdLogOpenLog(FileDes *fd, const char *directoryName, const char *prefi
 SdioError sdLogCloseAllLogs (bool flush)
 {
   FRESULT rc = 0; /* Result code */
-
+  SdioError status = SDLOG_OK;
+  
   //    do not flush what is in ram, close as soon as possible
   if (flush == false) {
     UINT bw;
@@ -323,8 +324,9 @@ SdioError sdLogCloseAllLogs (bool flush)
     // queue flush + close order, then stop worker thread
     for (FileDes fd=0; fd<SDLOG_NUM_FILES; fd++) {
       if (fileDes[fd].inUse) {
-	flushWriteByteBuffer (fd);
-	sdLogCloseLog (fd);
+	if ((status = flushWriteByteBuffer (fd)) == SDLOG_OK) {
+	  status = sdLogCloseLog (fd);
+	}
       }
     }
 
@@ -342,7 +344,7 @@ SdioError sdLogCloseAllLogs (bool flush)
     }
     
   }
-  return SDLOG_OK;
+  return status;
 }
 
 SdioError sdLogFlushAllLogs (void)
