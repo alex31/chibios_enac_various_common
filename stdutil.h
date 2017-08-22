@@ -41,6 +41,10 @@
 #define DebugTrace(...) 
 #endif // TRACE
 
+
+typedef enum {PWM_NORMAL=0, PWM_COMPLEMENTARY} PwmOutputSide;
+
+
 // MODE LITTLE ENDIAN; have to be reversed for BIG ENDIAN
 #define  POINT_TO_IP4(a,b,c,d)	 \
   ((u32_t)((d) & 0xff) << 24) |  \
@@ -330,17 +334,19 @@ F7
   }
 
 char *binary_fmt(uintmax_t x, const int fill);
-  uint16_t fletcher16 (uint8_t const *data, size_t bytes);
-  float powi(int x, int y) ;
-  const char* getGpioName (const ioportid_t p);
+uint16_t fletcher16 (uint8_t const *data, size_t bytes);
+float powi(int x, int y) ;
+const char* getGpioName (const ioportid_t p);
 #if (CH_KERNEL_MAJOR > 2)
   int32_t get_stack_free (const thread_t *tp);
 #endif
 
 #if HAL_USE_PWM 
- pwmcnt_t  pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq);
- void	   pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
+pwmcnt_t  pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq);
+void	   pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
 				const bool masked);
+void	   pwmMaskChannelSide(PWMDriver *pwmd, const  pwmchannel_t channel,
+			      const PwmOutputSide side, const bool masked);
 #endif
 #ifdef __cplusplus
 }

@@ -56,8 +56,9 @@ typedef enum {
 
 #define COMP_PLUS_BELOW_MOINS (0U)
 #define COMP_MOINS_BELOW_PLUS (1U)
+#define COMP_NOT_ACTIVE (2U)
 #define COMP_POLARITY_NORMAL (0U)
-#define COMP_POLATITY_INVERTED (1U)
+#define COMP_POLARITY_INVERTED (1U)
 
 /**
  * @brief   Type of a structure representing a COMP driver.
@@ -112,7 +113,7 @@ extern "C" {
 #endif
 
 #ifdef COMP_API_SETPOLARITY
-#define compSetPolarityX(compp,pol) comp_lld_getOutput(compp,pol)
+#define compSetPolarityX(compp,pol) comp_lld_setPolarity(compp,pol)
 #endif
 
 #ifdef COMP_API_GETPOLARITY

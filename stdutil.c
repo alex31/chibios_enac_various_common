@@ -372,7 +372,49 @@ pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq)
   }
 }
 
-#ifndef STM32F7XX
+
+
+
+
+
+
+
+
+
+
+#if defined (STM32F7XX)
+static  inline void  peri_set_bit (volatile uint32_t *addr, const uint32_t pos,
+				   const bool level)
+{
+  if (level)
+    *addr |= (1<<pos);
+  else
+    *addr &= ~(1<<pos);
+};
+
+void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
+			     const bool masked)
+{
+  
+  switch (channel) {
+  case 0 : peri_set_bit (&(pwmd->tim->CCMR1), 5, !masked); break;
+  case 1 : peri_set_bit (&(pwmd->tim->CCMR1), 13, !masked); break;
+  case 2 : peri_set_bit (&(pwmd->tim->CCMR2), 5, !masked); break;
+  case 3 : peri_set_bit (&(pwmd->tim->CCMR2), 13, !masked); break;
+  }
+  
+}
+
+void	pwmMaskChannelSide(PWMDriver *pwmd, const  pwmchannel_t channel,
+			   const PwmOutputSide side, const bool masked)
+{
+  // CCxE and CCxNE
+  if (channel < 4) {
+    const uint32_t bitShift = (side == PWM_NORMAL) ? channel * 4 : (channel * 4) + 2;
+    peri_set_bit (&(pwmd->tim->CCER), bitShift, !masked);
+  }
+}
+#else // not F7
 #include "bitband.h"
 void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
 			     const bool masked)
@@ -384,27 +426,17 @@ void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
   case 3 : bb_peri_set_bit (&(pwmd->tim->CCMR2), 13, !masked); break;
   }
 }
-#else // ifndef STM32F7XX
-void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
-			     const bool masked)
-{
-  inline void  peri_set_bit (volatile uint32_t *addr, const uint32_t pos,
-			     const bool level)
-  {
-    if (level)
-      *addr |= (1<<pos);
-    else
-      *addr &= ~(1<<pos);
-  };
-  
-  switch (channel) {
-  case 0 : peri_set_bit (&(pwmd->tim->CCMR1), 5, !masked); break;
-  case 1 : peri_set_bit (&(pwmd->tim->CCMR1), 13, !masked); break;
-  case 2 : peri_set_bit (&(pwmd->tim->CCMR2), 5, !masked); break;
-  case 3 : peri_set_bit (&(pwmd->tim->CCMR2), 13, !masked); break;
-  }
 
+void	pwmMaskChannelSide(PWMDriver *pwmd, const  pwmchannel_t channel,
+			   const PwmOutputSide side, const bool masked)
+{
+  // CCxE and CCxNE
+  if (channel < 4) {
+    const uint32_t bitShift = (side == PWM_NORMAL) ? channel * 4 : (channel * 4) + 2;
+    bb_peri_set_bit (&(pwmd->tim->CCER), bitShift, !masked);
+  }
 }
+
 
 #endif // ifndef STM32F7XX
 #endif // HAL_USE_PWM
@@ -430,7 +462,7 @@ const char* getGpioName (const ioportid_t p)
 
 
 // obviously not reentrant
-#define FMT_BUF_SIZE (sizeof(uintmax_t) * 8)
+#define FMT_BUF_SIZE (sizeof(uintmax_t) * 16)
 char *binary_fmt(uintmax_t x, int fill)
 {
   static char buf[FMT_BUF_SIZE];
@@ -447,7 +479,7 @@ char *binary_fmt(uintmax_t x, int fill)
     return bg;
   }
 }
-#undef FMT_BUF_SIZE // don't pullute namespace
+#undef FMT_BUF_SIZE // don't pollute namespace
 
 #if (CH_KERNEL_MAJOR >= 3)
 int32_t get_stack_free (const thread_t *tp)

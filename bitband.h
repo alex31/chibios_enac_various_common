@@ -13,10 +13,11 @@
 #endif
 
 
-#ifdef STM32F7XX
- #error "STM32F7  is not bitbanding capable"
+#if (!defined PERIPH_BB_BASE) || (!defined SRAM_BB_BASE)
+# error "architecture  is not bitbanding capable"
 #endif
 
+    
 static inline volatile uint32_t* __bb_addr(volatile void* const,
                                          const uint32_t,
                                          const uint32_t,
@@ -61,6 +62,9 @@ static inline void bb_sram_set_bit(volatile void * const address,
  * @param bit     Bit in address to bit-band
  */
 static inline volatile uint32_t* bb_perip(volatile void * const address, const uint32_t bit) {
+#if CH_DBG_ENABLE_ASSERTS == TRUE
+  chDbgAssert(address <= (void *) 0x400FFFFF, "not mapped to alias region");
+#endif
     return __bb_addr(address, bit, PERIPH_BB_BASE, PERIPH_BASE);
 }
 
@@ -149,7 +153,8 @@ static inline uint32_t bb_palReadPad   (ioportid_t gpio,
  * @param bit Bit in gpio to write to
  */
 static inline void bb_palSetLine   (ioline_t line) {
-  bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), 1); 
+  bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), 1);
+  //bb_peri_set_bit(&(PAL_PORT(line)->BSRR), PAL_PAD(line), 1);
 }
 
 /* 
@@ -159,7 +164,8 @@ static inline void bb_palSetLine   (ioline_t line) {
  */
 static inline void bb_palWriteLine   (ioline_t line,
 				     const uint32_t val) {
-   bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), val);
+  bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), val);
+  //bb_peri_set_bit(&(PAL_PORT(line)->BSRR), PAL_PAD(line)+(val ? 16 : 0), 1);
 }
 
 /**
@@ -169,6 +175,7 @@ static inline void bb_palWriteLine   (ioline_t line,
  */
 static inline void bb_palClearLine   (ioline_t line) {
   bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), 0);
+  //  bb_peri_set_bit(&(PAL_PORT(line)->BSRR), PAL_PAD(line)+16, 1);
 }
 
 /**
@@ -177,7 +184,8 @@ static inline void bb_palClearLine   (ioline_t line) {
  * @param bit Bit in gpio to write to
  */
 static inline void bb_palToggleLine   (ioline_t line) {
-  bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line), !bb_peri_get_bit(&(PAL_PORT(line)->IDR), PAL_PAD(line)));
+  bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line),
+		  !bb_peri_get_bit(&(PAL_PORT(line)->IDR), PAL_PAD(line)));
 }
 
 /**
