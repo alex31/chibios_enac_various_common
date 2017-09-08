@@ -62,6 +62,9 @@
 #endif
 #endif
 
+#ifndef FFCONF_DEF
+#define  FFCONF_DEF _FATFS
+#endif
 
 /*
 #                 ______   _____     _____    ____          
@@ -286,7 +289,7 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
   uint32_t bytes_written=0;
   uint32_t bytes_read=0;
   FILINFO fno ;
-  BYTE work[_MAX_SS]; /* Work area (larger is better for processing time) */
+  BYTE work[FF_MAX_SS]; /* Work area (larger is better for processing time) */
 
 
  
@@ -304,7 +307,7 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
     
     chprintf(lchp, "Register working area for filesystem... ");
     chThdSleepMilliseconds(100);
-#if _FATFS < 8000
+#if FFCONF_DEF < 8000
    err = f_mount(0, &SDC_FS);
 #else
    err = f_mount(&SDC_FS, "", 0);
@@ -426,7 +429,7 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
   }
   
   chprintf(lchp, "Umount filesystem... ");
-#if _FATFS < 8000
+#if FFCONF_DEF < 8000
    err = f_mount(0, NULL);
 #else
    err = f_mount(NULL, "", 0);

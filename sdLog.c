@@ -23,15 +23,20 @@
 #error  SDLOG_NUM_FILES should be defined in mcuconf.h
 #endif
 
-#if _FATFS < 8000
+
+#ifndef FFCONF_DEF
+#define  FFCONF_DEF _FATFS
+#endif
+
+#if FFCONF_DEF < 8000
 #if _FS_SHARE != 0 && _FS_SHARE < SDLOG_NUM_FILES
 #error  if _FS_SHARE is not zero, it should be equal of superior to SDLOG_NUM_FILES
 #endif
 
 
-#else // _FATFS > 8000
-#if _FS_LOCK != 0 && _FS_LOCK < SDLOG_NUM_FILES
-#error  if _FS_LOCK is not zero, it should be equal of superior to SDLOG_NUM_FILES
+#else // FFCONF_DEF > 8000
+#if FF_FS_LOCK != 0 && FF_FS_LOCK < SDLOG_NUM_FILES
+#error  if FF_FS_LOCK is not zero, it should be equal of superior to SDLOG_NUM_FILES
 #endif
 #endif
 
@@ -53,8 +58,8 @@
 #error  SDLOG_QUEUE_BUCKETS should be defined in mcuconf.h
 #endif
 
-#if _FS_REENTRANT == 0
-#warning "_FS_REENTRANT = 0 in ffconf.h DO NOT open close file during log"
+#if FF_FS_REENTRANT == 0
+#warning "FF_FS_REENTRANT = 0 in ffconf.h DO NOT open close file during log"
 #endif
 
 #if SDLOG_WRITE_BUFFER_SIZE < 512
@@ -189,7 +194,7 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
   if (sdioConnect () == FALSE)
     return  SDLOG_NOCARD;
 
-#if _FATFS < 8000
+#if FFCONF_DEF < 8000
   FRESULT rc = f_mount(0, &fatfs);
 #else
   FRESULT rc = f_mount(&fatfs, "/", 1);
@@ -221,7 +226,7 @@ SdioError sdLogInit (uint32_t* freeSpaceInKo)
 
 SdioError sdLogFinish (void)
 {
-#if _FATFS < 8000
+#if FFCONF_DEF < 8000
   FRESULT rc = f_mount(0, NULL);
 #else
   FRESULT rc = f_mount(NULL, "", 0);
@@ -620,8 +625,8 @@ SdioError sdLogWriteByte (const FileDes fd, const uint8_t value)
   if fatfs use stack for working buffers, stack size should be reserved accordingly
  */
 #define WA_LOG_BASE_SIZE 1024
-#if  _USE_LFN == 2
-#if _FS_EXFAT
+#if  FF_USE_LFN == 2
+#if FF_FS_EXFAT
 static THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE+((_MAX_LFN+1)*2)+(19*32));
 #else
 static THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE+((_MAX_LFN+1)*2));
