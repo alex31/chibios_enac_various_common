@@ -13,8 +13,8 @@ typedef struct OledConfig  OledConfig;
 enum OledConfig_Device {PICASO, GOLDELOX, TERM_VT100}; // will have to implement DIABLO
 enum OledTextAttribute {OLED_RESET_ATTRIB=0,
 			  OLED_BOLD=16, OLED_ITALIC=32, OLED_INVERSE=64, OLED_UNDERLINE=128};
-enum OledScreenOrientation {OLED_LANDSCAPE=0, OLED_LANDSCAPE_REVERSE, OLED_PORTRAIT, 
-			    OLED_PORTRAIT_REVERSE};
+enum OledScreenOrientation {OLED_LANDSCAPE=0, OLED_LANDSCAPE_REVERSE,
+			    OLED_PORTRAIT,    OLED_PORTRAIT_REVERSE};
 #define COLOR_TABLE_SIZE 11
 
 // enforce the use of oledStart over oledInit

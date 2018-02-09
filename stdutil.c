@@ -268,13 +268,6 @@ void systemDeepSleepFromISR (void)
 }
 
 
-uint32_t revbit (uint32_t value)
-{
-  uint32_t result=0;
-  
-  asm volatile ("rbit %0, %1" : "=r" (result) : "r" (value) );
-  return(result);
-}
 
 void my_assert_func (const char* file, const int line, 
 		     const char *cond)

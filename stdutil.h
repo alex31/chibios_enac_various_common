@@ -319,7 +319,14 @@ F7
   void systemReset (void);
   void systemDeepSleep (void);
   void systemDeepSleepFromISR (void);
-  uint32_t revbit(uint32_t data);
+
+#define revbit(X) _Generic((X),			\
+			   uint32_t:  revbit32, \
+			   uint16_t:  revbit16, \
+			   uint8_t:   revbit8,	\
+			   default:   revbit32	\
+			   )(X)
+  
   void my_assert_func (const char* file, const int line, 
 		       const char *cond);
   float lerpf (const float x, const float y, const float w) ;
@@ -348,6 +355,34 @@ void	   pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
 void	   pwmMaskChannelSide(PWMDriver *pwmd, const  pwmchannel_t channel,
 			      const PwmOutputSide side, const bool masked);
 #endif
+
+static inline  uint32_t revbit32 (uint32_t value)
+{
+  uint32_t result=0;
+  
+  asm volatile ("rbit %0, %1" : "=r" (result) : "r" (value) );
+  return(result);
+}
+
+static inline  uint16_t revbit16 (uint16_t value)
+{
+  uint32_t result=0;
+  
+  asm volatile ("rbit %0, %1" : "=r" (result) : "r" (value) );
+  return(result>>16);
+}
+
+static inline  uint8_t revbit8 (uint8_t value)
+{
+  uint32_t result=0;
+  
+  asm volatile ("rbit %0, %1" : "=r" (result) : "r" (value) );
+  return(result>>24);
+}
+
+
+
+  
 #ifdef __cplusplus
 }
 #endif
