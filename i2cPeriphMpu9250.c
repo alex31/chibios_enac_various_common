@@ -732,7 +732,7 @@ msg_t mpu9250_setModeAccOnly (Mpu9250Data *imu, Ak8963Data *compass)
 msg_t mpu9250_setModeAutoWake (Mpu9250Data *imu, 
 			      Mpu9250_LowPowerAccelerometerFrequencyCycle lpodr)
 {
-  msg_t status;
+  msg_t status = MSG_RESET;
   // if compass not already set in sleep mode, do it
   
   i2cAcquireBus(imu->i2cd); 
