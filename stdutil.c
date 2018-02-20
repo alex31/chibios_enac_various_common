@@ -482,7 +482,7 @@ int32_t get_stack_free (const thread_t *tp)
   
 #if (CH_KERNEL_MAJOR == 3)
   unsigned long long *stkAdr =  (unsigned long long *) ((uint8_t *) tp->p_stklimit);
-#elif (CH_KERNEL_MAJOR == 4)
+#elif (CH_KERNEL_MAJOR >= 4)
   unsigned long long *stkAdr =  (unsigned long long *) ((uint8_t *) tp->wabase);
 #endif
   

@@ -16,7 +16,11 @@ typedef union {
 } MsgPtrLen;
 
 
-
+#if CH_KERNEL_MAJOR  >= 5
+#define chMBPost chMBPostTimeout
+#define chMBPostAhead chMBPostAheadTimeout
+#define chMBFetch  chMBFetchTimeout
+#endif
 
 
 void		msgqueue_init   (MsgQueue* que, tlsf_memory_heap_t *heap,
