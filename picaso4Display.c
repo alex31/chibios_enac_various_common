@@ -20,6 +20,7 @@ typedef enum {KOF_NONE, KOF_ACK, KOF_INT16,
 	      KOF_INT16LENGTH_THEN_DATA} KindOfCommand;
 
 const uint32_t readTimout = 1000;
+static OledStatus oledStatus = OLED_OK;
 
 /* #define OLED(n, ...) (\ */
 /* 		      chnReadTimeout (((BaseChannel *) oled), response, sizeof (response), 10), \ */
@@ -47,7 +48,6 @@ static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 #define ISPIC(oledCfg)  (oledCfg->deviceType == PICASO) 
 
 static bool oledIsInitialised (const OledConfig *oledConfig) ;
-static void oledSetBaud (OledConfig *oledConfig, uint32_t baud);
 static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout);
 static void oledPreInit (OledConfig *oledConfig, uint32_t baud);
 static void oledReInit (OledConfig *oledConfig);
@@ -935,6 +935,7 @@ static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
 #endif
     DebugTrace ("oledReceiveAnswer ret[%lu] != expectedSize[%lu] @%s : line %lu", ret, size, fct, line);
     oledTrace (oc, "LCD Protocol error");
+    oledStatus = OLED_ERROR;
   } else if (response[0] != 0x6) {
 #if defined LCD_240_320 || defined LCD_240_400
     hardwareSetState (HW_uart1, FALSE);
@@ -942,10 +943,12 @@ static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
     DebugTrace ("oledReceiveAnswer get NACK [%d] @%s : line %lu XY=[%d,%d]", response[0], fct, line,
 		oc->curXpos, oc->curYpos);
     oledTrace (oc, "NACK");
+    oledStatus = OLED_ERROR;
   } else {
 #if defined LCD_240_320 || defined LCD_240_400
     hardwareSetState (HW_uart1, TRUE);
 #endif
+    oledStatus = OLED_OK;
   }
   return ret;
 }
@@ -1008,6 +1011,11 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
   return ret;
 }
 
+OledStatus oledGetStatus(void)
+{
+  return oledStatus;
+}
+
 
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...)
 {
@@ -1020,3 +1028,4 @@ static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...)
 
   directchprintf (serial, buffer);
 }
+

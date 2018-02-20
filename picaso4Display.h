@@ -15,6 +15,8 @@ enum OledTextAttribute {OLED_RESET_ATTRIB=0,
 			  OLED_BOLD=16, OLED_ITALIC=32, OLED_INVERSE=64, OLED_UNDERLINE=128};
 enum OledScreenOrientation {OLED_LANDSCAPE=0, OLED_LANDSCAPE_REVERSE,
 			    OLED_PORTRAIT,    OLED_PORTRAIT_REVERSE};
+typedef enum {OLED_OK,
+	      OLED_ERROR} OledStatus;
 #define COLOR_TABLE_SIZE 11
 
 // enforce the use of oledStart over oledInit
@@ -84,7 +86,8 @@ void oledPlayWav (OledConfig *oledConfig, const char* fileName);
 uint32_t oledOpenFile  (OledConfig *oledConfig, const char* fileName, uint16_t *handle);
 void oledCloseFile (OledConfig *oledConfig, const uint16_t handle);
 void oledDisplayGci  (OledConfig *oledConfig, const uint16_t handle, uint32_t offset);
-
+void oledSetBaud (OledConfig *oledConfig, uint32_t baud);
+OledStatus oledGetStatus(void);
 typedef union  {
   struct {
     uint8_t r;
