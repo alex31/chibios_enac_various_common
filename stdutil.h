@@ -324,6 +324,9 @@ F7
 			   uint32_t:  revbit32, \
 			   uint16_t:  revbit16, \
 			   uint8_t:   revbit8,	\
+			   int32_t:  revbit32, \
+			   int16_t:  revbit16, \
+			   int8_t:   revbit8,	\
 			   default:   revbit32	\
 			   )(X)
   
