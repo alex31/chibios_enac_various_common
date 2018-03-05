@@ -19,7 +19,7 @@
 typedef enum {KOF_NONE, KOF_ACK, KOF_INT16, 
 	      KOF_INT16LENGTH_THEN_DATA} KindOfCommand;
 
-const uint32_t readTimout = 1000;
+const uint32_t readTimout = TIME_MS2I(500);
 static OledStatus oledStatus = OLED_OK;
 
 /* #define OLED(n, ...) (\ */
