@@ -3,6 +3,75 @@
 #include <ch.h>
 #include <hal.h>
 
+typedef enum {
+  DMA_UNINIT = 0,                           /**< Not initialized.          */
+  DMA_STOP = 1,                             /**< Stopped.                  */
+  DMA_READY = 2,                            /**< Ready.                    */
+  DMA_ACTIVE = 3,                           /**< Transfering.              */
+  DMA_COMPLETE = 4,                         /**< Transfert complete.       */
+  DMA_ERROR = 5                             /**< Transfert error.          */
+} dmastate_t;
+
+
+
+/*===========================================================================*/
+/* Driver macros.                                                            */
+/*===========================================================================*/
+
+/**
+ * @name    Low level driver helper macros
+ * @{
+ */
+
+/**
+ * @brief   Resumes a thread waiting for a dma transfert completion.
+ *
+ * @param[in] dmap      pointer to the @p ADCDriver object
+ *
+ * @notapi
+ */
+#define _dma_reset_i(dmap)                                                  \
+  osalThreadResumeI(&(dmap)->thread, MSG_RESET)
+
+/**
+ * @brief   Resumes a thread waiting for a dma transfert completion.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @notapi
+ */
+#define _dma_reset_s(dmap)                                                  \
+  osalThreadResumeS(&(dmap)->thread, MSG_RESET)
+
+/**
+ * @brief   Wakes up the waiting thread.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @notapi
+ */
+#define _dma_wakeup_isr(dmap) {                                             \
+  osalSysLockFromISR();                                                     \
+  osalThreadResumeI(&(dmap)->thread, MSG_OK);                               \
+  osalSysUnlockFromISR();                                                   \
+}
+
+/**
+ * @brief   Wakes up the waiting thread with a timeout message.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @notapi
+ */
+#define _dma_timeout_isr(dmap) {                                            \
+  osalSysLockFromISR();                                                     \
+  osalThreadResumeI(&(dmap)->thread, MSG_TIMEOUT);                          \
+  osalSysUnlockFromISR();                                                   \
+}
+
+
+
+
 
 typedef struct {
   stm32_dmaisr_t	serve_dma_isr;
@@ -34,6 +103,8 @@ typedef struct {
 typedef struct {
   const stm32_dma_stream_t  *dmastream;
   uint32_t		     dmamode;
+  dmastate_t		     state;
+  thread_reference_t         thread;
   const DMAConfig	    *config;
 } DMADriver ;
 
@@ -46,4 +117,5 @@ bool dma_start_mtransfert(DMADriver *dmad, void *from, void *to, const size_t si
 
 bool dma_ptransfert(DMADriver *dmad, void *membuffer, const size_t size);
 bool dma_start_ptransfert(DMADriver *dmad, void *membuffer, const size_t size);
+
 void dma_stop_transfert(DMADriver *dmad);

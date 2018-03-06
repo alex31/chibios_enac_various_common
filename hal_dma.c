@@ -238,6 +238,13 @@ bool dma_start_mtransfert(DMADriver *dmad, void *from, void *to, const size_t si
 void dma_stop_transfert(DMADriver *dmad)
 {
   osalSysLock();
+  dmaStreamDisable(dmad->dmastream);
+  osalSysUnlock();
+}
+
+void dma_stop(DMADriver *dmad)
+{
+  osalSysLock();
   dmaStreamRelease(dmad->dmastream);
   osalSysUnlock();
 }
