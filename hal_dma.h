@@ -5,16 +5,11 @@
 
 
 typedef struct {
-  uint8_t		controller;
-  uint8_t		stream;
-  uint8_t		channel;
-  uint8_t		priority;
+  // 32 bits width Public FIELD
   stm32_dmaisr_t	serve_dma_isr;
   void *		serve_dma_isr_arg;
   volatile void *	periph_addr;
   uint32_t		direction; // STM32_DMA_CR_DIR_P2M, STM32_DMA_CR_DIR_M2P, STM32_DMA_CR_DIR_M2M
-  uint8_t		psize; // 1,2,4
-  uint8_t		msize; // 1,2,4
   bool			inc_peripheral_addr;
   bool			inc_memory_addr;
   bool			circular;
@@ -22,6 +17,20 @@ typedef struct {
 				  // transfert complete, half transfert, direct mode error,
 				  // transfert error
 
+
+  // 32 bit width PRIVATE FIELD, DOT NOT USE
+  const stm32_dma_stream_t  *dmastream;
+  uint32_t		     dmamode;
+  // End of 32 bits width PRIVATE FIELD
+  
+  //  8 bits width Public FIELD
+  uint8_t		controller;
+  uint8_t		stream;
+  uint8_t		channel;
+  uint8_t		priority;
+  uint8_t		psize; // 1,2,4
+  uint8_t		msize; // 1,2,4
+  
 #if STM32_DMA_ADVANCED
 #define DMA_FIFO_SIZE 4 // hardware specification for dma V2
   uint8_t		pburst; // 0(burst disabled), 4, 8, 16  
@@ -29,9 +38,6 @@ typedef struct {
   uint8_t		fifo; // 0(fifo disabled), 1, 2, 3, 4 : 25, 50, 75, 100% 
 #endif
 
-  // PRIVATE FIELD, DOT NOT USE
-  const stm32_dma_stream_t  *dmastream;
-  uint32_t		     dmamode;
 } DMAConfig ;
 
 
