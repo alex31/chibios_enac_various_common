@@ -2,7 +2,7 @@
 
 
 
-bool dma_start(DMAConfig *cfg)
+bool dma_start(DMADriver *dmad, const DMAConfig *cfg)
 {
   uint32_t psize_msk, msize_msk;
 
@@ -17,13 +17,13 @@ bool dma_start(DMAConfig *cfg)
   case 1 : msize_msk = STM32_DMA_CR_MSIZE_BYTE; break;
   case 2 : msize_msk = STM32_DMA_CR_MSIZE_HWORD; break;
   case 4 : msize_msk = STM32_DMA_CR_MSIZE_WORD; break;
-  default: osalSysHalt("msize should be 1 or 2 or 4");
+  default: osalDbgAssert(false, "msize should be 1 or 2 or 4");
     return false;
   }
   
-  cfg->dmastream =  STM32_DMA_STREAM(STM32_DMA_STREAM_ID(cfg->controller, cfg->stream));
+  dmad->dmastream =  STM32_DMA_STREAM(STM32_DMA_STREAM_ID(cfg->controller, cfg->stream));
 
-  cfg->dmamode = STM32_DMA_CR_CHSEL(cfg->channel) |
+  dmad->dmamode = STM32_DMA_CR_CHSEL(cfg->channel) |
 		 STM32_DMA_CR_PL(cfg->priority) |
 		 cfg->direction |
 		 psize_msk | msize_msk |
@@ -40,7 +40,7 @@ bool dma_start(DMAConfig *cfg)
   case 4 : pburst_msk  = STM32_DMA_CR_PBURST_INCR4; break;
   case 8 : pburst_msk  = STM32_DMA_CR_PBURST_INCR8; break;
   case 16 : pburst_msk = STM32_DMA_CR_PBURST_INCR16; break;
-  default: osalSysHalt("pburst size should be 0 or 4 or 8 or 16");
+  default: osalDbgAssert(false, "pburst size should be 0 or 4 or 8 or 16");
     return false;
   }
   switch (cfg->mburst) {
@@ -48,7 +48,7 @@ bool dma_start(DMAConfig *cfg)
   case 4 : mburst_msk  = STM32_DMA_CR_MBURST_INCR4; break;
   case 8 : mburst_msk  = STM32_DMA_CR_MBURST_INCR8; break;
   case 16 : mburst_msk = STM32_DMA_CR_MBURST_INCR16; break;
-  default: osalSysHalt("mburst size should be 0 or 4 or 8 or 16");
+  default: osalDbgAssert(false, "mburst size should be 0 or 4 or 8 or 16");
     return false;
   }
   switch (cfg->fifo) {
@@ -57,14 +57,14 @@ bool dma_start(DMAConfig *cfg)
   case 2 : fifo_msk  = STM32_DMA_FCR_FTH_HALF; break;
   case 3 : fifo_msk  = STM32_DMA_FCR_FTH_3Q;  break;
   case 4 : fifo_msk =  STM32_DMA_FCR_FTH_FULL; ; break;
-  default: osalSysHalt("fifo threshold should be 1(/4) or 2(/4) or 3(/4) or 4(/4)");
+  default: osalDbgAssert(false, "fifo threshold should be 1(/4) or 2(/4) or 3(/4) or 4(/4)");
     return false;
   }
 
   
   // lot of combination of parameters are forbiden, and some conditions must be meet
   if (!cfg->msize !=  !cfg->psize) {
-     osalSysHalt("psize and msize should be enabled or disabled together");
+     osalDbgAssert(false, "psize and msize should be enabled or disabled together");
      return false;
   }
 
@@ -155,7 +155,7 @@ bool dma_start(DMAConfig *cfg)
   }
 
 #if STM32_DMA_ADVANCED
-  cfg->dmamode |= (pburst_msk | mburst_msk);
+  dmad->dmamode |= (pburst_msk | mburst_msk);
 #endif
   
   /*
@@ -170,22 +170,27 @@ bool dma_start(DMAConfig *cfg)
 #endif
     
   osalSysLock();
-  const bool status = dmaStreamAllocate( cfg->dmastream,
-					 cfg->priority,
-					 cfg->serve_dma_isr,
-					 cfg->serve_dma_isr_arg);
-  osalDbgAssert(!status, "stream already allocated");
-
-  if (cfg->fifo) {
-    dmaStreamSetFIFO(cfg->dmastream, STM32_DMA_FCR_DMDIS | fifo_msk);
+  const bool error = dmaStreamAllocate( dmad->dmastream,
+					cfg->priority,
+					cfg->serve_dma_isr,
+					cfg->serve_dma_isr_arg);
+  if (error) {
+    osalDbgAssert(false, "stream already allocated");
+    osalSysUnlock();
+    return false;
   }
-
-  dmaStreamSetPeripheral(cfg->dmastream, cfg->periph_addr);
-
+  
+  if (cfg->fifo) {
+    dmaStreamSetFIFO(dmad->dmastream, STM32_DMA_FCR_DMDIS | fifo_msk);
+  }
+  
+  dmaStreamSetPeripheral(dmad->dmastream, cfg->periph_addr);
+  
   osalSysUnlock();
-  return status;
-
-
+  dmad->config = cfg;
+  return true;
+  
+  
  forbiddenCombination:
   chSysHalt("forbidden combination of msize, mburst, fifo, see FIFO threshold "
 	    "configuration in reference manuel");
@@ -193,46 +198,46 @@ bool dma_start(DMAConfig *cfg)
 }
 
 
-bool dma_start_ptransfert(DMAConfig *cfg, void *membuffer, const size_t size)
+bool dma_start_ptransfert(DMADriver *dmad, void *membuffer, const size_t size)
 {
-  if (cfg->direction == STM32_DMA_CR_DIR_M2M) {
-    osalSysHalt("dma_start_ptransfert not compatible with config direction field");
+  if (dmad->config->direction == STM32_DMA_CR_DIR_M2M) {
+    osalDbgAssert(false, "dma_start_ptransfert not compatible with config direction field");
     return false;
   }
   
   osalSysLock();
 
-  dmaStreamSetMemory0(cfg->dmastream, membuffer);
-  dmaStreamSetTransactionSize(cfg->dmastream, size);
-  dmaStreamSetMode(cfg->dmastream, cfg->dmamode);
-  dmaStreamEnable(cfg->dmastream);
+  dmaStreamSetMemory0(dmad->dmastream, membuffer);
+  dmaStreamSetTransactionSize(dmad->dmastream, size);
+  dmaStreamSetMode(dmad->dmastream, dmad->dmamode);
+  dmaStreamEnable(dmad->dmastream);
   
   osalSysUnlock();
   return true;
 }
 
-bool dma_start_mtransfert(DMAConfig *cfg, void *from, void *to, const size_t size)
+bool dma_start_mtransfert(DMADriver *dmad, void *from, void *to, const size_t size)
 {
-  if (cfg->direction != STM32_DMA_CR_DIR_M2M) {
-    osalSysHalt("dma_start_mtransfert not compatible with config direction field");
+  if (dmad->config->direction != STM32_DMA_CR_DIR_M2M) {
+    osalDbgAssert(false, "dma_start_mtransfert not compatible with config direction field");
     return false;
   }
   
   osalSysLock();
   
-  dmaStreamSetMemory0(cfg->dmastream, from);
-  dmaStreamSetMemory1(cfg->dmastream, to);
-  dmaStreamSetTransactionSize(cfg->dmastream, size);
-  dmaStreamSetMode(cfg->dmastream, cfg->dmamode);
-  dmaStreamEnable(cfg->dmastream);
+  dmaStreamSetMemory0(dmad->dmastream, from);
+  dmaStreamSetMemory1(dmad->dmastream, to);
+  dmaStreamSetTransactionSize(dmad->dmastream, size);
+  dmaStreamSetMode(dmad->dmastream, dmad->dmamode);
+  dmaStreamEnable(dmad->dmastream);
   
   osalSysUnlock();
   return true;
 }
 
-void dma_stop_transfert(DMAConfig *cfg)
+void dma_stop_transfert(DMADriver *dmad)
 {
   osalSysLock();
-  dmaStreamRelease(cfg->dmastream);
+  dmaStreamRelease(dmad->dmastream);
   osalSysUnlock();
 }
