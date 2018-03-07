@@ -112,12 +112,10 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
       (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size);           \
       if ((dmap)->state == DMA_COMPLETE) {                                  \
         (dmap)->state = DMA_READY;                                          \
-        (dmap)->config = NULL;                                                \
       }                                                                     \
     }                                                                       \
     else {                                                                  \
       (dmap)->state = DMA_READY;                                            \
-      (dmap)->config = NULL;                                                  \
     }                                                                       \
     _dma_wakeup_isr(dmap);                                                  \
   }                                                                         \
@@ -131,11 +129,9 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
     (dmap)->config->error_cb(dmap, err);                                      \
     if ((dmap)->state == DMA_ERROR)                                         \
       (dmap)->state = DMA_READY;                                            \
-      (dmap)->config = NULL;                                                  \
   }                                                                         \
   else {                                                                    \
     (dmap)->state = DMA_READY;                                              \
-    (dmap)->config = NULL;                                                    \
   }                                                                         \
   _dma_timeout_isr(dmap);                                                   \
 }

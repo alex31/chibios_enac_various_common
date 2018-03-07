@@ -13,7 +13,7 @@ TODO :
 
 ° version timeout des fonctions synchrones
 
-° transformer les macro en fonction static inline
+° transformer les macros en fonction static inline
 
 ° écrire code de test : 
   * api synchrone
@@ -113,6 +113,7 @@ bool dmaStartPtransfertI(DMADriver *dmap, void *membuffer, const size_t size)
                 (dmap->state == DMA_ERROR),
                 "not ready");
 
+  dmap->state    = ADC_ACTIVE;
   return dma_lld_start_ptransfert(dmap, membuffer, size);
 }
   
@@ -466,7 +467,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
   else {
     /* It is possible that the conversion group has already be reset by the
        DMA error handler, in this case this interrupt is spurious.*/
-    if (dmap->config != NULL) {
+    if (dmap->state == DMA_ACTIVE) {
 
       if ((flags & STM32_DMA_ISR_TCIF) != 0) {
         /* Transfer complete processing.*/
