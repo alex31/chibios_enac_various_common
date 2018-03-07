@@ -5,12 +5,19 @@
 TODO : 
 
 ° code synchrone
-° choix entre callback brutes ou traitement ala chibios (cb erreur, cb pour demi buffer et full buffer)
-  union anonyme pour les cb.
-° simplifier le code de test des combinaisons interdites
-° appliquer les autres limitations sur les tailles données dans le chapitre dma du ref manuel
-° priorités hardware sur 4 niveau mais soft sur 8 niveaux ?
 
+° gestion état du driver (dmastate_t)
+
+° choix entre callback brutes ou traitement ala chibios (cb erreur, cb pour demi buffer et full buffer)
+  + union anonyme pour les cb.
+  + fifo error à tester
+  + enum bitfield pour passer un masque d'erreur 
+  
+° simplifier le code de test des combinaisons interdites
+  + test si mode = M2M : le champ periph_addr doit être null (pas utilisé)
+° appliquer les autres limitations sur les tailles données dans le chapitre dma du ref manuel
+
+° booleen pour les masques d'interruption pour les 4 du registre CR, et aussi le bit FEIE du registre FCR
 
  */
 
