@@ -1,6 +1,19 @@
 #include "hal_dma.h"
 
 
+/*
+TODO : 
+
+° code synchrone
+° choix entre callback brutes ou traitement ala chibios (cb erreur, cb pour demi buffer et full buffer)
+  union anonyme pour les cb.
+° simplifier le code de test des combinaisons interdites
+° appliquer les autres limitations sur les tailles données dans le chapitre dma du ref manuel
+° priorités hardware sur 4 niveau mais soft sur 8 niveaux ?
+
+
+ */
+
 
 bool dma_start(DMADriver *dmad, const DMAConfig *cfg)
 {
@@ -24,7 +37,7 @@ bool dma_start(DMADriver *dmad, const DMAConfig *cfg)
   dmad->dmastream =  STM32_DMA_STREAM(STM32_DMA_STREAM_ID(cfg->controller, cfg->stream));
 
   dmad->dmamode = STM32_DMA_CR_CHSEL(cfg->channel) |
-		 STM32_DMA_CR_PL(cfg->priority) |
+		 STM32_DMA_CR_PL(cfg->dma_priority) |
 		 cfg->direction |
 		 psize_msk | msize_msk |
                  cfg->isr_flags |
@@ -171,7 +184,7 @@ bool dma_start(DMADriver *dmad, const DMAConfig *cfg)
     
   osalSysLock();
   const bool error = dmaStreamAllocate( dmad->dmastream,
-					cfg->priority,
+					cfg->irq_priority,
 					cfg->serve_dma_isr,
 					cfg->serve_dma_isr_arg);
   if (error) {
@@ -225,8 +238,8 @@ bool dma_start_mtransfert(DMADriver *dmad, void *from, void *to, const size_t si
   
   osalSysLock();
   
-  dmaStreamSetMemory0(dmad->dmastream, from);
-  dmaStreamSetMemory1(dmad->dmastream, to);
+  dmaStreamSetPeripheral(dmad->dmastream, from);
+  dmaStreamSetMemory0(dmad->dmastream, to);
   dmaStreamSetTransactionSize(dmad->dmastream, size);
   dmaStreamSetMode(dmad->dmastream, dmad->dmamode);
   dmaStreamEnable(dmad->dmastream);

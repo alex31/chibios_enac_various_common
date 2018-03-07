@@ -88,7 +88,8 @@ typedef struct {
   uint8_t		controller;
   uint8_t		stream;
   uint8_t		channel;
-  uint8_t		priority;
+  uint8_t		dma_priority;
+  uint8_t		irq_priority;
   uint8_t		psize; // 1,2,4
   uint8_t		msize; // 1,2,4
   
