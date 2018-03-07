@@ -4,23 +4,28 @@
 /*
 TODO : 
 
-° code synchrone
-
-° gestion état du driver (dmastate_t)
-
-° choix entre callback brutes ou traitement ala chibios (cb erreur, cb pour demi buffer et full buffer)
-  + union anonyme pour les cb.
-  + fifo error à tester
-  + enum bitfield pour passer un masque d'erreur 
-  
 ° simplifier le code de test des combinaisons interdites
   + test si mode = M2M : le champ periph_addr doit être null (pas utilisé)
 ° appliquer les autres limitations sur les tailles données dans le chapitre dma du ref manuel
 
-° booleen pour les masques d'interruption pour les 4 du registre CR, et aussi le bit FEIE du registre FCR
+° booleen pour les masques d'interruption pour les 4 bit enable du registre CR, 
+  et aussi le bit FEIE du registre FCR
 
 ° version timeout des fonctions synchrones
+
+° transformer les macro en fonction static inline
+
+° écrire code de test : 
+  * api synchrone
+  * argument des callback end et erreur
+  * transfert mémoire
+  * transfert vers un gpio (ou un bit bitband d'un gpio) cadencé par un timer
+  * transfert mémoire vers timer (voir code driver WS2812)
+
  */
+
+
+static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags);
 
 
 void dmaObjectInit(DMADriver *dmap)
@@ -30,6 +35,7 @@ void dmaObjectInit(DMADriver *dmap)
   dmap->state    = DMA_STOP;
   dmap->config   = NULL;
   dmap->thread   = NULL;
+  dmap->destp     = NULL;
 }
 
 
@@ -60,6 +66,7 @@ void dmaStop(DMADriver *dmap)
   dma_lld_stop(dmap);
   dmap->config = NULL;
   dmap->state  = DMA_STOP;
+  dmap->destp   = NULL;
 
   osalSysUnlock();
 }
@@ -364,8 +371,8 @@ bool dma_lld_start(DMADriver *dmap)
     
   const bool error = dmaStreamAllocate( dmap->dmastream,
 					cfg->irq_priority,
-					cfg->serve_dma_isr,
-					cfg->serve_dma_isr_arg);
+					(stm32_dmaisr_t) &dma_lld_serve_interrupt,
+					(void *) dmap );
   if (error) {
     osalDbgAssert(false, "stream already allocated");
     return false;
@@ -394,7 +401,8 @@ bool dma_lld_start_ptransfert(DMADriver *dmap, void *membuffer, const size_t siz
     return false;
   }
   
-
+  dmap->destp = membuffer;
+  dmap->size = size;
   dmaStreamSetMemory0(dmap->dmastream, membuffer);
   dmaStreamSetTransactionSize(dmap->dmastream, size);
   dmaStreamSetMode(dmap->dmastream, dmap->dmamode);
@@ -410,7 +418,8 @@ bool dma_lld_start_mtransfert(DMADriver *dmap, void *from, void *to, const size_
     return false;
   }
   
-  
+  dmap->destp = to;
+  dmap->size = size;
   dmaStreamSetPeripheral(dmap->dmastream, from);
   dmaStreamSetMemory0(dmap->dmastream, to);
   dmaStreamSetTransactionSize(dmap->dmastream, size);
@@ -428,4 +437,45 @@ void dma_lld_stop_transfert(DMADriver *dmap)
 void dma_lld_stop(DMADriver *dmap)
 {
   dmaStreamRelease(dmap->dmastream);
+}
+
+
+/*===========================================================================*/
+/* Driver local functions.                                                   */
+/*===========================================================================*/
+
+/**
+ * @brief   DMA DMA ISR service routine.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ * @param[in] flags     pre-shifted content of the ISR register
+ */
+static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
+{
+
+  /* DMA errors handling.*/
+  if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF)) != 0) {
+    /* DMA, this could help only if the DMA tries to access an unmapped
+       address space or violates alignment rules.*/
+    const dmaerrormask_t err =
+      ( (flags & STM32_DMA_ISR_TEIF) ? DMA_ERR_TRANSFER_ERROR : 0UL) |
+      ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL);
+      
+    _dma_isr_error_code(dmap, err);
+  }
+  else {
+    /* It is possible that the conversion group has already be reset by the
+       DMA error handler, in this case this interrupt is spurious.*/
+    if (dmap->config != NULL) {
+
+      if ((flags & STM32_DMA_ISR_TCIF) != 0) {
+        /* Transfer complete processing.*/
+        _dma_isr_full_code(dmap);
+      }
+      else if ((flags & STM32_DMA_ISR_HTIF) != 0) {
+        /* Half transfer processing.*/
+        _dma_isr_half_code(dmap);
+      }
+    }
+  }
 }

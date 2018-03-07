@@ -12,6 +12,17 @@ typedef enum {
   DMA_ERROR = 5                             /**< Transfert error.          */
 } dmastate_t;
 
+typedef enum {
+  DMA_ERR_TRANSFER_ERROR = 1<<0,           /**< DMA transfer failure.         */
+  DMA_ERR_FIFO_ERROR = 1<<1,               /**< DMA FIFO overrun or underrun. */
+  DMA_ERR_DIRECTMODE_ERROR = 1<<2          /**< DMA Direct Mode failure.      */
+} dmaerrormask_t;
+
+typedef struct DMADriver DMADriver;
+
+typedef void (*dmacallback_t)(DMADriver *dmap, void *buffer, const size_t n);
+typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
+
 
 
 /*===========================================================================*/
@@ -26,7 +37,7 @@ typedef enum {
 /**
  * @brief   Resumes a thread waiting for a dma transfert completion.
  *
- * @param[in] dmap      pointer to the @p ADCDriver object
+ * @param[in] dmap      pointer to the @p DMADriver object
  *
  * @notapi
  */
@@ -69,13 +80,72 @@ typedef enum {
   osalSysUnlockFromISR();                                                   \
 }
 
+#define _dma_isr_half_code(dmap) {                                          \
+  if ((dmap)->config->end_cb != NULL) {                                       \
+    (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size / 2);         \
+  }                                                                         \
+}
+
+#define _dma_isr_full_code(dmap) {                                          \
+  if ((dmap)->config->circular) {                                             \
+    /* Callback handling.*/                                                 \
+    if ((dmap)->config->end_cb != NULL) {                                     \
+      if ((dmap)->size > 1) {                                              \
+        /* Invokes the callback passing the 2nd half of the buffer.*/       \
+        const size_t half_index = (dmap)->size / 2;                                    \
+	const uint8_t *byte_array_p = ((uint8_t *) (dmap)->destp) +               \
+	  dmap->config->msize * half_index;				    \
+        (dmap)->config->end_cb(dmap, (void *) byte_array_p, half_index);    \
+      }                                                                     \
+      else {                                                                \
+        /* Invokes the callback passing the whole buffer.*/                 \
+        (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size);         \
+      }                                                                     \
+    }                                                                       \
+  }                                                                         \
+  else {                                                                    \
+    /* End transfert.*/                                                    \
+    dma_lld_stop_transfert(dmap);                                          \
+    if ((dmap)->config->end_cb != NULL) {                                     \
+      (dmap)->state = DMA_COMPLETE;                                         \
+      /* Invoke the callback passing the whole buffer.*/                    \
+      (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size);           \
+      if ((dmap)->state == DMA_COMPLETE) {                                  \
+        (dmap)->state = DMA_READY;                                          \
+        (dmap)->config = NULL;                                                \
+      }                                                                     \
+    }                                                                       \
+    else {                                                                  \
+      (dmap)->state = DMA_READY;                                            \
+      (dmap)->config = NULL;                                                  \
+    }                                                                       \
+    _dma_wakeup_isr(dmap);                                                  \
+  }                                                                         \
+}
+
+
+#define _dma_isr_error_code(dmap, err) {                                    \
+  dma_lld_stop_transfert(dmap);                                            \
+  if ((dmap)->config->error_cb != NULL) {                                     \
+    (dmap)->state = DMA_ERROR;                                              \
+    (dmap)->config->error_cb(dmap, err);                                      \
+    if ((dmap)->state == DMA_ERROR)                                         \
+      (dmap)->state = DMA_READY;                                            \
+      (dmap)->config = NULL;                                                  \
+  }                                                                         \
+  else {                                                                    \
+    (dmap)->state = DMA_READY;                                              \
+    (dmap)->config = NULL;                                                    \
+  }                                                                         \
+  _dma_timeout_isr(dmap);                                                   \
+}
 
 
 
 
-typedef struct {
-  stm32_dmaisr_t	serve_dma_isr;
-  void *		serve_dma_isr_arg;
+
+typedef struct  {
+  
   volatile void *	periph_addr;
   uint32_t		direction; // STM32_DMA_CR_DIR_P2M, STM32_DMA_CR_DIR_M2P, STM32_DMA_CR_DIR_M2M
   bool			inc_peripheral_addr;
@@ -85,6 +155,15 @@ typedef struct {
 				   // transfert complete, half transfert, direct mode error,
 				   // transfert error
 
+  /**
+   * @brief   Callback function associated to the group or @p NULL.
+   */
+  dmacallback_t             end_cb;
+  /**
+   * @brief   Error callback or @p NULL.
+   */
+  dmaerrorcallback_t        error_cb;
+  
   uint8_t		controller;
   uint8_t		stream;
   uint8_t		channel;
@@ -99,15 +178,17 @@ typedef struct {
   uint8_t		mburst; // 0(burst disabled), 4, 8, 16 
   uint8_t		fifo;   // 0(fifo disabled), 1, 2, 3, 4 : 25, 50, 75, 100% 
 #endif
-} DMAConfig ;
+}  DMAConfig ;
 
-typedef struct {
+struct DMADriver {
   const stm32_dma_stream_t  *dmastream;
   uint32_t		     dmamode;
   dmastate_t		     state;
   thread_reference_t         thread;
+  void			     *destp;
+  size_t		     size;
   const DMAConfig	    *config;
-} DMADriver ;
+}  ;
 
 
 
