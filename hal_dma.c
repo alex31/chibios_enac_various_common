@@ -4,32 +4,28 @@
 /*
 TODO : 
 
+° circular : automatiquement demi buffer ?
+
 ° simplifier le code de test des combinaisons interdites
   + test si mode = M2M : le champ periph_addr doit être null (pas utilisé)
 ° appliquer les autres limitations sur les tailles données dans le chapitre dma du ref manuel
 
-° booleen pour les masques d'interruption pour les 4 bit enable du registre CR, 
-  et aussi le bit FEIE du registre FCR
-
 ° version timeout des fonctions synchrones
 
-° transformer les macros en fonction static inline
-
-° isr_flags à supprimer :
-
-	* HTIE à positionner automatiquement en fonction de circular ou non
-
-	* TCIE à positionner automatiquement en fonction de CB ou non
-
-	* DMEIE et TEIE à positionner automatiquement en fonction de error_cb ou non
 
 ° écrire code de test : 
-  * api synchrone
-  * argument des callback end et erreur
-  * transfert mémoire
+  * api synchrone : OK
+  * argument des callback end et erreur : OK
+  * transfert mémoire OK : faire des mesures de perfo
   * transfert vers un gpio (ou un bit bitband d'un gpio) cadencé par un timer
   * transfert mémoire vers timer (voir code driver WS2812)
 
+
+° separer en deux paires de fichier : hal_dma et hal_lld_dma
+
+° mettre tout le code de verif de coherence runtime entre ifdef CHECK_DBG
+
+° transformer les macros en fonction static inline ??
 
  */
 
@@ -100,6 +96,7 @@ bool dmaStartMtransfertI(DMADriver *dmap, void *from, void *to, const size_t siz
                 (dmap->state == DMA_ERROR),
                 "not ready");
 
+  dmap->state    = DMA_ACTIVE;
   return dma_lld_start_mtransfert(dmap, from, to, size);
 }
   
@@ -122,7 +119,7 @@ bool dmaStartPtransfertI(DMADriver *dmap, void *membuffer, const size_t size)
                 (dmap->state == DMA_ERROR),
                 "not ready");
 
-  dmap->state    = ADC_ACTIVE;
+  dmap->state    = DMA_ACTIVE;
   return dma_lld_start_ptransfert(dmap, membuffer, size);
 }
   
@@ -230,14 +227,38 @@ bool dma_lld_start(DMADriver *dmap)
   default: osalDbgAssert(false, "msize should be 1 or 2 or 4");
     return false;
   }
-  
+
+  uint32_t dir_msk=0UL;
+  switch (cfg->direction) {
+  case DMA_DIR_P2M: dir_msk=STM32_DMA_CR_DIR_P2M; break;
+  case DMA_DIR_M2P: dir_msk=STM32_DMA_CR_DIR_M2P; break;
+  case DMA_DIR_M2M: dir_msk=STM32_DMA_CR_DIR_M2M; break;
+  case DMA_DIR_P2P: osalDbgAssert(false, "peripheral to peripheral no available on STM32"); break;
+    
+  default: osalDbgAssert(false, "direction not set or incorrect"); 
+  }
+
+  uint32_t isr_flags = cfg->circular ? 0UL: STM32_DMA_CR_TCIE;
+
+  if (cfg->direction != DMA_DIR_M2M) {
+    if (cfg->end_cb) {
+      isr_flags |=STM32_DMA_CR_TCIE;
+      if (cfg->circular) {
+	isr_flags |= STM32_DMA_CR_HTIE;
+      } 
+    }
+  }
+
+  if (cfg->error_cb) {
+    isr_flags |= STM32_DMA_CR_DMEIE | STM32_DMA_CR_TCIE;
+  }
+
+
   dmap->dmastream =  STM32_DMA_STREAM(STM32_DMA_STREAM_ID(cfg->controller, cfg->stream));
 
   dmap->dmamode = STM32_DMA_CR_CHSEL(cfg->channel) |
 		 STM32_DMA_CR_PL(cfg->dma_priority) |
-		 cfg->direction |
-		 psize_msk | msize_msk |
-                 cfg->isr_flags |
+		 dir_msk | psize_msk | msize_msk | isr_flags |
                  (cfg->circular ? STM32_DMA_CR_CIRC : 0UL) |
                  (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
 	         (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL);
@@ -406,7 +427,7 @@ bool dma_lld_start(DMADriver *dmap)
 
 bool dma_lld_start_ptransfert(DMADriver *dmap, void *membuffer, const size_t size)
 {
-  if (dmap->config->direction == STM32_DMA_CR_DIR_M2M) {
+  if (dmap->config->direction == DMA_DIR_M2M) {
     osalDbgAssert(false, "dma_lld_start_ptransfert not compatible with config direction field");
     return false;
   }
@@ -423,7 +444,7 @@ bool dma_lld_start_ptransfert(DMADriver *dmap, void *membuffer, const size_t siz
 
 bool dma_lld_start_mtransfert(DMADriver *dmap, void *from, void *to, const size_t size)
 {
-  if (dmap->config->direction != STM32_DMA_CR_DIR_M2M) {
+  if (dmap->config->direction != DMA_DIR_M2M) {
     osalDbgAssert(false, "dma_lld_start_mtransfert not compatible with config direction field");
     return false;
   }

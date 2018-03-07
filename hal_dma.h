@@ -18,6 +18,13 @@ typedef enum {
   DMA_ERR_DIRECTMODE_ERROR = 1<<2          /**< DMA Direct Mode failure.      */
 } dmaerrormask_t;
 
+typedef enum {
+  DMA_DIR_P2M = 1,           /**< PERIPHERAL to MEMORY  */
+  DMA_DIR_M2P = 2,           /**< MEMORY to PERIPHERAL  */
+  DMA_DIR_M2M = 3,           /**< MEMORY to MEMORY      */
+  DMA_DIR_P2P = 4		 /**< PERIPHERAL to PERIPHERAL  */
+} dmadirection_t;
+
 typedef struct DMADriver DMADriver;
 
 typedef void (*dmacallback_t)(DMADriver *dmap, void *buffer, const size_t n);
@@ -81,35 +88,35 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 }
 
 #define _dma_isr_half_code(dmap) {                                          \
-  if ((dmap)->config->end_cb != NULL) {                                       \
-    (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size / 2);         \
+  if ((dmap)->config->end_cb != NULL) {                                     \
+    (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size / 2);          \
   }                                                                         \
 }
 
 #define _dma_isr_full_code(dmap) {                                          \
-  if ((dmap)->config->circular) {                                             \
+  if ((dmap)->config->circular) {                                           \
     /* Callback handling.*/                                                 \
-    if ((dmap)->config->end_cb != NULL) {                                     \
-      if ((dmap)->size > 1) {                                              \
+    if ((dmap)->config->end_cb != NULL) {                                   \
+      if ((dmap)->size > 1) {                                               \
         /* Invokes the callback passing the 2nd half of the buffer.*/       \
-        const size_t half_index = (dmap)->size / 2;                                    \
-	const uint8_t *byte_array_p = ((uint8_t *) (dmap)->destp) +               \
+        const size_t half_index = (dmap)->size / 2;                         \
+	const uint8_t *byte_array_p = ((uint8_t *) (dmap)->destp) +         \
 	  dmap->config->msize * half_index;				    \
         (dmap)->config->end_cb(dmap, (void *) byte_array_p, half_index);    \
       }                                                                     \
       else {                                                                \
         /* Invokes the callback passing the whole buffer.*/                 \
-        (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size);         \
+        (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size);          \
       }                                                                     \
     }                                                                       \
   }                                                                         \
   else {                                                                    \
-    /* End transfert.*/                                                    \
-    dma_lld_stop_transfert(dmap);                                          \
-    if ((dmap)->config->end_cb != NULL) {                                     \
+    /* End transfert.*/                                                     \
+    dma_lld_stop_transfert(dmap);                                           \
+    if ((dmap)->config->end_cb != NULL) {                                   \
       (dmap)->state = DMA_COMPLETE;                                         \
       /* Invoke the callback passing the whole buffer.*/                    \
-      (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size);           \
+      (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size);            \
       if ((dmap)->state == DMA_COMPLETE) {                                  \
         (dmap)->state = DMA_READY;                                          \
       }                                                                     \
@@ -123,10 +130,10 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 
 
 #define _dma_isr_error_code(dmap, err) {                                    \
-  dma_lld_stop_transfert(dmap);                                            \
-  if ((dmap)->config->error_cb != NULL) {                                     \
+  dma_lld_stop_transfert(dmap);                                             \
+  if ((dmap)->config->error_cb != NULL) {                                   \
     (dmap)->state = DMA_ERROR;                                              \
-    (dmap)->config->error_cb(dmap, err);                                      \
+    (dmap)->config->error_cb(dmap, err);                                    \
     if ((dmap)->state == DMA_ERROR)                                         \
       (dmap)->state = DMA_READY;                                            \
   }                                                                         \
@@ -143,22 +150,22 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 typedef struct  {
   
   volatile void *	periph_addr;
-  uint32_t		direction; // STM32_DMA_CR_DIR_P2M, STM32_DMA_CR_DIR_M2P, STM32_DMA_CR_DIR_M2M
+  dmadirection_t	direction; 
   bool			inc_peripheral_addr;
   bool			inc_memory_addr;
   bool			circular;
-  uint32_t		isr_flags; // combination of STM32_DMA_CR_[TCIE, HTIE, DMEIE, TEIE]
+  //uint32_t		isr_flags; // combination of STM32_DMA_CR_[TCIE, HTIE, DMEIE, TEIE]
 				   // transfert complete, half transfert, direct mode error,
 				   // transfert error
 
   /**
    * @brief   Callback function associated to the group or @p NULL.
    */
-  dmacallback_t             end_cb;
+  dmacallback_t         end_cb;
   /**
    * @brief   Error callback or @p NULL.
    */
-  dmaerrorcallback_t        error_cb;
+  dmaerrorcallback_t    error_cb;
   
   uint8_t		controller;
   uint8_t		stream;
