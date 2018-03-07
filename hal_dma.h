@@ -110,13 +110,29 @@ typedef struct {
 } DMADriver ;
 
 
-bool dma_start(DMADriver *dmad, const DMAConfig *cfg);
-void dma_stop(DMADriver *dmad);
 
-void dma_mtransfert(DMADriver *dmad, void *membuffer, const size_t size);
-bool dma_start_mtransfert(DMADriver *dmad, void *from, void *to, const size_t size);
+void  dmaObjectInit(DMADriver *dmap);
+bool  dmaStart(DMADriver *dmap, const DMAConfig *cfg);
+void  dmaStop(DMADriver *dmap);
+bool  dmaStartMtransfert(DMADriver *dmap, void *from, void *to, const size_t size);
+bool  dmaStartPtransfert(DMADriver *dmap, void *membuffer, const size_t size);
+void  dmaStoptransfert(DMADriver *dmap);
+msg_t dmaMtransfert(DMADriver *dmap, void *from, void *to, const size_t size);
+msg_t dmaPtransfert(DMADriver *dmap, void *membuffer, const size_t size);
 
-bool dma_ptransfert(DMADriver *dmad, void *membuffer, const size_t size);
-bool dma_start_ptransfert(DMADriver *dmad, void *membuffer, const size_t size);
+bool dmaStartMtransfertI(DMADriver *dmap, void *from, void *to, const size_t size);
+bool dmaStartPtransfertI(DMADriver *dmap, void *membuffer, const size_t size);
+void dmaStoptransfertI(DMADriver *dmap);
 
-void dma_stop_transfert(DMADriver *dmad);
+
+// low level driver
+			
+bool dma_lld_start(DMADriver *dmap);
+void dma_lld_stop(DMADriver *dmap);
+
+
+bool dma_lld_start_mtransfert(DMADriver *dmap, void *from, void *to, const size_t size);
+
+bool dma_lld_start_ptransfert(DMADriver *dmap, void *membuffer, const size_t size);
+
+void dma_lld_stop_transfert(DMADriver *dmap);
