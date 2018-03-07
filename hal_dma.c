@@ -15,12 +15,21 @@ TODO :
 
 ° transformer les macros en fonction static inline
 
+° isr_flags à supprimer :
+
+	* HTIE à positionner automatiquement en fonction de circular ou non
+
+	* TCIE à positionner automatiquement en fonction de CB ou non
+
+	* DMEIE et TEIE à positionner automatiquement en fonction de error_cb ou non
+
 ° écrire code de test : 
   * api synchrone
   * argument des callback end et erreur
   * transfert mémoire
   * transfert vers un gpio (ou un bit bitband d'un gpio) cadencé par un timer
   * transfert mémoire vers timer (voir code driver WS2812)
+
 
  */
 
