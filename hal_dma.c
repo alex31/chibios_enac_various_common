@@ -4,10 +4,8 @@
 /*
 TODO : 
 
-° circular : automatiquement demi buffer ?
-
 ° simplifier le code de test des combinaisons interdites
-  + test si mode = M2M : le champ periph_addr doit être null (pas utilisé)
+  
 ° appliquer les autres limitations sur les tailles données dans le chapitre dma du ref manuel
 
 ° version timeout des fonctions synchrones
@@ -25,9 +23,7 @@ TODO :
 
 ° mettre tout le code de verif de coherence runtime entre ifdef CHECK_DBG
 
-° transformer les macros en fonction static inline ??
-
- */
+*/
 
 
 static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags);
