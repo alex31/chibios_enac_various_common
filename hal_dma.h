@@ -207,6 +207,11 @@ void  dmaStoptransfert(DMADriver *dmap);
 bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
 void dmaStoptransfertI(DMADriver *dmap);
 
+// helper
+static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
+{
+  return dmaTransfertTimeout(dmap, periphp, mem0p, size, TIME_INFINITE);
+}
 
 // low level driver
 			
@@ -219,8 +224,3 @@ bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0
 
 void dma_lld_stop_transfert(DMADriver *dmap);
 
-// helper
-static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
-{
-  return dmaTransfertTimeout(dmap, periphp, mem0p, size, TIME_INFINITE);
-}
