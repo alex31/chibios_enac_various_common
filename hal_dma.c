@@ -4,7 +4,7 @@
 /*
 TODO : 
 
-° noms de champs from et to mals choisis : reprendre des nom insiprés des noms de registre
+° noms de champs mem0p et to mals choisis : reprendre des noms inspirés des noms de registre
 
 ° simplifier le code de test des combinaisons interdites
   
@@ -39,7 +39,7 @@ void dmaObjectInit(DMADriver *dmap)
   dmap->state    = DMA_STOP;
   dmap->config   = NULL;
   dmap->thread   = NULL;
-  dmap->destp     = NULL;
+  dmap->mem0p     = NULL;
 }
 
 
@@ -70,25 +70,25 @@ void dmaStop(DMADriver *dmap)
   dma_lld_stop(dmap);
   dmap->config = NULL;
   dmap->state  = DMA_STOP;
-  dmap->destp   = NULL;
+  dmap->mem0p   = NULL;
 
   osalSysUnlock();
 }
 
 
 
-bool dmaStartTransfert(DMADriver *dmap, volatile void *from, void *to, const size_t size)
+bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
   osalSysLock();
-  const bool statusOk = dmaStartTransfertI(dmap, from, to, size);
+  const bool statusOk = dmaStartTransfertI(dmap, periphp, mem0p, size);
   osalSysUnlock();
   return statusOk;
 }
 
-bool dmaStartTransfertI(DMADriver *dmap, volatile void *from, void *to, const size_t size)
+bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
   osalDbgCheckClassI();
-  osalDbgCheck((dmap != NULL) && (from != NULL) && (to != NULL) &&
+  osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
                (size > 0U) && ((size == 1U) || ((size & 1U) == 0U)));
   osalDbgAssert((dmap->state == DMA_READY) ||
                 (dmap->state == DMA_COMPLETE) ||
@@ -96,7 +96,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *from, void *to, const si
                 "not ready");
 
   dmap->state    = DMA_ACTIVE;
-  return dma_lld_start_transfert(dmap, from, to, size);
+  return dma_lld_start_transfert(dmap, periphp, mem0p, size);
 }
   
 
@@ -138,13 +138,13 @@ void dmaStoptransfertI(DMADriver *dmap)
 }
 
 
-msg_t dmaTransfert(DMADriver *dmap, volatile void *from, void *to, const size_t size)
+msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
   msg_t msg;
   
   osalSysLock();
   osalDbgAssert(dmap->thread == NULL, "already waiting");
-  dmaStartTransfertI(dmap, from, to, size);
+  dmaStartTransfertI(dmap, periphp, mem0p, size);
   msg = osalThreadSuspendS(&dmap->thread);
   osalSysUnlock();
   return msg;
@@ -388,12 +388,12 @@ bool dma_lld_start(DMADriver *dmap)
 }
 
 
-bool dma_lld_start_transfert(DMADriver *dmap, volatile void *from, void *to, const size_t size)
+bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
-  dmap->destp = to;
+  dmap->mem0p = mem0p;
   dmap->size = size;
-  dmaStreamSetPeripheral(dmap->dmastream, from);
-  dmaStreamSetMemory0(dmap->dmastream, to);
+  dmaStreamSetPeripheral(dmap->dmastream, periphp);
+  dmaStreamSetMemory0(dmap->dmastream, mem0p);
   dmaStreamSetTransactionSize(dmap->dmastream, size);
   dmaStreamSetMode(dmap->dmastream, dmap->dmamode);
   dmaStreamEnable(dmap->dmastream);

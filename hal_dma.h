@@ -89,7 +89,7 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 
 #define _dma_isr_half_code(dmap) {                                          \
   if ((dmap)->config->end_cb != NULL) {                                     \
-    (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size / 2);          \
+    (dmap)->config->end_cb(dmap, (dmap)->mem0p, (dmap)->size / 2);          \
   }                                                                         \
 }
 
@@ -100,13 +100,13 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
       if ((dmap)->size > 1) {                                               \
         /* Invokes the callback passing the 2nd half of the buffer.*/       \
         const size_t half_index = (dmap)->size / 2;                         \
-	const uint8_t *byte_array_p = ((uint8_t *) (dmap)->destp) +         \
+	const uint8_t *byte_array_p = ((uint8_t *) (dmap)->mem0p) +         \
 	  dmap->config->msize * half_index;				    \
         (dmap)->config->end_cb(dmap, (void *) byte_array_p, half_index);    \
       }                                                                     \
       else {                                                                \
         /* Invokes the callback passing the whole buffer.*/                 \
-        (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size);          \
+        (dmap)->config->end_cb(dmap, (dmap)->mem0p, (dmap)->size);          \
       }                                                                     \
     }                                                                       \
   }                                                                         \
@@ -116,7 +116,7 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
     if ((dmap)->config->end_cb != NULL) {                                   \
       (dmap)->state = DMA_COMPLETE;                                         \
       /* Invoke the callback passing the whole buffer.*/                    \
-      (dmap)->config->end_cb(dmap, (dmap)->destp, (dmap)->size);            \
+      (dmap)->config->end_cb(dmap, (dmap)->mem0p, (dmap)->size);            \
       if ((dmap)->state == DMA_COMPLETE) {                                  \
         (dmap)->state = DMA_READY;                                          \
       }                                                                     \
@@ -186,7 +186,7 @@ struct DMADriver {
   uint32_t		     dmamode;
   dmastate_t		     state;
   thread_reference_t         thread;
-  void			     *destp;
+  void			     *mem0p;
   size_t		     size;
   const DMAConfig	    *config;
 }  ;
@@ -197,11 +197,11 @@ void  dmaObjectInit(DMADriver *dmap);
 bool  dmaStart(DMADriver *dmap, const DMAConfig *cfg);
 void  dmaStop(DMADriver *dmap);
 
-msg_t dmaTransfert(DMADriver *dmap, volatile void *from, void *to, const size_t size);
-bool  dmaStartTransfert(DMADriver *dmap, volatile void *from, void *to, const size_t size);
+msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
+bool  dmaStartTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
 void  dmaStoptransfert(DMADriver *dmap);
 
-bool dmaStartTransfertI(DMADriver *dmap, volatile void *from, void *to, const size_t size);
+bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
 void dmaStoptransfertI(DMADriver *dmap);
 
 
@@ -211,7 +211,7 @@ bool dma_lld_start(DMADriver *dmap);
 void dma_lld_stop(DMADriver *dmap);
 
 
-bool dma_lld_start_transfert(DMADriver *dmap, volatile void *from, void *to, const size_t size);
+bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
 
 
 void dma_lld_stop_transfert(DMADriver *dmap);
