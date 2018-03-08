@@ -4,6 +4,8 @@
 /*
 TODO : 
 
+° noms de champs from et to mals choisis : reprendre des nom insiprés des noms de registre
+
 ° simplifier le code de test des combinaisons interdites
   
 ° appliquer les autres limitations sur les tailles données dans le chapitre dma du ref manuel
@@ -17,6 +19,7 @@ TODO :
   * transfert mémoire OK : faire des mesures de perfo
   * transfert vers un gpio (ou un bit bitband d'un gpio) cadencé par un timer
   * transfert mémoire vers timer (voir code driver WS2812)
+  * decodage d'un DHT22
 
 
 ° separer en deux paires de fichier : hal_dma et hal_lld_dma
@@ -74,7 +77,7 @@ void dmaStop(DMADriver *dmap)
 
 
 
-bool dmaStartTransfert(DMADriver *dmap, void *from, void *to, const size_t size)
+bool dmaStartTransfert(DMADriver *dmap, volatile void *from, void *to, const size_t size)
 {
   osalSysLock();
   const bool statusOk = dmaStartTransfertI(dmap, from, to, size);
@@ -82,7 +85,7 @@ bool dmaStartTransfert(DMADriver *dmap, void *from, void *to, const size_t size)
   return statusOk;
 }
 
-bool dmaStartTransfertI(DMADriver *dmap, void *from, void *to, const size_t size)
+bool dmaStartTransfertI(DMADriver *dmap, volatile void *from, void *to, const size_t size)
 {
   osalDbgCheckClassI();
   osalDbgCheck((dmap != NULL) && (from != NULL) && (to != NULL) &&
@@ -135,7 +138,7 @@ void dmaStoptransfertI(DMADriver *dmap)
 }
 
 
-msg_t dmaTransfert(DMADriver *dmap, void *from, void *to, const size_t size)
+msg_t dmaTransfert(DMADriver *dmap, volatile void *from, void *to, const size_t size)
 {
   msg_t msg;
   
@@ -385,13 +388,8 @@ bool dma_lld_start(DMADriver *dmap)
 }
 
 
-bool dma_lld_start_transfert(DMADriver *dmap, void *from, void *to, const size_t size)
+bool dma_lld_start_transfert(DMADriver *dmap, volatile void *from, void *to, const size_t size)
 {
-  if (dmap->config->direction != DMA_DIR_M2M) {
-    osalDbgAssert(false, "dma_lld_start_transfert not compatible with config direction field");
-    return false;
-  }
-  
   dmap->destp = to;
   dmap->size = size;
   dmaStreamSetPeripheral(dmap->dmastream, from);

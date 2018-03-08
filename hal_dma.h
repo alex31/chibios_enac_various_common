@@ -197,11 +197,11 @@ void  dmaObjectInit(DMADriver *dmap);
 bool  dmaStart(DMADriver *dmap, const DMAConfig *cfg);
 void  dmaStop(DMADriver *dmap);
 
-msg_t dmaTransfert(DMADriver *dmap, void *from, void *to, const size_t size);
-bool  dmaStartTransfert(DMADriver *dmap, void *from, void *to, const size_t size);
+msg_t dmaTransfert(DMADriver *dmap, volatile void *from, void *to, const size_t size);
+bool  dmaStartTransfert(DMADriver *dmap, volatile void *from, void *to, const size_t size);
 void  dmaStoptransfert(DMADriver *dmap);
 
-bool dmaStartTransfertI(DMADriver *dmap, void *from, void *to, const size_t size);
+bool dmaStartTransfertI(DMADriver *dmap, volatile void *from, void *to, const size_t size);
 void dmaStoptransfertI(DMADriver *dmap);
 
 
@@ -211,7 +211,7 @@ bool dma_lld_start(DMADriver *dmap);
 void dma_lld_stop(DMADriver *dmap);
 
 
-bool dma_lld_start_transfert(DMADriver *dmap, void *from, void *to, const size_t size);
+bool dma_lld_start_transfert(DMADriver *dmap, volatile void *from, void *to, const size_t size);
 
 
 void dma_lld_stop_transfert(DMADriver *dmap);
