@@ -148,8 +148,6 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 
 
 typedef struct  {
-  
-  volatile void *	periph_addr;
   dmadirection_t	direction; 
   bool			inc_peripheral_addr;
   bool			inc_memory_addr;
@@ -198,14 +196,12 @@ struct DMADriver {
 void  dmaObjectInit(DMADriver *dmap);
 bool  dmaStart(DMADriver *dmap, const DMAConfig *cfg);
 void  dmaStop(DMADriver *dmap);
-bool  dmaStartMtransfert(DMADriver *dmap, void *from, void *to, const size_t size);
-bool  dmaStartPtransfert(DMADriver *dmap, void *membuffer, const size_t size);
-void  dmaStoptransfert(DMADriver *dmap);
-msg_t dmaMtransfert(DMADriver *dmap, void *from, void *to, const size_t size);
-msg_t dmaPtransfert(DMADriver *dmap, void *membuffer, const size_t size);
 
-bool dmaStartMtransfertI(DMADriver *dmap, void *from, void *to, const size_t size);
-bool dmaStartPtransfertI(DMADriver *dmap, void *membuffer, const size_t size);
+msg_t dmaTransfert(DMADriver *dmap, void *from, void *to, const size_t size);
+bool  dmaStartTransfert(DMADriver *dmap, void *from, void *to, const size_t size);
+void  dmaStoptransfert(DMADriver *dmap);
+
+bool dmaStartTransfertI(DMADriver *dmap, void *from, void *to, const size_t size);
 void dmaStoptransfertI(DMADriver *dmap);
 
 
@@ -215,8 +211,7 @@ bool dma_lld_start(DMADriver *dmap);
 void dma_lld_stop(DMADriver *dmap);
 
 
-bool dma_lld_start_mtransfert(DMADriver *dmap, void *from, void *to, const size_t size);
+bool dma_lld_start_transfert(DMADriver *dmap, void *from, void *to, const size_t size);
 
-bool dma_lld_start_ptransfert(DMADriver *dmap, void *membuffer, const size_t size);
 
 void dma_lld_stop_transfert(DMADriver *dmap);

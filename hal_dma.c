@@ -74,15 +74,15 @@ void dmaStop(DMADriver *dmap)
 
 
 
-bool dmaStartMtransfert(DMADriver *dmap, void *from, void *to, const size_t size)
+bool dmaStartTransfert(DMADriver *dmap, void *from, void *to, const size_t size)
 {
   osalSysLock();
-  const bool statusOk = dmaStartMtransfertI(dmap, from, to, size);
+  const bool statusOk = dmaStartTransfertI(dmap, from, to, size);
   osalSysUnlock();
   return statusOk;
 }
 
-bool dmaStartMtransfertI(DMADriver *dmap, void *from, void *to, const size_t size)
+bool dmaStartTransfertI(DMADriver *dmap, void *from, void *to, const size_t size)
 {
   osalDbgCheckClassI();
   osalDbgCheck((dmap != NULL) && (from != NULL) && (to != NULL) &&
@@ -93,31 +93,10 @@ bool dmaStartMtransfertI(DMADriver *dmap, void *from, void *to, const size_t siz
                 "not ready");
 
   dmap->state    = DMA_ACTIVE;
-  return dma_lld_start_mtransfert(dmap, from, to, size);
+  return dma_lld_start_transfert(dmap, from, to, size);
 }
   
 
-bool dmaStartPtransfert(DMADriver *dmap, void *membuffer, const size_t size)
-{
-  osalSysLock();
-  const bool statusOk = dmaStartPtransfertI(dmap, membuffer, size);
-  osalSysUnlock();
-  return statusOk;
-}
-
-bool dmaStartPtransfertI(DMADriver *dmap, void *membuffer, const size_t size)
-{
-  osalDbgCheckClassI();
-  osalDbgCheck((dmap != NULL) && (membuffer != NULL) && 
-               (size > 0U) && ((size == 1U) || ((size & 1U) == 0U)));
-  osalDbgAssert((dmap->state == DMA_READY) ||
-                (dmap->state == DMA_COMPLETE) ||
-                (dmap->state == DMA_ERROR),
-                "not ready");
-
-  dmap->state    = DMA_ACTIVE;
-  return dma_lld_start_ptransfert(dmap, membuffer, size);
-}
   
 void dmaStopTransfert(DMADriver *dmap)
 {
@@ -156,29 +135,16 @@ void dmaStoptransfertI(DMADriver *dmap)
 }
 
 
-msg_t dmaPtransfert(DMADriver *dmap, void *membuffer, const size_t size)
-{
-  msg_t msg;
-
-  osalSysLock();
-  osalDbgAssert(dmap->thread == NULL, "already waiting");
-  dmaStartPtransfertI(dmap, membuffer, size);
-  msg = osalThreadSuspendS(&dmap->thread);
-  osalSysUnlock();
-  return msg;
-}
-
-msg_t dmaMtransfert(DMADriver *dmap, void *from, void *to, const size_t size)
+msg_t dmaTransfert(DMADriver *dmap, void *from, void *to, const size_t size)
 {
   msg_t msg;
   
   osalSysLock();
   osalDbgAssert(dmap->thread == NULL, "already waiting");
-  dmaStartMtransfertI(dmap, from, to, size);
+  dmaStartTransfertI(dmap, from, to, size);
   msg = osalThreadSuspendS(&dmap->thread);
   osalSysUnlock();
   return msg;
-
 }
 
 
@@ -409,8 +375,6 @@ bool dma_lld_start(DMADriver *dmap)
     dmaStreamSetFIFO(dmap->dmastream, STM32_DMA_FCR_DMDIS | fifo_msk);
   }
   
-  dmaStreamSetPeripheral(dmap->dmastream, cfg->periph_addr);
-  
   return true;
   
   
@@ -421,27 +385,10 @@ bool dma_lld_start(DMADriver *dmap)
 }
 
 
-bool dma_lld_start_ptransfert(DMADriver *dmap, void *membuffer, const size_t size)
-{
-  if (dmap->config->direction == DMA_DIR_M2M) {
-    osalDbgAssert(false, "dma_lld_start_ptransfert not compatible with config direction field");
-    return false;
-  }
-  
-  dmap->destp = membuffer;
-  dmap->size = size;
-  dmaStreamSetMemory0(dmap->dmastream, membuffer);
-  dmaStreamSetTransactionSize(dmap->dmastream, size);
-  dmaStreamSetMode(dmap->dmastream, dmap->dmamode);
-  dmaStreamEnable(dmap->dmastream);
-  
-  return true;
-}
-
-bool dma_lld_start_mtransfert(DMADriver *dmap, void *from, void *to, const size_t size)
+bool dma_lld_start_transfert(DMADriver *dmap, void *from, void *to, const size_t size)
 {
   if (dmap->config->direction != DMA_DIR_M2M) {
-    osalDbgAssert(false, "dma_lld_start_mtransfert not compatible with config direction field");
+    osalDbgAssert(false, "dma_lld_start_transfert not compatible with config direction field");
     return false;
   }
   
