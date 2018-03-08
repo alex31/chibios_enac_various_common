@@ -13,9 +13,9 @@ typedef enum {
 } dmastate_t;
 
 typedef enum {
-  DMA_ERR_TRANSFER_ERROR = 1<<0,           /**< DMA transfer failure.         */
-  DMA_ERR_FIFO_ERROR = 1<<1,               /**< DMA FIFO overrun or underrun. */
-  DMA_ERR_DIRECTMODE_ERROR = 1<<2          /**< DMA Direct Mode failure.      */
+  DMA_ERR_TRANSFER_ERROR   = 1<<0,          /**< DMA transfer failure.         */
+  DMA_ERR_DIRECTMODE_ERROR = 1<<1,          /**< DMA Direct Mode failure.      */
+  DMA_ERR_FIFO_ERROR       = 1<<2           /**< DMA FIFO overrun or underrun. */
 } dmaerrormask_t;
 
 typedef enum {
@@ -152,6 +152,8 @@ typedef struct  {
   bool			inc_peripheral_addr;
   bool			inc_memory_addr;
   bool			circular;
+  bool			periph_inc_size_4; // PINCOS bit
+  bool			transfert_end_ctrl_by_periph; // PFCTRL bit
   //uint32_t		isr_flags; // combination of STM32_DMA_CR_[TCIE, HTIE, DMEIE, TEIE]
 				   // transfert complete, half transfert, direct mode error,
 				   // transfert error

@@ -4,12 +4,6 @@
 /*
 TODO : 
 
-° noms de champs mem0p et to mals choisis : reprendre des noms inspirés des noms de registre
-
-° simplifier le code de test des combinaisons interdites
-  
-° appliquer les autres limitations sur les tailles données dans le chapitre dma du ref manuel
-
 ° version timeout des fonctions synchrones
 
 
@@ -24,7 +18,11 @@ TODO :
 
 ° separer en deux paires de fichier : hal_dma et hal_lld_dma
 
-° mettre tout le code de verif de coherence runtime entre ifdef CHECK_DBG
+° générer des macros pour les param dma possibles en fonction des description xml des MCUs
+
+° tester sur L4 (DMAV1)
+  
+° simplifier le code de test des combinaisons interdites
 
 */
 
@@ -39,7 +37,7 @@ void dmaObjectInit(DMADriver *dmap)
   dmap->state    = DMA_STOP;
   dmap->config   = NULL;
   dmap->thread   = NULL;
-  dmap->mem0p     = NULL;
+  dmap->mem0p    = NULL;
 }
 
 
@@ -90,11 +88,41 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, co
   osalDbgCheckClassI();
   osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
                (size > 0U) && ((size == 1U) || ((size & 1U) == 0U)));
+
+#if (CH_DBG_ENABLE_ASSERTS != FALSE)
+  const DMAConfig	    *cfg = dmap->config;
   osalDbgAssert((dmap->state == DMA_READY) ||
                 (dmap->state == DMA_COMPLETE) ||
                 (dmap->state == DMA_ERROR),
                 "not ready");
 
+  osalDbgAssert((uint32_t) periphp % cfg->psize == 0, "peripheral address not aligned");
+  osalDbgAssert((uint32_t) mem0p % cfg->msize == 0, "memory address not aligned");
+
+  /*
+    In the circular mode, it is mandatory to respect the following rule in case of a burst mode
+    configured for memory:
+    DMA_SxNDTR = Multiple of ((Mburst beat) × (Msize)/(Psize)), where:
+    – (Mburst beat) = 4, 8 or 16 (depending on the MBURST bits in the DMA_SxCR
+    register)
+    – ((Msize)/(Psize)) = 1, 2, 4, 1/2 or 1/4 (Msize and Psize represent the MSIZE and
+    PSIZE bits in the DMA_SxCR register. They are byte dependent)
+    – DMA_SxNDTR = Number of data items to transfer on the AHB peripheral port
+   */
+  if (cfg->pburst) {
+    osalDbgAssert((size % (cfg->pburst * cfg->psize)) == 0,
+		  "pburst alignment rule not respected");
+    osalDbgAssert((((uint32_t) periphp) % (cfg->pburst * cfg->psize)) == 0,
+		  "peripheral address alignment rule not respected");
+  }
+  if (cfg->mburst) {
+    osalDbgAssert((size % (cfg->mburst * cfg->msize)) == 0,
+		  "mburst alignment rule not respected");
+    osalDbgAssert((((uint32_t) mem0p) % (cfg->mburst * cfg->msize)) == 0,
+		  "memory address alignment rule not respected");
+  }
+
+#endif
   dmap->state    = DMA_ACTIVE;
   return dma_lld_start_transfert(dmap, periphp, mem0p, size);
 }
@@ -226,7 +254,9 @@ bool dma_lld_start(DMADriver *dmap)
 		 dir_msk | psize_msk | msize_msk | isr_flags |
                  (cfg->circular ? STM32_DMA_CR_CIRC : 0UL) |
                  (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
-	         (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL);
+	         (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL) |
+	         (cfg->periph_inc_size_4 ? STM32_DMA_CR_PINCOS : 0UL) |
+	         (cfg->transfert_end_ctrl_by_periph? STM32_DMA_CR_PFCTRL : 0UL);
                  
 
 #if STM32_DMA_ADVANCED
@@ -257,7 +287,8 @@ bool dma_lld_start(DMADriver *dmap)
     return false;
   }
 
-  
+
+# if (CH_DBG_ENABLE_ASSERTS != FALSE)
   // lot of combination of parameters are forbiden, and some conditions must be meet
   if (!cfg->msize !=  !cfg->psize) {
      osalDbgAssert(false, "psize and msize should be enabled or disabled together");
@@ -349,10 +380,12 @@ bool dma_lld_start(DMADriver *dmap)
       }
     }
   }
+# endif
 
-#if STM32_DMA_ADVANCED
   dmap->dmamode |= (pburst_msk | mburst_msk);
-#endif
+
+#  if (CH_DBG_ENABLE_ASSERTS != FALSE)
+
   
   /*
     When burst transfers are requested on the peripheral AHB port and the FIFO is used
@@ -360,9 +393,22 @@ bool dma_lld_start(DMADriver *dmap)
     avoid permanent underrun or overrun conditions, depending on the DMA stream direction:
     If (PBURST × PSIZE) = FIFO_SIZE (4 words), FIFO_Threshold = 3/4 is forbidden
   */
+
   if ( ((cfg->pburst * cfg->psize) == DMA_FIFO_SIZE) && (cfg->fifo == 3))
     goto forbiddenCombination;
+
+  /*
+    When memory-to-memory mode is used, the Circular and direct modes are not allowed.
+    Only the DMA2 controller is able to perform memory-to-memory transfers.
+  */
   
+  if (cfg->direction == DMA_DIR_M2M) {
+    osalDbgAssert(cfg->controller == 2, "M2M not available on DMA1");
+    osalDbgAssert(cfg->circular == false, "M2M not available in circular mode");
+  }
+
+
+#  endif
 #endif
     
   const bool error = dmaStreamAllocate( dmap->dmastream,
@@ -375,16 +421,23 @@ bool dma_lld_start(DMADriver *dmap)
   }
   
   if (cfg->fifo) {
-    dmaStreamSetFIFO(dmap->dmastream, STM32_DMA_FCR_DMDIS | fifo_msk);
+    dmaStreamSetFIFO(dmap->dmastream, STM32_DMA_FCR_DMDIS | STM32_DMA_FCR_FEIE | fifo_msk);
+  } else {
+    osalDbgAssert(cfg->direction != DMA_DIR_M2M, "fifo mode mandatory for M2M");
+    osalDbgAssert(cfg->psize == cfg->msize, "msize == psize is mandatory when fifo is disabled");
   }
+
+
+  
   
   return true;
   
-  
+#if (CH_DBG_ENABLE_ASSERTS != FALSE)
  forbiddenCombination:
   chSysHalt("forbidden combination of msize, mburst, fifo, see FIFO threshold "
 	    "configuration in reference manuel");
   return false;
+#endif
 }
 
 
@@ -431,7 +484,8 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
        address space or violates alignment rules.*/
     const dmaerrormask_t err =
       ( (flags & STM32_DMA_ISR_TEIF) ? DMA_ERR_TRANSFER_ERROR : 0UL) |
-      ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL);
+      ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL) |
+      (flags & (STM32_DMA_ISR_DMEIF | STM32_DMA_ISR_TEIF) ? 0UL : DMA_ERR_FIFO_ERROR);
       
     _dma_isr_error_code(dmap, err);
   }
