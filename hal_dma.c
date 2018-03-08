@@ -4,9 +4,6 @@
 /*
 TODO : 
 
-° version timeout des fonctions synchrones
-
-
 ° écrire code de test : 
   * api synchrone : OK
   * argument des callback end et erreur : OK
@@ -22,8 +19,6 @@ TODO :
 
 ° tester sur L4 (DMAV1)
   
-° simplifier le code de test des combinaisons interdites
-
 */
 
 
@@ -166,22 +161,21 @@ void dmaStoptransfertI(DMADriver *dmap)
 }
 
 
-msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
+msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size,
+			  sysinterval_t timeout)
 {
   msg_t msg;
   
   osalSysLock();
   osalDbgAssert(dmap->thread == NULL, "already waiting");
   dmaStartTransfertI(dmap, periphp, mem0p, size);
-  msg = osalThreadSuspendS(&dmap->thread);
+  msg = osalThreadSuspendTimeoutS(&dmap->thread, timeout);
+  if (msg != MSG_OK) {
+    dmaStoptransfertI(dmap);
+  }
   osalSysUnlock();
   return msg;
 }
-
-
-
-
-
 
 
 /*
