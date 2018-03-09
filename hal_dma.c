@@ -9,7 +9,7 @@ TODO :
   * argument des callback end et erreur : OK
   * transfert mémoire OK : faire des mesures de perfo
   * transfert vers un gpio (ou un bit bitband d'un gpio) cadencé par un timer : OK
-  * decodage d'un DHT22
+  * decodage d'un DHT22 : OK
   * tester sur L4 (DMAV1)
   * transfert mémoire vers timer (voir code driver WS2812)
 
@@ -145,7 +145,7 @@ void dmaStopTransfert(DMADriver *dmap)
 
 
 
-void dmaStoptransfertI(DMADriver *dmap)
+void dmaStopTransfertI(DMADriver *dmap)
 {
   osalDbgCheckClassI();
   osalDbgCheck(dmap != NULL);
@@ -174,7 +174,7 @@ msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, 
   dmaStartTransfertI(dmap, periphp, mem0p, size);
   msg = osalThreadSuspendTimeoutS(&dmap->thread, timeout);
   if (msg != MSG_OK) {
-    dmaStoptransfertI(dmap);
+    dmaStopTransfertI(dmap);
   }
   osalSysUnlock();
   return msg;

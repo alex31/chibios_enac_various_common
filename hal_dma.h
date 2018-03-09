@@ -199,10 +199,10 @@ void  dmaStop(DMADriver *dmap);
 msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size,
 		   sysinterval_t timeout);
 bool  dmaStartTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
-void  dmaStoptransfert(DMADriver *dmap);
+void  dmaStopTransfert(DMADriver *dmap);
 
 bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
-void dmaStoptransfertI(DMADriver *dmap);
+void dmaStopTransfertI(DMADriver *dmap);
 
 // helper
 static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
