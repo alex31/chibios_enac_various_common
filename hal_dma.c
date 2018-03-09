@@ -244,7 +244,10 @@ bool dma_lld_start(DMADriver *dmap)
   }
 
 
-  dmap->dmastream =  STM32_DMA_STREAM(STM32_DMA_STREAM_ID(cfg->controller, cfg->stream));
+  dmap->dmastream =  STM32_DMA_STREAM(cfg->stream);
+
+  // portable way (V1, V2) to retreive controler number
+  dmap->controller = 1 + (cfg->stream / STM32_DMA_STREAM_ID(2,0));
 
   dmap->dmamode = STM32_DMA_CR_CHSEL(cfg->channel) |
 		 STM32_DMA_CR_PL(cfg->dma_priority) |
@@ -400,7 +403,7 @@ bool dma_lld_start(DMADriver *dmap)
   */
   
   if (cfg->direction == DMA_DIR_M2M) {
-    osalDbgAssert(cfg->controller == 2, "M2M not available on DMA1");
+    osalDbgAssert(dmap->controller == 2, "M2M not available on DMA1");
     osalDbgAssert(cfg->circular == false, "M2M not available in circular mode");
   }
 

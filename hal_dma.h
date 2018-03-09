@@ -158,6 +158,7 @@ typedef struct  {
 				   // transfert complete, half transfert, direct mode error,
 				   // transfert error
 
+  uint32_t		stream;
   /**
    * @brief   Callback function associated to the group or @p NULL.
    */
@@ -167,8 +168,6 @@ typedef struct  {
    */
   dmaerrorcallback_t    error_cb;
   
-  uint8_t		controller;
-  uint8_t		stream;
   uint8_t		channel;
   uint8_t		dma_priority;
   uint8_t		irq_priority;
@@ -190,6 +189,7 @@ struct DMADriver {
   thread_reference_t         thread;
   void			     *mem0p;
   size_t		     size;
+  uint8_t		     controller;
   const DMAConfig	    *config;
 }  ;
 
