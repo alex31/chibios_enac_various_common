@@ -480,10 +480,10 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
     /* DMA, this could help only if the DMA tries to access an unmapped
        address space or violates alignment rules.*/
     const dmaerrormask_t err =
-      ( (flags & STM32_DMA_ISR_TEIF) ? DMA_ERR_TRANSFER_ERROR : 0UL) |
+      ( (flags & STM32_DMA_ISR_TEIF)  ? DMA_ERR_TRANSFER_ERROR : 0UL) |
       ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL) |
-      (flags & (STM32_DMA_ISR_DMEIF | STM32_DMA_ISR_TEIF) ? 0UL : DMA_ERR_FIFO_ERROR);
-      
+      ( (flags & STM32_DMA_ISR_FEIF)  ? DMA_ERR_FIFO_ERROR : 0UL);
+    
     _dma_isr_error_code(dmap, err);
   }
   else {
