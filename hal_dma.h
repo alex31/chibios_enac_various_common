@@ -148,16 +148,6 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 
 
 typedef struct  {
-  dmadirection_t	direction; 
-  bool			inc_peripheral_addr;
-  bool			inc_memory_addr;
-  bool			circular;
-  bool			periph_inc_size_4; // PINCOS bit
-  bool			transfert_end_ctrl_by_periph; // PFCTRL bit
-  //uint32_t		isr_flags; // combination of STM32_DMA_CR_[TCIE, HTIE, DMEIE, TEIE]
-				   // transfert complete, half transfert, direct mode error,
-				   // transfert error
-
   uint32_t		stream;
   /**
    * @brief   Callback function associated to the group or @p NULL.
@@ -168,6 +158,13 @@ typedef struct  {
    */
   dmaerrorcallback_t    error_cb;
   
+  dmadirection_t	direction; 
+  bool			inc_peripheral_addr;
+  bool			inc_memory_addr;
+  bool			circular;
+  bool			periph_inc_size_4; // PINCOS bit
+  bool			transfert_end_ctrl_by_periph; // PFCTRL bit
+
   uint8_t		channel;
   uint8_t		dma_priority;
   uint8_t		irq_priority;
@@ -184,13 +181,13 @@ typedef struct  {
 
 struct DMADriver {
   const stm32_dma_stream_t  *dmastream;
-  uint32_t		     dmamode;
-  dmastate_t		     state;
+  const DMAConfig	    *config;
   thread_reference_t         thread;
   void			     *mem0p;
+  uint32_t		     dmamode;
   size_t		     size;
+  dmastate_t		     state;
   uint8_t		     controller;
-  const DMAConfig	    *config;
 }  ;
 
 
