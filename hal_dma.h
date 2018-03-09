@@ -21,8 +21,9 @@ typedef enum {
 typedef enum {
   DMA_DIR_P2M = 1,           /**< PERIPHERAL to MEMORY  */
   DMA_DIR_M2P = 2,           /**< MEMORY to PERIPHERAL  */
+#if  STM32_DMA_ADVANCED
   DMA_DIR_M2M = 3,           /**< MEMORY to MEMORY      */
-  DMA_DIR_P2P = 4		 /**< PERIPHERAL to PERIPHERAL  */
+#endif
 } dmadirection_t;
 
 typedef struct DMADriver DMADriver;
@@ -177,7 +178,7 @@ typedef struct  {
   uint8_t		mburst; // 0(burst disabled), 4, 8, 16 
   uint8_t		fifo;   // 0(fifo disabled), 1, 2, 3, 4 : 25, 50, 75, 100% 
 #endif
-}  DMAConfig ;
+}  DMAConfig;
 
 struct DMADriver {
   const stm32_dma_stream_t  *dmastream;
@@ -188,7 +189,7 @@ struct DMADriver {
   size_t		     size;
   dmastate_t		     state;
   uint8_t		     controller;
-}  ;
+};
 
 
 
@@ -201,8 +202,8 @@ msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, 
 bool  dmaStartTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
 void  dmaStopTransfert(DMADriver *dmap);
 
-bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
-void dmaStopTransfertI(DMADriver *dmap);
+bool  dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
+void  dmaStopTransfertI(DMADriver *dmap);
 
 // helper
 static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
@@ -212,12 +213,12 @@ static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *
 
 // low level driver
 			
-bool dma_lld_start(DMADriver *dmap);
-void dma_lld_stop(DMADriver *dmap);
+bool  dma_lld_start(DMADriver *dmap);
+void  dma_lld_stop(DMADriver *dmap);
 
 
-bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
+bool  dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
 
 
-void dma_lld_stop_transfert(DMADriver *dmap);
+void  dma_lld_stop_transfert(DMADriver *dmap);
 

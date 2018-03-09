@@ -107,6 +107,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, co
     PSIZE bits in the DMA_SxCR register. They are byte dependent)
     – DMA_SxNDTR = Number of data items to transfer on the AHB peripheral port
    */
+# if  STM32_DMA_ADVANCED
   if (cfg->pburst) {
     osalDbgAssert((size % (cfg->pburst * cfg->psize)) == 0,
 		  "pburst alignment rule not respected");
@@ -119,7 +120,8 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, co
     osalDbgAssert((((uint32_t) mem0p) % (cfg->mburst * cfg->msize)) == 0,
 		  "memory address alignment rule not respected");
   }
-
+  
+# endif
 #endif
   dmap->state    = DMA_ACTIVE;
   return dma_lld_start_transfert(dmap, periphp, mem0p, size);
@@ -222,23 +224,28 @@ bool dma_lld_start(DMADriver *dmap)
   switch (cfg->direction) {
   case DMA_DIR_P2M: dir_msk=STM32_DMA_CR_DIR_P2M; break;
   case DMA_DIR_M2P: dir_msk=STM32_DMA_CR_DIR_M2P; break;
+#if  STM32_DMA_ADVANCED
   case DMA_DIR_M2M: dir_msk=STM32_DMA_CR_DIR_M2M; break;
-  case DMA_DIR_P2P: osalDbgAssert(false, "peripheral to peripheral no available on STM32"); break;
-    
+#endif
   default: osalDbgAssert(false, "direction not set or incorrect"); 
   }
 
   uint32_t isr_flags = cfg->circular ? 0UL: STM32_DMA_CR_TCIE;
 
+#if  STM32_DMA_ADVANCED
   if (cfg->direction != DMA_DIR_M2M) {
+#endif
+    
     if (cfg->end_cb) {
       isr_flags |=STM32_DMA_CR_TCIE;
       if (cfg->circular) {
 	isr_flags |= STM32_DMA_CR_HTIE;
       } 
     }
+#if  STM32_DMA_ADVANCED   
   }
-
+#endif
+  
   if (cfg->error_cb) {
     isr_flags |= STM32_DMA_CR_DMEIE | STM32_DMA_CR_TCIE;
   }
@@ -254,9 +261,13 @@ bool dma_lld_start(DMADriver *dmap)
 		 dir_msk | psize_msk | msize_msk | isr_flags |
                  (cfg->circular ? STM32_DMA_CR_CIRC : 0UL) |
                  (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
-	         (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL) |
+	         (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL)
+#if STM32_DMA_ADVANCED
+                 |
 	         (cfg->periph_inc_size_4 ? STM32_DMA_CR_PINCOS : 0UL) |
-	         (cfg->transfert_end_ctrl_by_periph? STM32_DMA_CR_PFCTRL : 0UL);
+	         (cfg->transfert_end_ctrl_by_periph? STM32_DMA_CR_PFCTRL : 0UL)
+#   endif
+		 ;
                  
 
 #if STM32_DMA_ADVANCED
@@ -419,24 +430,27 @@ bool dma_lld_start(DMADriver *dmap)
     osalDbgAssert(false, "stream already allocated");
     return false;
   }
-  
+
+#if STM32_DMA_ADVANCED
   if (cfg->fifo) {
     dmaStreamSetFIFO(dmap->dmastream, STM32_DMA_FCR_DMDIS | STM32_DMA_FCR_FEIE | fifo_msk);
   } else {
     osalDbgAssert(cfg->direction != DMA_DIR_M2M, "fifo mode mandatory for M2M");
     osalDbgAssert(cfg->psize == cfg->msize, "msize == psize is mandatory when fifo is disabled");
   }
-
+#endif
 
   
   
   return true;
   
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
+#if STM32_DMA_ADVANCED
  forbiddenCombination:
   chSysHalt("forbidden combination of msize, mburst, fifo, see FIFO threshold "
 	    "configuration in reference manuel");
   return false;
+# endif
 #endif
 }
 
@@ -479,7 +493,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
 {
 
   /* DMA errors handling.*/
-  if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF)) != 0) {
+  if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF | STM32_DMA_ISR_FEIF)) != 0) {
     /* DMA, this could help only if the DMA tries to access an unmapped
        address space or violates alignment rules.*/
     const dmaerrormask_t err =
