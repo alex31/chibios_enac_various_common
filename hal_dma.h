@@ -21,9 +21,7 @@ typedef enum {
 typedef enum {
   DMA_DIR_P2M = 1,           /**< PERIPHERAL to MEMORY  */
   DMA_DIR_M2P = 2,           /**< MEMORY to PERIPHERAL  */
-#if  STM32_DMA_ADVANCED
   DMA_DIR_M2M = 3,           /**< MEMORY to MEMORY      */
-#endif
 } dmadirection_t;
 
 typedef struct DMADriver DMADriver;
@@ -146,7 +144,9 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 
 
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct  {
   uint32_t		stream;
@@ -163,10 +163,7 @@ typedef struct  {
   bool			inc_peripheral_addr;
   bool			inc_memory_addr;
   bool			circular;
-  bool			periph_inc_size_4; // PINCOS bit
-  bool			transfert_end_ctrl_by_periph; // PFCTRL bit
 
-  uint8_t		channel;
   uint8_t		dma_priority;
   uint8_t		irq_priority;
   uint8_t		psize; // 1,2,4
@@ -174,6 +171,9 @@ typedef struct  {
   
 #if STM32_DMA_ADVANCED
 #define DMA_FIFO_SIZE 4 // hardware specification for dma V2
+  bool			periph_inc_size_4; // PINCOS bit
+  bool			transfert_end_ctrl_by_periph; // PFCTRL bit
+  uint8_t		channel;
   uint8_t		pburst; // 0(burst disabled), 4, 8, 16  
   uint8_t		mburst; // 0(burst disabled), 4, 8, 16 
   uint8_t		fifo;   // 0(fifo disabled), 1, 2, 3, 4 : 25, 50, 75, 100% 
@@ -222,3 +222,6 @@ bool  dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem
 
 void  dma_lld_stop_transfert(DMADriver *dmap);
 
+#ifdef __cplusplus
+}
+#endif

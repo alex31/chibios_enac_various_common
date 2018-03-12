@@ -224,27 +224,20 @@ bool dma_lld_start(DMADriver *dmap)
   switch (cfg->direction) {
   case DMA_DIR_P2M: dir_msk=STM32_DMA_CR_DIR_P2M; break;
   case DMA_DIR_M2P: dir_msk=STM32_DMA_CR_DIR_M2P; break;
-#if  STM32_DMA_ADVANCED
   case DMA_DIR_M2M: dir_msk=STM32_DMA_CR_DIR_M2M; break;
-#endif
   default: osalDbgAssert(false, "direction not set or incorrect"); 
   }
 
   uint32_t isr_flags = cfg->circular ? 0UL: STM32_DMA_CR_TCIE;
 
-#if  STM32_DMA_ADVANCED
   if (cfg->direction != DMA_DIR_M2M) {
-#endif
-    
     if (cfg->end_cb) {
       isr_flags |=STM32_DMA_CR_TCIE;
       if (cfg->circular) {
 	isr_flags |= STM32_DMA_CR_HTIE;
       } 
     }
-#if  STM32_DMA_ADVANCED   
   }
-#endif
   
   if (cfg->error_cb) {
     isr_flags |= STM32_DMA_CR_DMEIE | STM32_DMA_CR_TCIE;
@@ -254,16 +247,20 @@ bool dma_lld_start(DMADriver *dmap)
   dmap->dmastream =  STM32_DMA_STREAM(cfg->stream);
 
   // portable way (V1, V2) to retreive controler number
+#if STM32_DMA_ADVANCED
   dmap->controller = 1 + (cfg->stream / STM32_DMA_STREAM_ID(2,0));
+#else
+  dmap->controller = 1 + (cfg->stream / STM32_DMA_STREAM_ID(2,1));
+#endif
 
-  dmap->dmamode = STM32_DMA_CR_CHSEL(cfg->channel) |
-		 STM32_DMA_CR_PL(cfg->dma_priority) |
+  dmap->dmamode = STM32_DMA_CR_PL(cfg->dma_priority) |
 		 dir_msk | psize_msk | msize_msk | isr_flags |
                  (cfg->circular ? STM32_DMA_CR_CIRC : 0UL) |
                  (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
 	         (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL)
 #if STM32_DMA_ADVANCED
                  |
+		 STM32_DMA_CR_CHSEL(cfg->channel) |
 	         (cfg->periph_inc_size_4 ? STM32_DMA_CR_PINCOS : 0UL) |
 	         (cfg->transfert_end_ctrl_by_periph? STM32_DMA_CR_PFCTRL : 0UL)
 #   endif
