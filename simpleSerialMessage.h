@@ -17,6 +17,10 @@
  */
 
 // callback fonction type
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef void (*MsgCallBack)(const uint8_t *buffer, const size_t len,  void * const userData);
 
 // just a wrapper to send message
@@ -26,3 +30,6 @@ bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
 // launch a thread which read and segment message then call callback when a message is complete
 Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callback, 
 			 void * const userData);
+#ifdef __cplusplus
+}
+#endif
