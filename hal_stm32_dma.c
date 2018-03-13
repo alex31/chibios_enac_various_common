@@ -36,8 +36,16 @@ void dmaObjectInit(DMADriver *dmap)
   
   dmap->state    = DMA_STOP;
   dmap->config   = NULL;
-  dmap->thread   = NULL;
   dmap->mem0p    = NULL;
+#if STM32_DMA_USE_WAIT == TRUE
+  dmap->thread   = NULL;
+#endif
+#if STM32_DMA_USE_MUTUAL_EXCLUSION == TRUE
+  osalMutexObjectInit(&dmap->mutex);
+#endif
+#if defined( STM32_DMA_DRIVER_EXT_INIT_HOOK)
+   STM32_DMA_DRIVER_EXT_INIT_HOOK(dmap);
+#endif
 }
 
 
@@ -167,6 +175,7 @@ void dmaStopTransfertI(DMADriver *dmap)
 
 }
 
+#if (STM32_DMA_USE_WAIT == TRUE) || defined(__DOXYGEN__)
 
 msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size,
 			  sysinterval_t timeout)
@@ -183,6 +192,44 @@ msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, 
   osalSysUnlock();
   return msg;
 }
+#endif
+
+#if (STM32_DMA_USE_MUTUAL_EXCLUSION == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   Gains exclusive access to the DMA peripheral.
+ * @details This function tries to gain ownership to the DMA bus, if the bus
+ *          is already being used then the invoking thread is queued.
+ * @pre     In order to use this function the option
+ *          @p DMA_USE_MUTUAL_EXCLUSION must be enabled.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @api
+ */
+void dmaAcquireBus(DMADriver *dmap) {
+
+  osalDbgCheck(dmap != NULL);
+
+  osalMutexLock(&dmap->mutex);
+}
+
+/**
+ * @brief   Releases exclusive access to the DMA peripheral.
+ * @pre     In order to use this function the option
+ *          @p DMA_USE_MUTUAL_EXCLUSION must be enabled.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @api
+ */
+void dmaReleaseBus(DMADriver *dmap) {
+
+  osalDbgCheck(dmap != NULL);
+
+  osalMutexUnlock(&dmap->mutex);
+}
+#endif /* DMA_USE_MUTUAL_EXCLUSION == TRUE */
+
 
 
 /*

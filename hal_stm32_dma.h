@@ -3,6 +3,25 @@
 #include <ch.h>
 #include <hal.h>
 
+
+/**
+ * @brief   Enables synchronous APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(STM32_DMA_USE_WAIT) || defined(__DOXYGEN__)
+#define STM32_DMA_USE_WAIT                TRUE
+#endif
+
+/**
+ * @brief   Enables the @p adcAcquireBus() and @p adcReleaseBus() APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(STM32_DMA_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
+#define STM32_DMA_USE_MUTUAL_EXCLUSION    FALSE
+#endif
+/** @} */
+
+
 typedef enum {
   DMA_UNINIT = 0,                           /**< Not initialized.          */
   DMA_STOP = 1,                             /**< Stopped.                  */
@@ -34,7 +53,7 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 /*===========================================================================*/
 /* Driver macros.                                                            */
 /*===========================================================================*/
-
+#if (STM32_DMA_USE_WAIT == TRUE) || defined(__DOXYGEN__)
 /**
  * @name    Low level driver helper macros
  * @{
@@ -85,6 +104,12 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
   osalThreadResumeI(&(dmap)->thread, MSG_TIMEOUT);                          \
   osalSysUnlockFromISR();                                                   \
 }
+#else /* !STM32_DMA_USE_WAIT */
+#define _dma_reset_i(adcp)
+#define _dma_reset_s(adcp)
+#define _dma_wakeup_isr(adcp)
+#define _dma_timeout_isr(adcp)
+#endif /* !STM32_DMA_USE_WAIT */
 
 #define _dma_isr_half_code(dmap) {                                          \
   if ((dmap)->config->end_cb != NULL) {                                     \
@@ -184,7 +209,20 @@ typedef struct  {
 struct DMADriver {
   const stm32_dma_stream_t  *dmastream;
   const DMAConfig	    *config;
-  thread_reference_t         thread;
+  
+#if STM32_DMA_USE_WAIT || defined(__DOXYGEN__)
+  /**
+   * @brief Waiting thread.
+   */
+  thread_reference_t        thread;
+#endif
+#if STM32_DMA_USE_MUTUAL_EXCLUSION || defined(__DOXYGEN__)
+  /**
+   * @brief Mutex protecting the peripheral.
+   */
+  mutex_t                   mutex;
+#endif /* STM32_DMA_USE_MUTUAL_EXCLUSION */
+
   void			     *mem0p;
   uint32_t		     dmamode;
   size_t		     size;
@@ -198,19 +236,25 @@ void  dmaObjectInit(DMADriver *dmap);
 bool  dmaStart(DMADriver *dmap, const DMAConfig *cfg);
 void  dmaStop(DMADriver *dmap);
 
+#if STM32_DMA_USE_WAIT == TRUE
 msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size,
 		   sysinterval_t timeout);
+// helper
+static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
+{
+  return dmaTransfertTimeout(dmap, periphp, mem0p, size, TIME_INFINITE);
+}
+#endif
+#if STM32_DMA_USE_MUTUAL_EXCLUSION == TRUE
+void dmaAcquireBus(DMADriver *dmap);
+void dmaReleaseBus(DMADriver *dmap);
+#endif
 bool  dmaStartTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
 void  dmaStopTransfert(DMADriver *dmap);
 
 bool  dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
 void  dmaStopTransfertI(DMADriver *dmap);
 
-// helper
-static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
-{
-  return dmaTransfertTimeout(dmap, periphp, mem0p, size, TIME_INFINITE);
-}
 
 // low level driver
 			
