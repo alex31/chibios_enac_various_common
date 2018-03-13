@@ -168,15 +168,16 @@ typedef struct  {
   uint8_t		irq_priority;
   uint8_t		psize; // 1,2,4
   uint8_t		msize; // 1,2,4
-  
-#if STM32_DMA_ADVANCED
-#define DMA_FIFO_SIZE 4 // hardware specification for dma V2
-  bool			periph_inc_size_4; // PINCOS bit
-  bool			transfert_end_ctrl_by_periph; // PFCTRL bit
+#if STM32_DMA_SUPPORTS_CSELR
+  uint8_t		request;
+#elif STM32_DMA_ADVANCED
+#define STM32_DMA_FIFO_SIZE 4 // hardware specification for dma V2
   uint8_t		channel;
   uint8_t		pburst; // 0(burst disabled), 4, 8, 16  
   uint8_t		mburst; // 0(burst disabled), 4, 8, 16 
   uint8_t		fifo;   // 0(fifo disabled), 1, 2, 3, 4 : 25, 50, 75, 100% 
+  bool			periph_inc_size_4; // PINCOS bit
+  bool			transfert_end_ctrl_by_periph; // PFCTRL bit
 #endif
 }  DMAConfig;
 

@@ -1,8 +1,10 @@
-#include "hal_dma.h"
+#include "hal_stm32_dma.h"
 
 
 /*
 TODO : 
+
+° implementer mecanisme type STM32_DMA_USE_WAIT (à spécifier dans le halconf.h)
 
 ° écrire code de test : 
   * api synchrone : OK
@@ -10,13 +12,13 @@ TODO :
   * transfert mémoire OK : faire des mesures de perfo
   * transfert vers un gpio (ou un bit bitband d'un gpio) cadencé par un timer : OK
   * decodage d'un DHT22 : OK
-  * tester sur L4 (DMAV1)
-  * transfert mémoire vers timer (voir code driver WS2812)
+  * tester sur L4 (DMAV1) : OK
+  * transfert mémoire vers timer (voir code driver WS2812) : XP est sur le coup.
 
 
 ° doxygen doc
 
-° separer en deux paires de fichier : hal_dma et hal_lld_dma
+° separer en deux paires de fichier : hal_stm32_dma et hal_lld_stm32_dma
 
 ° générer des macros pour les param dma possibles en fonction des description xml des MCUs
 
@@ -258,11 +260,13 @@ bool dma_lld_start(DMADriver *dmap)
                  (cfg->circular ? STM32_DMA_CR_CIRC : 0UL) |
                  (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
 	         (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL)
-#if STM32_DMA_ADVANCED
-                 |
-		 STM32_DMA_CR_CHSEL(cfg->channel) |
-	         (cfg->periph_inc_size_4 ? STM32_DMA_CR_PINCOS : 0UL) |
-	         (cfg->transfert_end_ctrl_by_periph? STM32_DMA_CR_PFCTRL : 0UL)
+
+#if STM32_DMA_SUPPORTS_CSELR
+                  | STM32_DMA_CR_CHSEL(cfg->request)    
+#elif STM32_DMA_ADVANCED
+                 | STM32_DMA_CR_CHSEL(cfg->channel)    
+		 | (cfg->periph_inc_size_4 ? STM32_DMA_CR_PINCOS : 0UL) |
+		   (cfg->transfert_end_ctrl_by_periph? STM32_DMA_CR_PFCTRL : 0UL)
 #   endif
 		 ;
                  
@@ -402,7 +406,7 @@ bool dma_lld_start(DMADriver *dmap)
     If (PBURST × PSIZE) = FIFO_SIZE (4 words), FIFO_Threshold = 3/4 is forbidden
   */
 
-  if ( ((cfg->pburst * cfg->psize) == DMA_FIFO_SIZE) && (cfg->fifo == 3))
+  if ( ((cfg->pburst * cfg->psize) == STM32_DMA_FIFO_SIZE) && (cfg->fifo == 3))
     goto forbiddenCombination;
 
   /*
