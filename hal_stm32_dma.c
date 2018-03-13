@@ -4,8 +4,6 @@
 /*
 TODO : 
 
-° implementer mecanisme type STM32_DMA_USE_WAIT (à spécifier dans le halconf.h)
-
 ° écrire code de test : 
   * api synchrone : OK
   * argument des callback end et erreur : OK
