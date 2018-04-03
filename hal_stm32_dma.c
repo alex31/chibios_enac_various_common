@@ -4,23 +4,28 @@
 /*
 TODO : 
 
-° écrire code de test : 
-  * api synchrone : OK
-  * argument des callback end et erreur : OK
-  * transfert mémoire OK : faire des mesures de perfo
-  * transfert vers un gpio (ou un bit bitband d'un gpio) cadencé par un timer : OK
-  * decodage d'un DHT22 : OK
-  * tester sur L4 (DMAV1) : OK
-  * transfert mémoire vers timer (voir code driver WS2812) : XP est sur le coup.
+
+° en mode asynchrone, proposer une option qui utilise un timer virtuel pour appeler la fonction de callback 
+  même si le buffer (demi buffer) n'est pas rempli. 
+  A la prochaine completude du buffer (ou demi buffer) :
+  + appeler la fonction avec 
+	° le pointeur de debut de buffer sur le premier nouvel element arrivé 
+          depuis le dernier appel à la fonction de cb
+        ° le nombre d'elements nouveaux depuis le dernier appel
+  
+  + armer le timer au lancement de la transaction
+  + quand une ISR HTIF ou CTIF arrive, si mode continu : rearmer le timer, sinon(one shot) desarmer le timer
+  
+  + une simple fonction de cb qui copie n dans une variable globale 
+    permet en mode synchrone d'utiliser cette fonctionnalité sans alourdir le driver
+
 
 
 ° doxygen doc
 
 ° separer en deux paires de fichier : hal_stm32_dma et hal_lld_stm32_dma
 
-° générer des macros pour les param dma possibles en fonction des description xml des MCUs
-
-
+° portage H7 : bdma, dmav3, mdma
   
 */
 

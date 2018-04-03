@@ -176,7 +176,10 @@ extern "C" {
 typedef struct  {
   uint32_t		stream;
 #if STM32_DMA_SUPPORTS_CSELR
-  uint8_t		request;
+  union {
+    uint8_t		request; // STM terminology for dmaV1
+    uint8_t		channel; // ChibiOS terminology for both dmaV1 and dmaV1 (portability)
+  };
 #elif STM32_DMA_ADVANCED
   uint8_t		channel;
 #endif
