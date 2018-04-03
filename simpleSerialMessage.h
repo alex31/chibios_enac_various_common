@@ -21,15 +21,17 @@
 extern "C" {
 #endif
 
-typedef void (*MsgCallBack)(const uint8_t *buffer, const size_t len,  void * const userData);
+  typedef void (*MsgCallBack)(const uint8_t *buffer, const size_t len,  void * const userData);
+  typedef void (*ChkErrCallBack)(const uint32_t recCrc, const uint32_t calcCrc);
 
-// just a wrapper to send message
-bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
+  // just a wrapper to send message
+  bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
 		      const size_t len);
-
-// launch a thread which read and segment message then call callback when a message is complete
-Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callback, 
-			 void * const userData);
+  
+  // launch a thread which read and segment message then call callback when a message is complete
+  Thread * simpleMsgBind (BaseSequentialStream *channel,
+			  const MsgCallBack callback, const ChkErrCallBack errCallback,
+			  void * const userData);
 #ifdef __cplusplus
 }
 #endif

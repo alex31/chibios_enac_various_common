@@ -26,6 +26,7 @@ _Static_assert(sizeof(MsgHeader) == 3, "MsgHeader struct is not packed");
 typedef struct {
   BaseSequentialStream *channel;
   MsgCallBack callback;
+  ChkErrCallBack errCallback;
   void *userData;
 } MsgBindParams;
 
@@ -78,13 +79,15 @@ bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
   return false;
 }
 
-Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callback, 
+Thread * simpleMsgBind (BaseSequentialStream *channel,
+			const MsgCallBack callback, const ChkErrCallBack errCallback,
 			void * const userData)
 {
   // will be freed when readAndProcessChannel thread will exit
   MsgBindParams *mbp = malloc_m (sizeof (mbp)); 
   mbp->channel = channel;
   mbp->callback = callback;
+  mbp->errCallback = errCallback;
   mbp->userData = userData;
 
 #if (CH_KERNEL_MAJOR <= 3)
@@ -99,7 +102,7 @@ Thread * simpleMsgBind (BaseSequentialStream *channel, const MsgCallBack callbac
   /* Thread *tp = chThdCreateStatic(waMsgBind, sizeof(waMsgBind), NORMALPRIO, */
   /* 				   readAndProcessChannel, &mbp); */
   if (tp == NULL) {
-    chprintf(chp, "simpleMsgBind : out of memory\r\n");
+    //    chprintf(chp, "simpleMsgBind : out of memory\r\n");
     return NULL;
   }
   
@@ -188,6 +191,8 @@ static void readAndProcessChannel(void *arg)
       } else {
 	// DebugTrace ("CRC ERROR : calculated 0x%x != in message 0x%x", calculatedCrc, 
 	//	    messState.crc);
+	if (mbp->errCallback)
+	  mbp->errCallback(messState.crc, calculatedCrc);
       }
       messState.state = WAIT_FOR_SYNC;
       break;
