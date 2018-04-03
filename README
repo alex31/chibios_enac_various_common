@@ -1,0 +1,5 @@
+collection of files that are in common use in my ChibiOS project
+
+ChibiOS : http://www.chibios.org/dokuwiki/doku.php
+
+this repository can be a source of example, but it's main use is to be a submodule for anothers projects that i will push on github
