@@ -49,8 +49,6 @@ void dmaObjectInit(DMADriver *dmap)
    STM32_DMA_DRIVER_EXT_INIT_HOOK(dmap);
 #endif
 #if STM32_DMA_USE_ASYNC_TIMOUT
-   dmap->partialCount = 0;
-   dmap->lastPtrWasHalf = false;
    chVTObjectInit(&dmap->vt);
 #endif
 }
@@ -141,10 +139,12 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, co
 # endif
 #endif
 #if STM32_DMA_USE_ASYNC_TIMOUT
+  dmap->partialCount = 0;
+  dmap->lastPtrWasHalf = true;
   chVTSetI(&dmap->vt, dmap->config->timeout,
-	  &dma_lld_serve_timeout_interrupt, (void *) dmap);
+	   &dma_lld_serve_timeout_interrupt, (void *) dmap);
 #endif
-
+  
   dmap->state    = DMA_ACTIVE;
   return dma_lld_start_transfert(dmap, periphp, mem0p, size);
 }
@@ -584,6 +584,12 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
 void dma_lld_serve_timeout_interrupt(void *arg)
 {
   DMADriver *dmap = (DMADriver *) arg;
-  callEndCB(dmap, FROM_TIMOUT_CODE);
+  if (dmap->config->circular) {
+    chSysLockFromISR();
+    chVTSetI(&dmap->vt, dmap->config->timeout,
+	     &dma_lld_serve_timeout_interrupt, (void *) dmap);
+    chSysUnlockFromISR();
+  }
+  async_timout_enabled_call_end_cb(dmap, FROM_TIMOUT_CODE);
 }                                                                         
 #endif

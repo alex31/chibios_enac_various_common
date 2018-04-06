@@ -237,11 +237,13 @@ void dma_lld_serve_timeout_interrupt(void *arg);
 
 #if STM32_DMA_USE_ASYNC_TIMOUT
 typedef enum {FROM_TIMOUT_CODE, FROM_HALF_CODE, FROM_FULL_CODE, FROM_NON_CIRCULAR_CODE} CbCallContext;
-static inline void callEndCB(DMADriver *dmap, const CbCallContext context)
+static inline void async_timout_enabled_call_end_cb(DMADriver *dmap, const CbCallContext context)
 {
-  uint8_t * baseAddr = NULL;
+  uint8_t *baseAddr = NULL;
   size_t rem = 0;
-  const size_t halfSize = (dmap)->size / 2;
+  const size_t halfSize = dmap->size / 2;
+  size_t partialCount = dmap->partialCount;
+  
   switch (context) {
   case (FROM_HALF_CODE) :
     palClearLine(LINE_C01_LED2);
@@ -259,8 +261,8 @@ static inline void callEndCB(DMADriver *dmap, const CbCallContext context)
     dmap->partialCount = 0;
     break;
   case (FROM_TIMOUT_CODE) :
-    if ((dmap)->config->circular) {
-      if ((dmap)->size > 1) {
+    if (dmap->config->circular) {
+      if (dmap->size > 1) {
 	palSetLine(LINE_C01_LED2);
 	rem = dmap->partialCount = (dmap->lastPtrWasHalf ?(dmap->size) :  halfSize) - 
 	  dmaStreamGetTransactionSize(dmap->dmastream);
@@ -270,10 +272,11 @@ static inline void callEndCB(DMADriver *dmap, const CbCallContext context)
     } else {
       rem = dmap->partialCount = (dmap->size) - dmaStreamGetTransactionSize(dmap->dmastream);
     }
+    rem -= partialCount;
     break;
   }
 
-  if (dmap->config->end_cb != NULL /*&& (rem > 0)*/) {
+  if (dmap->config->end_cb != NULL  && (rem > 0)) {
     switch (context) {
     case (FROM_HALF_CODE) :
       baseAddr = (uint8_t *) dmap->mem0p;
@@ -288,20 +291,22 @@ static inline void callEndCB(DMADriver *dmap, const CbCallContext context)
       dmap->lastPtrWasHalf = false;
       break;
     case (FROM_TIMOUT_CODE) : {
-      if ((dmap)->config->circular) {
-	if ((dmap)->size > 1) {
+      if (dmap->config->circular) {
+	if (dmap->size > 1) {
 	  const size_t half_index = dmap->lastPtrWasHalf ? halfSize : 0;
-	  baseAddr =  ((uint8_t *) (dmap)->mem0p) + dmap->config->msize * half_index;
+	  baseAddr =  ((uint8_t *) dmap->mem0p) + dmap->config->msize * half_index;
 	} else {
 	  baseAddr = (uint8_t *) dmap->mem0p;
 	}
       } else {
 	baseAddr = (uint8_t *) dmap->mem0p;
       }
+      baseAddr += partialCount;
+      partialCount = 0;
       break;
     }
     }
-    dmap->config->end_cb(dmap, baseAddr, rem);
+    dmap->config->end_cb(dmap, baseAddr+partialCount, rem);
   }                                                                      
 }
 #endif
@@ -312,7 +317,7 @@ static inline void _dma_isr_half_code(DMADriver *dmap) {
   chVTSetI(&dmap->vt, dmap->config->timeout,
 	  &dma_lld_serve_timeout_interrupt, (void *) dmap);
   chSysUnlockFromISR();
-  callEndCB(dmap, FROM_HALF_CODE);
+  async_timout_enabled_call_end_cb(dmap, FROM_HALF_CODE);
 #else
   if (dmap->config->end_cb != NULL) {                                     
     dmap->config->end_cb(dmap, dmap->mem0p, dmap->size / 2);          
@@ -327,7 +332,7 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
     chVTSetI(&dmap->vt, dmap->config->timeout,
 	    &dma_lld_serve_timeout_interrupt, (void *) dmap);
     chSysUnlockFromISR();
-    callEndCB(dmap, FROM_FULL_CODE);
+    async_timout_enabled_call_end_cb(dmap, FROM_FULL_CODE);
 #else
     /* Callback handling.*/                                                 
     if (dmap->config->end_cb != NULL) {                                   
@@ -357,7 +362,7 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
       dmap->state = DMA_COMPLETE;                                         
       /* Invoke the callback passing the whole buffer.*/                    
 #if STM32_DMA_USE_ASYNC_TIMOUT
-      callEndCB(dmap, FROM_NON_CIRCULAR_CODE);
+      async_timout_enabled_call_end_cb(dmap, FROM_NON_CIRCULAR_CODE);
 #else
       dmap->config->end_cb(dmap, dmap->mem0p, dmap->size);
 #endif
