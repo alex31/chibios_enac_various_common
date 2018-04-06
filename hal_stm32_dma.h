@@ -111,61 +111,12 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 #define _dma_timeout_isr(adcp)
 #endif /* !STM32_DMA_USE_WAIT */
 
-#define _dma_isr_half_code(dmap) {                                          \
-  if ((dmap)->config->end_cb != NULL) {                                     \
-    (dmap)->config->end_cb(dmap, (dmap)->mem0p, (dmap)->size / 2);          \
-  }                                                                         \
-}
 
-#define _dma_isr_full_code(dmap) {                                          \
-  if ((dmap)->config->circular) {                                           \
-    /* Callback handling.*/                                                 \
-    if ((dmap)->config->end_cb != NULL) {                                   \
-      if ((dmap)->size > 1) {                                               \
-        /* Invokes the callback passing the 2nd half of the buffer.*/       \
-        const size_t half_index = (dmap)->size / 2;                         \
-	const uint8_t *byte_array_p = ((uint8_t *) (dmap)->mem0p) +         \
-	  dmap->config->msize * half_index;				    \
-        (dmap)->config->end_cb(dmap, (void *) byte_array_p, half_index);    \
-      }                                                                     \
-      else {                                                                \
-        /* Invokes the callback passing the whole buffer.*/                 \
-        (dmap)->config->end_cb(dmap, (dmap)->mem0p, (dmap)->size);          \
-      }                                                                     \
-    }                                                                       \
-  }                                                                         \
-  else {                                                                    \
-    /* End transfert.*/                                                     \
-    dma_lld_stop_transfert(dmap);                                           \
-    if ((dmap)->config->end_cb != NULL) {                                   \
-      (dmap)->state = DMA_COMPLETE;                                         \
-      /* Invoke the callback passing the whole buffer.*/                    \
-      (dmap)->config->end_cb(dmap, (dmap)->mem0p, (dmap)->size);            \
-      if ((dmap)->state == DMA_COMPLETE) {                                  \
-        (dmap)->state = DMA_READY;                                          \
-      }                                                                     \
-    }                                                                       \
-    else {                                                                  \
-      (dmap)->state = DMA_READY;                                            \
-    }                                                                       \
-    _dma_wakeup_isr(dmap);                                                  \
-  }                                                                         \
-}
+static inline void _dma_isr_half_code(DMADriver *dmap);
+static inline void _dma_isr_full_code(DMADriver *dmap);
+static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err);
 
 
-#define _dma_isr_error_code(dmap, err) {                                    \
-  dma_lld_stop_transfert(dmap);                                             \
-  if ((dmap)->config->error_cb != NULL) {                                   \
-    (dmap)->state = DMA_ERROR;                                              \
-    (dmap)->config->error_cb(dmap, err);                                    \
-    if ((dmap)->state == DMA_ERROR)                                         \
-      (dmap)->state = DMA_READY;                                            \
-  }                                                                         \
-  else {                                                                    \
-    (dmap)->state = DMA_READY;                                              \
-  }                                                                         \
-  _dma_timeout_isr(dmap);                                                   \
-}
 
 
 
@@ -194,6 +145,10 @@ typedef struct  {
    * @brief   Error callback or @p NULL.
    */
   dmaerrorcallback_t    error_cb;
+#if STM32_DMA_USE_ASYNC_TIMOUT
+  sysinterval_t	timeout;
+#endif
+
   
   dmadirection_t	direction; 
 
@@ -227,7 +182,11 @@ struct DMADriver {
    */
   mutex_t                   mutex;
 #endif /* STM32_DMA_USE_MUTUAL_EXCLUSION */
-
+#if STM32_DMA_USE_ASYNC_TIMOUT
+  volatile size_t	     partialCount;
+  virtual_timer_t	     vt;
+  volatile bool		     lastPtrWasHalf;
+#endif
   void			     *mem0p;
   uint32_t		     dmamode;
   size_t		     size;
@@ -271,6 +230,161 @@ bool  dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem
 
 
 void  dma_lld_stop_transfert(DMADriver *dmap);
+
+#if STM32_DMA_USE_ASYNC_TIMOUT
+void dma_lld_serve_timeout_interrupt(void *arg);
+#endif
+
+#if STM32_DMA_USE_ASYNC_TIMOUT
+typedef enum {FROM_TIMOUT_CODE, FROM_HALF_CODE, FROM_FULL_CODE, FROM_NON_CIRCULAR_CODE} CbCallContext;
+static inline void callEndCB(DMADriver *dmap, const CbCallContext context)
+{
+  uint8_t * baseAddr = NULL;
+  size_t rem = 0;
+  const size_t halfSize = (dmap)->size / 2;
+  switch (context) {
+  case (FROM_HALF_CODE) :
+    palClearLine(LINE_C01_LED2);
+    rem = (dmap->size / 2) - dmap->partialCount;
+    dmap->partialCount = 0;
+    break;
+  case (FROM_FULL_CODE) :
+    palClearLine(LINE_C01_LED2);
+    rem = (dmap->size / 2) - dmap->partialCount;
+    dmap->partialCount = 0;
+    break;
+  case (FROM_NON_CIRCULAR_CODE) :
+    palClearLine(LINE_C01_LED2);
+    rem = (dmap->size) - dmap->partialCount;
+    dmap->partialCount = 0;
+    break;
+  case (FROM_TIMOUT_CODE) :
+    if ((dmap)->config->circular) {
+      if ((dmap)->size > 1) {
+	palSetLine(LINE_C01_LED2);
+	rem = dmap->partialCount = (dmap->lastPtrWasHalf ?(dmap->size) :  halfSize) - 
+	  dmaStreamGetTransactionSize(dmap->dmastream);
+      } else {
+	rem = dmap->partialCount = (dmap->size) - dmaStreamGetTransactionSize(dmap->dmastream);
+      }
+    } else {
+      rem = dmap->partialCount = (dmap->size) - dmaStreamGetTransactionSize(dmap->dmastream);
+    }
+    break;
+  }
+
+  if (dmap->config->end_cb != NULL /*&& (rem > 0)*/) {
+    switch (context) {
+    case (FROM_HALF_CODE) :
+      baseAddr = (uint8_t *) dmap->mem0p;
+      dmap->lastPtrWasHalf = false;
+      break;
+    case (FROM_FULL_CODE) :
+      baseAddr = ((uint8_t *) dmap->mem0p) + dmap->config->msize * halfSize;
+      dmap->lastPtrWasHalf = true;
+     break;
+    case (FROM_NON_CIRCULAR_CODE) :
+      baseAddr = (uint8_t *) dmap->mem0p;
+      dmap->lastPtrWasHalf = false;
+      break;
+    case (FROM_TIMOUT_CODE) : {
+      if ((dmap)->config->circular) {
+	if ((dmap)->size > 1) {
+	  const size_t half_index = dmap->lastPtrWasHalf ? halfSize : 0;
+	  baseAddr =  ((uint8_t *) (dmap)->mem0p) + dmap->config->msize * half_index;
+	} else {
+	  baseAddr = (uint8_t *) dmap->mem0p;
+	}
+      } else {
+	baseAddr = (uint8_t *) dmap->mem0p;
+      }
+      break;
+    }
+    }
+    dmap->config->end_cb(dmap, baseAddr, rem);
+  }                                                                      
+}
+#endif
+
+static inline void _dma_isr_half_code(DMADriver *dmap) {
+#if STM32_DMA_USE_ASYNC_TIMOUT
+  chSysLockFromISR();
+  chVTSetI(&dmap->vt, dmap->config->timeout,
+	  &dma_lld_serve_timeout_interrupt, (void *) dmap);
+  chSysUnlockFromISR();
+  callEndCB(dmap, FROM_HALF_CODE);
+#else
+  if (dmap->config->end_cb != NULL) {                                     
+    dmap->config->end_cb(dmap, dmap->mem0p, dmap->size / 2);          
+  }
+#endif
+}
+
+static inline void _dma_isr_full_code(DMADriver *dmap) {
+  if (dmap->config->circular) {                                           
+#if STM32_DMA_USE_ASYNC_TIMOUT
+    chSysLockFromISR();
+    chVTSetI(&dmap->vt, dmap->config->timeout,
+	    &dma_lld_serve_timeout_interrupt, (void *) dmap);
+    chSysUnlockFromISR();
+    callEndCB(dmap, FROM_FULL_CODE);
+#else
+    /* Callback handling.*/                                                 
+    if (dmap->config->end_cb != NULL) {                                   
+      if (dmap->size > 1) {                                               
+        /* Invokes the callback passing the 2nd half of the buffer.*/       
+        const size_t half_index = dmap->size / 2;                         
+	const uint8_t *byte_array_p = ((uint8_t *) dmap->mem0p) +         
+	  dmap->config->msize * half_index;				    
+        dmap->config->end_cb(dmap, (void *) byte_array_p, half_index);    
+      }                                                                     
+      else {                                                                
+        /* Invokes the callback passing the whole buffer.*/                 
+        dmap->config->end_cb(dmap, dmap->mem0p, dmap->size);          
+      }                                                                     
+    }
+#endif
+  }                                                                         
+  else {  // not circular                                                                  
+    /* End transfert.*/
+#if STM32_DMA_USE_ASYNC_TIMOUT
+    chSysLockFromISR();
+    chVTResetI(&dmap->vt);
+    chSysUnlockFromISR();
+#endif
+    dma_lld_stop_transfert(dmap);                                           
+    if (dmap->config->end_cb != NULL) {                                   
+      dmap->state = DMA_COMPLETE;                                         
+      /* Invoke the callback passing the whole buffer.*/                    
+#if STM32_DMA_USE_ASYNC_TIMOUT
+      callEndCB(dmap, FROM_NON_CIRCULAR_CODE);
+#else
+      dmap->config->end_cb(dmap, dmap->mem0p, dmap->size);
+#endif
+      if (dmap->state == DMA_COMPLETE) {                                  
+        dmap->state = DMA_READY;                                          
+      }                                                                     
+    } else {                                                                  
+      dmap->state = DMA_READY;                                            
+    }                                                                       
+    _dma_wakeup_isr(dmap);                                                  
+  }                                                                    
+}
+
+static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
+  dma_lld_stop_transfert(dmap);                                             
+  if (dmap->config->error_cb != NULL) {                                   
+    dmap->state = DMA_ERROR;                                              
+    dmap->config->error_cb(dmap, err);                                    
+    if (dmap->state == DMA_ERROR)                                         
+      dmap->state = DMA_READY;                                            
+  }                                                                         
+  else {                                                                    
+    dmap->state = DMA_READY;                                              
+  }                                                                         
+  _dma_timeout_isr(dmap);                                                   
+}
+
 
 #ifdef __cplusplus
 }
