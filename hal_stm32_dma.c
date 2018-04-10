@@ -139,10 +139,11 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, co
 # endif
 #endif
 #if STM32_DMA_USE_ASYNC_TIMOUT
-  dmap->partialCount = 0;
-  dmap->lastPtrWasHalf = false;
-  chVTSetI(&dmap->vt, dmap->config->timeout,
-	   &dma_lld_serve_timeout_interrupt, (void *) dmap);
+  dmap->currPtr = mem0p;
+  if (dmap->config->timeout != TIME_INFINITE) {
+    chVTSetI(&dmap->vt, dmap->config->timeout,
+	     &dma_lld_serve_timeout_interrupt, (void *) dmap);
+  } 
 #endif
   
   dmap->state    = DMA_ACTIVE;
@@ -360,6 +361,16 @@ bool dma_lld_start(DMADriver *dmap)
 
 
 # if (CH_DBG_ENABLE_ASSERTS != FALSE)
+#   if STM32_DMA_USE_ASYNC_TIMOUT
+  osalDbgAssert(dmap->config->timeout != 0,
+		"timeout cannot be 0 if STM32_DMA_USE_ASYNC_TIMOUT is enabled");
+  osalDbgAssert(!((dmap->config->timeout != TIME_INFINITE) && (dmap->config->fifo != 0)),
+		"timeout should be dynamicly disabled (dmap->config->timeout = TIME_INFINITE) "
+		"if STM32_DMA_USE_ASYNC_TIMOUT is enabled and fifo is enabled (fifo != 0)");
+  
+#   endif
+
+
   // lot of combination of parameters are forbiden, and some conditions must be meet
   if (!cfg->msize !=  !cfg->psize) {
      osalDbgAssert(false, "psize and msize should be enabled or disabled together");
