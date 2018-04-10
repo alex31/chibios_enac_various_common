@@ -241,73 +241,59 @@ static inline void async_timout_enabled_call_end_cb(DMADriver *dmap, const CbCal
 {
   uint8_t *baseAddr = NULL;
   size_t rem = 0;
-  const size_t halfSize = dmap->size / 2;
-  size_t partialCount = dmap->partialCount;
+  const size_t fullSize = dmap->size;
+  const size_t halfSize = fullSize / 2;
+  const size_t previousPcount = dmap->partialCount;
+  uint8_t * const basePtr = (uint8_t *) dmap->mem0p;
+  uint8_t * const midPtr = ((uint8_t *) dmap->mem0p) + (dmap->config->msize * halfSize);
+
   
   switch (context) {
   case (FROM_HALF_CODE) :
-    palClearLine(LINE_C01_LED2);
-    rem = (dmap->size / 2) - dmap->partialCount;
+    //    palClearLine(LINE_C01_LED2);
+    rem = halfSize - previousPcount;
     dmap->partialCount = 0;
+    baseAddr = basePtr;
+    dmap->lastPtrWasHalf = false;
     break;
   case (FROM_FULL_CODE) :
-    palClearLine(LINE_C01_LED2);
-    rem = (dmap->size / 2) - dmap->partialCount;
+    //    palClearLine(LINE_C01_LED2);
+    rem = fullSize - previousPcount;
     dmap->partialCount = 0;
+    baseAddr = midPtr;
+    dmap->lastPtrWasHalf = true;
     break;
   case (FROM_NON_CIRCULAR_CODE) :
-    palClearLine(LINE_C01_LED2);
-    rem = (dmap->size) - dmap->partialCount;
+    //    palClearLine(LINE_C01_LED2);
+    rem = fullSize - previousPcount;
     dmap->partialCount = 0;
+    baseAddr = basePtr;
+    dmap->lastPtrWasHalf = false;
     break;
   case (FROM_TIMOUT_CODE) :
     if (dmap->config->circular) {
-      if (dmap->size > 1) {
-	palSetLine(LINE_C01_LED2);
-	rem = dmap->partialCount = (dmap->lastPtrWasHalf ?(dmap->size) :  halfSize) - 
-	  dmaStreamGetTransactionSize(dmap->dmastream);
+      if (fullSize > 1) {
+	// rem = dmap->partialCount = (dmap->lastPtrWasHalf ? halfSize : (dmap->size)) - 
+	//   dmaStreamGetTransactionSize(dmap->dmastream);
+	const size_t dmaCounter = dmaStreamGetTransactionSize(dmap->dmastream);
+	rem = dmap->partialCount = (dmaCounter > halfSize ? fullSize : halfSize) -
+	  dmaCounter;
+	baseAddr =  dmap->lastPtrWasHalf ? midPtr : basePtr;
       } else {
-	rem = dmap->partialCount = (dmap->size) - dmaStreamGetTransactionSize(dmap->dmastream);
+	rem = dmap->partialCount = fullSize - dmaStreamGetTransactionSize(dmap->dmastream);
+	baseAddr = basePtr;
       }
     } else {
-      rem = dmap->partialCount = (dmap->size) - dmaStreamGetTransactionSize(dmap->dmastream);
+      rem = dmap->partialCount = fullSize - dmaStreamGetTransactionSize(dmap->dmastream);
+      baseAddr = basePtr;
     }
-    rem -= partialCount;
+    rem -= previousPcount;
     break;
   }
 
   if (dmap->config->end_cb != NULL  && (rem > 0)) {
-    switch (context) {
-    case (FROM_HALF_CODE) :
-      baseAddr = (uint8_t *) dmap->mem0p;
-      dmap->lastPtrWasHalf = false;
-      break;
-    case (FROM_FULL_CODE) :
-      baseAddr = ((uint8_t *) dmap->mem0p) + dmap->config->msize * halfSize;
-      dmap->lastPtrWasHalf = true;
-     break;
-    case (FROM_NON_CIRCULAR_CODE) :
-      baseAddr = (uint8_t *) dmap->mem0p;
-      dmap->lastPtrWasHalf = false;
-      break;
-    case (FROM_TIMOUT_CODE) : {
-      if (dmap->config->circular) {
-	if (dmap->size > 1) {
-	  const size_t half_index = dmap->lastPtrWasHalf ? halfSize : 0;
-	  baseAddr =  ((uint8_t *) dmap->mem0p) + dmap->config->msize * half_index;
-	} else {
-	  baseAddr = (uint8_t *) dmap->mem0p;
-	}
-      } else {
-	baseAddr = (uint8_t *) dmap->mem0p;
-      }
-      baseAddr += partialCount;
-      partialCount = 0;
-      break;
-    }
-    }
-    dmap->config->end_cb(dmap, baseAddr+partialCount, rem);
-  }                                                                      
+    dmap->config->end_cb(dmap, baseAddr+(previousPcount*dmap->config->msize), rem);
+  }                                                                     
 }
 #endif
 

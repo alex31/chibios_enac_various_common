@@ -140,7 +140,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, co
 #endif
 #if STM32_DMA_USE_ASYNC_TIMOUT
   dmap->partialCount = 0;
-  dmap->lastPtrWasHalf = true;
+  dmap->lastPtrWasHalf = false;
   chVTSetI(&dmap->vt, dmap->config->timeout,
 	   &dma_lld_serve_timeout_interrupt, (void *) dmap);
 #endif
