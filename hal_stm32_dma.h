@@ -1,3 +1,25 @@
+/*
+    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
+
+/**
+ * @file    hal_stm32_dma.h
+ * @brief   STM32 DMA subsystem driver header.
+ *
+ */
+
 #pragma once
 
 #include <ch.h>
@@ -13,15 +35,17 @@
 #endif
 
 /**
- * @brief   Enables the @p adcAcquireBus() and @p adcReleaseBus() APIs.
+ * @brief   Enables the @p dmaAcquireBus() and @p dmaReleaseBus() APIs.
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(STM32_DMA_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
 #define STM32_DMA_USE_MUTUAL_EXCLUSION    FALSE
 #endif
-/** @} */
 
 
+/**
+ * @brief   Driver state machine possible states.
+ */
 typedef enum {
   DMA_UNINIT = 0,                           /**< Not initialized.          */
   DMA_STOP = 1,                             /**< Stopped.                  */
@@ -31,21 +55,49 @@ typedef enum {
   DMA_ERROR = 5                             /**< Transfert error.          */
 } dmastate_t;
 
+/**
+ * @brief   Possible DMA failure causes.
+ * @note    Error codes are architecture dependent and should not relied
+ *          upon.
+ */
 typedef enum {
   DMA_ERR_TRANSFER_ERROR   = 1<<0,          /**< DMA transfer failure.         */
   DMA_ERR_DIRECTMODE_ERROR = 1<<1,          /**< DMA Direct Mode failure.      */
   DMA_ERR_FIFO_ERROR       = 1<<2           /**< DMA FIFO overrun or underrun. */
 } dmaerrormask_t;
 
+/**
+ * @brief   DMA transfert direction
+ */
 typedef enum {
   DMA_DIR_P2M = 1,           /**< PERIPHERAL to MEMORY  */
   DMA_DIR_M2P = 2,           /**< MEMORY to PERIPHERAL  */
   DMA_DIR_M2M = 3,           /**< MEMORY to MEMORY      */
 } dmadirection_t;
 
+/**
+ * @brief   Type of a structure representing an DMA driver.
+ */
 typedef struct DMADriver DMADriver;
 
+/**
+ * @brief   DMA notification callback type.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object triggering the
+ *                      callback
+ * @param[in] buffer    pointer to the most recent samples data
+ * @param[in] n         number of buffer rows available starting from @p buffer
+ */
 typedef void (*dmacallback_t)(DMADriver *dmap, void *buffer, const size_t n);
+
+
+/**
+ * @brief   DMA error callback type.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object triggering the
+ *                      callback
+ * @param[in] err       DMA error code
+ */
 typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 
 
@@ -105,18 +157,60 @@ typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
   osalSysUnlockFromISR();                                                   \
 }
 #else /* !STM32_DMA_USE_WAIT */
-#define _dma_reset_i(adcp)
-#define _dma_reset_s(adcp)
-#define _dma_wakeup_isr(adcp)
-#define _dma_timeout_isr(adcp)
+#define _dma_reset_i(dmap)
+#define _dma_reset_s(dmap)
+#define _dma_wakeup_isr(dmap)
+#define _dma_timeout_isr(dmap)
 #endif /* !STM32_DMA_USE_WAIT */
 
-
+/**
+ * @brief   Common ISR code, half buffer event.
+ * @details This code handles the portable part of the ISR code:
+ *          - Callback invocation.
+ *          .
+ * @note    This macro is meant to be used in the low level drivers
+ *          implementation only.
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
+ */
 static inline void _dma_isr_half_code(DMADriver *dmap);
+
+
+/**
+ * @brief   Common ISR code, full buffer event.
+ * @details This code handles the portable part of the ISR code:
+ *          - Callback invocation.
+ *          - Waiting thread wakeup, if any.
+ *          - Driver state transitions.
+ *          .
+ * @note    This macro is meant to be used in the low level drivers
+ *          implementation only.
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ *
+ * @notapi
+ */
 static inline void _dma_isr_full_code(DMADriver *dmap);
+
+
+/**
+ * @brief   Common ISR code, error event.
+ * @details This code handles the portable part of the ISR code:
+ *          - Callback invocation.
+ *          - Waiting thread timeout signaling, if any.
+ *          - Driver state transitions.
+ *          .
+ * @note    This macro is meant to be used in the low level drivers
+ *          implementation only.
+ *
+ * @param[in] adcp      pointer to the @p ADCDriver object
+ * @param[in] err       platform dependent error code
+ *
+ * @notapi
+ */
 static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err);
-
-
 
 
 
@@ -124,9 +218,26 @@ static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err);
 extern "C" {
 #endif
 
+/**
+ * @brief   DMA stream configuration structure.
+ * @details This implementation-dependent structure describes a DMA
+ *          operation.
+ * @note    The use of this configuration structure requires knowledge of
+ *          STM32 DMA registers interface, please refer to the STM32
+ *          reference manual for details.
+ */
 typedef struct  {
+  /**
+   * @brief   stream associated with transaction 
+   * @note    use STM32_DMA_STREAM_ID macro
+   */
   uint32_t		stream;
+
 #if STM32_DMA_SUPPORTS_CSELR
+  /**
+   * @brief   DMA request or DMA channel
+   * @note    terminology depend on DMA version
+   */
   union {
     uint8_t		request; // STM terminology for dmaV1
     uint8_t		channel; // ChibiOS terminology for both dmaV1 and dmaV1 (portability)
@@ -134,40 +245,111 @@ typedef struct  {
 #elif STM32_DMA_ADVANCED
   uint8_t		channel;
 #endif
-  bool			inc_peripheral_addr;
-  bool			inc_memory_addr;
-  bool			circular;
+
   /**
-   * @brief   Callback function associated to the group or @p NULL.
+   * @brief   Enable increment of peripheral address after each transfert 
+   */
+  bool			inc_peripheral_addr;
+
+
+  /**
+   * @brief   Enable increment of memory address after each transfert
+   */
+  bool			inc_memory_addr;
+
+
+  /**
+   * @brief   Enables the circular buffer mode for the stream.
+   */
+  bool			circular;
+
+  
+  /**
+   * @brief   Callback function associated to the stream or @p NULL.
    */
   dmacallback_t         end_cb;
+  
   /**
    * @brief   Error callback or @p NULL.
    */
   dmaerrorcallback_t    error_cb;
 #if STM32_DMA_USE_ASYNC_TIMOUT
+  /**
+   * @brief   callback function will be called after timeout if data is available
+   * @note    experimental feature
+   */
   sysinterval_t	timeout;
 #endif
 
   
+  /**
+   * @brief   DMA transaction direction
+   */
   dmadirection_t	direction; 
 
+  
+  /**
+   * @brief   DMA priority (1 .. 4)
+   */
   uint8_t		dma_priority;
+  
+  /**
+   * @brief   DMA IRQ priority (2 .. 7)
+   */
   uint8_t		irq_priority;
+  
+  /**
+   * @brief   DMA peripheral data granurality in bytes (1,2,4)
+   */
   uint8_t		psize; // 1,2,4
+  
+  /**
+   * @brief   DMA memory data granurality in bytes (1,2,4)
+   */
   uint8_t		msize; // 1,2,4
 #if STM32_DMA_ADVANCED
 #define STM32_DMA_FIFO_SIZE 4 // hardware specification for dma V2
+  
+  /**
+   * @brief   DMA peripheral burst size 
+   */
   uint8_t		pburst; // 0(burst disabled), 4, 8, 16  
+  
+  /**
+   * @brief   DMA memory burst size 
+   */
   uint8_t		mburst; // 0(burst disabled), 4, 8, 16 
+  
+  /**
+   * @brief   DMA fifo level trigger
+   */
   uint8_t		fifo;   // 0(fifo disabled), 1, 2, 3, 4 : 25, 50, 75, 100% 
+  
+  /**
+   * @brief   DMA enable 4 bytes increment independantly of psize
+   */
   bool			periph_inc_size_4; // PINCOS bit
+  
+  /**
+   * @brief   DMA enable peripheral as flow controller
+   */
   bool			transfert_end_ctrl_by_periph; // PFCTRL bit
 #endif
 }  DMAConfig;
 
+
+/**
+ * @brief   Structure representing a DMA driver.
+ */
 struct DMADriver {
+  /**
+   * @brief   DMA stream associated with peripheral or memory
+   */
   const stm32_dma_stream_t  *dmastream;
+
+  /**
+   * @brief Current configuration data.
+   */
   const DMAConfig	    *config;
   
 #if STM32_DMA_USE_WAIT || defined(__DOXYGEN__)
@@ -183,13 +365,42 @@ struct DMADriver {
   mutex_t                   mutex;
 #endif /* STM32_DMA_USE_MUTUAL_EXCLUSION */
 #if STM32_DMA_USE_ASYNC_TIMOUT
-  uint8_t	     * volatile currPtr; // has to be left pointing next readable/writable data
+  /**
+   * @brief manage double buffer as a circular buffer
+   */
+  uint8_t	     * volatile currPtr; 
+
+  /**
+   * @brief virtual timer for calling end_cb between half and full ISR
+   */
   virtual_timer_t	     vt;
 #endif
+  /**
+   * @brief	memory address
+   * @note	for now, only half buffer with one memory pointer is managed
+   *            mem1p not yet interfaced
+   */
   void			     *mem0p;
+  
+  /**
+   * @brief	hold DMA CR register for the stream
+   */
   uint32_t		     dmamode;
+
+  /**
+   * @brief	hold size of current transaction
+   */
   size_t		     size;
+
+  /**
+   * @brief	Driver state 
+   */
   dmastate_t		     state;
+
+  
+  /**
+   * @brief	controller associated with stream
+   */
   uint8_t		     controller;
 };
 
@@ -256,8 +467,8 @@ static inline void async_timout_enabled_call_end_cb(DMADriver *dmap, const CbCal
   case (FROM_FULL_CODE) :
   case (FROM_NON_CIRCULAR_CODE) :
     rem = (endPtr - baseAddr) / dmap->config->msize;
-  dmap->currPtr = basePtr;
-  break;
+    dmap->currPtr = basePtr;
+    break;
 
   case (FROM_TIMOUT_CODE) : {
     const size_t dmaCNT = dmaStreamGetTransactionSize(dmap->dmastream);

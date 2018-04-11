@@ -5,31 +5,21 @@
 TODO : 
 
 
-° en mode asynchrone, proposer une option qui utilise un timer virtuel pour appeler la fonction de callback 
-  même si le buffer (demi buffer) n'est pas rempli. 
-  A la prochaine completude du buffer (ou demi buffer) :
-  + appeler la fonction avec 
-	° le pointeur de debut de buffer sur le premier nouvel element arrivé 
-          depuis le dernier appel à la fonction de cb
-        ° le nombre d'elements nouveaux depuis le dernier appel
-  
-  + armer le timer au lancement de la transaction
-  + quand une ISR HTIF ou CTIF arrive, si mode continu : rearmer le timer, sinon(one shot) desarmer le timer
-  
-  + une simple fonction de cb qui copie n dans une variable globale 
-    permet en mode synchrone d'utiliser cette fonctionnalité sans alourdir le driver
-
-
-
 ° doxygen doc
 
 ° separer en deux paires de fichier : hal_stm32_dma et hal_lld_stm32_dma
 
-° portage H7 : bdma, dmav3, mdma
+° portage H7,L4+ : bdma, dmav3, mdma+dmamux
   
 */
 
 
+/**
+ * @brief   DMA ISR service routine.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ * @param[in] flags     pre-shifted content of the ISR register
+ */
 static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags);
 
 void dmaObjectInit(DMADriver *dmap)
@@ -54,6 +44,16 @@ void dmaObjectInit(DMADriver *dmap)
 }
 
 
+/**
+ * @brief   Configures and activates the DMA peripheral.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ * @param[in] config    pointer to the @p DMAConfig object. 
+ * @return              The operation result.
+ * @retval true         dma driver is OK
+ * @retval false        incoherencies has been found in config
+ * @api
+ */
 bool dmaStart(DMADriver *dmap, const DMAConfig *cfg)
 {
   osalDbgCheck((dmap != NULL) && (cfg != NULL));
@@ -69,6 +69,13 @@ bool dmaStart(DMADriver *dmap, const DMAConfig *cfg)
 }
 
 
+/**
+ * @brief   Deactivates the DMA peripheral.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @api
+ */
 void dmaStop(DMADriver *dmap)
 {
   osalDbgCheck(dmap != NULL);
@@ -87,7 +94,23 @@ void dmaStop(DMADriver *dmap)
 }
 
 
-
+/**
+ * @brief   Starts a DMA transaction.
+ * @details Starts one or many asynchronous dma transaction(s) depending on continuous field
+ * @post    The callbacks associated to the DMA config will be invoked
+ *          on buffer fill and error events, and timeout events in case 
+ *          STM32_DMA_USE_ASYNC_TIMOUT == TRUE
+ * @note    The datas are sequentially written into the buffer
+ *          with no gaps.
+ *
+ * @param[in]      dmap      pointer to the @p DMADriver object
+ * @param[in,out]  periphp   pointer to a @p peripheral register address
+ * @param[in,out]  mem0p    pointer to the data buffer
+ * @param[in]      size     buffer size. The buffer size
+ *                          must be one or an even number.
+ *
+ * @api
+ */
 bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
   osalSysLock();
@@ -96,6 +119,23 @@ bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp, void *mem0p, con
   return statusOk;
 }
 
+/**
+ * @brief   Starts a DMA transaction.
+ * @details Starts one or many asynchronous dma transaction(s) depending on continuous field
+ * @post    The callbacks associated to the DMA config will be invoked
+ *          on buffer fill and error events, and timeout events in case 
+ *          STM32_DMA_USE_ASYNC_TIMOUT == TRUE
+ * @note    The datas are sequentially written into the buffer
+ *          with no gaps.
+ *
+ * @param[in]      dmap      pointer to the @p DMADriver object
+ * @param[in,out]  periphp   pointer to a @p peripheral register address
+ * @param[in,out]  mem0p    pointer to the data buffer
+ * @param[in]      size     buffer size. The buffer size
+ *                          must be one or an even number.
+ *
+ * @iclass
+ */
 bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
   osalDbgCheckClassI();
@@ -151,7 +191,16 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, co
 }
   
 
-  
+/**
+ * @brief   Stops an ongoing transaction.
+ * @details This function stops the currently ongoing transaction and returns
+ *          the driver in the @p DMA_READY state. If there was no transaction
+ *          being processed then the function does nothing.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @api
+ */
 void dmaStopTransfert(DMADriver *dmap)
 {
 
@@ -170,6 +219,16 @@ void dmaStopTransfert(DMADriver *dmap)
 
 
 
+/**
+ * @brief   Stops an ongoing transaction.
+ * @details This function stops the currently ongoing transaction and returns
+ *          the driver in the @p DMA_READY state. If there was no transaction
+ *          being processed then the function does nothing.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @iclass
+ */
 void dmaStopTransfertI(DMADriver *dmap)
 {
   osalDbgCheckClassI();
@@ -190,6 +249,29 @@ void dmaStopTransfertI(DMADriver *dmap)
 
 #if (STM32_DMA_USE_WAIT == TRUE) || defined(__DOXYGEN__)
 
+/**
+ * @brief   Performs  a DMA transaction.
+ * @details Performs one synchronous dma transaction
+ * @note    The datas are sequentially written into the buffer
+ *          with no gaps.
+ *
+ * @param[in]      dmap      pointer to the @p DMADriver object
+ * @param[in,out]  periphp   pointer to a @p peripheral register address
+ * @param[in,out]  mem0p    pointer to the data buffer
+ * @param[in]      size     buffer size. The buffer size
+ *                          must be one or an even number.
+ * @param[in]      timeout  function will exit after timeout is transaction is not done  
+ *                          can be TIME_INFINITE (but not TIME_IMMEDIATE)
+ * @return              The operation result.
+ * @retval MSG_OK       Transaction finished.
+ * @retval MSG_RESET    The transaction has been stopped using
+ *                      @p dmaStopTransaction() or @p dmaStopTransactionI(),
+ *                      the result buffer may contain incorrect data.
+ * @retval MSG_TIMEOUT  The transaction has been stopped because of hardware
+ *                      error or timeout limit reach
+ *
+ * @api
+ */
 msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size,
 			  sysinterval_t timeout)
 {
@@ -261,6 +343,13 @@ void dmaReleaseBus(DMADriver *dmap) {
 */
 
 
+/**
+ * @brief   Configures and activates the DMA peripheral.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @notapi
+ */
 bool dma_lld_start(DMADriver *dmap)
 {
   uint32_t psize_msk, msize_msk;
@@ -526,6 +615,13 @@ bool dma_lld_start(DMADriver *dmap)
 }
 
 
+/**
+ * @brief   Starts a DMA transaction.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @notapi
+ */
 bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
   dmap->mem0p = mem0p;
@@ -539,11 +635,25 @@ bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0
   return true;
 }
 
+/**
+ * @brief   Stops an ongoing transaction.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @notapi
+ */
 void dma_lld_stop_transfert(DMADriver *dmap)
 {
   dmaStreamDisable(dmap->dmastream);
 }
 
+/**
+ * @brief   Deactivates the DMA peripheral.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ *
+ * @notapi
+ */
 void dma_lld_stop(DMADriver *dmap)
 {
   dmaStreamRelease(dmap->dmastream);
@@ -575,7 +685,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
     _dma_isr_error_code(dmap, err);
   }
   else {
-    /* It is possible that the conversion group has already be reset by the
+    /* It is possible that the transaction has already be reset by the
        DMA error handler, in this case this interrupt is spurious.*/
     if (dmap->state == DMA_ACTIVE) {
 
@@ -592,6 +702,11 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
 }
 
 #if STM32_DMA_USE_ASYNC_TIMOUT
+/**
+ * @brief   DMA ISR service routine.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ */
 void dma_lld_serve_timeout_interrupt(void *arg)
 {
   DMADriver *dmap = (DMADriver *) arg;
