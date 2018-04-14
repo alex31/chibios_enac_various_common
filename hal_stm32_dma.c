@@ -5,11 +5,13 @@
 TODO : 
 
 
-° doxygen doc
+° split lld and hardware independant code : hal_stm32_dma et hal_lld_stm32_dma
 
-° separer en deux paires de fichier : hal_stm32_dma et hal_lld_stm32_dma
+° port to H7,L4+ : bdma, dmav3, mdma+dmamux
 
-° portage H7,L4+ : bdma, dmav3, mdma+dmamux
+° allow fifo burst when STM32_DMA_USE_ASYNC_TIMOUT is true by forcing a flush of the fifo : could be
+  done disabling stream : should flush fifo and trig full code ISR. full code ISR should re-enable stream
+  after a timout. 
   
 */
 

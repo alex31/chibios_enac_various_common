@@ -473,8 +473,14 @@ static inline void async_timout_enabled_call_end_cb(DMADriver *dmap, const CbCal
   case (FROM_TIMOUT_CODE) : {
     const size_t dmaCNT = dmaStreamGetTransactionSize(dmap->dmastream);
     const size_t index = (baseAddr - basePtr) / dmap->config->msize;
-    rem = (fullSize - dmaCNT - index);
-    dmap->currPtr = baseAddr + (rem * dmap->config->msize);
+
+    // if following test fail, it's because DMACNT has rollover during the ISR,
+    // so that we can safely ignore this TIMOUT event since a fullcode ISR will follow
+    // briefly
+    if (fullSize >= (dmaCNT + index)) {
+      rem = (fullSize - dmaCNT - index);
+      dmap->currPtr = baseAddr + (rem * dmap->config->msize);
+    } 
   }
     break;
   }
