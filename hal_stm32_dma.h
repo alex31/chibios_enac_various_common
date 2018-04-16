@@ -460,8 +460,10 @@ static inline void async_timout_enabled_call_end_cb(DMADriver *dmap, const CbCal
   
   switch (context) {
   case (FROM_HALF_CODE) :
-    rem = (midPtr - baseAddr) / dmap->config->msize;
-    dmap->currPtr = midPtr;
+    if (midPtr > baseAddr) {
+      rem = (midPtr - baseAddr) / dmap->config->msize;
+      dmap->currPtr = midPtr;
+    }
     break;
 
   case (FROM_FULL_CODE) :
