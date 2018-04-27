@@ -24,8 +24,6 @@ push @CubeMXPluginRootDir, "$ENV{HOME}/opt/CHIBISTUDIO/eclipse/plugins/"
     if exists $ENV{HOME};
 
 
-my ($CUBE_ROOT) = grep (-d $_, @CubeMXRootDir);
-die "unable to find STM32CubeMX root dir\n" unless defined $CUBE_ROOT;
 
 my %cfgParameters = ('MCU_MODEL' => '',
 		     'CHIBIOS_VERSION' => '');
@@ -235,6 +233,8 @@ if (exists $options{'no-adcp-in'}) {
 }
 
 addPluginsRootDir();
+my ($CUBE_ROOT) = grep (-d $_, @CubeMXRootDir);
+die "unable to find STM32CubeMX root dir\n" unless defined $CUBE_ROOT;
 
 my ($cfgFile, $boardFile) = @ARGV;
 $boardFile //= '-';
@@ -1343,7 +1343,7 @@ sub addPluginsRootDir()
 	opendir (my $dh, $pluginDir) || next;
 	my @candidates = sort grep ($_ =~ /com.st.microxplorer.rcp_/, readdir($dh));
 	close $dh;
-	push @CubeMXRootDir, $candidates[-1] if @candidates;
-	#say "DBG>  $candidates[-1]" if @candidates;
+	push @CubeMXRootDir, "$pluginDir/$candidates[-1]" if @candidates;
+#	say "DBG>  $pluginDir/$candidates[-1]" if @candidates;
     }
 }
