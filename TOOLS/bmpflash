@@ -1,0 +1,183 @@
+#!/usr/bin/perl -w
+
+#
+# alexandre.bustico@enac.fr
+# 
+
+# this script relies on the presence of this udev entry in /etc/udev/rules.d
+#
+#  /etc/udev/rules.d/49-black_magic_probe.rules
+#
+# # Black magic probe arm swd probe
+# #
+# # If you share your linux system with other users, or just don't like the
+# # idea of write permission for everybody, you can replace MODE:="0666" with
+# # OWNER:="yourusername" to create the device owned by you, or with
+# # GROUP:="somegroupname" and mange access using standard unix groups.
+
+# KERNEL=="ttyACM*", SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="6018", MODE="660",\
+#                     PROGRAM="/bin/bash -c '/bin/echo %p | /bin/grep -c :1.0", RESULT=="1", SYMLINK+="blackMagicProbe_gdb", GROUP="dialout"
+
+# KERNEL=="ttyACM*", SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="1d50", ATTRS{idProduct}=="6018", MODE="660",\
+#                     PROGRAM="/bin/bash -c '/bin/echo %p | /bin/grep -c :1.2", RESULT=="1", SYMLINK+="blackMagicProbe_serial", GROUP="dialout"
+
+
+# since oddities in black magic probe handling target, to be sure that 
+# target be reset after loading binary, i do in two step : 
+# 1/ load the binary, unfortunately this does not automatically reset target
+# 2/ connect again to target to launch program, with automatic breakpoint at main
+#    than disconnect from gdb, this leave the target running, avoiding annoying
+#    manual reset after each flash
+
+
+use strict;
+use feature ':5.14';
+use Getopt::Long;
+ 
+use constant BMPDEV => "/dev/bmp_gdb";
+use constant REVERT_BMPDEV => "/dev/ttyACM0";
+use constant GDBINIT_PATH => "/tmp/__bmpflash.gdbinit";
+
+sub usage();
+my %options;
+
+END {
+    unlink GDBINIT_PATH if -e GDBINIT_PATH && not exists $options{keep};
+}
+
+my $bmpdev;
+if (-e BMPDEV) {
+    $bmpdev = BMPDEV;
+} elsif (-e REVERT_BMPDEV) {
+    warn sprintf ("%s not found, please add udev rules. ".
+		  "Revert to generic %s hoping it's a black magic probe\n",
+		  BMPDEV, REVERT_BMPDEV);
+    $bmpdev = REVERT_BMPDEV;
+} else {
+    die sprintf ("neither %s nor %s device found, ".
+		"black magic probe usb device not detected, aborting\n",
+		BMPDEV, REVERT_BMPDEV);
+}
+
+GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force');
+usage () if exists  $options{help};
+
+# load and exit is the default
+$options{load}= 1 unless $options{load} or $options{debug} or $options{attach} or $options{erase};
+
+my $elf = $ARGV[0];
+
+if (! exists  $options{erase}) {
+    die "need an .elf file as argument\n" unless defined $elf;
+    die "$elf should be an .elf file (not a .bin or anything else)\n"  
+	if not exists $options{force} and $elf !~ /\.elf$/;
+    die "cannot read $elf file" unless -r $elf;
+}
+
+my $gdbAttachForDebug = <<EOL;
+target extended-remote $bmpdev
+monitor version
+monitor swdp_scan
+attach 1
+EOL
+
+my $gdbEraseFlash = <<EOL;
+target extended-remote $bmpdev
+monitor version
+monitor swdp_scan
+attach 1
+monitor erase
+EOL
+
+my $gdbInitDebug = <<EOL;
+target extended-remote $bmpdev
+set pagination off
+monitor version
+monitor swdp_scan
+attach 1
+set mem inaccessible-by-default off
+load
+run
+EOL
+
+my $gdbInitFlash = <<EOL;
+target extended-remote $bmpdev
+#monitor version
+monitor swdp_scan
+attach 1
+load
+kill
+EOL
+
+my $gdbInitRun = <<EOL;
+target extended-remote $bmpdev
+set mem inaccessible-by-default off
+#monitor version
+#monitor swdp_scan
+attach 1
+start
+detach
+EOL
+
+my $fhd;
+
+if ($options{load}) {
+    open ($fhd, ">", GDBINIT_PATH) || 
+	die sprintf "cannot create temporary gdbinit file in %s\n", GDBINIT_PATH;
+    syswrite ($fhd, $gdbInitFlash);
+    close ($fhd);
+    my $command = ("arm-none-eabi-gdb --batch -x " . GDBINIT_PATH . " " . $elf);
+    system $command;
+    sleep 1;
+
+    open ($fhd, ">", GDBINIT_PATH) || 
+	die sprintf "cannot create temporary gdbinit file in %s\n", GDBINIT_PATH;
+    syswrite ($fhd, $gdbInitRun);
+    close ($fhd);
+    qx($command);
+    
+} elsif ($options{erase}) {
+    open ($fhd, ">", GDBINIT_PATH) || 
+	die sprintf "cannot create temporary gdbinit file in %s\n", GDBINIT_PATH;
+    syswrite ($fhd, $gdbEraseFlash);
+    close ($fhd);
+    my $command = ("arm-none-eabi-gdb --batch -x " . GDBINIT_PATH);
+    system $command;
+    sleep 1;
+} else {
+    if ($options{attach}) {
+	# debug session
+	say "attach interractive debug";
+	open ($fhd, ">", GDBINIT_PATH) || 
+	    die sprintf "cannot create temporary gdbinit file in %s\n", GDBINIT_PATH;
+	syswrite ($fhd, $gdbAttachForDebug);
+	close ($fhd);
+	my $command = ("arm-none-eabi-gdb  -x " . GDBINIT_PATH . " " . $elf);
+	exec $command;
+    } else {
+	# debug session
+	say "flashing and entering interractive debug";
+	open ($fhd, ">", GDBINIT_PATH) || 
+	    die sprintf "cannot create temporary gdbinit file in %s\n", GDBINIT_PATH;
+	syswrite ($fhd, $gdbInitDebug);
+	close ($fhd);
+	my $command = ("arm-none-eabi-gdb  -x " . GDBINIT_PATH . " " . $elf);
+	exec $command;
+    }
+}
+#                                 __ _
+#                                / _` |
+#         _   _   ___     __ _  | (_| |   ___
+#        | | | | / __|   / _` |  \__, |  / _ \
+#        | |_| | \__ \  | (_| |   __/ | |  __/
+#         \__,_| |___/   \__,_|  |___/   \___|
+sub usage ()
+{
+  $0 =~ s|.*/||;
+  my ($x) = ' ' x length($0) ;
+
+  print <<EOL ;
+usage : $0 -load (default) or -debug or -attach xxx.elf
+      : $0 -keep : don't unlink temporary gdb script
+EOL
+}
