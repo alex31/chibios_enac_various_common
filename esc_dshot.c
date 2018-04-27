@@ -5,8 +5,10 @@
 #include "stdutil.h"
 
 /*
-  SI TLM == NULL, ne pas effectuer les actions TLM
+  TODO:
 
+  ° TEST telemetry driving more than one ESC
+  ° TEST special code sending
 
  */
 
@@ -50,7 +52,7 @@ static DshotPacket makeDshotPacket(const uint16_t throttle, const bool tlmReques
 static inline void setDshotPacketThrottle(DshotPacket * const dp, const uint16_t throttle);
 static inline void setDshotPacketTlm(DshotPacket * const dp, const bool tlmRequest);
 static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * const dma);
-static uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed);
+static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed);
 static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen);
 static noreturn void dshotTlmRec (void *arg);
 
@@ -136,19 +138,59 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 
 
 
-void dshotSetThrottle(DSHOTDriver *driver, const  uint8_t index, const  uint16_t throttle)
+void dshotSetThrottle(DSHOTDriver *driver, const  uint8_t index,
+		      const  uint16_t throttle)
 {
-  if (index < DSHOT_CHANNELS)
+  if (index < DSHOT_CHANNELS) {
     setDshotPacketThrottle(&driver->dshotMotors.dp[index], throttle);
+  } else if (index == DSHOT_ALL_MOTORS) {
+    for (uint8_t _index=0; _index < DSHOT_CHANNELS; _index++)
+      setDshotPacketThrottle(&driver->dshotMotors.dp[_index], throttle);
+  }
+}
+
+void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
+			     const dshot_special_commands_t specmd)
+{
+  if (index < DSHOT_CHANNELS) {
+    setDshotPacketThrottle(&driver->dshotMotors.dp[index], specmd);
+    setDshotPacketTlm(&driver->dshotMotors.dp[index], true);
+  } else if (index == DSHOT_ALL_MOTORS) {
+    for (uint8_t _index=0; _index < DSHOT_CHANNELS; _index++) {
+      setDshotPacketThrottle(&driver->dshotMotors.dp[_index], specmd);
+      setDshotPacketTlm(&driver->dshotMotors.dp[_index], true);
+    }
+  }
+  
+  uint8_t repeat;
+  switch (specmd) {
+  case DSHOT_CMD_SPIN_DIRECTION_1:
+  case DSHOT_CMD_SPIN_DIRECTION_2:
+  case DSHOT_CMD_3D_MODE_OFF:
+  case DSHOT_CMD_3D_MODE_ON:
+  case DSHOT_CMD_SAVE_SETTINGS:
+    repeat = 10;
+    break;
+  default:
+    repeat = 1;
+  }
+
+  while (repeat--) {
+    dshotSendFrame(driver);
+    chThdSleepMilliseconds(1);
+  }
 }
 
 void dshotSendThrottles(DSHOTDriver *driver, const  uint16_t throttles[DSHOT_CHANNELS])
 {
-  for (uint8_t index=0; index< DSHOT_CHANNELS; index++)
+  for (uint8_t index=0; index < DSHOT_CHANNELS; index++)
     setDshotPacketThrottle(&driver->dshotMotors.dp[index], throttles[index]);
   
   dshotSendFrame(driver);
 }
+
+
+
 
 void dshotSendFrame(DSHOTDriver *driver)
 {
@@ -245,7 +287,7 @@ static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * cons
   }
 }
 
-static uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed)
+static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed)
 {
     uint8_t crc_u = crc;
     crc_u ^= crc_seed;
