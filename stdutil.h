@@ -26,10 +26,22 @@
 
 
 #define ARRAY_LEN(a) (sizeof(a)/sizeof(a[0]))
-#define MIN(x , y)  (((x) < (y)) ? (x) : (y))
-#define MAX(x , y)  (((x) > (y)) ? (x) : (y))
+
+// use gcc block evaluation to avoid multiple evaluation of a and b
+#define MAX(a,b)		\
+  ({ typeof (a) _aa = (a);	\
+    typeof (b) _bb = (b);	\
+    _aa > _bb ? _aa : _bb; })
+
+#define MIN(a,b) \
+  ({ typeof (a) _a = (a);	\
+    typeof (b) _b = (b);	\
+    _a < _b ? _a : _b; })
+
+
+
 #define ABS(val) ((val) < 0 ? -(val) : (val))
-#define INRANGE(min,max,x) MAX(min,MIN(max,x))
+#define INRANGE(min,max,x) (MAX(min,MIN(max,x)))
 #define  CLAMP_TO(l, h, v) (clampToVerify (__FILE__, __LINE__, l, h, v))
 
 //#define DEBUG_MB 1

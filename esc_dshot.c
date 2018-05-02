@@ -169,6 +169,9 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
   case DSHOT_CMD_3D_MODE_OFF:
   case DSHOT_CMD_3D_MODE_ON:
   case DSHOT_CMD_SAVE_SETTINGS:
+  case DSHOT_CMD_SETTINGS_REQUEST:
+  case DSHOT_CMD_AUDIO_STREAM_MODE_ON_OFF:
+  case DSHOT_CMD_SILENT_MODE_ON_OFF:
     repeat = 10;
     break;
   default:
