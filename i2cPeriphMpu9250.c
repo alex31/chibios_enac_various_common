@@ -752,7 +752,7 @@ msg_t mpu9250_setModeAutoWake (Mpu9250Data *imu,
 msg_t mpu9250_activateMotionDetect (Mpu9250Data *imu, const uint32_t threadsholdInMilliG, const uint8_t pinConfigMask)
 {
   msg_t status;
-  const uint8_t threadshold = MIN((threadsholdInMilliG/4), 255);
+  const uint8_t threadshold = MIN((threadsholdInMilliG/4), 255U);
   
   i2cAcquireBus(imu->i2cd);
   

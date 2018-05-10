@@ -454,7 +454,7 @@ bool rtcEnablePeriodicWakeup (RTCDriver *rtcp, uint32_t _second)
   rtcp->rtc->CR |= RTC_CR_WUTIE;  // enable rtc wakeup ISR and Event
   rtcp->rtc->CR |= RTC_CR_WUTE; // Set WUTE in RTC_CR to enable the wakeup timer.
 
-  while ((rtcp->rtc->ISR & RTC_ISR_WUTWF) == 1)  {};
+  while (rtcp->rtc->ISR & RTC_ISR_WUTWF)  {};
   return true;
 }
 

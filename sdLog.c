@@ -15,8 +15,12 @@
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
+#ifndef MIN
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
+#endif
+#ifndef MAX
 #define MAX(x , y)  (((x) > (y)) ? (x) : (y))
+#endif
 #define IS_POWER_OF_TWO(s) ((s) && !((s) & ((s) - 1)))
 
 #ifndef SDLOG_NUM_FILES
@@ -689,7 +693,7 @@ SdioError getFileName(const char* prefix, const char* directoryName,
   int32_t maxCurrentIndex = 0;
 
 
-  const size_t directoryNameLen = MIN(strlen (directoryName), 128);
+  const size_t directoryNameLen = MIN(strlen (directoryName), 128U);
   const size_t slashDirNameLen = directoryNameLen+2;
   char slashDirName[slashDirNameLen];
   strlcpy (slashDirName, "/", slashDirNameLen);
