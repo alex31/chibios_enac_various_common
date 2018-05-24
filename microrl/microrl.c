@@ -27,6 +27,12 @@
 
 char * prompt_default = _PROMPT_DEFAUTL;
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wstrict-overflow"
+#endif
+
+
 #ifdef _USE_HISTORY
 
 #ifdef _HISTORY_DEBUG
@@ -120,6 +126,8 @@ static void hist_save_line (ring_history_t * pThis, char * line, int len)
 
 //*****************************************************************************
 // copy saved line to 'line' and return size of line
+
+
 static int hist_restore_line (ring_history_t * pThis, char * line, int dir)
 {
   int cnt = 0;
@@ -186,13 +194,9 @@ static int hist_restore_line (ring_history_t * pThis, char * line, int dir)
   }
   return 0;
 }
+
+
 #endif
-
-
-
-
-
-
 
 
 //*****************************************************************************
@@ -694,3 +698,4 @@ void microrl_insert_char (microrl_t * pThis, int ch)
   }
 #endif
 }
+
