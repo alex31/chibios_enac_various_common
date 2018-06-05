@@ -4,10 +4,19 @@
 #include <hal.h>
 #include <array>
 #include <type_traits>
+#include <utility>
+#include <functional>
+
+
+
+
 
 template <typename T, size_t FIFO_SIZE>
 class ObjectFifo
 {
+  using RetPair = std::pair<const msg_t, T&>;
+
+  
 public:
   ObjectFifo (void);
 
@@ -19,12 +28,12 @@ public:
   void   sendObjectS(T& obj);
   void   sendObjectI(T& obj);
 
-  msg_t  receiveObject(T* &objpp, sysinterval_t timeout=TIME_INFINITE);
-  msg_t  receiveObjectS(T* &objpp, sysinterval_t timeout=TIME_INFINITE);
-  msg_t  receiveObjectI(T* &objpp);
+  RetPair  receiveObject(sysinterval_t timeout=TIME_INFINITE);
+  RetPair  receiveObjectS(sysinterval_t timeout=TIME_INFINITE);
+  RetPair  receiveObjectI(void);
 
-  void   returnObject(T* obj);
-  void   returnObjectI(T* obj);
+  void   returnObject(T& obj);
+  void   returnObjectI(T& obj);
 
   size_t fifoLen(void) {return FIFO_SIZE;};
 private:
@@ -114,27 +123,35 @@ void ObjectFifo<T, FIFO_SIZE>::sendObjectI(T& obj)
 #                |_|     \___|  \___|  \___| |_|    \_/    \___|        
 */
 template <typename T, size_t FIFO_SIZE>
-msg_t ObjectFifo<T, FIFO_SIZE>::receiveObject(T* &obj, sysinterval_t timeout)
+typename ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::receiveObject(sysinterval_t timeout)
 {
-  return chFifoReceiveObjectTimeout(&fifo,
-				    reinterpret_cast<void **>(&obj),
+  T *ptr;
+  const msg_t status = chFifoReceiveObjectTimeout(&fifo,
+				    reinterpret_cast<void **>(&ptr),
 				    timeout);
+  return RetPair{status, *ptr};
 }
 
 template <typename T, size_t FIFO_SIZE>
-msg_t ObjectFifo<T, FIFO_SIZE>::receiveObjectS(T* &obj, sysinterval_t timeout)
+typename ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::receiveObjectS(sysinterval_t timeout)
 {
-  return chFifoReceiveObjectTimeoutS(&fifo,
-				    reinterpret_cast<void **>(&obj),
+  T *ptr;
+  const msg_t status = chFifoReceiveObjectTimeoutS(&fifo,
+				    reinterpret_cast<void **>(&ptr),
 				    timeout);
+  return RetPair{status, *ptr};
 }
 
 template <typename T, size_t FIFO_SIZE>
-msg_t ObjectFifo<T, FIFO_SIZE>::receiveObjectI(T* &obj)
+typename ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::receiveObjectI()
 {
-  return chFifoReceiveObjectI(&fifo,
-			      reinterpret_cast<void **>(&obj));
+  T *ptr;
+  const msg_t status = chFifoReceiveObjectI(&fifo,
+				    reinterpret_cast<void **>(&ptr));
+  return RetPair{status, *ptr};
 }
+
+
 
 /*
 #                               _                                   
@@ -145,13 +162,13 @@ msg_t ObjectFifo<T, FIFO_SIZE>::receiveObjectI(T* &obj)
 #                |_|     \___|  \__|   \__,_| |_|    |_| |_|        
 */
 template <typename T, size_t FIFO_SIZE>
-void ObjectFifo<T, FIFO_SIZE>::returnObject(T* obj)
+void ObjectFifo<T, FIFO_SIZE>::returnObject(T& obj)
 {
-  chFifoReturnObject(&fifo, obj);
+  chFifoReturnObject(&fifo, &obj);
 }
 
 template <typename T, size_t FIFO_SIZE>
-void ObjectFifo<T, FIFO_SIZE>::returnObjectI(T* obj)
+void ObjectFifo<T, FIFO_SIZE>::returnObjectI(T& obj)
 {
-  chFifoReturnObjectI(&fifo, obj);
+  chFifoReturnObjectI(&fifo, &obj);
 }
