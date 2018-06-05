@@ -2,13 +2,7 @@
 
 #include <ch.h>
 #include <hal.h>
-#include <array>
-#include <type_traits>
 #include <utility>
-#include <functional>
-
-
-
 
 
 template <typename T, size_t FIFO_SIZE>
@@ -43,12 +37,12 @@ private:
 };
 
 /*
-#                 _            _    _            
-#                (_)          (_)  | |           
-#                 _    _ __    _   | |_          
-#                | |  | '_ \  | |  | __|         
-#                | |  | | | | | |  \ |_          
-#                |_|  |_| |_| |_|   \__|         
+#                        _                           
+#                       | |                          
+#                  ___  | |_     ___    _ __         
+#                 / __| | __|   / _ \  | '__|        
+#                | (__  \ |_   | (_) | | |           
+#                 \___|  \__|   \___/  |_|           
 */
 template <typename T, size_t FIFO_SIZE>
 ObjectFifo<T, FIFO_SIZE>::ObjectFifo (void)
