@@ -64,6 +64,14 @@ static noreturn void dshotTlmRec (void *arg);
 #                | (_| | | |     | |         
 #                 \__,_| |_|     |_|         
 */
+
+/**
+ * @brief   Configures and activates the DSHOT peripheral.
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @param[in] config    pointer to the @p DSHOTConfig object. 
+ * @api
+ */
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
   static const SerialConfig  tlmcfg =  {
@@ -138,6 +146,16 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 
 
 
+/**
+ * @brief   prepare throttle order for specified ESC
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @param[in] index     channel : [0..3] or [0..1] depending on driver used
+ * @param[in] throttle  [48 .. 2047]
+ * @note      dshotSendFrame has to be called after using this function
+ * @note      see also dshotSendThrottles
+ * @api
+ */
 void dshotSetThrottle(DSHOTDriver *driver, const  uint8_t index,
 		      const  uint16_t throttle)
 {
@@ -149,6 +167,14 @@ void dshotSetThrottle(DSHOTDriver *driver, const  uint8_t index,
   }
 }
 
+/**
+ * @brief   send special order to one of the ESC (BHELIX, KISS, ...)
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @param[in] index     channel : [0..3] or [0..1] depending on driver used
+ * @param[in] specmd   special commands, see enum
+ * @api
+ */
 void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
 			     const dshot_special_commands_t specmd)
 {
@@ -184,6 +210,15 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
   }
 }
 
+/**
+ * @brief   send throttle packed order to all of the ESCs
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @param[in] throttle[DSHOT_CHANNELS]  [48 .. 2047]
+ * @note dshotSendFrame is called by this function
+ * @note telemetry bit is set in turn for each ESC of the ESCs
+ * @api
+ */
 void dshotSendThrottles(DSHOTDriver *driver, const  uint16_t throttles[DSHOT_CHANNELS])
 {
   for (uint8_t index=0; index < DSHOT_CHANNELS; index++)
@@ -195,6 +230,13 @@ void dshotSendThrottles(DSHOTDriver *driver, const  uint16_t throttles[DSHOT_CHA
 
 
 
+/**
+ * @brief   send throttle  order 
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @note dshotSetXXX api should be called prior to this function
+ * @api
+ */
 void dshotSendFrame(DSHOTDriver *driver)
 {
    if (driver->dmap.state == DMA_READY) {
@@ -215,11 +257,26 @@ void dshotSendFrame(DSHOTDriver *driver)
    }
 }
 
+/**
+ * @brief   return number of telemetry crc error since dshotStart
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @return		number of CRC errors
+ * @api
+ */
 uint32_t dshotGetCrcErrorsCount(DSHOTDriver *driver)
 {
   return driver->crc_errors;
 }
 
+/**
+ * @brief   return last received telemetry data
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @param[in] index     channel : [0..3] or [0..1] depending on driver used
+ * @return		pointer on a telemetry structure
+ * @api
+ */
 const DshotTelemetry * dshotGetTelemetry(const DSHOTDriver *driver, const uint32_t index)
 {
   return &driver->dshotMotors.dt[index];

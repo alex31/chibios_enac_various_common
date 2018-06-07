@@ -6,6 +6,11 @@
 #include "esc_dshot_config.h"
 
 
+/**
+ * @brief   special value for index : send order to all channels
+ * @note    could be used as index in dshotSetThrottle and 
+ *          dshotSendSpecialCommand functions
+ */
 #define DSHOT_ALL_MOTORS 255
 
 /**
@@ -21,7 +26,7 @@ typedef enum {
 
 /*
   DshotSettingRequest (KISS24). Spin direction, 
- 3d and save Settings reqire 10 requests.. and the 
+ 3d and save Settings require 10 requests.. and the 
  TLM Byte must always be high if 1-47 are used to send settings
 
   3D Mode:
@@ -30,6 +35,10 @@ typedef enum {
   1048 (low) - 2047 (high) -> positive direction
  */
 
+/**
+ * @brief   DSHOT special commands (0-47) for KISS and BLHELI ESC
+ * @note    commands 48-2047 are used to send motor power
+ */
 typedef enum {
     DSHOT_CMD_MOTOR_STOP = 0,
     DSHOT_CMD_BEACON1,
@@ -59,6 +68,11 @@ typedef enum {
     DSHOT_CMD_MAX = 47
 } dshot_special_commands_t;
 
+/**
+ * @brief   telemetry packed as sent by some KISS ESC
+ * @note    if other ESC use different binary representation in the future
+ *          we'll have to add a little bit abstraction here
+ */
 typedef struct {
   union {
     struct {
@@ -81,16 +95,16 @@ typedef struct DSHOTDriver DSHOTDriver;
 
 
 /**
- * @brief   DSHOT  configuration structure.
+ * @brief   DSHOT  Driver configuration structure.
  */
 typedef struct  {
   /**
-   * @brief : dma stream associated with pwm timer
+   * @brief : dma stream associated with pwm timer used to generate dshot output
    */
   uint32_t	dma_stream;
 
   /**
-   * @brief : dma channel associated with pwm timer
+   * @brief : dma channel associated with pwm timer used to generate dshot output
    */
   uint8_t	dma_channel;
 
