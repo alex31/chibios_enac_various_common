@@ -49,6 +49,8 @@ ObjectFifo<T, FIFO_SIZE>::ObjectFifo (void)
 {
   chFifoObjectInit (&fifo, sizeof(T),  FIFO_SIZE,  std::alignment_of<T>::value,
 		    msg_pool, msg_fifo);
+  static_assert(std::is_copy_constructible<T>::value == false,
+		"type T should no be copy constructible to impose return by reference");
 }
 
 
