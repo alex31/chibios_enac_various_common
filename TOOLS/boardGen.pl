@@ -552,7 +552,7 @@ sub parseCfgFile ($)
 	    when (WAIT_FOR_TYPE) {
 		if ($l =~ m/(\w+)\s?=\s?(\S+)/) {
 		    $cfgParameters{$1} = $2;
-		} elsif ($l =~ m/HEADER/) {
+		} elsif ($l =~ m/^HEADER/) {
 		    $state = IN_HEADER;
 		    getdataFromCubeMx ($cfgParameters{MCU_MODEL});
 		    $family = registerFamily();
@@ -561,7 +561,7 @@ sub parseCfgFile ($)
 	    }
 
 	    when (IN_HEADER) {
-		unless ($l =~ m/CONFIG/) {
+		unless ($l =~ m/^CONFIG/) {
 		    push (@headerFromCfg, "$l\n");
 		} else {
 		    $state = IN_CONFIG;
