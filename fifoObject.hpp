@@ -5,6 +5,8 @@
 #include <utility>
 
 
+enum class FifoPriority {Regular, High};
+
 template <typename T, size_t FIFO_SIZE>
 class ObjectFifo
 {
@@ -18,9 +20,9 @@ public:
   T&     takeObjectS(const sysinterval_t timeout=TIME_INFINITE);
   T&     takeObjectI(void);
 
-  void   sendObject(T& obj);
-  void   sendObjectS(T& obj);
-  void   sendObjectI(T& obj);
+  void   sendObject(T& obj, const FifoPriority p = FifoPriority::Regular);
+  void   sendObjectS(T& obj, const FifoPriority p = FifoPriority::Regular);
+  void   sendObjectI(T& obj, const FifoPriority p = FifoPriority::Regular);
 
   RetPair  receiveObject(sysinterval_t timeout=TIME_INFINITE);
   RetPair  receiveObjectS(sysinterval_t timeout=TIME_INFINITE);
@@ -92,21 +94,33 @@ T& ObjectFifo<T, FIFO_SIZE>::takeObjectI(void)
 #                |___/   \___| |_| |_|  \__,_|         
 */
 template <typename T, size_t FIFO_SIZE>
-void ObjectFifo<T, FIFO_SIZE>::sendObject(T& obj)
+void ObjectFifo<T, FIFO_SIZE>::sendObject(T& obj, const FifoPriority p)
 {
-  chFifoSendObject(&fifo, &obj);
+  if (p == FifoPriority::Regular) {
+    chFifoSendObject(&fifo, &obj);
+  } else {
+    chFifoSendObjectAhead(&fifo, &obj);
+  }
 }
 
 template <typename T, size_t FIFO_SIZE>
-void ObjectFifo<T, FIFO_SIZE>::sendObjectS(T& obj)
+void ObjectFifo<T, FIFO_SIZE>::sendObjectS(T& obj, const FifoPriority p)
 {
-  chFifoSendObjectS(&fifo, &obj);
+ if (p == FifoPriority::Regular) {
+   chFifoSendObjectS(&fifo, &obj);
+ } else {
+  chFifoSendObjectSAhead(&fifo, &obj);
+ }
 }
 
 template <typename T, size_t FIFO_SIZE>
-void ObjectFifo<T, FIFO_SIZE>::sendObjectI(T& obj)
+void ObjectFifo<T, FIFO_SIZE>::sendObjectI(T& obj, const FifoPriority p)
 {
-  chFifoSendObjectI(&fifo, &obj);
+ if (p == FifoPriority::Regular) {
+   chFifoSendObjectI(&fifo, &obj);
+ } else {
+   chFifoSendObjectIAhead(&fifo, &obj);
+ }
 }
 
 
