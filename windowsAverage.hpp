@@ -14,7 +14,7 @@ public:
   void push (const T i);
   T getSum (void)  const {return accum;};
   T getMean (void) const {return accum/N;};
-  const T& operator[] (size_t i);
+  const T& operator[] (const size_t i);
   constexpr size_t size(void) {return N;};
 protected:
   T accum;
@@ -37,8 +37,9 @@ template <typename T, size_t N>
 void WindowAverage<T, N>::push (const T i)
 {
   accum += i;
-  // elegant but innefective, see https://godbolt.org/g/XbNCPa
+  // elegant but ineffective, see https://godbolt.org/g/XbNCPa
   // index = (index+1) % N;
+  
   if (++index == N)
     index = 0;
   accum -= ring[index];
@@ -46,7 +47,7 @@ void WindowAverage<T, N>::push (const T i)
 }
 
 template <typename T, size_t N>
-const T& WindowAverage<T, N>::operator[] (size_t i)
+const T& WindowAverage<T, N>::operator[] (const size_t i)
 {
   return ring[(N+index+i)%N];
 }
@@ -65,11 +66,11 @@ template <typename T, size_t N, size_t M>
 T WindowMedianAverage<T, N, M>::getMean (void) const
 {
   static_assert(N > (2*M), "array need to be larger than median elimitated number of elements");
-  std::array<T, N> toSort = WindowAverage<T, N>::ring;
-  T medianAccum = WindowAverage<T, N>::accum;
-  
+  std::array<T, N> toSort = WindowAverage<T, N>::ring; // make inplace sort on a copy
+ 
   std::sort(toSort.begin(), toSort.end());
-  medianAccum -= std::accumulate(toSort.begin(), toSort.begin()+M, 0);
-  medianAccum -= std::accumulate(toSort.end()-M, toSort.end(), 0);
+  const T medianAccum = WindowAverage<T, N>::accum -
+    std::accumulate(toSort.begin(), toSort.begin()+M, 0) -
+    std::accumulate(toSort.end()-M, toSort.end(), 0);
   return medianAccum/(N-(2*M));
 }
