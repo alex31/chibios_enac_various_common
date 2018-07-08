@@ -72,5 +72,5 @@ T WindowMedianAverage<T, N, M>::getMean (void) const
   const T medianAccum = WindowAverage<T, N>::accum -
     std::accumulate(toSort.begin(), toSort.begin()+M, 0) -
     std::accumulate(toSort.end()-M, toSort.end(), 0);
-  return medianAccum/(N-(2*M));
+  return medianAccum / (N-(2*M));
 }
