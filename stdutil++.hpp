@@ -160,3 +160,16 @@ int findIndexOfImmediateInf(const std::vector<T> &vec, const T value)
   return 0;
 }
 
+class SyslockRAII_fromIsr
+{
+public:
+  SyslockRAII_fromIsr() {chSysLockFromISR();};
+  ~SyslockRAII_fromIsr() {chSysUnlockFromISR();};
+};
+
+class SyslockRAII
+{
+public:
+  SyslockRAII() {chSysLock();};
+  ~SyslockRAII() {chSysUnlock();};
+};
