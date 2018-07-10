@@ -54,11 +54,13 @@ void WindowAverage<T, N, L>::push (const T i)
 
   // calculate diff between in item and out item
   // to be able to update accum in one atomic 
-  // instruction
+  // instruction.
+  // diff sould be of a signed version of the T type if T is unsigned
   const Signed_T diff = static_cast<Signed_T>(i) -
                         static_cast<Signed_T>(ring[index]);
 
   // atomic operation, avoid costly lock here
+  // https://godbolt.org/g/ffxjRM
   accum += diff;
   
   ring[index] = i;
