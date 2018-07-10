@@ -6,7 +6,16 @@
 #include <array>
 #include <type_traits>
 
-template <typename T, size_t N>
+namespace Lock {
+  class None {
+    public:
+    static void lock(void) {};
+    static void unlock(void) {};
+  };
+};
+
+
+template <typename T, size_t N, typename L=Lock::None>
 class WindowAverage
 {
 public:
@@ -23,8 +32,8 @@ private:
     T index;
 };
 
-template <typename T, size_t N>
-WindowAverage<T, N>::WindowAverage (void) :
+template <typename T, size_t N, typename L>
+WindowAverage<T, N, L>::WindowAverage (void) :
   accum(0),
   index(0)
 {
@@ -33,47 +42,54 @@ WindowAverage<T, N>::WindowAverage (void) :
 }
 
 
-template <typename T, size_t N>
-void WindowAverage<T, N>::push (const T i)
+template <typename T, size_t N, typename L>
+void WindowAverage<T, N, L>::push (const T i)
 {
-  accum += i;
+  using Signed_T = typename std::make_signed<T>::type;
+
   // elegant but ineffective, see https://godbolt.org/g/XbNCPa
   // index = (index+1) % N;
-  
   if (++index == N)
     index = 0;
-  accum -= ring[index];
+
+  // calculate diff between in item and out item
+  // to be able to update accum in one atomic 
+  // instruction
+  const Signed_T diff = static_cast<Signed_T>(i) -
+                        static_cast<Signed_T>(ring[index]);
+
+  // atomic operation, avoid costly lock here
+  accum += diff;
+  
   ring[index] = i;
 }
 
-template <typename T, size_t N>
-const T& WindowAverage<T, N>::operator[] (const size_t i)
+template <typename T, size_t N, typename L>
+const T& WindowAverage<T, N, L>::operator[] (const size_t i)
 {
   return ring[(N+index+i)%N];
 }
 
 
 
-template <typename T, size_t N, size_t M>
-class WindowMedianAverage : public WindowAverage<T, N>
+template <typename T, size_t N, size_t M, typename L=Lock::None>
+class WindowMedianAverage : public WindowAverage<T, N, L>
 {
 public:
-  T getMean (const bool syslock = false) const;
+  T getMean () const;
 };
 
 
-template <typename T, size_t N, size_t M>
-T WindowMedianAverage<T, N, M>::getMean (const bool syslock) const
+template <typename T, size_t N, size_t M, typename L>
+T WindowMedianAverage<T, N, M, L>::getMean () const
 {
   static_assert(N > (2*M), "array need to be larger than median elimitated number of elements");
-  if (syslock)
-    chSysLock();
-  std::array<T, N> toSort = WindowAverage<T, N>::ring; // make inplace sort on a copy
-  if (syslock)
-    chSysUnlock();
+  L::lock();
+  std::array<T, N> toSort = WindowAverage<T, N, L>::ring; // make inplace sort on a copy
+  L::unlock();
   
   std::sort(toSort.begin(), toSort.end());
-  const T medianAccum = WindowAverage<T, N>::accum -
+  const T medianAccum = WindowAverage<T, N, L>::accum -
     std::accumulate(toSort.begin(), toSort.begin()+M, 0) -
     std::accumulate(toSort.end()-M, toSort.end(), 0);
   return medianAccum / (N-(2*M));
