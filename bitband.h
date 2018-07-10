@@ -128,7 +128,7 @@ static inline void bb_palClearPad   (ioportid_t gpio,
  */
 static inline void bb_palTogglePad   (ioportid_t gpio,
                                    const uint32_t bit) {
-  bb_peri_set_bit(&(gpio->ODR), bit, !bb_peri_get_bit(&(gpio->IDR), bit)); 
+  bb_peri_set_bit(&(gpio->ODR), bit, bb_peri_get_bit(&(gpio->IDR), bit) ^ 0x1); 
 }
 
 /**
@@ -185,7 +185,7 @@ static inline void bb_palClearLine   (ioline_t line) {
  */
 static inline void bb_palToggleLine   (ioline_t line) {
   bb_peri_set_bit(&(PAL_PORT(line)->ODR), PAL_PAD(line),
-		  !bb_peri_get_bit(&(PAL_PORT(line)->IDR), PAL_PAD(line)));
+		  bb_peri_get_bit(&(PAL_PORT(line)->IDR), PAL_PAD(line)) ^ 0x1);
 }
 
 /**
