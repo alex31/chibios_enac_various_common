@@ -6,11 +6,13 @@
 #include <array>
 #include <type_traits>
 
+using LockFnPtr = void (*) ();
+
 template <typename T, size_t N>
 class WindowAverage
 {
 public:
-  WindowAverage (void);
+  WindowAverage (LockFnPtr _lock = nullptr, LockFnPtr _unlock = nullptr);
   void push (const T i);
   T getSum (void)  const {return accum;};
   T getMean (void) const {return accum/N;};
@@ -19,13 +21,19 @@ public:
 protected:
   T accum;
   std::array<T, N> ring;
+  LockFnPtr lock;
+  LockFnPtr unlock;
+  
 private:
     T index;
 };
 
 template <typename T, size_t N>
-WindowAverage<T, N>::WindowAverage (void) :
+WindowAverage<T, N>::WindowAverage (const LockFnPtr _lock,
+				    const LockFnPtr _unlock) :
   accum(0),
+  lock(_lock),
+  unlock(_unlock),
   index(0)
 {
   static_assert(std::is_integral<T>::value, "Integral type required");
@@ -58,19 +66,19 @@ template <typename T, size_t N, size_t M>
 class WindowMedianAverage : public WindowAverage<T, N>
 {
 public:
-  T getMean (const bool syslock = false) const;
+  T getMean (void) const;
 };
 
 
 template <typename T, size_t N, size_t M>
-T WindowMedianAverage<T, N, M>::getMean (const bool syslock) const
+T WindowMedianAverage<T, N, M>::getMean (void) const
 {
   static_assert(N > (2*M), "array need to be larger than median elimitated number of elements");
-  if (syslock)
-    chSysLock();
+  if (WindowAverage<T, N>::lock)
+    WindowAverage<T, N>::lock();
   std::array<T, N> toSort = WindowAverage<T, N>::ring; // make inplace sort on a copy
-  if (syslock)
-    chSysUnlock();
+  if (WindowAverage<T, N>::unlock)
+    WindowAverage<T, N>::unlock();
   
   std::sort(toSort.begin(), toSort.end());
   const T medianAccum = WindowAverage<T, N>::accum -
