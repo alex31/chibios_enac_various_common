@@ -58,16 +58,20 @@ template <typename T, size_t N, size_t M>
 class WindowMedianAverage : public WindowAverage<T, N>
 {
 public:
-  T getMean (void) const;
+  T getMean (const bool syslock = false) const;
 };
 
 
 template <typename T, size_t N, size_t M>
-T WindowMedianAverage<T, N, M>::getMean (void) const
+T WindowMedianAverage<T, N, M>::getMean (const bool syslock) const
 {
   static_assert(N > (2*M), "array need to be larger than median elimitated number of elements");
+  if (syslock)
+    chSysLock();
   std::array<T, N> toSort = WindowAverage<T, N>::ring; // make inplace sort on a copy
- 
+  if (syslock)
+    chSysUnlock();
+  
   std::sort(toSort.begin(), toSort.end());
   const T medianAccum = WindowAverage<T, N>::accum -
     std::accumulate(toSort.begin(), toSort.begin()+M, 0) -
