@@ -4,13 +4,17 @@
 #include "stdutil.h"
 #include "simpleSerialMessage.h"
 
-#if (CH_KERNEL_MAJOR > 3)
-#define chSequentialStreamWrite  streamWrite
-#define chSequentialStreamRead   streamRead
-#define chSequentialStreamGet    streamGet
+/* #if (CH_KERNEL_MAJOR > 3) */
+/* #define chSequentialStreamWrite  streamWrite */
+/* #define chSequentialStreamRead   streamRead */
+/* #define chSequentialStreamGet    streamGet */
+/* #endif */
+
+#if SIMPLE_MESSAGE_API_UART
+static inline msg_t uartGetWrapper(UARTDriver *uartp);
+static inline size_t uartReadWrapper(UARTDriver *uartp,	uint8_t *bp, const size_t n);
+static inline size_t uartWriteWrapper(UARTDriver *uartp,	const uint8_t *bp, const size_t n);
 #endif
-
-
 
 typedef enum  {WAIT_FOR_SYNC, WAIT_FOR_LEN, WAIT_FOR_PAYLOAD, WAIT_FOR_CHECKSUM} SerialCmdState ;
 
@@ -24,7 +28,7 @@ _Static_assert(sizeof(MsgHeader) == 3, "MsgHeader struct is not packed");
 
 
 typedef struct {
-  BaseSequentialStream *channel;
+  SSM_STREAM_TYPE *channel;
   MsgCallBack callback;
   ChkErrCallBack errCallback;
   void *userData;
@@ -51,7 +55,7 @@ static msg_t readAndProcessChannel(void *arg);
 static void readAndProcessChannel(void *arg);
 #endif
 
-bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
+bool simpleMsgSend (SSM_STREAM_TYPE * const channel, const uint8_t *buffer,
 		      const size_t len)
 {
   if (len > 255) 
@@ -62,12 +66,12 @@ bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
   uint16_t crc =  fletcher16WithLen (buffer, len);
   
   chMtxLock (&sendMtx);
-  if (chSequentialStreamWrite (channel, (uint8_t *) &msgHeader, 
+  if (SSM_STREAM_WRITE(channel, (uint8_t *) &msgHeader, 
 			       sizeof(MsgHeader)) != sizeof(MsgHeader))
     goto exitFail;
-  if (chSequentialStreamWrite (channel, buffer, len) != len)
+  if (SSM_STREAM_WRITE(channel, buffer, len) != len)
     goto exitFail;
-  if (chSequentialStreamWrite (channel, (uint8_t *) &crc, 
+  if (SSM_STREAM_WRITE(channel, (uint8_t *) &crc, 
 			       sizeof(crc)) != sizeof(crc))
     goto exitFail;
   
@@ -79,7 +83,7 @@ bool simpleMsgSend (BaseSequentialStream * const channel, const uint8_t *buffer,
   return false;
 }
 
-Thread * simpleMsgBind (BaseSequentialStream *channel,
+Thread * simpleMsgBind (SSM_STREAM_TYPE *channel,
 			const MsgCallBack callback, const ChkErrCallBack errCallback,
 			void * const userData)
 {
@@ -160,7 +164,7 @@ static void readAndProcessChannel(void *arg)
     case WAIT_FOR_SYNC :
       // DebugTrace ("WAIT_FOR_SYNC");
       messState.payload[0] = messState.payload[1];
-      messState.payload[1] = (uint8_t) chSequentialStreamGet (mbp->channel);
+      messState.payload[1] = (uint8_t)  SSM_STREAM_GET (mbp->channel);
       /* if ( (*((uint16_t *) &messState.payload[0]) & 0xffff) == 0xFEED) { */
       /* 	messState.state = WAIT_FOR_LEN; */
       /* }  */
@@ -171,20 +175,20 @@ static void readAndProcessChannel(void *arg)
       
     case WAIT_FOR_LEN :
       // DebugTrace ("WAIT_FOR_LEN");
-      messState.len = (uint8_t) chSequentialStreamGet (mbp->channel);
+      messState.len = (uint8_t)  SSM_STREAM_GET (mbp->channel);
       // DebugTrace ("LEN = %d", messState.len);
       messState.state = WAIT_FOR_PAYLOAD;
       break;
 
     case WAIT_FOR_PAYLOAD :
       // DebugTrace ("WAIT_FOR_PAYLOAD");
-      chSequentialStreamRead (mbp->channel, messState.payload,  messState.len);
+       SSM_STREAM_READ(mbp->channel, messState.payload,  messState.len);
       messState.state = WAIT_FOR_CHECKSUM;
       break;
 
     case WAIT_FOR_CHECKSUM :
       // DebugTrace ("WAIT_FOR_CHECKSUM");
-      chSequentialStreamRead (mbp->channel, (uint8_t *) &messState.crc,  sizeof(messState.crc));
+       SSM_STREAM_READ(mbp->channel, (uint8_t *) &messState.crc,  sizeof(messState.crc));
       const uint16_t calculatedCrc = fletcher16WithLen (messState.payload, messState.len);
       if (calculatedCrc == messState.crc) {
 	mbp->callback (messState.payload, messState.len, mbp->userData);
@@ -205,3 +209,35 @@ static void readAndProcessChannel(void *arg)
   return RDY_OK;
 #endif
 }
+
+
+#if SIMPLE_MESSAGE_API_UART
+/*
+msg_t uartReceiveTimeout 	( 	UARTDriver *  	uartp,
+		size_t *  	np,
+		void *  	rxbuf,
+		sysinterval_t  	timeout 
+	) 	
+ */
+static inline msg_t uartGetWrapper(UARTDriver *uartp)
+{
+  uint8_t ret;
+  size_t count=1;
+  uartReceiveTimeout(uartp, &count, &ret, TIME_INFINITE);
+  return ret;
+}
+static inline size_t uartReadWrapper(UARTDriver *uartp,	uint8_t *bp, const size_t n)
+{
+  size_t count=n;
+  uartReceiveTimeout(uartp, &count, bp, TIME_INFINITE);
+  return count;
+}
+
+static inline size_t uartWriteWrapper(UARTDriver *uartp, const uint8_t *bp, const size_t n)
+{
+  size_t count=n;
+  uartSendTimeout(uartp, &count, bp, TIME_INFINITE);
+  return count;
+}
+
+#endif

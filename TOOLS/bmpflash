@@ -45,22 +45,30 @@ END {
     unlink GDBINIT_PATH if -e GDBINIT_PATH && not exists $options{keep};
 }
 
-my $bmpdev;
-if (-e BMPDEV) {
-    $bmpdev = BMPDEV;
-} elsif (-e REVERT_BMPDEV) {
-    warn sprintf ("%s not found, please add udev rules. ".
-		  "Revert to generic %s hoping it's a black magic probe\n",
-		  BMPDEV, REVERT_BMPDEV);
-    $bmpdev = REVERT_BMPDEV;
-} else {
-    die sprintf ("neither %s nor %s device found, ".
-		"black magic probe usb device not detected, aborting\n",
-		BMPDEV, REVERT_BMPDEV);
-}
-
-GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force');
+GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s');
 usage () if exists  $options{help};
+
+my $bmpdev;
+if (!exists  $options{device}) {
+    if (-e BMPDEV) {
+	$bmpdev = BMPDEV;
+    } elsif (-e REVERT_BMPDEV) {
+	warn sprintf ("%s not found, please add udev rules. ".
+		      "Revert to generic %s hoping it's a black magic probe\n",
+		      BMPDEV, REVERT_BMPDEV);
+	$bmpdev = REVERT_BMPDEV;
+    } else {
+	die sprintf ("neither %s nor %s device found, ".
+		     "black magic probe usb device not detected, aborting\n",
+		     BMPDEV, REVERT_BMPDEV);
+    }
+} else {
+    $bmpdev = $options{device};
+    if (! -e $bmpdev) {
+	die sprintf ("device %s not found ".
+		     "black magic probe usb device not detected, aborting\n", $bmpdev);	
+    }
+}
 
 # load and exit is the default
 $options{load}= 1 unless $options{load} or $options{debug} or $options{attach} or $options{erase};
@@ -179,5 +187,10 @@ sub usage ()
   print <<EOL ;
 usage : $0 -load (default) or -debug or -attach xxx.elf
       : $0 -keep : don't unlink temporary gdb script
+      : $0 -debug : flash, then attach gdb to target
+      : $0 -attach :  do not flash, attach gdb to running target
+      : $0 -erase : erase entire flash memory of target
+      : $0 -force : do not enforce that the file name extension is .elf 
+      : $0 -device=dev : specify probe device
 EOL
 }
