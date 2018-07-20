@@ -64,7 +64,7 @@ bool simpleMsgSend (SSM_STREAM_TYPE * const channel, const uint8_t *buffer,
   const MsgHeader msgHeader = {.sync = {0xED, 0xFE},
 			       .len = len & 0xff};
   uint16_t crc =  fletcher16WithLen (buffer, len);
-  
+  //  DebugTrace ("len = %u, crc =0x%x", len, crc);
   chMtxLock (&sendMtx);
   if (SSM_STREAM_WRITE(channel, (uint8_t *) &msgHeader, 
 			       sizeof(MsgHeader)) != sizeof(MsgHeader))
@@ -212,13 +212,6 @@ static void readAndProcessChannel(void *arg)
 
 
 #if SIMPLE_MESSAGE_API_UART
-/*
-msg_t uartReceiveTimeout 	( 	UARTDriver *  	uartp,
-		size_t *  	np,
-		void *  	rxbuf,
-		sysinterval_t  	timeout 
-	) 	
- */
 static inline msg_t uartGetWrapper(UARTDriver *uartp)
 {
   uint8_t ret;

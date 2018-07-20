@@ -23,8 +23,9 @@ public:
   void push (const T i);
   T getSum (void)  const {return accum;};
   T getMean (void) const {return accum/N;};
+  const std::pair<const T, const T> getMinMax(void) const;
   const T& operator[] (const size_t i);
-  constexpr size_t size(void) {return N;};
+  static constexpr size_t size(void) {return N;};
 protected:
   T accum;
   std::array<T, N> ring;
@@ -70,6 +71,13 @@ template <typename T, size_t N, typename L>
 const T& WindowAverage<T, N, L>::operator[] (const size_t i)
 {
   return ring[(N+index+i)%N];
+}
+
+template <typename T, size_t N, typename L>
+const std::pair<const T, const T> WindowAverage<T, N, L>::getMinMax(void) const
+{
+  auto p = std::minmax_element(ring.begin(), ring.end());
+  return std::make_pair(*p.first, *p.second);
 }
 
 
