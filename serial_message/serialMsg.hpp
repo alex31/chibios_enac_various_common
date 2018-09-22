@@ -9,6 +9,8 @@
 
 /*
   BUGFIX:
+  * comment regler le pb des acces non alignés ???
+    >>> msgId après ???
 
 
   TODO:
@@ -190,10 +192,9 @@ bool msgRegisterCB(const std::array<uint8_t, maxMessageLen> &rawPayload,
 				  const size_t len)
 {
   if (PM::PSIZE == len) {
-    PM *msg = new PM;
-    msg->populatePayload(rawPayload);
-    msg->runOnRecept();
-    delete msg;
+    PM msg;
+    msg.populatePayload(rawPayload);
+    msg.runOnRecept();
     return true;
   } else {
     return false;
@@ -305,11 +306,9 @@ void FrameMsgSendObject<PM>::send(const PM& pm) {
 
 template <class PM>
 void FrameMsgSendObject<PM>::send(const typename PM::PType& s) {
-  PM * msg = new PM(s);
-  
+  PM msg(s);
   FrameMsgSendObject<PM> fms;
-  fms.send(*msg);
-  delete msg;
+  fms.send(msg);
 };
 
 template <class PM>
