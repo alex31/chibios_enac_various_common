@@ -509,3 +509,7 @@ int _kill(int pid, int sig) {
   return -1;
 }
 void *__dso_handle = 0;
+
+void __cxa_pure_virtual() {
+  osalSysHalt("Pure virtual function call.");
+}

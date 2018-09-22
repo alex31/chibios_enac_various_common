@@ -1,0 +1,58 @@
+#pragma once
+#include <stdint.h>
+#include <array>
+#include <type_traits>
+
+#include "libsrc/serialMsg_conf_lib.hpp"
+
+
+constexpr uint16_t maxPayloadLen = ??;
+constexpr uint16_t nbMaxMessageIds = ??;
+constexpr std::array<uint8_t, ??> startSyncValue = {??, ...., ??};
+
+class SystemDependantTransport {
+public:
+// static class; object cannot be instanced
+  SystemDependantTransport() = delete;
+
+
+
+  using Checksum_t = ??;
+
+  // member method
+  static void initClass(void);
+  
+  template <size_t N>
+  static void write(const std::array<uint8_t, N> &wbuffer, size_t len=0UL);
+  
+  template <size_t N>
+  static void read(std::array<uint8_t, N> &rbuffer, size_t len=0UL);
+
+  template <size_t N>
+  static Checksum_t checksum(const std::array<uint8_t, N> &buffer,  const size_t len=0UL) {
+    return ???(buffer, len);
+  };
+  
+
+  // member variable
+};
+
+
+class SystemDependantOs {
+  using ThreadEntryFn_t = void (*)(void);
+public:
+  // static class; object cannot be instanced
+  SystemDependantOs() = delete;
+
+  // member method
+  static void initClass(void) {};
+  static void launch(ThreadEntryFn_t fn) { thrPtr = ???;};
+  static void lock(void) {??;};
+  static void unlock(void)  {??;};
+  
+private:
+  // member variable
+};
+#endif
+
+
