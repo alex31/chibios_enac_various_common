@@ -122,6 +122,7 @@ thread_t *SystemDependant_chibios::thd = nullptr;
 
 
 SerialDriver *SystemDependant_chibiosSerial::sd = nullptr;
+UARTDriver *SystemDependant_chibiosUART::ud = nullptr;
 
 
 #endif

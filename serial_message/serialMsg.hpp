@@ -9,13 +9,22 @@
 
 /*
   BUGFIX:
-  * comment regler le pb des acces non alignés ???
-    >>> msgId après ???
+  * SystemDependant_chibiosUart : 
+  * tester si le bug quand on sature la liaison arrive aussi avec un FTDI au lieu d'un prolific
+
+  * machine à état qui envoie le/les caractères même si erreur ??
+
+  * deplacer uartConfig de serialMsg_conf.hpp vers serialMsg_conf_lib.hpp pour :
+    * passer en mode asynchrone à la reception en implementant 
+    * rxerr_cb 
+    * rx_end_cb
+    * un mutex pour bloquer la lecture suivante
+  
 
 
   TODO:
   * commenter
-  * implementer SystemDependant_chibiosRT, SystemDependant_chibiosSerial (faire un .mk pour chibi)
+  * faire un .mk pour chibios
   * reflechir pour des messages à taille variable
   * faire un message qui permette de verifier que les 2 côtés causent la même langue :
     on verifie l'égalité de :

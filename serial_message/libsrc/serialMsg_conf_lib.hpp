@@ -323,6 +323,70 @@ void SystemDependant_chibiosSerial::read(std::array<uint8_t, N> &rbuffer, size_t
 #                | |__| | | (_| | | |    \ |_          
 #                 \____/   \__,_| |_|     \__|         
 */
+class SystemDependant_chibiosUART {
+public:
+// static class; object cannot be instanced
+  SystemDependant_chibiosUART() = delete;
+
+  // just need to get the type of the fucntion return value
+  // in case of custom chekcsum function, just put the type
+  using Checksum_t = std::result_of<decltype(fletcher16<1>) &
+				    (std::array<uint8_t, 1>, size_t)>::type;
+
+  // member method
+  static void initClass(UARTDriver &_ud) {ud = &_ud;};
+  
+  template <size_t N>
+  static void write(const std::array<uint8_t, N> &wbuffer, size_t len=0UL);
+  
+  template <size_t N>
+  static void read(std::array<uint8_t, N> &rbuffer, size_t len=0UL);
+
+  // we use an already defined checksum function, but feel free to implement yours instead of
+  // fletcher16
+  template <size_t N>
+  static Checksum_t checksum(const std::array<uint8_t, N> &buffer,  const size_t len=0UL) {
+    return fletcher16(buffer, len);
+  };
+  
+
+  // member variable
+  static  UARTDriver *ud;
+};
+
+template <size_t N>
+void SystemDependant_chibiosUART::write(const std::array<uint8_t, N> &wbuffer, size_t len)
+{
+  len = len ? std::min(len, N) : N;
+  //  std::cout << "really send " << len << " on interface\n";
+  size_t retv = len;
+  const msg_t status = uartSendTimeout (ud, &retv, wbuffer.data(), TIME_INFINITE);
+  if ((status != MSG_OK) or (retv != len)) {
+    chSysHalt("SystemDependant_chibiosUART::write error");
+  }
+}
+
+#include "stdutil.h"
+#include "globalVar.h"
+template <size_t N>
+void SystemDependant_chibiosUART::read(std::array<uint8_t, N> &rbuffer, size_t len)
+{
+  len = len ? std::min(len, N) : N;
+  //  std::cout << "really read " << len << " on interface\n";
+  msg_t status;
+  size_t retv;
+  do {
+    retv = len;
+    status = uartReceiveTimeout (ud, &retv, rbuffer.data(), TIME_INFINITE);
+    if (status != MSG_OK) {
+      DebugTrace ("status = %ld retv=%d", status, retv);
+    }
+  } while ((status != MSG_OK));
+
+  if (retv != len) {
+    chSysHalt("SystemDependant_chibiosUART::read error");
+  }
+}
 
 
 #endif
