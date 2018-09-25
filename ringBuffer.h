@@ -1,6 +1,10 @@
 #ifndef __RING_BUFFER__
 #define __RING_BUFFER__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*
 
@@ -105,5 +109,8 @@ static inline uint16_t 	ringBufferGetIndexOfElemAddr(const CircularBuffer* que, 
 }
 
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif
