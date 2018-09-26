@@ -10,7 +10,7 @@ void		pipeObjectInit(Pipe* pipe, CircularBuffer *_cb)
 };
 
 
-ssize_t		pipeEnque(Pipe* pipe, const uint8_t* pK, const size_t len)
+ssize_t		pipeWrite(Pipe* pipe, const uint8_t* pK, const size_t len)
 {
   chMtxLock(&pipe->mtx);
   ssize_t slen = len;
@@ -44,7 +44,7 @@ ssize_t		pipeEnque(Pipe* pipe, const uint8_t* pK, const size_t len)
 }
 
 
-ssize_t 	pipeDeque(Pipe* pipe, uint8_t* pK, const size_t len)
+ssize_t 	pipeRead(Pipe* pipe, uint8_t* pK, const size_t len)
 {
   chMtxLock(&pipe->mtx);
   ssize_t slen = len;

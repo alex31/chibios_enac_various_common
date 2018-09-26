@@ -42,9 +42,9 @@ static inline ssize_t 	pipeUsedSize(const Pipe* pipe)
 {return ringBufferUsedSize(pipe->cb);};   
 static inline ssize_t 	pipeFreeSize(const Pipe* pipe)
 {return ringBufferFreeSize(pipe->cb);}; 
-ssize_t			pipeEnque(Pipe* pipe, const uint8_t* pK,
+ssize_t			pipeWrite(Pipe* pipe, const uint8_t* pK,
 						  size_t len);
-ssize_t			pipeDeque(Pipe* pipe, uint8_t* pK,
+ssize_t			pipeRead(Pipe* pipe, uint8_t* pK,
 						  size_t len);
 
 #ifdef __cplusplus
