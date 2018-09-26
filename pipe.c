@@ -33,12 +33,14 @@ ssize_t		pipeEnque(Pipe* pipe, const uint8_t* pK, const size_t len)
   if (slen) {
     const ssize_t sret = ringBufferEnqueBuffer(pipe->cb, ptr, slen);
     ret += sret;
+    chMtxUnlock(&pipe->mtx);
     chCondSignal(&pipe->cv_full);
     osalDbgAssert((sret == slen), "pipe internal error");
+    return ret;
+  } else {
+    chMtxUnlock(&pipe->mtx);
+    return ret;
   }
-
-  chMtxUnlock(&pipe->mtx);
-  return ret;
 }
 
 
@@ -54,9 +56,9 @@ ssize_t 	pipeDeque(Pipe* pipe, uint8_t* pK, const size_t len)
   }
   const ssize_t	ret =ringBufferDequeBuffer(pipe->cb, pK, slen);
   osalDbgAssert((ret == slen), "pipe internal error");
-  chCondSignal(&pipe->cv_empty);
 
   chMtxUnlock(&pipe->mtx);
+  chCondSignal(&pipe->cv_empty);
   return ret;
 }
 
