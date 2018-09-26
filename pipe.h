@@ -13,7 +13,16 @@ TODO:
 extern "C" {
 #endif
 
+#define _PIPE_DATA(name, _cb)  {	        \
+  .cb = _cb,					\
+  .mtx = _MUTEX_DATA(name.mtx),			\
+  .cv_empty = _CONDVAR_DATA(name.cv_empty),	\
+  .cv_full =_CONDVAR_DATA(name.cv_full)		\
+}
 
+#define PIPE_DECL(name, cb)		\
+  Pipe name = _PIPE_DATA(name, cb)
+  
 typedef struct
 {
   CircularBuffer *cb;
@@ -24,7 +33,7 @@ typedef struct
 
 
 
-void			pipeInit(Pipe* pipe, CircularBuffer *_cb);
+void			pipeObjectInit(Pipe* pipe, CircularBuffer *_cb);
 static inline bool	pipeIsFull(const Pipe* pipe)
 {return ringBufferIsFull(pipe->cb);};
 static inline bool 	pipeIsEmpty(const Pipe* pipe)

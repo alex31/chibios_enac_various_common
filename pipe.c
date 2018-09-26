@@ -1,7 +1,7 @@
 #include "pipe.h"
 #include <string.h>
 
-void		pipeInit(Pipe* pipe, CircularBuffer *_cb)
+void		pipeObjectInit(Pipe* pipe, CircularBuffer *_cb)
 {
   pipe->cb = _cb;
   chMtxObjectInit(&pipe->mtx);
