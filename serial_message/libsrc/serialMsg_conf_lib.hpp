@@ -354,7 +354,7 @@ public:
   // member variable
 private:
   static  UARTDriver *ud;
-  static constexpr size_t pipeLen = 256U;
+  static constexpr size_t pipeLen = 512U;
   //  static uint8_t lostBuffer[pipeLen];
   //  static CircularBuffer lost;
 
