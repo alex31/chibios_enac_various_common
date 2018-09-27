@@ -218,7 +218,7 @@ uint16_t fletcher16(const std::array<uint8_t, N> &buffer, const size_t len) {
 #if defined(__ARM_EABI__) && __ARM_EABI__ 
 #include "ch.h"
 #include "hal.h"
-
+#include "pipe.h"
 /*
 #                 _____    _______         
 #                |  __ \  |__   __|        
@@ -334,7 +334,7 @@ public:
 				    (std::array<uint8_t, 1>, size_t)>::type;
 
   // member method
-  static void initClass(UARTDriver &_ud) {ud = &_ud;};
+  static void initClass(UARTDriver &_ud, const uint32_t baud);
   
   template <size_t N>
   static void write(const std::array<uint8_t, N> &wbuffer, size_t len=0UL);
@@ -345,13 +345,25 @@ public:
   // we use an already defined checksum function, but feel free to implement yours instead of
   // fletcher16
   template <size_t N>
+
   static Checksum_t checksum(const std::array<uint8_t, N> &buffer,  const size_t len=0UL) {
     return fletcher16(buffer, len);
   };
   
-
+  
   // member variable
+private:
   static  UARTDriver *ud;
+  static constexpr size_t pipeLen = 256U;
+  //  static uint8_t lostBuffer[pipeLen];
+  //  static CircularBuffer lost;
+
+  static uint8_t ringBuffer[pipeLen];
+  static CircularBuffer ring;
+  static Pipe pipe;
+
+  // member method
+  static void uartPumpThd(void *arg);
 };
 
 template <size_t N>
@@ -373,16 +385,7 @@ void SystemDependant_chibiosUART::read(std::array<uint8_t, N> &rbuffer, size_t l
 {
   len = len ? std::min(len, N) : N;
   //  std::cout << "really read " << len << " on interface\n";
-  msg_t status;
-  size_t retv;
-  do {
-    retv = len;
-    status = uartReceiveTimeout (ud, &retv, rbuffer.data(), TIME_INFINITE);
-    if (status != MSG_OK) {
-      DebugTrace ("status = %ld retv=%d", status, retv);
-    }
-  } while ((status != MSG_OK));
-
+  const size_t retv = pipeRead (&pipe, rbuffer.data(), len);
   if (retv != len) {
     chSysHalt("SystemDependant_chibiosUART::read error");
   }

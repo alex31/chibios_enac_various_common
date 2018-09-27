@@ -10,16 +10,15 @@
 /*
   BUGFIX:
   * SystemDependant_chibiosUart : 
-  * tester si le bug quand on sature la liaison arrive aussi avec un FTDI au lieu d'un prolific
+    si on veut du high bandwith sans perte de messages dans le sens vers le MCU, il faut :
 
-  * machine à état qui envoie le/les caractères même si erreur ??
-
-  * deplacer uartConfig de serialMsg_conf.hpp vers serialMsg_conf_lib.hpp pour :
-    * passer en mode asynchrone à la reception en implementant 
-    * rxerr_cb 
-    * rx_end_cb
-    * un mutex pour bloquer la lecture suivante
-  
+    * ne pas utiliser le driver UART
+    * ne pas utiliser ni Pipe ni RingBuffer
+    * utiliser le driver DMA en double buffer
+    * configurer l'UART à la main (ou à l'aide du driver SERIAL en venant ecraser la partie ISR et DMA
+    de la config après coup)
+    * remplir le pipe sous ISR (du coup on doit utiliser les iqueue / iqueue standard de chibios) 
+    au lieu du pipe
 
 
   TODO:
@@ -42,12 +41,6 @@
     2/ creer un class RPayloadMsg sans champ Payload
   * limiter le nombre d'appel systeme en lisant SYNC et LEN à la fois et en resynchronisant 
     dans le buffer ensuite.
-  * limiter le nombre d'appel systeme en lisant une taille correspondant à une frame 
-    encapsulant le plus petit message à la fois, comme pour les petits message, on lit tout en une fois
-    * cela necessite d'avoir une fonction fonction template avec nb d'arg variable qui 
-      calcule la taille max et min des messages et renvoie un std::pair
-      + facile avec les folding expression de c++17, plus chiant en c++14 ou faut gerer
-        la recursivité soi même.
 
  */
 

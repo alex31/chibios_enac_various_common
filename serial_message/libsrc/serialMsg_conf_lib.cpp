@@ -123,7 +123,75 @@ thread_t *SystemDependant_chibios::thd = nullptr;
 
 SerialDriver *SystemDependant_chibiosSerial::sd = nullptr;
 UARTDriver *SystemDependant_chibiosUART::ud = nullptr;
+//uint8_t SystemDependant_chibiosUART::lostBuffer[pipeLen] = {0};
+// CircularBuffer SystemDependant_chibiosUART::lost = {
+//   .writePointer = 0,
+//   .readPointer = 0,
+//   .size = pipeLen,
+//   .keys = SystemDependant_chibiosUART::lostBuffer
+// };
 
+uint8_t SystemDependant_chibiosUART::ringBuffer[pipeLen] = {0};
+CircularBuffer SystemDependant_chibiosUART::ring = {
+  .writePointer = 0,
+  .readPointer = 0,
+  .size = pipeLen,
+  .keys = SystemDependant_chibiosUART::ringBuffer
+};
+Pipe SystemDependant_chibiosUART::pipe =  _PIPE_DATA(SystemDependant_chibiosUART::pipe,
+						     &SystemDependant_chibiosUART::ring);
+
+
+void SystemDependant_chibiosUART::initClass(UARTDriver &_ud, const uint32_t baud)
+{
+  static THD_WORKING_AREA(waUartPumpThd, 256);
+   static const UARTConfig uartConfig =  {
+    .txend1_cb =nullptr,
+    .txend2_cb = nullptr,
+    .rxend_cb = nullptr,
+    .rxchar_cb = nullptr,
+    // .rxchar_cb = [] (UARTDriver *ud, uint16_t c) {
+    //    (void) ud;
+    //    const uint8_t c8 = static_cast<uint8_t>(c);
+    //    ringBufferEnqueBuffer(&lost, &c8, 1);
+    //    palSetLine(LINE_C02_DBG_LED);
+    //  },
+    .rxerr_cb = nullptr,
+    .speed = baud,
+    .cr1 = 0,
+    .cr2 = USART_CR2_STOP1_BITS | USART_CR2_LINEN,
+    .cr3 = 0
+  };
+
+ ud = &_ud;
+ uartStart(ud, &uartConfig);
+   
+ chThdCreateStatic(waUartPumpThd, sizeof(waUartPumpThd), NORMALPRIO+1,
+		   &uartPumpThd, NULL);
+}
+
+void SystemDependant_chibiosUART::uartPumpThd(void *arg)
+{
+  (void) arg;
+  static uint8_t dmaBuffer[pipeLen];
+  //  static uint8_t isrBuffer[pipeLen];
+  chRegSetThreadName("uartPumpThd");
+  while (true) {
+    size_t retv = pipeLen;
+    //size_t lostBytes;
+
+    // if ((lostBytes = ringBufferUsedSize(&lost)) != 0) {
+    //   ringBufferDequeBuffer(&lost, isrBuffer, lostBytes);
+    //   pipeWrite(&pipe, isrBuffer, lostBytes);
+    //   palClearLine(LINE_C02_DBG_LED);
+    // }
+
+    uartReceiveTimeout (ud, &retv, dmaBuffer, TIME_MS2I(10));
+    if (retv != 0) {
+      pipeWrite(&pipe, dmaBuffer, retv);
+    }
+  }
+}
 
 #endif
 
