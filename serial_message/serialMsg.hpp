@@ -129,6 +129,17 @@ static_assert(std::is_unsigned<MessageId_t>::value,
 static_assert(sizeof(MessageId_t) <= 4,
 	      "sizeof(MessageId_t) need to be <= 4");
 
+#define Derive_DynMsg(Type) class Msg_ ## Type:	\
+    public PayloadDynMsg<Type> { \
+  public: \
+    Msg_ ## Type(const Type &p) : PayloadDynMsg<Type>(p) {}; \
+    Msg_ ## Type() : PayloadDynMsg<Type>() {}; 
+
+static_assert(std::is_unsigned<MessageId_t>::value,
+	      "MessageId_t need to be an unsigned type");
+static_assert(sizeof(MessageId_t) <= 4,
+	      "sizeof(MessageId_t) need to be <= 4");
+
 
 
 
@@ -150,23 +161,41 @@ public:
   //PayloadMsg(const P &p) {idPayload.payload = p;};
   PayloadMsg() = default;
   virtual ~PayloadMsg() {};
-  virtual void   runOnRecept(void) const {};
+  virtual void   runOnRecept(void) const override {};
   static constexpr size_t PSIZE =  sizeof(MessageId_t)+sizeof(P);
   virtual void populatePayload(const std::array<uint8_t, maxMessageLen> &bytes) final;
   static  void setMsgId(MessageId_t msgId) {PmsgId = msgId;};
   const   std::array<uint8_t, PSIZE>& getPayloadBuffer(void) const {return ctoBytes(idPayload);};
-  size_t getPayloadSize(void)  const final {return PSIZE;};
+  virtual size_t getPayloadSize(void)  const  override {return PSIZE;};
 protected:
   static  MessageId_t getMsgId(void) {return PmsgId;};
-private:
-  static MessageId_t PmsgId;
   struct __attribute__((packed)) {
     const MessageId_t msgId=PmsgId;
     P payload;
   } idPayload;
+private:
+  static MessageId_t PmsgId;
 public:
   const P* const data = &idPayload.payload;
 };
+
+
+
+template<typename P>
+class PayloadDynMsg : public PayloadMsg<P> {
+public:
+  PayloadDynMsg(const P &p) : PayloadMsg<P>(p) {};
+  PayloadDynMsg() = default;
+  virtual ~PayloadDynMsg() {};
+  virtual void   runOnRecept(void) const {};
+  static constexpr size_t PSIZE =  sizeof(MessageId_t)+sizeof(P);
+  static constexpr size_t PSIZEMAX =  PSIZE;
+  virtual size_t getPayloadSize(void)  const final;
+};
+
+
+
+
 
 using MsgRegistryFn_t = bool (*)(const std::array<uint8_t,
 				 maxMessageLen> &rawPayload, const size_t len);
@@ -238,10 +267,21 @@ MessageId_t PayloadMsg<P>::PmsgId = 0;
 template <class P>
 void PayloadMsg<P>::populatePayload(const std::array<uint8_t, maxMessageLen> &bytes)
 {
-  (void) bytes;
+  //  (void) bytes;
   //  idPayload.payload = cfromBytes<P>(bytes);
   memcpy(&idPayload.payload, bytes.data(), sizeof(idPayload.payload));
 }
+
+template <class P>
+size_t PayloadDynMsg<P>::getPayloadSize(void)  const 
+{
+  const auto& payload = PayloadMsg<P>::idPayload.payload;
+  const size_t notUsedElem = payload.ASize - payload.dynSize;
+  const size_t notUsedBytes = notUsedElem * sizeof(typename P::AType);
+  return PSIZEMAX - notUsedBytes;
+};
+
+
 
 /*
 #                  __                                         _          
