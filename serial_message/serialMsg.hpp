@@ -148,7 +148,8 @@ public:
   BaseMsg() = default;
   virtual ~BaseMsg() {};
   virtual size_t getPayloadSize(void) const = 0;
-  virtual void populatePayload(const std::array<uint8_t, maxMessageLen> &bytes) = 0;
+  virtual void populatePayload(const std::array<uint8_t, maxMessageLen> &bytes,
+			       size_t len = 0) = 0;
   virtual void runOnRecept(void) const = 0;
 };
 
@@ -162,7 +163,7 @@ public:
   PayloadMsg() = default;
   virtual ~PayloadMsg() {};
   virtual void   runOnRecept(void) const override {};
-  virtual void populatePayload(const std::array<uint8_t, maxMessageLen> &bytes) final;
+  virtual void populatePayload(const std::array<uint8_t, maxMessageLen> &bytes, size_t len = 0) final;
   static  void setMsgId(MessageId_t msgId) {PmsgId = msgId;};
   static constexpr size_t PSIZE =  sizeof(MessageId_t)+sizeof(P);
   const   std::array<uint8_t, PSIZE>& getPayloadBuffer(void) const {return ctoBytes(idPayload);};
@@ -223,16 +224,13 @@ bool msgRegisterCB(const std::array<uint8_t, maxMessageLen> &rawPayload,
 {
   if (len <= PM::PSIZE) {
     PM msg;
-    msg.populatePayload(rawPayload);
-    msg.runOnRecept();
+    msg.populatePayload(rawPayload, len);
     if ((len == PM::PSIZE) or (len == msg.getPayloadSize())) {
+      msg.runOnRecept();
       return true;
-    } else {
-      return false;
-    }
-  } else {
-    return false;
+    } 
   }
+  return false;
 }
 
 template<class PM>
@@ -253,8 +251,6 @@ MsgRegistry::registerFactoryFunction(const MsgRegistryFn_t classFactoryFunction)
 {
   if ((messageIdIdx < nbMaxMessageIds) && (factoryFnArray[messageIdIdx] == nullptr)) {
     factoryFnArray[messageIdIdx] = classFactoryFunction;
-    // here verify that the message length is less than
-    // (maxPayloadLen - sizeof(messId_t)
     if (messageIdIdx < (nbMaxMessageIds -1)) {
       PM::setMsgId(messageIdIdx++);
     }
@@ -268,11 +264,10 @@ template <class P>
 MessageId_t PayloadMsg<P>::PmsgId = 0;
 
 template <class P>
-void PayloadMsg<P>::populatePayload(const std::array<uint8_t, maxMessageLen> &bytes)
+void PayloadMsg<P>::populatePayload(const std::array<uint8_t, maxMessageLen> &bytes, size_t len)
 {
-  //  (void) bytes;
-  //  idPayload.payload = cfromBytes<P>(bytes);
-  memcpy(&idPayload.payload, bytes.data(), sizeof(idPayload.payload));
+  len = (len == 0) ?  sizeof(idPayload.payload) : std::min(len, sizeof(idPayload.payload));
+  memcpy(&idPayload.payload, bytes.data(), len);
 }
 
 template <class P>

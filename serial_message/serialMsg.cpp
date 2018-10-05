@@ -54,7 +54,7 @@ void FrameMsgReceive::millFrame(void)
   // get payload len
   
   SystemDependant::read(toBytes(frame.len));
-  std::cout << "GET LEN = " << static_cast<int>(frame.len) << std::endl;
+  //  std::cout << "GET LEN = " << static_cast<int>(frame.len) << std::endl;
 
 
   // get payload and crc
@@ -72,15 +72,19 @@ void FrameMsgReceive::millFrame(void)
   if (localCrc == distantCrc) {
     // std::cout << "CRC OK\n";
   } else {
+#ifdef __gnu_linux__
     std::cout << "CRC DIFFER [" << frame.len + sizeof(MessageLen_t) << "] " <<
       std::hex << "0x" << localCrc << " <> " <<
       "0x" << distantCrc << std::dec << std::endl;
+#endif
     return;
   }
 
   if (not MsgRegistry::createAndRunInstance(frame.idPayload.msgId,
 					    frame.idPayload.rawPayload, frame.len)) {
+#ifdef __gnu_linux__
     std::cout << "POPULATE ERROR\n";
+#endif
   }
   
 }
