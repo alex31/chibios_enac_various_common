@@ -121,7 +121,7 @@ typename std::enable_if<!std::is_integral<T>::value>::type pushByte(T& array, co
 #define Derive_Msg(Type) class Msg_ ## Type: \
     public PayloadMsg<Type> { \
   public: \
-    Msg_ ## Type(const Type &p) : PayloadMsg<Type>(p) {}; \
+    Msg_ ## Type(const Type&& p) : PayloadMsg<Type>(std::move(p)) {};	\
     Msg_ ## Type() : PayloadMsg<Type>() {}; 
 
 static_assert(std::is_unsigned<MessageId_t>::value,
@@ -132,7 +132,7 @@ static_assert(sizeof(MessageId_t) <= 4,
 #define Derive_DynMsg(Type) class Msg_ ## Type:	\
     public PayloadDynMsg<Type> { \
   public: \
-    Msg_ ## Type(const Type &p) : PayloadDynMsg<Type>(p) {}; \
+    Msg_ ## Type(const Type&& p) : PayloadDynMsg<Type>(std::move(p)) {};	\
     Msg_ ## Type() : PayloadDynMsg<Type>() {}; 
 
 static_assert(std::is_unsigned<MessageId_t>::value,
@@ -158,7 +158,8 @@ template<typename P>
 class PayloadMsg : public BaseMsg {
 public:
   using PType = P;
-  PayloadMsg(const P &p) {memcpy(&idPayload.payload, &p, sizeof(P));};
+  //  PayloadMsg(const P &p) {memcpy(&idPayload.payload, &p, sizeof(P));};
+  PayloadMsg(const P&& p) : idPayload({.msgId = PmsgId, .payload = std::move(p)}) {};
   //PayloadMsg(const P &p) {idPayload.payload = p;};
   PayloadMsg() = default;
   virtual ~PayloadMsg() {};
@@ -185,7 +186,7 @@ public:
 template<typename P>
 class PayloadDynMsg : public PayloadMsg<P> {
 public:
-  PayloadDynMsg(const P &p) : PayloadMsg<P>(p) {};
+  PayloadDynMsg(const P&& p) : PayloadMsg<P>(p) {};
   PayloadDynMsg() = default;
   virtual ~PayloadDynMsg() {};
   virtual void   runOnRecept(void) const {};
@@ -312,8 +313,8 @@ template <class PM>
 class FrameMsgSendObject {
 public:
   FrameMsgSendObject() {};
-  void send(const PM& _pm);
-  static void send (const typename PM::PType& _m);
+  void send(const PM&& _pm);
+  static void send (const typename PM::PType&& _m);
 private:
   //  static constexpr size_t frameLen =  sizeof(StartSync_t) +  sizeof(MessageLen_t) +
   //				      PM::PSIZE + sizeof(SystemDependant::Checksum_t);
@@ -333,7 +334,7 @@ private:
 
 
 template <class PM>
-void FrameMsgSendObject<PM>::send(const PM& pm) {
+void FrameMsgSendObject<PM>::send(const PM&& pm) {
   frame.lenAndPayloadAndCrc.len = pm.getPayloadSize();
   const auto& source = pm.getPayloadBuffer();
   std::copy(source.cbegin(), source.cbegin()+frame.lenAndPayloadAndCrc.len,
@@ -350,7 +351,7 @@ void FrameMsgSendObject<PM>::send(const PM& pm) {
 };
 
 template <class PM>
-void FrameMsgSendObject<PM>::send(const typename PM::PType& s) {
+void FrameMsgSendObject<PM>::send(const typename PM::PType&& s) {
   PM msg(s);
   FrameMsgSendObject<PM> fms;
   fms.send(msg);
