@@ -1,6 +1,8 @@
 #include "serialMsg.hpp"
-#include <iostream>
 #include <type_traits>
+#ifdef __gnu_linux__
+#include <iostream>
+#endif
 /*
 #                 _ __            _   _    _                        _          
 #                | '_ \          | | | |  | |                      | |         
