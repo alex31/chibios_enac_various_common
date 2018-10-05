@@ -162,9 +162,9 @@ public:
   PayloadMsg() = default;
   virtual ~PayloadMsg() {};
   virtual void   runOnRecept(void) const override {};
-  static constexpr size_t PSIZE =  sizeof(MessageId_t)+sizeof(P);
   virtual void populatePayload(const std::array<uint8_t, maxMessageLen> &bytes) final;
   static  void setMsgId(MessageId_t msgId) {PmsgId = msgId;};
+  static constexpr size_t PSIZE =  sizeof(MessageId_t)+sizeof(P);
   const   std::array<uint8_t, PSIZE>& getPayloadBuffer(void) const {return ctoBytes(idPayload);};
   virtual size_t getPayloadSize(void)  const  override {return PSIZE;};
 protected:
@@ -188,8 +188,7 @@ public:
   PayloadDynMsg() = default;
   virtual ~PayloadDynMsg() {};
   virtual void   runOnRecept(void) const {};
-  static constexpr size_t PSIZE =  sizeof(MessageId_t)+sizeof(P);
-  static constexpr size_t PSIZEMAX =  PSIZE;
+  static constexpr size_t PSIZEMAX =  PayloadMsg<P>::PSIZE;
   virtual size_t getPayloadSize(void)  const final;
 };
 
@@ -222,11 +221,15 @@ template <class PM>
 bool msgRegisterCB(const std::array<uint8_t, maxMessageLen> &rawPayload,
 				  const size_t len)
 {
-  if (PM::PSIZE == len) {
+  if (len <= PM::PSIZE) {
     PM msg;
     msg.populatePayload(rawPayload);
     msg.runOnRecept();
-    return true;
+    if ((len == PM::PSIZE) or (len == msg.getPayloadSize())) {
+      return true;
+    } else {
+      return false;
+    }
   } else {
     return false;
   }
@@ -317,8 +320,8 @@ public:
   void send(const PM& _pm);
   static void send (const typename PM::PType& _m);
 private:
-  static constexpr size_t frameLen =  sizeof(StartSync_t) +  sizeof(MessageLen_t) +
-				      PM::PSIZE + sizeof(SystemDependant::Checksum_t);
+  //  static constexpr size_t frameLen =  sizeof(StartSync_t) +  sizeof(MessageLen_t) +
+  //				      PM::PSIZE + sizeof(SystemDependant::Checksum_t);
   // member method
   void calcCrc();
 
@@ -327,22 +330,27 @@ private:
   struct {
     const StartSync_t startSync = startSyncValue;
     struct {
-      const MessageLen_t len =  PM::PSIZE;
-      std::array<uint8_t, PM::PSIZE> payload;
-    } __attribute__((packed)) lenAndPayload;
-    typename SystemDependant::Checksum_t crc;
+      MessageLen_t len =  0;
+      std::array<uint8_t, PM::PSIZE+sizeof(SystemDependant::Checksum_t)> payloadAndCrc;
+    } __attribute__((packed)) lenAndPayloadAndCrc;
   } __attribute__((packed)) frame;
 };
 
 
 template <class PM>
 void FrameMsgSendObject<PM>::send(const PM& pm) {
+  frame.lenAndPayloadAndCrc.len = pm.getPayloadSize();
   const auto& source = pm.getPayloadBuffer();
-  std::copy(source.cbegin(), source.cend(),
-	    frame.lenAndPayload.payload.begin());
+  std::copy(source.cbegin(), source.cbegin()+frame.lenAndPayloadAndCrc.len,
+	    frame.lenAndPayloadAndCrc.payloadAndCrc.begin());
   calcCrc();
   SystemDependant::lock();
-  SystemDependant::write(ctoBytes(frame));
+  SystemDependant::write(ctoBytes(frame), sizeof(StartSync_t) + sizeof(MessageLen_t) +
+			 frame.lenAndPayloadAndCrc.len + sizeof(SystemDependant::Checksum_t));
+  // printf ("DBG, sumSize=%d, frameSize=%d",
+  // 	  frame.lenAndPayloadAndCrc.len +
+  // 	  sizeof(StartSync_t) + sizeof(MessageLen_t) + sizeof(SystemDependant::Checksum_t),
+  // 	  sizeof(frame));
   SystemDependant::unlock();
 };
 
@@ -353,9 +361,18 @@ void FrameMsgSendObject<PM>::send(const typename PM::PType& s) {
   fms.send(msg);
 };
 
+// constexpr OutputIt copy( InputIt first, InputIt last, OutputIt d_first );
 template <class PM>
 void FrameMsgSendObject<PM>::calcCrc() {
-    frame.crc = SystemDependant::checksum(ctoBytes(frame.lenAndPayload));
+  typename SystemDependant::Checksum_t crc = SystemDependant::checksum(ctoBytes(frame.lenAndPayloadAndCrc),
+								       frame.lenAndPayloadAndCrc.len +
+								       sizeof(MessageLen_t));
+  
+  //  printf("send crc [%d bytes] = 0x%x\n", frame.lenAndPayloadAndCrc.len + sizeof(MessageLen_t), crc);
+  const auto from_b = toBytes(crc).cbegin();
+  const auto from_e = from_b + sizeof(SystemDependant::Checksum_t);
+  const auto to_b = frame.lenAndPayloadAndCrc.payloadAndCrc.begin() + frame.lenAndPayloadAndCrc.len;
+  std::copy(from_b, from_e, to_b);
 };
 
 /*

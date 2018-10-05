@@ -1,5 +1,5 @@
 #include "serialMsg.hpp"
-//#include <iostream>
+#include <iostream>
 #include <type_traits>
 /*
 #                 _ __            _   _    _                        _          
@@ -54,7 +54,7 @@ void FrameMsgReceive::millFrame(void)
   // get payload len
   
   SystemDependant::read(toBytes(frame.len));
-  // std::cout << "GET LEN = " << frame.len+0 << std::endl;
+  std::cout << "GET LEN = " << static_cast<int>(frame.len) << std::endl;
 
 
   // get payload and crc
@@ -72,14 +72,15 @@ void FrameMsgReceive::millFrame(void)
   if (localCrc == distantCrc) {
     // std::cout << "CRC OK\n";
   } else {
-    // std::cout << "CRC DIFFER "  << std::hex << "0x" << localCrc << " <> " <<
-    //      "0x" << distantCrc << std::endl;
+    std::cout << "CRC DIFFER [" << frame.len + sizeof(MessageLen_t) << "] " <<
+      std::hex << "0x" << localCrc << " <> " <<
+      "0x" << distantCrc << std::dec << std::endl;
     return;
   }
 
   if (not MsgRegistry::createAndRunInstance(frame.idPayload.msgId,
 					    frame.idPayload.rawPayload, frame.len)) {
-    // std::cout << "POPULATE ERROR\n";
+    std::cout << "POPULATE ERROR\n";
   }
   
 }
