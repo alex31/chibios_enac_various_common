@@ -23,7 +23,6 @@
 
   TODO:
   * commenter
-  * faire un .mk pour chibios
   * remplacer la macros Derive_Msg_* par autre chose ?
   * faire un join propre sur le process avant exit, inutile pour MCU, mais 
     utile sous linux.
