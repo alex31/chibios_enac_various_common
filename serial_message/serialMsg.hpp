@@ -24,23 +24,23 @@
   TODO:
   * commenter
   * faire un .mk pour chibios
-  * reflechir pour des messages à taille variable
-  * faire un message qui permette de verifier que les 2 côtés causent la même langue :
-    on verifie l'égalité de :
-    * nombre de messages enregistés
-    * checksum de la longeur de chaque message
   * remplacer la macros Derive_Msg_* par autre chose ?
   * faire un join propre sur le process avant exit, inutile pour MCU, mais 
     utile sous linux.
 
 
   OPTIM:
+  * eviter une copie à l'envoi : la classe PayloadMsg devrait avoir une reference (ou un pointeur)
+       sur P au lieu d'un P
+
   * eviter la copie à la reception : 
     1/ - runOnRecept(const P& p) : evite la copie
        - virer populate devenu inutile
     2/ creer un class RPayloadMsg sans champ Payload
+
   * limiter le nombre d'appel systeme en lisant SYNC et LEN à la fois et en resynchronisant 
     dans le buffer ensuite.
+
 
  */
 
@@ -168,8 +168,8 @@ public:
   static constexpr size_t PSIZE =  sizeof(MessageId_t)+sizeof(P);
   const   std::array<uint8_t, PSIZE>& getPayloadBuffer(void) const {return ctoBytes(idPayload);};
   virtual size_t getPayloadSize(void)  const  override {return PSIZE;};
-protected:
   static  MessageId_t getMsgId(void) {return PmsgId;};
+protected:
   struct __attribute__((packed)) {
     const MessageId_t msgId=PmsgId;
     P payload;
@@ -200,6 +200,11 @@ public:
 using MsgRegistryFn_t = bool (*)(const std::array<uint8_t,
 				 maxMessageLen> &rawPayload, const size_t len);
 
+struct __attribute__((packed)) ProtocolVersion {
+  uint32_t nbMessages;
+  uint32_t sumOfBytes;
+  uint16_t checksum;
+}; 
 class MsgRegistry {
 public:
 
@@ -212,6 +217,8 @@ public:
 		       const std::array<uint8_t, maxMessageLen> &rawPayload,
 		       const size_t len);
   
+  static ProtocolVersion pv;
+
 private:
   MsgRegistry(void) = default;
   static size_t			messageIdIdx;
@@ -236,11 +243,17 @@ bool msgRegisterCB(const std::array<uint8_t, maxMessageLen> &rawPayload,
 template<class PM>
 void  msgRegister(void)
 {
+  const std::array<uint8_t, 4> crcBuf = {PM::getMsgId(), PM::PSIZE,
+					 static_cast<uint8_t>(MsgRegistry::pv.checksum & 0xff),
+					 static_cast<uint8_t>((MsgRegistry::pv.checksum & 0xff00) >> 8)};
   static_assert(PM::PSIZE <= (maxPayloadLen + sizeof(MessageId_t)),
 		"maxPayloadLen to small");
   if (not MsgRegistry::registerFactoryFunction<PM> (msgRegisterCB<PM>)) {
     SystemDependant::abort("registerFactoryFunction failed");
   }
+  MsgRegistry::pv.nbMessages = PM::getMsgId();
+  MsgRegistry::pv.sumOfBytes += PM::PSIZE;
+  MsgRegistry::pv.checksum = fletcher16(crcBuf);
 }
 
 
@@ -378,6 +391,30 @@ void FrameMsgSendObject<PM>::calcCrc() {
 #                | |__| | | |_) |  _/ |        | |    |  __/ | (__         
 #                 \____/  |_.__/  |__/         |_|     \___|  \___|        
 */
+Derive_Msg(ProtocolVersion) 
+  void  runOnRecept(void) const final {
+  if (data->nbMessages != MsgRegistry::pv.nbMessages) {
+    // send back a message to make the other side fail on the same field
+    MsgRegistry::pv.nbMessages = 0;
+    FrameMsgSendObject<Msg_ProtocolVersion>::send(MsgRegistry::pv);
+    SystemDependant::abort("protocol error on nbMessages");
+  }
+  if (data->sumOfBytes != MsgRegistry::pv.sumOfBytes) {
+    // send back a message to make the other side fail on the same field
+    MsgRegistry::pv.sumOfBytes = 0;
+    FrameMsgSendObject<Msg_ProtocolVersion>::send(MsgRegistry::pv);
+    SystemDependant::abort("protocol error on sumOfBytes");
+  }
+  if (data->checksum != MsgRegistry::pv.checksum) {
+    // send back a message to make the other side fail on the same field
+    MsgRegistry::pv.checksum++;
+    FrameMsgSendObject<Msg_ProtocolVersion>::send(MsgRegistry::pv);
+    SystemDependant::abort("protocol error on checksum");
+  }
+}
+};
+
+
 class FrameMsgReceive {
 public:
   // using NewMsgCallBack_t = void (*)(const uint8_t *buffer, const size_t len,
@@ -391,6 +428,7 @@ private:
 
   // member method
   static void millFrame(void);
+  static void checkProtocolVersion(void);
 
   [[noreturn]]
   static void millFrameThread(void);

@@ -19,6 +19,9 @@
 */
 
 size_t			MsgRegistry::messageIdIdx = 0;
+ProtocolVersion MsgRegistry::pv = {.nbMessages = static_cast<uint32_t>(messageIdIdx),
+				   .sumOfBytes=0, .checksum=0};
+
 MsgRegistryFn_t	MsgRegistry::factoryFnArray[nbMaxMessageIds] = {nullptr};
 
 bool
@@ -31,6 +34,7 @@ MsgRegistry::createAndRunInstance(const MessageId_t msgId,
   } 
   return false;
 }
+
 
 void FrameMsgReceive::millFrame(void)
 {
@@ -92,8 +96,16 @@ void FrameMsgReceive::millFrame(void)
 }
 
 
+void FrameMsgReceive::checkProtocolVersion(void)
+{
+  msgRegister<Msg_ProtocolVersion>();
+  FrameMsgSendObject<Msg_ProtocolVersion>::send(MsgRegistry::pv);
+}
+
+
 void FrameMsgReceive::launchMillFrameThread(void)
 {
+  checkProtocolVersion();
   SystemDependant::launch(&millFrameThread);
 }
 
