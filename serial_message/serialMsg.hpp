@@ -29,13 +29,24 @@
 
 
   OPTIM:
-  * eviter une copie à l'envoi : la classe PayloadMsg devrait avoir une reference (ou un pointeur)
+  1/ eviter une copie à l'envoi : la classe PayloadMsg devrait avoir une reference (ou un pointeur)
        sur P au lieu d'un P
 
-  * eviter la copie à la reception : 
-    1/ - runOnRecept(const P& p) : evite la copie
+  2/ eviter la copie à la reception : 
+    2.1/ - runOnRecept(const P& p) : evite la copie
        - virer populate devenu inutile
-    2/ creer un class RPayloadMsg sans champ Payload
+    2.2/ creer un class RPayloadMsg sans champ Payload
+
+    OU
+
+  3/ au lieu de 1 et 2 : se mettre en mode zero copy en prevoyant la place pour les octets de protocole
+     dans les structures de message :
+     ° ça peut se faire avec de l'heritage : les structures FramePayload heritent d'une classe Frame
+       qui inclut les octets de procotocle du début
+     ° ensuite, on a une classe framePayloadCrc qui herite de chaque FramePayload et qui rajoute 
+       le crc
+     ° cet objet est ensuite passé aux classes qui gèrent les envois et reception sans 
+      avoir à faire de copie 
 
   * limiter le nombre d'appel systeme en lisant SYNC et LEN à la fois et en resynchronisant 
     dans le buffer ensuite.
@@ -286,6 +297,7 @@ template <class P>
 size_t PayloadDynMsg<P>::getPayloadSize(void)  const 
 {
   const auto& payload = PayloadMsg<P>::idPayload.payload;
+  SystemDependant::assertm(payload.dynSize <= payload.ASize, "dynSize >= ASize");
   const size_t notUsedElem = payload.ASize - payload.dynSize;
   const size_t notUsedBytes = notUsedElem * sizeof(typename P::AType);
   return PSIZEMAX - notUsedBytes;

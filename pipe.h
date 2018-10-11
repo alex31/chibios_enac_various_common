@@ -2,6 +2,8 @@
 #include "ringBuffer.h"
 #include "ch.h"
 #include "hal.h"
+#include <sys/types.h>
+#include <unistd.h>
 /*
 
 TODO:

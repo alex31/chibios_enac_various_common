@@ -25,6 +25,7 @@ uint16_t fletcher16(const std::array<uint8_t, N> &buffer,  const size_t len=0UL)
 #include <mutex>
 #include <iostream>
 #include <unistd.h>
+#include <assert.h>
 
 int set_interface_attribs(int fd, int speed);
 /*
@@ -175,7 +176,12 @@ public:
   static void lock(void) {mtx.lock();};
   static void unlock(void)  {mtx.unlock();};
   static void abort(const char* abortMsg)  {(void) abortMsg; ::abort();};
-  
+  static void assertm(const bool cond, const char* abortMsg)  {
+    if (not cond) {
+      std::cerr << abortMsg << std::endl;
+      exit(-1);
+    };
+  };
 private:
   // member variable
   static std::thread *thrPtr;
@@ -247,6 +253,10 @@ public:
   static void lock(void) {chMtxLock(&mtx);};
   static void unlock(void) {chMtxUnlock(&mtx);};
   static void abort(const char* abortMsg)  {chSysHalt(abortMsg);};
+  static void assertm(const bool cond, const char* abortMsg)  {
+    (void) abortMsg;
+    chDbgAssert(cond, abortMsg);
+  };
   
 private:
   // member variable
