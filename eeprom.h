@@ -10,6 +10,12 @@ et reflasher les dernieres valeurs pour chaques types
  */
 
 /* public function prototypes -----------------------------------------------*/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef enum  {OK_RAM_ADDR_DIFFER =-1, PROG_OK=0,  ERASE_ERR, PROGRAM_ERR,
 	       VERIFY_READ_ERROR, SECTOR_FULL_ERR, NOT_FOUND, SIZES_DIFFER, 
 	       MALLOC_ERR} ErrorCond;
@@ -37,3 +43,6 @@ size_t eepromGetLenOfType (EepromStructType eepromStructType);
 size_t eepromStatus (void); // return free eeprom space
 ErrorCond eepromWipe (void);
 
+#ifdef __cplusplus
+}
+#endif
