@@ -6,7 +6,9 @@
 #include <climits>
 #include <cstring>
 #include "serialMsg_conf.hpp"
-
+#ifndef __gnu_linux__
+#include "cpp_heap_alloc.hpp"
+#endif
 /*
   BUGFIX:
   * SystemDependant_chibiosUart : 
