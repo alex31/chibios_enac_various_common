@@ -96,10 +96,16 @@ T WindowMedianAverage<T, N, M, L>::getMean () const
   static_assert(N > (2*M), "array need to be larger than median elimitated number of elements");
   L::lock();
   std::array<T, N> toSort = WindowAverage<T, N, L>::ring; // make inplace sort on a copy
+  const auto laccum =  WindowAverage<T, N, L>::accum ;
   L::unlock();
   
-  std::sort(toSort.begin(), toSort.end());
-  const T medianAccum = WindowAverage<T, N, L>::accum -
+  // optim : no need to sort all the array
+  //  std::sort(toSort.begin(), toSort.end());
+  for (size_t m=0; m<M; m++) {
+    std::nth_element(toSort.begin(), toSort.begin()+m, toSort.end());
+    std::nth_element(toSort.begin(), toSort.end()-m, toSort.end());
+  }
+  const T medianAccum = laccum -
     std::accumulate(toSort.begin(), toSort.begin()+M, 0) -
     std::accumulate(toSort.end()-M, toSort.end(), 0);
   return medianAccum / (N-(2*M));
