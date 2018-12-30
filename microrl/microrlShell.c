@@ -264,6 +264,9 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
 #ifdef PORT_CORE_VARIANT_NAME
   chprintf(chp, "Core Variant: %s\r\n", PORT_CORE_VARIANT_NAME);
 #endif
+#ifdef STM32_SYSCLK
+  chprintf(chp, "Main STM32_SYSCLK frequency %.2f Mhz\r\n", STM32_SYSCLK/1e6f);
+#endif
 
 #ifdef CH_PORT_INFO
   chprintf(chp, "Port Info:    %s\r\n", CH_PORT_INFO);

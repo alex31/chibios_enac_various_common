@@ -127,6 +127,31 @@ static inline uint32_t RotRnbOfst(const uint32_t x, const uint32_t shift, const 
   return RotL(ar2, ofst);
 }
 
+static inline __attribute__((always_inline))
+uint32_t arm_ror_imm(uint32_t v, uint32_t sh) {
+  uint32_t d;
+  asm ("ROR %[Rd], %[Rm], %[Is]" : [Rd] "=r" (d) : [Rm] "r" (v), [Is] "i" (sh));
+  return d;
+}
+
+static inline __attribute__((always_inline))
+uint32_t arm_rol_imm(uint32_t v, const uint32_t sh) {
+  return arm_ror_imm(v, 32-sh);
+}
+ 
+static inline __attribute__((always_inline))
+uint32_t arm_ror(uint32_t v, uint32_t sh) {
+  uint32_t d;
+  asm ("ROR %[Rd], %[Rm], %[Rs]" : [Rd] "=r" (d) : [Rm] "r" (v), [Rs] "r" (sh));
+  return d;
+}
+
+static inline __attribute__((always_inline))
+uint32_t arm_rol(uint32_t v, const uint32_t sh) {
+  return arm_ror(v, 32-sh);
+}
+
+
 #if (CH_KERNEL_MAJOR == 2)
 static inline halrtcnt_t rtcntDiff (const halrtcnt_t start, const  halrtcnt_t stop) 
 {

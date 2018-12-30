@@ -130,9 +130,9 @@ public:
 protected:
   T accum;
   std::array<T, N> ring;
-  typename std::array<T, N>::iterator dynEnd;
 private:
   typename std::array<T, N>::iterator current;
+  typename std::array<T, N>::iterator dynEnd;
 };
 
 template <typename T, size_t N, typename L>
@@ -149,8 +149,8 @@ template <typename T, size_t N, typename L>
 void ResizableWindowAverage<T, N, L>::resize(const size_t s)
 {
   L::lock();
-  const size_t previousSize = size();
-  const size_t newSize = std::min(s, N);
+  const ssize_t previousSize = size();
+  const ssize_t newSize = std::min(s, N);
   if (newSize < previousSize) {
     std::array<T, N> nring = ring;
     for (ssize_t i=0; i<newSize; i++)
@@ -220,7 +220,7 @@ public:
   T     getMean (void) const {return getSum() / (ResizableWindowAverage<T, N, L>::size()
 						 - (2 * medianFilterSize));};
   void  setMedianFilterSize(const size_t mfs);
-  
+  size_t getMedianFilterSize(void) {return medianFilterSize;};
         ResizableWindowMedianAverage(const size_t mfs=0) {
 	  setMedianFilterSize(mfs);
 	};

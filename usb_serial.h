@@ -5,10 +5,18 @@
 
 #if HAL_USE_SERIAL_USB == TRUE
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 void usbSerialInit(SerialUSBDriver *sdu, USBDriver *usbDriver) ;
 void usbSerialReset(SerialUSBDriver *sdu) ;
 USBDriver *usbGetDriver (void);
 bool isUsbConnected(void);
+
+#ifdef __cplusplus
+  }
+#endif
 
 #endif // HAL_USE_SERIAL_USB
 
