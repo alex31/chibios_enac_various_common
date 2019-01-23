@@ -265,7 +265,10 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
   chprintf(chp, "Core Variant: %s\r\n", PORT_CORE_VARIANT_NAME);
 #endif
 #ifdef STM32_SYSCLK
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
   chprintf(chp, "Main STM32_SYSCLK frequency %.2f Mhz\r\n", STM32_SYSCLK/1e6f);
+#pragma GCC diagnostic pop
 #endif
 
 #ifdef CH_PORT_INFO
