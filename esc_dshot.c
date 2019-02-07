@@ -8,7 +8,12 @@
   TODO:
 
   ° TEST telemetry driving more than one ESC
-  ° TEST special code sending
+  ° TEST special code sending  
+  ° OPTIM : les silents sync bit peuvent être juste mis à 0 à l'init
+  ° documenter 
+   + nouvelles fonctions
+   + fonctions avec nouveaux paramètres
+
 
  */
 
@@ -34,7 +39,7 @@
 #define    DCR_DBL              ((DSHOT_CHANNELS-1) << 8) //  DSHOT_CHANNELS transfert(s)
 // first register to get is CCR1
 #define DCR_DBA(pwmd)                 (((uint32_t *) (&pwmd->tim->CCR) - ((uint32_t *) pwmd->tim)))
- 
+
 
 
 
@@ -51,11 +56,11 @@
 static DshotPacket makeDshotPacket(const uint16_t throttle, const bool tlmRequest);
 static inline void setDshotPacketThrottle(DshotPacket * const dp, const uint16_t throttle);
 static inline void setDshotPacketTlm(DshotPacket * const dp, const bool tlmRequest);
-static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * const dma);
+static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * const dma, const size_t timerWidth);
 static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed);
 static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen);
 static noreturn void dshotTlmRec (void *arg);
-
+static size_t   getTimerWidth(const PWMDriver *pwmp);
 /*
 #                         _ __    _          
 #                        | '_ \  (_)         
@@ -74,6 +79,7 @@ static noreturn void dshotTlmRec (void *arg);
  */
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
+  const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
   static const SerialConfig  tlmcfg =  {
     .speed = DSHOT_TELEMETRY_BAUD,
     .cr1 = 0,                                      // pas de parité
@@ -89,8 +95,9 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .dma_priority = 2,
     .irq_priority = 6,
     .direction = DMA_DIR_M2P,
-    .psize = sizeof(timer_reg_t), // if we change for a 32 bit timer just have to change
-    .msize = sizeof(timer_reg_t), // type of width array
+
+    .psize = timerWidthInBytes, // if we change for a 32 bit timer just have to change
+    .msize = timerWidthInBytes, // type of width array
     .inc_peripheral_addr = false,
     .inc_memory_addr = true,
     .circular = false,
@@ -98,7 +105,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .end_cb = NULL,
     .pburst = 0,
     // use mburst only if buffer size satisfy aligmnent requirement
-    .mburst = DSHOT_DMA_BUFFER_SIZE % (sizeof(timer_reg_t) * 4) ? 0 : 4,
+    .mburst = DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0 : 4,
     .fifo = 0
   };
 
@@ -249,7 +256,7 @@ void dshotSendFrame(DSHOTDriver *driver)
        chMBPostTimeout(&driver->mb, driver->dshotMotors.currentTlmQry, TIME_IMMEDIATE);
      }
    
-     buildDshotDmaBuffer(&driver->dshotMotors, &driver->dsdb);
+     buildDshotDmaBuffer(&driver->dshotMotors, &driver->dsdb, getTimerWidth(driver->config->pwmp));
      dmaStartTransfert(&driver->dmap,
 		       &driver->config->pwmp->tim->DMAR,
 		       &driver->dsdb, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
@@ -323,7 +330,7 @@ static inline void setDshotPacketTlm(DshotPacket * const dp, const bool tlmReque
   dp->telemetryRequest =  tlmRequest ? 1 : 0;
 }
 
-static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * const dma)
+static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * const dma, const size_t timerWidth)
 {
   for (size_t chanIdx=0; chanIdx < DSHOT_CHANNELS; chanIdx++) {
   // compute checksum
@@ -336,13 +343,28 @@ static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * cons
     }
     // generate pwm frame
     for (size_t bitIdx=0; bitIdx < DSHOT_BIT_WIDTHS; bitIdx++) {
-      dma->widths[bitIdx][chanIdx] = dsp->dp[chanIdx].rawFrame &
+      const uint16_t value = dsp->dp[chanIdx].rawFrame &
 	(1 << ((DSHOT_BIT_WIDTHS -1) - bitIdx)) ?
 	DSHOT_BIT1_DUTY : DSHOT_BIT0_DUTY;
+      if (timerWidth == 2) {
+	dma->widths16[bitIdx][chanIdx] = value;
+      } else {
+#if DSHOT_AT_LEAST_ONE_32B_TIMER
+	dma->widths32[bitIdx][chanIdx] = value;
+#else
+	chSysHalt("use of 32 bit timer implies to define DSHOT_AT_LEAST_ONE_32B_TIMER to TRUE");
+#endif
+      }
     }
     // silence for sync in case of continous sending
     for (size_t bitIdx=DSHOT_BIT_WIDTHS; bitIdx < DSHOT_DMA_BUFFER_SIZE; bitIdx++) {
-      dma->widths[bitIdx][chanIdx] = 0;
+      if (timerWidth == 2) {
+	dma->widths16[bitIdx][chanIdx] = 0;
+      } else {
+#if DSHOT_AT_LEAST_ONE_32B_TIMER
+	dma->widths32[bitIdx][chanIdx] = 0;
+#endif
+      }
     }
   }
 }
@@ -369,8 +391,20 @@ static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen)
     return crc;
 }
 
-
-
+__attribute__ ((const))
+static size_t   getTimerWidth(const PWMDriver *pwmp) 
+{
+  (void) pwmp;
+  
+  return ( 0 
+#if STM32_PWM_USE_TIM2
+	   || (pwmp == &PWMD2)
+#endif
+#if STM32_PWM_USE_TIM5
+	   || (pwmp == &PWMD5)
+#endif
+	   ) ? 2 : 4;
+}
 
 
 

@@ -143,7 +143,6 @@ const DshotTelemetry * dshotGetTelemetry(const DSHOTDriver *driver, const uint32
 #                | |     | |    | |   \ V /  | (_| | \ |_   |  __/        
 #                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|        
 */
-typedef uint16_t timer_reg_t;
 
 typedef union {
   struct {
@@ -162,9 +161,12 @@ typedef struct {
   volatile bool	    onGoingQry;
 } DshotPackets;
 
-typedef struct {
+typedef union {
   // alignment to satisfy dma requirement
-  timer_reg_t widths[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS] __attribute__((aligned(16)));
+  uint16_t widths16[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS] __attribute__((aligned(16)));
+#if DSHOT_AT_LEAST_ONE_32B_TIMER
+  uint32_t widths32[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS] __attribute__((aligned(16)));
+#endif
 } DshotDmaBuffer;
 
 /**
