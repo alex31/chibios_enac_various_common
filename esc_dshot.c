@@ -9,7 +9,7 @@
 
   ° TEST telemetry driving more than one ESC
   ° TEST special code sending  
-  ° OPTIM : les silents sync bit peuvent être juste mis à 0 à l'init
+
   ° documenter 
    + nouvelles fonctions
    + fonctions avec nouveaux paramètres
@@ -128,6 +128,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   };
 
   driver->crc_errors = 0;
+  memset(&driver->dsdb, 0UL, sizeof(driver->dsdb));
   
   dmaObjectInit(&driver->dmap);
   chMBObjectInit (&driver->mb, driver->_mbBuf, ARRAY_LEN(driver->_mbBuf));
@@ -356,18 +357,10 @@ static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * cons
 #endif
       }
     }
-    // silence for sync in case of continous sending
-    for (size_t bitIdx=DSHOT_BIT_WIDTHS; bitIdx < DSHOT_DMA_BUFFER_SIZE; bitIdx++) {
-      if (timerWidth == 2) {
-	dma->widths16[bitIdx][chanIdx] = 0;
-      } else {
-#if DSHOT_AT_LEAST_ONE_32B_TIMER
-	dma->widths32[bitIdx][chanIdx] = 0;
-#endif
-      }
-    }
+    // the bits for silence sync in case of continous sending are zeroed once at init
   }
 }
+
 
 static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed)
 {
