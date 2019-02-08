@@ -77,6 +77,10 @@ static size_t   getTimerWidth(const PWMDriver *pwmp);
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
   const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
+#if DSHOT_AT_LEAST_ONE_32B_TIMER == FALSE
+  if (timerWidthInBytes == 4)
+    chSysHalt("use of 32 bit timer implies to define DSHOT_AT_LEAST_ONE_32B_TIMER to TRUE");
+#endif
   /* DebugTrace("timerWidthInBytes = %u; mburst = %u", */
   /* 	     timerWidthInBytes, */
   /* 	     DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0U : 4U); */
@@ -344,18 +348,26 @@ static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * cons
       csum >>= 4;
     }
     // generate pwm frame
-    for (size_t bitIdx=0; bitIdx < DSHOT_BIT_WIDTHS; bitIdx++) {
-      const uint16_t value = dp->rawFrame &
-	(1 << ((DSHOT_BIT_WIDTHS -1) - bitIdx)) ?
-	DSHOT_BIT1_DUTY : DSHOT_BIT0_DUTY;
-      if (timerWidth == 2) {
-	dma->widths16[bitIdx][chanIdx] = value;
-      } else {
-#if DSHOT_AT_LEAST_ONE_32B_TIMER
-	dma->widths32[bitIdx][chanIdx] = value;
-#else
-	chSysHalt("use of 32 bit timer implies to define DSHOT_AT_LEAST_ONE_32B_TIMER to TRUE");
-#endif
+    if (timerWidth == 2) {
+      for (size_t bitIdx=0; bitIdx < DSHOT_BIT_WIDTHS; bitIdx+=2) {
+	uint32_t * const ptrAsWord = (uint32_t *) &(dma->widths16[bitIdx][chanIdx]);
+	const uint32_t bitPair = (dp->rawFrame >> ((DSHOT_BIT_WIDTHS -2) - bitIdx)) & 0b11;
+	switch (bitPair) {
+	case 0b00:
+	  *ptrAsWord = (DSHOT_BIT0_DUTY << 16) | DSHOT_BIT0_DUTY; break;
+	case 0b01:
+	  *ptrAsWord = (DSHOT_BIT1_DUTY << 16) | DSHOT_BIT0_DUTY; break;
+	case 0b10:
+	  *ptrAsWord = (DSHOT_BIT0_DUTY << 16) | DSHOT_BIT1_DUTY; break;
+	case 0b11:
+	  *ptrAsWord = (DSHOT_BIT1_DUTY << 16) | DSHOT_BIT1_DUTY; break;
+	}
+      }
+    } else {
+      for (size_t bitIdx=0; bitIdx < DSHOT_BIT_WIDTHS; bitIdx++) {
+	dma->widths32[bitIdx][chanIdx] = dp->rawFrame &
+	  (1 << ((DSHOT_BIT_WIDTHS -1) - bitIdx)) ?
+	  DSHOT_BIT1_DUTY : DSHOT_BIT0_DUTY;
       }
     }
     // the bits for silence sync in case of continous sending are zeroed once at init
