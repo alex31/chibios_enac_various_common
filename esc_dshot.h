@@ -143,7 +143,7 @@ const DshotTelemetry * dshotGetTelemetry(const DSHOTDriver *driver, const uint32
 #                | |     | |    | |   \ V /  | (_| | \ |_   |  __/        
 #                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|        
 */
-typedef uint16_t timer_reg_t;
+typedef uint32_t timer_reg_t;
 
 typedef union {
   struct {
