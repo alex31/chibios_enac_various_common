@@ -11,11 +11,7 @@
   ° TEST telemetry driving more than one ESC
   ° TEST special code sending  
 
-  ° documenter 
-   + nouvelles fonctions
-   + fonctions avec nouveaux paramètres
-
-
+ 
  */
 
 
