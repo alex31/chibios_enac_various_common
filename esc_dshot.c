@@ -8,9 +8,6 @@
 /*
   TODO:
 
-  ° fix : telemetry code : seems that telemetry bit is set without waiting an answer
-  ° remarq : mburst is always stuck to 0 with actual buffer size
-
   ° TEST telemetry driving more than one ESC
   ° TEST special code sending  
 
@@ -437,7 +434,7 @@ static noreturn void dshotTlmRec (void *arg)
 		       sizeof(driver->dshotMotors.dt[idx].rawData)) != driver->dshotMotors.dt[idx].crc8)) {
       // empty buffer to resync
       while (sdGetTimeout(driver->config->tlm_sd, TIME_IMMEDIATE) >= 0) {};
-      bzero(driver->dshotMotors.dt[idx].rawData, sizeof(DshotTelemetry));
+      memset(driver->dshotMotors.dt[idx].rawData, 0U, sizeof(DshotTelemetry));
       // count errors
       driver->crc_errors++;
     }
