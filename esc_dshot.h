@@ -164,8 +164,8 @@ typedef struct {
 
 typedef struct {
   // alignment to satisfy dma requirement
-  timer_reg_t widths[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS] __attribute__((aligned(16)));
-} DshotDmaBuffer;
+  timer_reg_t widths[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS];
+} DshotDmaBuffer __attribute__((aligned(16)));
 
 /**
  * @brief   DSHOT  driver structure.
