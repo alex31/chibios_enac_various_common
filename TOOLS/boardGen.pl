@@ -932,13 +932,18 @@ sub findDmaByFunction ($)
     my $filterFunc = shift;
 
     while (my ($function, $ar) = each %$dmaByFun) {
-	if ($function =~ /$filterFunc/) {
-	    foreach my $tuppleref (@$ar) {
-		my $funcName = $function ;
-		$funcName =~ s|/|_|g;
+	foreach my $tuppleref (@$ar) {
+	    my $funcName = $function ;
+	    # say "DBG> $funcName";
+	    # $funcName =~ s|/|_|g;
+	    my ($tim, $fn1, $fn2) = $funcName =~ m|(\w+)_(\w+)/(\w+)|;
+	    if (defined ($tim)) {
+		$funcName = "${tim}_$fn1 / ${tim}_$fn2";  
+	    }
+	    if ($funcName =~ /$filterFunc/) {
 		my ($ctl, $strm, $chanOrReq, $chanType) = @$tuppleref;
 		printf "$funcName : [stream(%d, %d) %s%d] \n", $ctl, $strm, 
-			$chanType, $chanOrReq;
+		    $chanType, $chanOrReq;
 		
 		say "#define STM32_${funcName}_DMA_STREAM\t\tSTM32_DMA_STREAM_ID($ctl, $strm)";
 		if ($chanType eq 'R') {
@@ -954,6 +959,7 @@ sub findDmaByFunction ($)
 	}
     }
 }
+
 
 sub fillGpioAlternateInfo ($$$)
 {
