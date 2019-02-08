@@ -345,7 +345,7 @@ static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * cons
     }
     // generate pwm frame
     for (size_t bitIdx=0; bitIdx < DSHOT_BIT_WIDTHS; bitIdx++) {
-      const uint16_t value = dsp->dp[chanIdx].rawFrame &
+      const uint16_t value = dp->rawFrame &
 	(1 << ((DSHOT_BIT_WIDTHS -1) - bitIdx)) ?
 	DSHOT_BIT1_DUTY : DSHOT_BIT0_DUTY;
       if (timerWidth == 2) {
