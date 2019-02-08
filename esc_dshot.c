@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include "stdutil.h"
+#include "globalVar.h"
 
 /*
   TODO:
@@ -80,6 +81,8 @@ static size_t   getTimerWidth(const PWMDriver *pwmp);
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
   const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
+  DebugTrace("timerWidthInBytes = %u", timerWidthInBytes);
+  
   static const SerialConfig  tlmcfg =  {
     .speed = DSHOT_TELEMETRY_BAUD,
     .cr1 = 0,                                      // pas de parité
@@ -396,7 +399,7 @@ static size_t   getTimerWidth(const PWMDriver *pwmp)
 #if STM32_PWM_USE_TIM5
 	   || (pwmp == &PWMD5)
 #endif
-	   ) ? 2 : 4;
+	   ) ? 4 : 2;
 }
 
 
