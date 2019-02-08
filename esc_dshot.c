@@ -3,10 +3,13 @@
 #include <math.h>
 #include <string.h>
 #include "stdutil.h"
-#include "globalVar.h"
+//#include "globalVar.h"
 
 /*
   TODO:
+
+  ° fix : telemetry code : seems that telemetry bit is set without waiting an answer
+  ° remarq : mburst is always stuck to 0 with actual buffer size
 
   ° TEST telemetry driving more than one ESC
   ° TEST special code sending  
@@ -81,7 +84,9 @@ static size_t   getTimerWidth(const PWMDriver *pwmp);
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
   const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
-  DebugTrace("timerWidthInBytes = %u", timerWidthInBytes);
+  /* DebugTrace("timerWidthInBytes = %u; mburst = %u", */
+  /* 	     timerWidthInBytes, */
+  /* 	     DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0U : 4U); */
   
   static const SerialConfig  tlmcfg =  {
     .speed = DSHOT_TELEMETRY_BAUD,
