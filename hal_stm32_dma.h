@@ -42,6 +42,10 @@
 #define STM32_DMA_USE_MUTUAL_EXCLUSION    FALSE
 #endif
 
+#if !defined(STM32_DMA_SUPPORTS_CSELR) || defined(__DOXYGEN__)
+#define STM32_DMA_SUPPORTS_CSELR   FALSE
+#endif
+
 
 /**
  * @brief   Driver state machine possible states.
@@ -240,7 +244,7 @@ typedef struct  {
    */
   union {
     uint8_t		request; // STM terminology for dmaV1
-    uint8_t		channel; // ChibiOS terminology for both dmaV1 and dmaV1 (portability)
+    uint8_t		channel; // ChibiOS terminology for both dmaV1 and dmaV2 (portability)
   };
 #elif STM32_DMA_ADVANCED
   uint8_t		channel;
