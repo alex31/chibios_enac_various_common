@@ -120,9 +120,13 @@ THD_WORKING_AREA(SystemDependant_chibios::waThread, 4096);
 mutex_t  SystemDependant_chibios::mtx = _MUTEX_DATA(mtx);
 thread_t *SystemDependant_chibios::thd = nullptr;
 
-
+#if HAL_USE_SERIAL  
 SerialDriver *SystemDependant_chibiosSerial::sd = nullptr;
+#endif
+
+#if HAL_USE_UART 
 UARTDriver *SystemDependant_chibiosUART::ud = nullptr;
+#endif
 //uint8_t SystemDependant_chibiosUART::lostBuffer[pipeLen] = {0};
 // CircularBuffer SystemDependant_chibiosUART::lost = {
 //   .writePointer = 0,
@@ -141,6 +145,9 @@ CircularBuffer SystemDependant_chibiosUART::ring = {
 Pipe SystemDependant_chibiosUART::pipe =  _PIPE_DATA(SystemDependant_chibiosUART::pipe,
 						     &SystemDependant_chibiosUART::ring);
 
+#ifndef USART_CR2_STOP1_BITS 
+#define USART_CR2_STOP1_BITS    (0 << 12)
+#endif
 
 void SystemDependant_chibiosUART::initClass(UARTDriver &_ud, const uint32_t baud)
 {

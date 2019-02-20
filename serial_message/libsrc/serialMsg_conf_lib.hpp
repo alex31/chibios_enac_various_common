@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <array>
 #include <type_traits>
+#include "stdutil.h"
 
 // our checksum function
 template <size_t N>
@@ -272,6 +273,7 @@ private:
 #                .____) | |  __/ | |    | |  | (_| | | |         
 #                \_____/   \___| |_|    |_|   \__,_| |_|         
 */
+#if HAL_USE_SERIAL
 class SystemDependant_chibiosSerial {
 public:
 // static class; object cannot be instanced
@@ -324,7 +326,7 @@ void SystemDependant_chibiosSerial::read(std::array<uint8_t, N> &rbuffer, size_t
     chSysHalt("SystemDependant_chibiosSerial::read error");
   }
 }
-
+#endif // HAL_USE_SERIAL
 /*
 #                 _    _                  _            
 #                | |  | |                | |           
@@ -333,7 +335,8 @@ void SystemDependant_chibiosSerial::read(std::array<uint8_t, N> &rbuffer, size_t
 #                | |__| | | (_| | | |    \ |_          
 #                 \____/   \__,_| |_|     \__|         
 */
-class SystemDependant_chibiosUART {
+#if HAL_USE_UART
+ class SystemDependant_chibiosUART {
 public:
 // static class; object cannot be instanced
   SystemDependant_chibiosUART() = delete;
@@ -376,11 +379,13 @@ private:
   static void uartPumpThd(void *arg);
 };
 
+// #include "globalVar.h"
 template <size_t N>
 void SystemDependant_chibiosUART::write(const std::array<uint8_t, N> &wbuffer, size_t len)
 {
   len = len ? std::min(len, N) : N;
   //  std::cout << "really send " << len << " on interface\n";
+  //  DebugTrace("send %u b.", len);
   size_t retv = len;
   const msg_t status = uartSendTimeout (ud, &retv, wbuffer.data(), TIME_INFINITE);
   if ((status != MSG_OK) or (retv != len)) {
@@ -388,8 +393,6 @@ void SystemDependant_chibiosUART::write(const std::array<uint8_t, N> &wbuffer, s
   }
 }
 
-#include "stdutil.h"
-#include "globalVar.h"
 template <size_t N>
 void SystemDependant_chibiosUART::read(std::array<uint8_t, N> &rbuffer, size_t len)
 {
@@ -400,7 +403,7 @@ void SystemDependant_chibiosUART::read(std::array<uint8_t, N> &rbuffer, size_t l
     chSysHalt("SystemDependant_chibiosUART::read error");
   }
 }
-
+#endif  // HAL_USE_UART
 
 #endif
 
