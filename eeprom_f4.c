@@ -1,4 +1,4 @@
-#include "eeprom_f4.h"
+#include "eeprom.h"
 #include "stm32f4xx_flash.h"
 
 //#define TRACE_EEPROM 1
