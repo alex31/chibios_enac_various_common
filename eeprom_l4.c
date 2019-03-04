@@ -282,13 +282,17 @@ ErrorCond memcopyToFlash(const void *from, const void *flashAddr,
 
 
 
-ErrorCond eepromStore (EepromStructType eepromStructType, const void *data, uint32_t len)
+ErrorCond eepromStore (const EepromStructType eepromStructType, const void *data,
+		       const uint32_t len)
 {
   const  objInEeprom *flashStartAddr = (objInEeprom *) FLASH_USER_START_ADDR;
   objInEeprom *objToFlashEepromAddr = (objInEeprom *) flashStartAddr;
 
   const size_t objToFlashSize = sizeof(objInEeprom)+len;
   objInEeprom *objToFlash = (objInEeprom *) malloc_m(objToFlashSize);
+
+  if (objToFlash == NULL)
+    return (MALLOC_ERR);
 
 #ifdef TRACE_EEPROM
   DebugTrace ("before loop objToFlashEepromAddr = %p", objToFlashEepromAddr);
@@ -351,8 +355,8 @@ ErrorCond eepromStore (EepromStructType eepromStructType, const void *data, uint
 
 
 
-ErrorCond eepromLoad (EepromStructType eepromStructType, void *data, 
-		      uint32_t len)
+ErrorCond eepromLoad (const EepromStructType eepromStructType, void *data, 
+		      const uint32_t len)
 {
   const  objInEeprom *flashStartAddr = (objInEeprom *) FLASH_USER_START_ADDR;
   objInEeprom *objToFlashEepromAddr = (objInEeprom *) flashStartAddr;
@@ -460,7 +464,7 @@ ErrorCond eepromWipe (void)
 }
 
 
-size_t eepromGetLenOfType (EepromStructType eepromStructType)
+size_t eepromGetLenOfType (const EepromStructType eepromStructType)
 {
   const  objInEeprom *flashStartAddr = (objInEeprom *) FLASH_USER_START_ADDR;
   objInEeprom *objToFlashEepromAddr = (objInEeprom *) flashStartAddr;
