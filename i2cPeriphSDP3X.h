@@ -186,6 +186,41 @@ msg_t  sdp3xRestart(Spd3xDriver *sdpp, const Spd3xRequest request);
 msg_t  sdp3xStop(Spd3xDriver *sdpp);
 
 
+/**
+ * @brief   put device in sleep mode
+ * @details continuous operations, if any, must be stopped before entering sleep mode
+ *          triggered operation, if any, must be terminated before entering sleep mode
+ *
+ * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ *
+ * @return              The operation status.
+ * @retval MSG_OK       if the function succeeded.
+ * @retval MSG_RESET    if one or more I2C errors occurred, the errors can
+ *                      be retrieved using @p i2cGetErrors().
+ * @retval MSG_TIMEOUT  if a timeout occurred before operation end.
+ *
+ * @api
+ */
+msg_t  sdp3xSleep(Spd3xDriver *sdpp);
+
+
+/**
+ * @brief	wake up device
+ * @details	device must be in sleep mode before waking it
+ *
+ * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ *
+ * @return              The operation status.
+ * @retval MSG_OK       if the function succeeded.
+ * @retval MSG_RESET    if one or more I2C errors occurred, the errors can
+ *                      be retrieved using @p i2cGetErrors().
+ * @retval MSG_TIMEOUT  if a timeout occurred before operation end.
+ *
+ * @api
+ */
+msg_t  sdp3xWakeup(Spd3xDriver *sdpp);
+
+
 
 /**
  * @brief   fetch data after a continuous operation has been previously launched with
@@ -207,23 +242,6 @@ msg_t  sdp3xCache(Spd3xDriver *sdpp, const Spd3xRequest request);
 
 
 
-/**
- * @brief   send command to sensor
- * @details mostly internal function, in API to permit advanced use, like entering sleeping mode
- *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
- * @param[in] cmd       command, see reference manuel
- *
- *
- * @return              The operation status.
- * @retval MSG_OK       if the function succeeded.
- * @retval MSG_RESET    if one or more I2C errors occurred, the errors can
- *                      be retrieved using @p i2cGetErrors().
- * @retval MSG_TIMEOUT  if a timeout occurred before operation end.
- *
- * @api
- */
-msg_t sdp3xSend(const Spd3xDriver *sdpp, const Spd3xCommand cmd);
 
 
 

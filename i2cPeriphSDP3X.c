@@ -28,6 +28,24 @@ typedef struct __attribute__((packed)) {
 static uint8_t crc8_poly31_calc (const uint8_t data[], const size_t len);
 static bool atomCheck(const Spd3xDataAtom *atom);
 
+/**
+ * @brief   send command to sensor
+ * @details mostly internal function, in API to permit advanced use, like entering sleeping mode
+ *
+ * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] cmd       command, see reference manuel
+ *
+ *
+ * @return              The operation status.
+ * @retval MSG_OK       if the function succeeded.
+ * @retval MSG_RESET    if one or more I2C errors occurred, the errors can
+ *                      be retrieved using @p i2cGetErrors().
+ * @retval MSG_TIMEOUT  if a timeout occurred before operation end.
+ *
+ * @notapi
+ */
+msg_t sdp3xSend(const Spd3xDriver *sdpp, const Spd3xCommand cmd);
+
 /* After the start measurement command is sent:-the first measurement result 
    is available after 8ms;.-small accuracy deviations (few %of reading) 
    can occur during the next 12ms. */
@@ -131,6 +149,42 @@ msg_t  sdp3xStop(Spd3xDriver *sdpp)
   return sdp3xSend(sdpp, SPD3X_STOP_CONTINUOUS);
 }
 
+msg_t  sdp3xSleep(Spd3xDriver *sdpp)
+{
+  return sdp3xSend(sdpp, SPD3X_SLEEP);
+}
+
+msg_t  sdp3xWakeup(Spd3xDriver *sdpp)
+{
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cAcquireBus(sdpp->i2cp);
+#endif
+  static const uint8_t dummy[] = {0};
+  // chibios does not permit to just send 1 adress bytes with nothing
+  // so we send 1 byte, sensor will no ack : status will be error
+  msg_t status =  i2cMasterTransmitTimeout(sdpp->i2cp, sdpp->slaveAddr,
+					   dummy, sizeof(dummy),
+					   NULL, 0, I2C_TIMOUT_MS) ;
+  if (status != MSG_OK) {
+    resetI2c(sdpp->i2cp);
+  }
+
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cReleaseBus(sdpp->i2cp);
+#endif
+
+  // we need to send somme dummy operation until it works
+  // after several try without success, we give up
+  int try = 5;
+  do {
+    status = sdp3xStop(sdpp);
+    if (try)
+      chThdSleepMilliseconds(10);
+  } while (try-- && (status != MSG_OK));
+
+  return status;
+}
+  
 msg_t  sdp3xGeneralReset(I2CDriver *i2cp)
 {
   static const uint8_t command[] = {SPD3X_GENERAL_RESET_COMMAND};
@@ -144,12 +198,9 @@ msg_t  sdp3xGeneralReset(I2CDriver *i2cp)
 					  NULL, 0, I2C_TIMOUT_MS) ;
   if (status != MSG_OK) {
     resetI2c(i2cp);
-#if I2C_USE_MUTUAL_EXCLUSION
-    i2cReleaseBus(i2cp);
-#endif
   }
 #if I2C_USE_MUTUAL_EXCLUSION
-  i2cReleaseBus(i2cp);
+    i2cReleaseBus(i2cp);
 #endif
   return status;
 }
