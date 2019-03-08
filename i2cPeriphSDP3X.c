@@ -206,7 +206,7 @@ msg_t  sdp3xGeneralReset(I2CDriver *i2cp)
 }
 
 
-msg_t  sdp3xCache(Spd3xDriver *sdpp, const Spd3xRequest request)
+msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request)
 {
   msg_t status;
   size_t len;

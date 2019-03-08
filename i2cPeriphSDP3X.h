@@ -22,7 +22,7 @@
 
 /**
  * @name    kind of operation permited
- * @brief   parameter used by start, restart, and cache operation
+ * @brief   parameter used by start, restart, and fetch operation
  * @note    start, restart allways fetch all parameters : pressure, temp and scale
  * @{
  */
@@ -238,7 +238,7 @@ msg_t  sdp3xWakeup(Spd3xDriver *sdpp);
  *
  * @api
  */
-msg_t  sdp3xCache(Spd3xDriver *sdpp, const Spd3xRequest request);
+msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request);
 
 
 
@@ -271,7 +271,7 @@ msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id);
 
 /**
  * @brief   get previously fetched differential pressure
- * @details data has to be previoulsy fetched with start, restart, or cache function
+ * @details data has to be previoulsy fetched with start, restart, or fetch function
  *
  * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
  *
@@ -283,7 +283,7 @@ float  sdp3xGetPressure(Spd3xDriver *sdpp);
 
 /**
  * @brief   get previously fetched temperature
- * @details data has to be previoulsy fetched with start, restart, or cache function
+ * @details data has to be previoulsy fetched with start, restart, or fetch function
  *
  * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
  *
