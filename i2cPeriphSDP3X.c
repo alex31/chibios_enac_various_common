@@ -1,5 +1,4 @@
 #include "i2cPeriphSDP3X.h"
-#include "math.h"
 
 #include "globalVar.h"
 
@@ -29,7 +28,6 @@ struct _Spd3xDriver {
   I2CDriver	 *i2cp;
   Spd3xAddress slaveAddr;
   float		scale;
-  float		massflow;
   float		pressure;
   float		temp;
 } ;
@@ -130,13 +128,7 @@ msg_t  sdp3xRestart(Spd3xDriver *sdpp, const Spd3xRequest request)
   
   sdpp->scale = scale;
   sdpp->temp = temp / SPD3X_TEMP_SCALE;
-  if ((cmd == SPD3X_CONTINUOUS_DIFFPRESS_AVERAGE) || (cmd == SPD3X_ONESHOT_DIFFPRESS)) {
-    sdpp->pressure = pressOrFlow / sdpp->scale;
-    sdpp->massflow = NAN;
-  } else {
-    sdpp->massflow = pressOrFlow;
-    sdpp->pressure = NAN;
-  }
+  sdpp->pressure = pressOrFlow / sdpp->scale;
   
   return MSG_OK;
 }
@@ -176,16 +168,13 @@ msg_t  sdp3xCache(Spd3xDriver *sdpp, const Spd3xRequest request)
   msg_t status;
   size_t len;
   Sdp3xMeasure meas;
-  bool massflow = false;
   
   switch (request) {
   case SPD3X_massflow :
     len = 3;
-    massflow = true;
     break;
   case SPD3X_massflow_temp :
     len = 6;
-    massflow = true; 
    break;
   case SPD3X_pressure :
     len = 3;
@@ -238,13 +227,7 @@ msg_t  sdp3xCache(Spd3xDriver *sdpp, const Spd3xRequest request)
   case 3:
     crcOk |= atomCheck(&meas.press);
     const int16_t pressOrFlow = ((int16_t) meas.press.data[1]) | ((int16_t) (meas.press.data[0]) << 8);
-    if (massflow == false) {
-      sdpp->pressure = pressOrFlow / sdpp->scale;
-      sdpp->massflow = NAN;
-    } else {
-      sdpp->massflow = pressOrFlow;
-      sdpp->pressure = NAN;
-    }
+    sdpp->pressure = pressOrFlow / sdpp->scale;
   }
   
   if (!crcOk)
@@ -315,11 +298,6 @@ float sdp3xGetTemp(Spd3xDriver *sdpp)
 float sdp3xGetScale(Spd3xDriver *sdpp)
 {
   return sdpp->scale;
-}
-
-float sdp3xGetMassflow(Spd3xDriver *sdpp)
-{
-  return sdpp->massflow;
 }
 
 

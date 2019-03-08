@@ -4,8 +4,12 @@
 #include "hal.h"
 #include "stdutil.h"
 
+/**
+ * @name    Scale factor on raw values to get
+ * @{
+ */
 #define  SPD31_SCALE_60  (60.0f)
-#define  SPD32_SCALE_240  (240.0f)
+#define  SPD32_SCALE_240 (240.0f)
 #define  SPD33_SCALE_20  (20.0f)
 #define  SPD3X_TEMP_SCALE (200.0f)
 #define  SPD3X_WAIT_AFTER_RESET_MS (20U)
@@ -56,7 +60,6 @@ typedef struct Spd3xDriver {
   I2CDriver	 *i2cp;
   Spd3xAddress slaveAddr;
   float		scale;
-  float		massflow;
   float		pressure;
   float		temp;
 } Spd3xDriver;
@@ -82,4 +85,4 @@ float  sdp3xGetTemp(Spd3xDriver *sdpp);
 
 float  sdp3xGetScale(Spd3xDriver *sdpp);
 
-float sdp3xGetMassflow(Spd3xDriver *sdpp);
+
