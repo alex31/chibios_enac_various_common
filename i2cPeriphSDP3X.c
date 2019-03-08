@@ -24,13 +24,6 @@ typedef struct __attribute__((packed)) {
   Spd3xDataAtom sn1;
 } Sdp3xRawIdent ;
 
-struct _Spd3xDriver {
-  I2CDriver	 *i2cp;
-  Spd3xAddress slaveAddr;
-  float		scale;
-  float		pressure;
-  float		temp;
-} ;
 
 static uint8_t crc8_poly31_calc (const uint8_t data[], const size_t len);
 static bool atomCheck(const Spd3xDataAtom *atom);
@@ -76,7 +69,6 @@ msg_t  sdp3xRestart(Spd3xDriver *sdpp, const Spd3xRequest request)
     
   case SPD3X_pressure :
   case SPD3X_pressure_temp :
-  case SPD3X_pressure_temp_scale :
     cmd = SPD3X_CONTINUOUS_DIFFPRESS_AVERAGE;
     break;
 
@@ -181,9 +173,6 @@ msg_t  sdp3xCache(Spd3xDriver *sdpp, const Spd3xRequest request)
     break;
   case SPD3X_pressure_temp :
     len = 6;
-    break;
-  case SPD3X_pressure_temp_scale :
-    len = 9;
     break;
 
   default:
