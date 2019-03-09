@@ -15,8 +15,12 @@ typedef struct __attribute__((packed)) {
   Spd3xDataAtom scale;
 } Sdp3xMeasure ;
 
+
+#define SN_SIZE 2
+#define PN_SIZE 4
+#define SNPN_SIZE (SN_SIZE+PN_SIZE)
 typedef struct __attribute__((packed)) {
-  Spd3xDataAtom snpn[6];
+  Spd3xDataAtom snpn[6]; // SN then PN
 } Sdp3xRawIdent ;
 
 
@@ -271,10 +275,6 @@ msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request)
   return MSG_OK;
 }
 
-#define SNPN_SIZE (sizeof(Sdp3xRawIdent)/sizeof(Spd3xDataAtom))
-#define SN_SIZE 2
-#define PN_SIZE 4
-_Static_assert(SN_SIZE+PN_SIZE == SNPN_SIZE, "SN_SIZE+PN_SIZE == SNPN_SIZE");
 
 msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id)
 {
