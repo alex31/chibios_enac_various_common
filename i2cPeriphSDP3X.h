@@ -24,6 +24,9 @@
  * @name    kind of operation permited
  * @brief   parameter used by start, restart, and fetch operation
  * @note    start, restart allways fetch all parameters : pressure, temp and scale
+ *          about compensation, see 
+ * https://www.sensirion.com/en/about-us/newsroom/sensirion-specialist-articles/efficient-gas-flow-measurements-in-bypass/
+ * https://www.sensirion.com/fileadmin/user_upload/customers/sensirion/Dokumente/14_Specialist_Articles/Sensirion_Specialist_Article_Gas_Flow_Bypass_EN.pdf
  * @{
  */
 typedef enum {
