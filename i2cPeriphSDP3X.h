@@ -269,45 +269,6 @@ msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id);
 
 
 
-/**
- * @brief   get previously fetched differential pressure
- * @details data has to be previoulsy fetched with start, restart, or fetch function
- *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
- *
- * @return              differential pressure in pascal
- *
- * @api
- */
-float  sdp3xGetPressure(Spd3xDriver *sdpp);
-
-/**
- * @brief   get previously fetched temperature
- * @details data has to be previoulsy fetched with start, restart, or fetch function
- *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
- *
- * @return              temperature in celcius degree.
- *
- * @api
- */
-float  sdp3xGetTemp(Spd3xDriver *sdpp);
-
-/**
- * @brief   get previously fetched differential pressure
- * @details data has to be previoulsy fetched with start or restart
- *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
- *
- * @return              scale factor, which indicate sensor type 
- *			sdp31:60, sdp32:240, sdp33:20
- *			scale factor is already applied by getPressure function.
- *
- * @api
- */
-float  sdp3xGetScale(Spd3xDriver *sdpp);
-
-
 /*
 #                 _ __           _                    _                   
 #                | '_ \         (_)                  | |                  
@@ -339,3 +300,59 @@ struct Spd3xDriver {
   float		pressure;
   float		temp;
 } ;
+
+/*
+#                                                                                        
+#                                                                                        
+#                  __ _    ___    ___    ___   ___    ___     ___    _ __   ___          
+#                 / _` |  / __|  / __|  / _ \ / __|  / __|   / _ \  | '__| / __|         
+#                | (_| | | (__  | (__  |  __/ \__ \  \__ \  | (_) | | |    \__ \         
+#                 \__,_|  \___|  \___|  \___| |___/  |___/   \___/  |_|    |___/         
+*/
+
+
+/**
+ * @brief   get previously fetched differential pressure
+ * @details data has to be previoulsy fetched with start, restart, or fetch function
+ *
+ * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ *
+ * @return              differential pressure in pascal
+ *
+ * @api
+ */
+static inline float  sdp3xGetPressure(Spd3xDriver *sdpp) {
+  return sdpp->pressure;
+}
+
+/**
+ * @brief   get previously fetched temperature
+ * @details data has to be previoulsy fetched with start, restart, or fetch function
+ *
+ * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ *
+ * @return              temperature in celcius degree.
+ *
+ * @api
+ */
+static inline float  sdp3xGetTemp(Spd3xDriver *sdpp) {
+  return sdpp->temp;  
+}
+
+/**
+ * @brief   get previously fetched differential pressure
+ * @details data has to be previoulsy fetched with start or restart
+ *
+ * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ *
+ * @return              scale factor, which indicate sensor type 
+ *			sdp31:60, sdp32:240, sdp33:20
+ *			scale factor is already applied by getPressure function.
+ *
+ * @api
+ */
+static inline float  sdp3xGetScale(Spd3xDriver *sdpp) {
+  return sdpp->scale;
+}
+
+

@@ -325,22 +325,6 @@ msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id)
   return MSG_OK;
 }
 
-inline float sdp3xGetPressure(Spd3xDriver *sdpp)
-{
-  return sdpp->pressure;
-}
-
-float sdp3xGetTemp(Spd3xDriver *sdpp)
-{
-  return sdpp->temp;
-}
-
-float sdp3xGetScale(Spd3xDriver *sdpp)
-{
-  return sdpp->scale;
-}
-
-
 msg_t sdp3xSend(const Spd3xDriver *sdpp, const Spd3xCommand cmd)
 {
 #if I2C_USE_MUTUAL_EXCLUSION
