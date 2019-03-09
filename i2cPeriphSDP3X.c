@@ -16,12 +16,7 @@ typedef struct __attribute__((packed)) {
 } Sdp3xMeasure ;
 
 typedef struct __attribute__((packed)) {
-  Spd3xDataAtom pn2;
-  Spd3xDataAtom pn1;
-  Spd3xDataAtom sn4;
-  Spd3xDataAtom sn3;
-  Spd3xDataAtom sn2;
-  Spd3xDataAtom sn1;
+  Spd3xDataAtom snpn[6];
 } Sdp3xRawIdent ;
 
 
@@ -276,14 +271,20 @@ msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request)
   return MSG_OK;
 }
 
+#define SNPN_SIZE (sizeof(Sdp3xRawIdent)/sizeof(Spd3xDataAtom))
+#define SN_SIZE 2
+#define PN_SIZE 4
+_Static_assert(SN_SIZE+PN_SIZE == SNPN_SIZE, "SN_SIZE+PN_SIZE == SNPN_SIZE");
+
 msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id)
 {
   Sdp3xRawIdent rid;
   
+  
   sdp3xSend(sdpp, SPD3X_READ_PRODUCT_ID1);
   chThdSleepMilliseconds(1);
   sdp3xSend(sdpp, SPD3X_READ_PRODUCT_ID2);
-
+  
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(sdpp->i2cp);
 #endif
@@ -298,29 +299,35 @@ msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id)
     return status;
   }
 #if I2C_USE_MUTUAL_EXCLUSION
-    i2cReleaseBus(sdpp->i2cp);
+  i2cReleaseBus(sdpp->i2cp);
 #endif
-
-  if (!(atomCheck(&rid.sn1) &&
-	atomCheck(&rid.sn2) &&
-	atomCheck(&rid.sn3) &&
-	atomCheck(&rid.sn4) &&
-	atomCheck(&rid.pn1) &&
-	atomCheck(&rid.pn2))) {
-    return  MSG_RESET;
+  
+  for (size_t i=0; i<SNPN_SIZE; i++) {
+    if (!(atomCheck(&rid.snpn[i])))
+      return  MSG_RESET;
   }
 
-  DebugTrace("pn2.0 pn2.1 pn1.0 pn1.1 = 0x%x:%x:%x:%x",
-  	     rid.pn2.data[0], rid.pn2.data[1], rid.pn1.data[0], rid.pn1.data[1]);
+  for (size_t i=0; i<SNPN_SIZE; i++) {
+    DebugTrace("snpn[%d] = 0x%x:%x", i, rid.snpn[i].data[0],
+	       rid.snpn[i].data[1]);
+  }
   
-  id->pn = SWAP_ENDIAN32_BY_8(rid.pn1.data[1], rid.pn1.data[0],
-			      rid.pn2.data[1], rid.pn2.data[0]);
+  id->pn = SWAP_ENDIAN32_BY_8(rid.snpn[0].data[1], rid.snpn[0].data[0],
+			      rid.snpn[1].data[1], rid.snpn[1].data[0]);
 
-  const uint64_t snl = SWAP_ENDIAN32_BY_8(rid.sn3.data[1], rid.sn3.data[0],
-			      rid.sn2.data[1], rid.sn2.data[0]);
-  const uint64_t snm = SWAP_ENDIAN32_BY_8(rid.sn1.data[1], rid.sn1.data[0],
-			      rid.sn2.data[1], rid.sn2.data[0]);
-  id->sn = (snl << 32) | (snm & 0xffffffff);
+  for (size_t i=0; i<SN_SIZE; i++) {
+    id->pn |= rid.snpn[i].data[1];
+    id->pn <<= 8;
+    id->pn |= rid.snpn[i].data[0];
+    id->pn <<= 8;
+  }
+  
+   for (size_t i=SN_SIZE; i<SNPN_SIZE; i++) {
+    id->sn |= rid.snpn[i].data[1];
+    id->sn <<= 8;
+    id->sn |= rid.snpn[i].data[0];
+    id->sn <<= 8;
+  }
   
   return MSG_OK;
 }
