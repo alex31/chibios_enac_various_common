@@ -131,9 +131,9 @@ msg_t  sdp3xRestart(Spd3xDriver *sdpp, const Spd3xRequest request)
     return MSG_RESET;
   }
   
-  const int16_t pressOrFlow = ((int16_t) meas.press.data[1]) | ((int16_t) (meas.press.data[0]) << 8);
-  const int16_t temp = ((int16_t) meas.temp.data[1]) | ((int16_t) (meas.temp.data[0]) << 8);
-  const int16_t scale = ((int16_t) meas.scale.data[1]) | ((int16_t) (meas.scale.data[0]) << 8);
+  const int16_t pressOrFlow = meas.press.data[1] | meas.press.data[0] << 8;
+  const int16_t temp = meas.temp.data[1] | meas.temp.data[0] << 8;
+  const int16_t scale =  meas.scale.data[1] | meas.scale.data[0] << 8;
   
   sdpp->scale = scale;
   sdpp->temp = temp / SPD3X_TEMP_SCALE;
@@ -255,17 +255,17 @@ msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request)
   switch (len) {
   case 9:
     crcOk |= atomCheck(&meas.scale);
-    const int16_t scale = ((int16_t) meas.scale.data[1]) | ((int16_t) (meas.scale.data[0]) << 8);
+    const int16_t scale =  meas.scale.data[1] | meas.scale.data[0] << 8;
     sdpp->scale = scale;
     /* FALLTHRU */
   case 6:
     crcOk |= atomCheck(&meas.temp);
-    const int16_t temp = ((int16_t) meas.temp.data[1]) | ((int16_t) (meas.temp.data[0]) << 8);
+    const int16_t temp = meas.temp.data[1] | meas.temp.data[0] << 8;
     sdpp->temp = temp / SPD3X_TEMP_SCALE;
     /* FALLTHRU */
   case 3:
     crcOk |= atomCheck(&meas.press);
-    const int16_t pressOrFlow = ((int16_t) meas.press.data[1]) | ((int16_t) (meas.press.data[0]) << 8);
+    const int16_t pressOrFlow = meas.press.data[1] | meas.press.data[0] << 8;
     sdpp->pressure = pressOrFlow / sdpp->scale;
   }
   
@@ -308,26 +308,14 @@ msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id)
       return  MSG_RESET;
   }
 
-  for (size_t i=0; i<SNPN_SIZE; i++) {
-    DebugTrace("snpn[%d] = 0x%x:%x", i, rid.snpn[i].data[0],
-	       rid.snpn[i].data[1]);
-  }
-  
-  id->pn = SWAP_ENDIAN32_BY_8(rid.snpn[0].data[1], rid.snpn[0].data[0],
-			      rid.snpn[1].data[1], rid.snpn[1].data[0]);
-
-  for (size_t i=0; i<SN_SIZE; i++) {
-    id->pn |= rid.snpn[i].data[1];
+  for (size_t i=0; i<SN_SIZE*2; i++) {
     id->pn <<= 8;
-    id->pn |= rid.snpn[i].data[0];
-    id->pn <<= 8;
+    id->pn |= rid.snpn[i/2].data[i%2];
   }
-  
-   for (size_t i=SN_SIZE; i<SNPN_SIZE; i++) {
-    id->sn |= rid.snpn[i].data[1];
+ 
+  for (size_t i=SN_SIZE*2; i<SNPN_SIZE*2; i++) {
     id->sn <<= 8;
-    id->sn |= rid.snpn[i].data[0];
-    id->sn <<= 8;
+    id->sn |= rid.snpn[i/2].data[i%2];
   }
   
   return MSG_OK;

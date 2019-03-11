@@ -5,7 +5,7 @@
 #include "stdutil.h"
 
 /*
-  TODO : use table based crc calculation
+  TODO : clean ident code after tests
  */
 
 /**                                                               
