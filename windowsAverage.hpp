@@ -216,8 +216,10 @@ template <typename T, size_t N, typename L=Lock::None>
 class ResizableWindowMedianAverage : public ResizableWindowAverage<T, N, L>
 {
 public:
-  T     getSum () const;
+  T     getSum (const bool fromIsr=false) const;
   T     getMean (void) const {return getSum() / (ResizableWindowAverage<T, N, L>::size()
+						 - (2 * medianFilterSize));};
+  T     getMeanFromIsr (void) const {return getSum(true) / (ResizableWindowAverage<T, N, L>::size()
 						 - (2 * medianFilterSize));};
   void  setMedianFilterSize(const size_t mfs);
   size_t getMedianFilterSize(void) {return medianFilterSize;};
@@ -236,12 +238,14 @@ void ResizableWindowMedianAverage<T, N, L>::setMedianFilterSize(const size_t mfs
 }
 
 template <typename T, size_t N, typename L>
-T ResizableWindowMedianAverage<T, N, L>::getSum () const
+T ResizableWindowMedianAverage<T, N, L>::getSum (const bool fromIsr) const
 {
-  L::lock();
+  if (not fromIsr)
+    L::lock();
   std::array<T, N> toSort = ResizableWindowAverage<T, N, L>::ring; // make inplace sort on a copy
   auto laccum =  ResizableWindowAverage<T, N, L>::accum ;
-  L::unlock();
+  if (not fromIsr)
+    L::unlock();
   
   const auto tosort_dynEnd = toSort.begin()+ResizableWindowAverage<T, N, L>::size();
 

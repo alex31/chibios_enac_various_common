@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <array>
 #include <type_traits>
-#include "stdutil.h"
+
 
 // our checksum function
 template <size_t N>
@@ -10,6 +10,7 @@ uint16_t fletcher16(const std::array<uint8_t, N> &buffer,  const size_t len=0UL)
 
 
 #if defined(_CHIBIOS_RT_)
+#include "stdutil.h"
 #endif
 
 
