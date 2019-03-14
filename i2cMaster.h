@@ -104,7 +104,9 @@ msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset,
 			     float *percent);
 #endif
 
-
+#ifdef I2C_USE_SDP3X
+#include "i2cPeriphSDP3X.h"
+#endif
 
 
 #include "i2cPeriphMpu9250.h"
