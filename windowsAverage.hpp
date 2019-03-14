@@ -240,12 +240,17 @@ void ResizableWindowMedianAverage<T, N, L>::setMedianFilterSize(const size_t mfs
 template <typename T, size_t N, typename L>
 T ResizableWindowMedianAverage<T, N, L>::getSum (const bool fromIsr) const
 {
-  if (not fromIsr)
-    L::lock();
+  // if this is called from ISR, we don't have time to sort array to use median filter
+  // so we behave like a window average
+  if (fromIsr) {
+    return ResizableWindowAverage<T, N, L>::accum;
+  }
+  
+  L::lock();
   std::array<T, N> toSort = ResizableWindowAverage<T, N, L>::ring; // make inplace sort on a copy
   auto laccum =  ResizableWindowAverage<T, N, L>::accum ;
-  if (not fromIsr)
-    L::unlock();
+  
+  L::unlock();
   
   const auto tosort_dynEnd = toSort.begin()+ResizableWindowAverage<T, N, L>::size();
 

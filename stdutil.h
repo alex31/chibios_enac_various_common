@@ -96,12 +96,6 @@ static inline uint64_t SWAP_ENDIAN64(uint64_t x) {
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
   
-/* #define RotL(x,shift) ((x << shift) | (x >> (sizeof(x) - shift))) */
-/* #define RotR(x,shift) ((x >> shift) | (x << (sizeof(x) - shift))) */
-
-/* #define RotLnb(x,shift,nbits) ((x << shift) | (x >> (nbits - shift))) */
-/* #define RotRnb(x,shift,nbits) ((x >> shift) | (x << (nbits - shift))) */
-
 
 // optimised rotation routine
 // http://en.wikipedia.org/wiki/Circular_shift
