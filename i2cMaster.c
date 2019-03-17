@@ -849,6 +849,10 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
 #include "i2cPeriphSDP3X.c"
 #endif
 
+#ifdef I2C_USE_LIS3MDL
+#include "i2cPeriphLIS3MDL.c"
+#endif
+
 /*
 #                 _ __           _                    _                   
 #                | '_ \         (_)                  | |                  

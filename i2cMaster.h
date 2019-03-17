@@ -108,6 +108,10 @@ msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset,
 #include "i2cPeriphSDP3X.h"
 #endif
 
+#ifdef I2C_USE_LIS3MDL
+#include "i2cPeriphLIS3MDL.h"
+#endif
+
 
 #include "i2cPeriphMpu9250.h"
 #include "i2cPeriphMPL3115A2.h"
