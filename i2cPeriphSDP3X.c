@@ -61,18 +61,14 @@ msg_t sdp3xSend(const Spd3xDriver *sdpp, const Spd3xCommand cmd);
 */
 
 
-msg_t sdp3xStart(Spd3xDriver *sdpp, I2CDriver *i2cp,
-		 const Spd3xAddress addr, const Spd3xRequest request)
+void sdp3xStart(Spd3xDriver *sdpp, I2CDriver *i2cp,
+		const Spd3xAddress addr)
 {
   sdpp->i2cp = i2cp;
   sdpp->slaveAddr = addr;
-  if (request != SPD3X_none) 
-    return sdp3xRestart(sdpp, request);
-  else
-    return MSG_OK;
 }
 
-msg_t  sdp3xRestart(Spd3xDriver *sdpp, const Spd3xRequest request)
+msg_t  sdp3xRequest(Spd3xDriver *sdpp, const Spd3xRequest request)
 {
   Sdp3xMeasure meas;
   Spd3xCommand cmd;

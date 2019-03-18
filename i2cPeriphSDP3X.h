@@ -126,27 +126,17 @@ msg_t  sdp3xGeneralReset(I2CDriver *i2cp);
 
 
 /**
- * @brief   initialise object, peripheral and make first data fetch.
- * @details for all requests but SPD3X_none, will send command and fetch all values, so after this call
- *          sdp3xGetXXX can be called to get data. scale will also be initialised for further
- *          fetches of only pressure or pressure and temp
+ * @brief   initialise object
  *
  * @param[in] sdpp      pointer to the @p uninitialized Spd3xDriver object
  * @param[in] i2cp      pointer to the @p I2CDriver object
  * @param[in] addr      I²C slave address (7 bits)
- * @param[in] request   request : type of request, continuous or one shot,
- *			massflow or temperature compensated
  *
- * @return              The operation status.
- * @retval MSG_OK       if the function succeeded.
- * @retval MSG_RESET    if one or more I2C errors occurred, the errors can
- *                      be retrieved using @p i2cGetErrors().
- * @retval MSG_TIMEOUT  if a timeout occurred before operation end.
  *
  * @api
  */
-msg_t  sdp3xStart(Spd3xDriver *sdpp, I2CDriver *i2cp,
-		  const Spd3xAddress addr, const Spd3xRequest request);
+void  sdp3xStart(Spd3xDriver *sdpp, I2CDriver *i2cp,
+		 const Spd3xAddress addr);
 
 
 
@@ -169,7 +159,7 @@ msg_t  sdp3xStart(Spd3xDriver *sdpp, I2CDriver *i2cp,
  *
  * @api
  */
-msg_t  sdp3xRestart(Spd3xDriver *sdpp, const Spd3xRequest request);
+msg_t  sdp3xRequest(Spd3xDriver *sdpp, const Spd3xRequest request);
 
 
 
