@@ -267,6 +267,10 @@ extern "C" {
    uint32_t	pin;
 } GpioPin;
 
+typedef struct {
+  float v[3];
+} Vec3f;
+
 
 /*
  F4
