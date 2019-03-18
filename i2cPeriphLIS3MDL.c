@@ -11,7 +11,7 @@ static msg_t sendConfig(Lis3mdlDriver *ldp, const Lis3mdlConfigRegister *regs);
 static msg_t writeOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, const uint8_t value);
 static msg_t readOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, uint8_t *value);
 
-msg_t lis3mdlInit(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg)
+msg_t lis3mdlStart(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg)
 {
   // if one want to reinit using previous configuration, one can pass NULL as second arg
   if (cfg) {
@@ -234,7 +234,7 @@ msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp)
   if (writeOneRegister(ldp, LIS3_CTRL_REG3, 0x03) != MSG_OK)
     return  LIS3_I2C_ERROR;
 
-  if (lis3mdlInit(ldp, NULL) != MSG_OK)
+  if (lis3mdlStart(ldp, NULL) != MSG_OK)
     return  LIS3_I2C_ERROR;
     
   Lis3_ErrorMask mask = 0;

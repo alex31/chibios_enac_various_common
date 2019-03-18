@@ -178,7 +178,7 @@ typedef struct {
 } Lis3mdlVec3f;
 
 
-msg_t lis3mdlInit(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg);
+msg_t lis3mdlStart(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg);
 msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp);
 msg_t lis3mdlFetch(Lis3mdlDriver *ldp, const Lis3_RegAddr first,
 			  const Lis3_RegAddr last);
