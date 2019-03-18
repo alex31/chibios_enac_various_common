@@ -173,17 +173,14 @@ typedef struct {
 } Lis3mdlDriver;
 
 
-typedef struct {
-  float v[3];
-} Lis3mdlVec3f;
 
 
 msg_t lis3mdlStart(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg);
 msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp);
 msg_t lis3mdlFetch(Lis3mdlDriver *ldp, const Lis3_RegAddr first,
 			  const Lis3_RegAddr last);
-void lis3mdlGetMag(const Lis3mdlDriver *ldp, Lis3mdlVec3f *mag);
-void lis3mdlGetNormalizedMag(const Lis3mdlDriver *ldp, Lis3mdlVec3f *normMag);
+void lis3mdlGetMag(const Lis3mdlDriver *ldp, Vec3f *mag);
+void lis3mdlGetNormalizedMag(const Lis3mdlDriver *ldp, Vec3f *normMag);
 float lis3mdlGetTemp(const Lis3mdlDriver *ldp);
 Lis3_Status lis3mdlGetStatus(const Lis3mdlDriver *ldp);
 Lis3_InterruptSource lis3mdlGetIntSource(const Lis3mdlDriver *ldp);

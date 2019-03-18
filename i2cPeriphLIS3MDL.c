@@ -24,14 +24,26 @@ msg_t lis3mdlStart(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg)
   static const uint8_t lisReg[] = {LIS3_WHO_AM_I};
   uint8_t	    response[1];
   const uint8_t numSlave = ldp->config->numSlave;
+
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cAcquireBus(ldp->config->i2cp);
+#endif
   msg_t  status = i2cMasterTransmitTimeout(ldp->config->i2cp, numSlave,
 					   lisReg, sizeof(lisReg),        
 					   response, sizeof(response), 100) ;
+
   if (status != MSG_OK) {
     DebugTrace("lis i²c init error status = %ld", status);
     resetI2c(ldp->config->i2cp);
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cReleaseBus(ldp->config->i2cp);
+#endif
     return status;
   }
+
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cReleaseBus(ldp->config->i2cp);
+#endif
 
   if (response[0] != LIS3_WHO_AM_I_ANSWER) {
     return MSG_RESET;
@@ -76,17 +88,29 @@ msg_t lis3mdlFetch(Lis3mdlDriver *ldp, const Lis3_RegAddr first,
   const uint8_t writeBuffer[1] = {first | 0x80};
   uint8_t *readAddr = &ldp->raw.status + (first - LIS3_STATUS_REG);
   const size_t readLen = 1 + last - first;
+
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cAcquireBus(ldp->config->i2cp);
+#endif
   status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 				    writeBuffer, sizeof(writeBuffer),        
 				    readAddr, readLen, 100) ;
+  
   if (status != MSG_OK) {
     resetI2c(ldp->config->i2cp);
+#if I2C_USE_MUTUAL_EXCLUSION
+    i2cReleaseBus(ldp->config->i2cp);
+#endif
   }
+  
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cReleaseBus(ldp->config->i2cp);
+#endif
   return status;
 }
 
 
-void lis3mdlGetMag(const Lis3mdlDriver *ldp, Lis3mdlVec3f *mag)
+void lis3mdlGetMag(const Lis3mdlDriver *ldp, Vec3f *mag)
 {
   float ratio=0.0f;
   switch (ldp->config->regs.cr[1] & LIS3_CR2_SCALE_16_GAUSS) {
@@ -100,7 +124,7 @@ void lis3mdlGetMag(const Lis3mdlDriver *ldp, Lis3mdlVec3f *mag)
     mag->v[i] = ldp->raw.out[i] / ratio;
 }
 
-void lis3mdlGetNormalizedMag(const Lis3mdlDriver *ldp, Lis3mdlVec3f *normMag)
+void lis3mdlGetNormalizedMag(const Lis3mdlDriver *ldp, Vec3f *normMag)
 {
   lis3mdlGetMag(ldp, normMag);
   const float length = sqrtf(normMag->v[0] * normMag->v[0] +
@@ -255,9 +279,13 @@ static msg_t sendConfig(Lis3mdlDriver *ldp, const Lis3mdlConfigRegister *regs)
   uint8_t writeBuffer[8] = {[0] =  LIS3_CTRL_REG1 | 0X80};
   memcpy(&writeBuffer[1], &regs->cr, sizeof(regs->cr));
 
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cAcquireBus(ldp->config->i2cp);
+#endif
   msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 				    writeBuffer, sizeof(regs->cr) +1,        
 				    NULL, 0, 100) ;
+  
   if (status != MSG_OK) goto i2cError;
 
   writeBuffer[0] = LIS3_INT_CFG;
@@ -275,34 +303,62 @@ static msg_t sendConfig(Lis3mdlDriver *ldp, const Lis3mdlConfigRegister *regs)
 				    NULL, 0, 100) ;
   if (status != MSG_OK) goto i2cError;
 
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cReleaseBus(ldp->config->i2cp);
+#endif
   return status;
 
  i2cError:
   resetI2c(ldp->config->i2cp);
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cReleaseBus(ldp->config->i2cp);
+#endif
   return status;
 }
 
 static msg_t writeOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, const uint8_t value)
 {
   const uint8_t writeBuffer[] = {reg, value};
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cAcquireBus(ldp->config->i2cp);
+#endif
   msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
-				    writeBuffer, sizeof(writeBuffer),  
-				    NULL, 0, 100) ;
+					  writeBuffer, sizeof(writeBuffer),  
+					  NULL, 0, 100) ;
   if (status != MSG_OK) {
     resetI2c(ldp->config->i2cp);
+#if I2C_USE_MUTUAL_EXCLUSION
+    i2cReleaseBus(ldp->config->i2cp);
+#endif
   }
+  
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cReleaseBus(ldp->config->i2cp);
+#endif
   return status;
 }
 
 static msg_t readOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, uint8_t *value)
 {
   const uint8_t writeBuffer[] = {reg};
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cAcquireBus(ldp->config->i2cp);
+#endif
   msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
-				    writeBuffer, sizeof(writeBuffer),  
-				    value, 1, 100) ;
+					  writeBuffer, sizeof(writeBuffer),  
+					  value, 1, 100) ;
+  
   if (status != MSG_OK) {
     resetI2c(ldp->config->i2cp);
+#if I2C_USE_MUTUAL_EXCLUSION
+    i2cReleaseBus(ldp->config->i2cp);
+#endif
   }
+
+
+#if I2C_USE_MUTUAL_EXCLUSION
+  i2cReleaseBus(ldp->config->i2cp);
+#endif
   return status;
 }
 
