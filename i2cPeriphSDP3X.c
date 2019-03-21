@@ -7,12 +7,12 @@ static void resetI2c(I2CDriver *i2cp);
 typedef struct __attribute__((packed)) {
   uint8_t data[2];
   uint8_t crc;
-}  Spd3xDataAtom ;
+}  Sdp3xDataAtom ;
 
 typedef struct __attribute__((packed)) {
-  Spd3xDataAtom press;
-  Spd3xDataAtom temp;
-  Spd3xDataAtom scale;
+  Sdp3xDataAtom press;
+  Sdp3xDataAtom temp;
+  Sdp3xDataAtom scale;
 } Sdp3xMeasure ;
 
 
@@ -20,18 +20,18 @@ typedef struct __attribute__((packed)) {
 #define PN_SIZE 4
 #define SNPN_SIZE (SN_SIZE+PN_SIZE)
 typedef struct __attribute__((packed)) {
-  Spd3xDataAtom snpn[6]; // SN then PN
+  Sdp3xDataAtom snpn[6]; // SN then PN
 } Sdp3xRawIdent ;
 
 
 static inline uint8_t crc8_poly31_calc (const uint8_t data[], const size_t len);
-static bool atomCheck(const Spd3xDataAtom *atom);
+static bool atomCheck(const Sdp3xDataAtom *atom);
 
 /**
  * @brief   send command to sensor
  * @details mostly internal function, in API to permit advanced use, like entering sleeping mode
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
  * @param[in] cmd       command, see reference manuel
  *
  *
@@ -43,7 +43,7 @@ static bool atomCheck(const Spd3xDataAtom *atom);
  *
  * @notapi
  */
-msg_t sdp3xSend(const Spd3xDriver *sdpp, const Spd3xCommand cmd);
+msg_t sdp3xSend(const Sdp3xDriver *sdpp, const Sdp3xCommand cmd);
 
 /* After the start measurement command is sent:-the first measurement result 
    is available after 8ms;.-small accuracy deviations (few %of reading) 
@@ -61,41 +61,41 @@ msg_t sdp3xSend(const Spd3xDriver *sdpp, const Spd3xCommand cmd);
 */
 
 
-void sdp3xStart(Spd3xDriver *sdpp, I2CDriver *i2cp,
-		const Spd3xAddress addr)
+void sdp3xStart(Sdp3xDriver *sdpp, I2CDriver *i2cp,
+		const Sdp3xAddress addr)
 {
   sdpp->i2cp = i2cp;
   sdpp->slaveAddr = addr;
 }
 
-msg_t  sdp3xRequest(Spd3xDriver *sdpp, const Spd3xRequest request)
+msg_t  sdp3xRequest(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 {
   Sdp3xMeasure meas;
-  Spd3xCommand cmd;
+  Sdp3xCommand cmd;
   msg_t status;
   
   switch (request) {
-  case SPD3X_massflow :
-  case SPD3X_massflow_temp :
-    cmd = SPD3X_CONTINUOUS_MASSFLOW_AVERAGE;
+  case SDP3X_massflow :
+  case SDP3X_massflow_temp :
+    cmd = SDP3X_CONTINUOUS_MASSFLOW_AVERAGE;
     break;
     
-  case SPD3X_pressure :
-  case SPD3X_pressure_temp :
-    cmd = SPD3X_CONTINUOUS_DIFFPRESS_AVERAGE;
+  case SDP3X_pressure :
+  case SDP3X_pressure_temp :
+    cmd = SDP3X_CONTINUOUS_DIFFPRESS_AVERAGE;
     break;
 
-  case SPD3X_massflow_temp_oneshot:
-    cmd = SPD3X_ONESHOT_MASSFLOW;
+  case SDP3X_massflow_temp_oneshot:
+    cmd = SDP3X_ONESHOT_MASSFLOW;
     break;
 
-  case SPD3X_pressure_temp_scale_oneshot:
-    cmd = SPD3X_ONESHOT_DIFFPRESS;
+  case SDP3X_pressure_temp_scale_oneshot:
+    cmd = SDP3X_ONESHOT_DIFFPRESS;
     break;
     
     
   default:
-    cmd = SPD3X_NOT_INITIALIZED;
+    cmd = SDP3X_NOT_INITIALIZED;
   }
 
   //  DebugTrace ("restart cmd = 0x%x", cmd);
@@ -132,24 +132,24 @@ msg_t  sdp3xRequest(Spd3xDriver *sdpp, const Spd3xRequest request)
   const int16_t scale =  meas.scale.data[1] | meas.scale.data[0] << 8;
   
   sdpp->scale = scale;
-  sdpp->temp = temp / SPD3X_TEMP_SCALE;
+  sdpp->temp = temp / SDP3X_TEMP_SCALE;
   sdpp->pressure = pressOrFlow / sdpp->scale;
   
   return MSG_OK;
 }
   
 
-msg_t  sdp3xStop(Spd3xDriver *sdpp)
+msg_t  sdp3xStop(Sdp3xDriver *sdpp)
 {
-  return sdp3xSend(sdpp, SPD3X_STOP_CONTINUOUS);
+  return sdp3xSend(sdpp, SDP3X_STOP_CONTINUOUS);
 }
 
-msg_t  sdp3xSleep(Spd3xDriver *sdpp)
+msg_t  sdp3xSleep(Sdp3xDriver *sdpp)
 {
-  return sdp3xSend(sdpp, SPD3X_SLEEP);
+  return sdp3xSend(sdpp, SDP3X_SLEEP);
 }
 
-msg_t  sdp3xWakeup(Spd3xDriver *sdpp)
+msg_t  sdp3xWakeup(Sdp3xDriver *sdpp)
 {
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(sdpp->i2cp);
@@ -182,13 +182,13 @@ msg_t  sdp3xWakeup(Spd3xDriver *sdpp)
   
 msg_t  sdp3xGeneralReset(I2CDriver *i2cp)
 {
-  static const uint8_t command[] = {SPD3X_GENERAL_RESET_COMMAND};
+  static const uint8_t command[] = {SDP3X_GENERAL_RESET_COMMAND};
   
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(i2cp);
 #endif
 
-  msg_t status = i2cMasterTransmitTimeout(i2cp, SPD3X_GENERAL_RESET_ADDRESS,
+  msg_t status = i2cMasterTransmitTimeout(i2cp, SDP3X_GENERAL_RESET_ADDRESS,
 					  command, sizeof(command),
 					  NULL, 0, I2C_TIMOUT_MS) ;
   if (status != MSG_OK) {
@@ -201,23 +201,23 @@ msg_t  sdp3xGeneralReset(I2CDriver *i2cp)
 }
 
 
-msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request)
+msg_t  sdp3xFetch(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 {
   msg_t status;
   size_t len;
   Sdp3xMeasure meas;
   
   switch (request) {
-  case SPD3X_massflow :
+  case SDP3X_massflow :
     len = 3;
     break;
-  case SPD3X_massflow_temp :
+  case SDP3X_massflow_temp :
     len = 6;
    break;
-  case SPD3X_pressure :
+  case SDP3X_pressure :
     len = 3;
     break;
-  case SPD3X_pressure_temp :
+  case SDP3X_pressure_temp :
     len = 6;
     break;
 
@@ -257,7 +257,7 @@ msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request)
   case 6:
     crcOk |= atomCheck(&meas.temp);
     const int16_t temp = meas.temp.data[1] | meas.temp.data[0] << 8;
-    sdpp->temp = temp / SPD3X_TEMP_SCALE;
+    sdpp->temp = temp / SDP3X_TEMP_SCALE;
     /* FALLTHRU */
   case 3:
     crcOk |= atomCheck(&meas.press);
@@ -272,15 +272,15 @@ msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request)
 }
 
 
-msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id)
+msg_t  sdp3xGetIdent(Sdp3xDriver *sdpp, Sdp3xIdent *id)
 {
   Sdp3xRawIdent rid;
   id->sn = id->pn = 0U;
   
   
-  sdp3xSend(sdpp, SPD3X_READ_PRODUCT_ID1);
+  sdp3xSend(sdpp, SDP3X_READ_PRODUCT_ID1);
   chThdSleepMilliseconds(1);
-  sdp3xSend(sdpp, SPD3X_READ_PRODUCT_ID2);
+  sdp3xSend(sdpp, SDP3X_READ_PRODUCT_ID2);
   
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(sdpp->i2cp);
@@ -317,7 +317,7 @@ msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id)
   return MSG_OK;
 }
 
-msg_t sdp3xSend(const Spd3xDriver *sdpp, const Spd3xCommand cmd)
+msg_t sdp3xSend(const Sdp3xDriver *sdpp, const Sdp3xCommand cmd)
 {
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(sdpp->i2cp);
@@ -378,7 +378,7 @@ static inline uint8_t crc8_poly31_calc(const uint8_t data[], const size_t len) {
   return crc;
 }
 
-static bool atomCheck(const Spd3xDataAtom *atom)
+static bool atomCheck(const Sdp3xDataAtom *atom)
 {
   return crc8_poly31_calc(atom->data, sizeof(atom->data)) == atom->crc;
 }

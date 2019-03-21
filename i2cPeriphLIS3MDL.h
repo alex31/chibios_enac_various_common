@@ -3,9 +3,6 @@
 #include "ch.h"
 #include "hal.h"
 
-/*
-  TODO : doxygen, reinit with NULL as config to be used in SPD3X driver
- */
 
 typedef enum {
   LIS3_SLAVE_SA1_LOW  = 0x1C,

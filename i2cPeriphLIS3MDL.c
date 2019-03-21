@@ -1,7 +1,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "stdutil.h"
-#include "globalVar.h"
+//#include "globalVar.h"
 #include "i2cPeriphLIS3MDL.h"
 #include <string.h>
 
@@ -33,7 +33,7 @@ msg_t lis3mdlStart(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg)
 					   response, sizeof(response), 100) ;
 
   if (status != MSG_OK) {
-    DebugTrace("lis i²c init error status = %ld", status);
+    //    DebugTrace("lis i²c init error status = %ld", status);
     resetI2c(ldp->config->i2cp);
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cReleaseBus(ldp->config->i2cp);
@@ -248,9 +248,9 @@ msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp)
     (out_st[2]-out_nost[2]) / gaussFactor12g
   };
 
-  for (size_t j=0; j<3; j++) {
-    DebugTrace("diff[%u] = %.3f", j, diff[j]);
-  }
+  /* for (size_t j=0; j<3; j++) { */
+  /*   DebugTrace("diff[%u] = %.3f", j, diff[j]); */
+  /* } */
 
   if (writeOneRegister(ldp, LIS3_CTRL_REG1, 0x1C) != MSG_OK)
     return  LIS3_I2C_ERROR;

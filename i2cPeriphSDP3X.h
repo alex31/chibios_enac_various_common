@@ -13,11 +13,11 @@
  * @brief   this value is given by sensor in scale field
  * @{
  */
-#define  SPD31_SCALE_60  (60.0f) 
-#define  SPD32_SCALE_240 (240.0f)
-#define  SPD33_SCALE_20  (20.0f)
-#define  SPD3X_TEMP_SCALE (200.0f) /**< @brief All sensors use same temperature scale */
-#define  SPD3X_WAIT_AFTER_RESET_MS (20U) /**< @brief Time to wait between general reset and first transaction */
+#define  SDP31_SCALE_60  (60.0f) 
+#define  SDP32_SCALE_240 (240.0f)
+#define  SDP33_SCALE_20  (20.0f)
+#define  SDP3X_TEMP_SCALE (200.0f) /**< @brief All sensors use same temperature scale */
+#define  SDP3X_WAIT_AFTER_RESET_MS (20U) /**< @brief Time to wait between general reset and first transaction */
 /** @} */
 
 /**
@@ -30,14 +30,14 @@
  * @{
  */
 typedef enum {
-  SPD3X_none,				/**< @brief used by sdp3xStart if one shot operation are used later  */
-  SPD3X_massflow,               	/**< @brief massflow compensated, continuous fetch only pressure     */
-  SPD3X_massflow_temp,			/**< @brief massflow compensated, continuous fetch pressure and temp */
-  SPD3X_massflow_temp_oneshot,		/**< @brief massflow compensated, one shot fetch all  */
-  SPD3X_pressure,			/**< @brief temp compensated, continuous fetch only pressure     */
-  SPD3X_pressure_temp,			/**< @brief temp compensated, continuous fetch pressure and temp */
-  SPD3X_pressure_temp_scale_oneshot	/**< @brief temp compensated, one shot fetch all   */
-}  Spd3xRequest;
+  SDP3X_none,				/**< @brief used by sdp3xStart if one shot operation are used later  */
+  SDP3X_massflow,               	/**< @brief massflow compensated, continuous fetch only pressure     */
+  SDP3X_massflow_temp,			/**< @brief massflow compensated, continuous fetch pressure and temp */
+  SDP3X_massflow_temp_oneshot,		/**< @brief massflow compensated, one shot fetch all  */
+  SDP3X_pressure,			/**< @brief temp compensated, continuous fetch only pressure     */
+  SDP3X_pressure_temp,			/**< @brief temp compensated, continuous fetch pressure and temp */
+  SDP3X_pressure_temp_scale_oneshot	/**< @brief temp compensated, one shot fetch all   */
+}  Sdp3xRequest;
 /** @} */
 
 
@@ -48,11 +48,11 @@ typedef enum {
  * @{
  */
 typedef enum __attribute__ ((__packed__)) {
-  SPD3X_GENERAL_RESET_ADDRESS =0x0,
-    SPD3X_ADDRESS1 =0x21, /**< @brief  ADDR Pin connected to GND		*/
-    SPD3X_ADDRESS2,	  /**< @brief  ADDR Pin connected with 1.2 KOhm to GND 	*/	 
-    SPD3X_ADDRESS3	  /**< @brief  ADDR Pin connected with 2.7 KOhm to GND	*/  
-    } Spd3xAddress;
+  SDP3X_GENERAL_RESET_ADDRESS =0x0,
+    SDP3X_ADDRESS1 =0x21, /**< @brief  ADDR Pin connected to GND		*/
+    SDP3X_ADDRESS2,	  /**< @brief  ADDR Pin connected with 1.2 KOhm to GND 	*/	 
+    SDP3X_ADDRESS3	  /**< @brief  ADDR Pin connected with 2.7 KOhm to GND	*/  
+    } Sdp3xAddress;
 /** @} */
 
 /**
@@ -60,9 +60,9 @@ typedef enum __attribute__ ((__packed__)) {
  * @{
  */
 typedef enum __attribute__ ((__packed__)) {
-  SPD3X_GENERAL_RESET_COMMAND =0x06,   /**< @brief   reset all SDP3x devices on a given I²C bus */
+  SDP3X_GENERAL_RESET_COMMAND =0x06,   /**< @brief   reset all SDP3x devices on a given I²C bus */
 
-    } Spd3xGeneralCommand;
+    } Sdp3xGeneralCommand;
 /** @} */
 
 
@@ -73,18 +73,18 @@ typedef enum __attribute__ ((__packed__)) {
  * @{
  */
 typedef enum __attribute__ ((__packed__)) {
-  SPD3X_NOT_INITIALIZED = 0x0,
-    SPD3X_CONTINUOUS_MASSFLOW_AVERAGE = SWAP_ENDIAN16(0x3603), 
-    SPD3X_CONTINUOUS_MASSFLOW_IMMEDIATE = SWAP_ENDIAN16(0x3608),
-    SPD3X_CONTINUOUS_DIFFPRESS_AVERAGE = SWAP_ENDIAN16(0x3615),
-    SPD3X_CONTINUOUS_DIFFPRESS_IMMEDIATE = SWAP_ENDIAN16(0x361E),
-    SPD3X_STOP_CONTINUOUS = SWAP_ENDIAN16(0x3FF9),
-    SPD3X_ONESHOT_MASSFLOW = SWAP_ENDIAN16(0x3726),
-    SPD3X_ONESHOT_DIFFPRESS = SWAP_ENDIAN16(0x372D),
-    SPD3X_SLEEP = SWAP_ENDIAN16(0x3677),
-    SPD3X_READ_PRODUCT_ID1 = SWAP_ENDIAN16(0x367C),
-    SPD3X_READ_PRODUCT_ID2 = SWAP_ENDIAN16(0xE102),
-    }  Spd3xCommand;
+  SDP3X_NOT_INITIALIZED = 0x0,
+    SDP3X_CONTINUOUS_MASSFLOW_AVERAGE = SWAP_ENDIAN16(0x3603), 
+    SDP3X_CONTINUOUS_MASSFLOW_IMMEDIATE = SWAP_ENDIAN16(0x3608),
+    SDP3X_CONTINUOUS_DIFFPRESS_AVERAGE = SWAP_ENDIAN16(0x3615),
+    SDP3X_CONTINUOUS_DIFFPRESS_IMMEDIATE = SWAP_ENDIAN16(0x361E),
+    SDP3X_STOP_CONTINUOUS = SWAP_ENDIAN16(0x3FF9),
+    SDP3X_ONESHOT_MASSFLOW = SWAP_ENDIAN16(0x3726),
+    SDP3X_ONESHOT_DIFFPRESS = SWAP_ENDIAN16(0x372D),
+    SDP3X_SLEEP = SWAP_ENDIAN16(0x3677),
+    SDP3X_READ_PRODUCT_ID1 = SWAP_ENDIAN16(0x367C),
+    SDP3X_READ_PRODUCT_ID2 = SWAP_ENDIAN16(0xE102),
+    }  Sdp3xCommand;
 /** @} */
 
 /**
@@ -95,20 +95,20 @@ typedef enum __attribute__ ((__packed__)) {
 typedef struct {
   uint64_t sn; /**< @brief  SDP31:0x3010101, SDP32:0x03010201, SDP33:0x03010301 */
   uint32_t pn;
-} Spd3xIdent;
+} Sdp3xIdent;
 /** @} */
 
 /**
  * @name    handler of driver
  * @{
  */
-typedef struct Spd3xDriver Spd3xDriver; /**< @brief  opaque type */
+typedef struct Sdp3xDriver Sdp3xDriver; /**< @brief  opaque type */
 /** @} */
 
 /**
  * @brief   reset all SDP3X sensors on the given bus
  * @details must be called at power on, or restart, but not on normal operation
- *          after such a reset, one must wait at least SPD3X_WAIT_AFTER_RESET_MS
+ *          after such a reset, one must wait at least SDP3X_WAIT_AFTER_RESET_MS
  *          before attempting an I²C transaction
  *
  * @param[in] i2cp      pointer to the @p I2CDriver object
@@ -128,15 +128,15 @@ msg_t  sdp3xGeneralReset(I2CDriver *i2cp);
 /**
  * @brief   initialise object
  *
- * @param[in] sdpp      pointer to the @p uninitialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p uninitialized Sdp3xDriver object
  * @param[in] i2cp      pointer to the @p I2CDriver object
  * @param[in] addr      I²C slave address (7 bits)
  *
  *
  * @api
  */
-void  sdp3xStart(Spd3xDriver *sdpp, I2CDriver *i2cp,
-		 const Spd3xAddress addr);
+void  sdp3xStart(Sdp3xDriver *sdpp, I2CDriver *i2cp,
+		 const Sdp3xAddress addr);
 
 
 
@@ -145,9 +145,9 @@ void  sdp3xStart(Spd3xDriver *sdpp, I2CDriver *i2cp,
  * @details there several use case : ° launch again continuous sampling after a sdp3xStop,
  *				     ° start one shot measure,
  *				     ° start continuous sampling after use of sdp3xGetIdent :
- *				       start(..., SPD3X_none); getIdent(...), restart(..., one continuous mode)
+ *				       start(..., SDP3X_none); getIdent(...), restart(..., one continuous mode)
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
  * @param[in] request   request : type of request, continuous or one shot,
  *			massflow or temperature compensated
  *
@@ -159,14 +159,14 @@ void  sdp3xStart(Spd3xDriver *sdpp, I2CDriver *i2cp,
  *
  * @api
  */
-msg_t  sdp3xRequest(Spd3xDriver *sdpp, const Spd3xRequest request);
+msg_t  sdp3xRequest(Sdp3xDriver *sdpp, const Sdp3xRequest request);
 
 
 
 /**
  * @brief   stop a previously launched continuous operation
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
  *
  * @return              The operation status.
  * @retval MSG_OK       if the function succeeded.
@@ -176,7 +176,7 @@ msg_t  sdp3xRequest(Spd3xDriver *sdpp, const Spd3xRequest request);
  *
  * @api
  */
-msg_t  sdp3xStop(Spd3xDriver *sdpp);
+msg_t  sdp3xStop(Sdp3xDriver *sdpp);
 
 
 /**
@@ -184,7 +184,7 @@ msg_t  sdp3xStop(Spd3xDriver *sdpp);
  * @details continuous operations, if any, must be stopped before entering sleep mode
  *          triggered operation, if any, must be terminated before entering sleep mode
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
  *
  * @return              The operation status.
  * @retval MSG_OK       if the function succeeded.
@@ -194,14 +194,14 @@ msg_t  sdp3xStop(Spd3xDriver *sdpp);
  *
  * @api
  */
-msg_t  sdp3xSleep(Spd3xDriver *sdpp);
+msg_t  sdp3xSleep(Sdp3xDriver *sdpp);
 
 
 /**
  * @brief	wake up device
  * @details	device must be in sleep mode before waking it
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
  *
  * @return              The operation status.
  * @retval MSG_OK       if the function succeeded.
@@ -211,7 +211,7 @@ msg_t  sdp3xSleep(Spd3xDriver *sdpp);
  *
  * @api
  */
-msg_t  sdp3xWakeup(Spd3xDriver *sdpp);
+msg_t  sdp3xWakeup(Sdp3xDriver *sdpp);
 
 
 
@@ -219,7 +219,7 @@ msg_t  sdp3xWakeup(Spd3xDriver *sdpp);
  * @brief   fetch data after a continuous operation has been previously launched with
  *	    start or restart
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
  * @param[in] request   request : length of request, only pressure or pressure and temperature
  *			          fetching only pressure is faster so sampling frequency can be higher
  *
@@ -231,7 +231,7 @@ msg_t  sdp3xWakeup(Spd3xDriver *sdpp);
  *
  * @api
  */
-msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request);
+msg_t  sdp3xFetch(Sdp3xDriver *sdpp, const Sdp3xRequest request);
 
 
 
@@ -245,8 +245,8 @@ msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request);
  *	    between sdp31, sdp32, or sdp33 and chip revision. Since scale factor also gives this information	
  *	    but without chip revision.
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
- * @param[in] id        pointer to the @p uninitialized Spd3xIdent object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
+ * @param[in] id        pointer to the @p uninitialized Sdp3xIdent object
  *
  *
  * @return              The operation status.
@@ -257,7 +257,7 @@ msg_t  sdp3xFetch(Spd3xDriver *sdpp, const Spd3xRequest request);
  *
  * @api
  */
-msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id);
+msg_t  sdp3xGetIdent(Sdp3xDriver *sdpp, Sdp3xIdent *id);
 
 
 
@@ -286,9 +286,9 @@ msg_t  sdp3xGetIdent(Spd3xDriver *sdpp, Spd3xIdent *id);
 // Cannot be hidden in C file since size must be known by source file using API.
 // Since we avoid dynamically allocated memory in embedded system, we cannot have a factory function returning
 // a pointer on malloc area
-struct Spd3xDriver {
+struct Sdp3xDriver {
   I2CDriver    *i2cp;
-  Spd3xAddress  slaveAddr;
+  Sdp3xAddress  slaveAddr;
   float		scale;
   float		pressure;
   float		temp;
@@ -308,13 +308,13 @@ struct Spd3xDriver {
  * @brief   get previously fetched differential pressure
  * @details data has to be previoulsy fetched with start, restart, or fetch function
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
  *
  * @return              differential pressure in pascal
  *
  * @api
  */
-static inline float  sdp3xGetPressure(Spd3xDriver *sdpp) {
+static inline float  sdp3xGetPressure(Sdp3xDriver *sdpp) {
   return sdpp->pressure;
 }
 
@@ -322,13 +322,13 @@ static inline float  sdp3xGetPressure(Spd3xDriver *sdpp) {
  * @brief   get previously fetched temperature
  * @details data has to be previoulsy fetched with start, restart, or fetch function
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
  *
  * @return              temperature in celcius degree.
  *
  * @api
  */
-static inline float  sdp3xGetTemp(Spd3xDriver *sdpp) {
+static inline float  sdp3xGetTemp(Sdp3xDriver *sdpp) {
   return sdpp->temp;  
 }
 
@@ -336,7 +336,7 @@ static inline float  sdp3xGetTemp(Spd3xDriver *sdpp) {
  * @brief   get previously fetched differential pressure
  * @details data has to be previoulsy fetched with start or restart
  *
- * @param[in] sdpp      pointer to the @p initialized Spd3xDriver object
+ * @param[in] sdpp      pointer to the @p initialized Sdp3xDriver object
  *
  * @return              scale factor, which indicate sensor type 
  *			sdp31:60, sdp32:240, sdp33:20
@@ -344,7 +344,7 @@ static inline float  sdp3xGetTemp(Spd3xDriver *sdpp) {
  *
  * @api
  */
-static inline float  sdp3xGetScale(Spd3xDriver *sdpp) {
+static inline float  sdp3xGetScale(Sdp3xDriver *sdpp) {
   return sdpp->scale;
 }
 
