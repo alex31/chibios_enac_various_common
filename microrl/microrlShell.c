@@ -177,7 +177,25 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
     Bits 15:12 Reserved, must be kept at reset value.
     Bits 11:0 DEV_ID[11:0]: Device identifier
     The device ID is 0x449.
-   */
+
+
+    L47x 49x
+    Bits 31:16 REV_ID[15:0] Revision identifier
+    This field indicates the revision of the device.
+    For STM32L475xx/476xx/486xx devices
+    0x1000: Rev 1
+    0x1001: Rev 2
+    0x1003: Rev 3
+    0x1007: Rev 4
+    For STM32L496xx/4A6xx devices
+    0x1000: Rev A
+    0x2000: Rev B
+
+    Bits 11:0 DEV_ID[11:0]: Device identifier
+    The device ID is:
+    0x461 for STM32L496xx/4A6xx devices
+    0x415 for STM32L475xx/476xx/486xx devices.
+  */
   
 
   const uint16_t mcu_revid = (DBGMCU->IDCODE &  DBGMCU_IDCODE_REV_ID) >> 16;
@@ -186,6 +204,20 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
   char mcu_revid_chr = '?';
 
   switch (mcu_devid) {
+  case  0x415 : mcu_devid_str = "STM32L475xx/476xx/486xx devices";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = '1'; break;
+    case 0x1001 : mcu_revid_chr = '2'; break;
+    case 0x1003 : mcu_revid_chr = '3'; break;
+    case 0x1007 : mcu_revid_chr = '4'; break;
+    }
+    break;
+  case  0x461 : mcu_devid_str = "STM32L496xx/4A6xx devices";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x2000 : mcu_revid_chr = 'B'; break;
+    }
+    break;
   case  0x411 : mcu_devid_str = "STM32F2xx and *EARLY* STM32F40x and 41x";
     switch (mcu_revid) {
     case 0x1000 : mcu_revid_chr = 'A'; break;
