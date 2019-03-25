@@ -5,10 +5,10 @@
 #include "BMP3XX/bmp3.h"
 
 
-typedef uint32_t  Bmp3xRequest;
+typedef uint8_t  Bmp3xRequest;
 
 typedef struct {
-  uint8_t         slaveAddr;
+  I2CDriver       *i2cp;
   struct bmp3_dev bm3dev;
   uint32_t	  settings;
 } Bmp3xxConfig;
@@ -17,15 +17,13 @@ typedef struct {
 
 
 typedef struct  {
-  I2CDriver    *i2cp;
-  const         Bmp3xxConfig *config;
-  float         pressure;
-  float         temp;
+  Bmp3xxConfig     *config;
+  struct bmp3_data measure;
 } Bmp3xxDriver;
 
 
 
-msg_t  bmp3xxStart(Bmp3xxDriver *bmpp, const Bmp3xxConfig config);
+msg_t  bmp3xxStart(Bmp3xxDriver *bmpp, Bmp3xxConfig *config);
 msg_t  bmp3xxFetch(Bmp3xxDriver *bmpp, const Bmp3xRequest request);
 
 
@@ -50,7 +48,7 @@ msg_t  bmp3xxFetch(Bmp3xxDriver *bmpp, const Bmp3xRequest request);
  * @api
  */
 static inline float  bmp3xxGetPressure(Bmp3xxDriver *bmpp) {
-  return bmpp->pressure;
+  return bmpp->measure.pressure;
 }
 
 /**
@@ -64,5 +62,5 @@ static inline float  bmp3xxGetPressure(Bmp3xxDriver *bmpp) {
  * @api
  */
 static inline float  bmp3xxGetTemp(Bmp3xxDriver *bmpp) {
-  return bmpp->temp;  
+  return bmpp->measure.temperature;  
 }
