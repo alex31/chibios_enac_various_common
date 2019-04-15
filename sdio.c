@@ -500,18 +500,18 @@ bool sdioConnect (void)
   /*
    * Initializes the SDIO drivers.
    */
-  const uint32_t mode = PAL_MODE_ALTERNATE(12) | PAL_STM32_OTYPE_PUSHPULL |
-    PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUDR_FLOATING | PAL_STM32_MODE_ALTERNATE;
+  /* const uint32_t mode = PAL_MODE_ALTERNATE(12) | PAL_STM32_OTYPE_PUSHPULL | */
+  /*   PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUDR_FLOATING | PAL_STM32_MODE_ALTERNATE; */
 
-  palSetPadMode (GPIOC, GPIOC_SDIO_D0, mode | PAL_STM32_PUDR_PULLUP);
-  palSetPadMode (GPIOC, GPIOC_SDIO_D1, mode | PAL_STM32_PUDR_PULLUP);
-  palSetPadMode (GPIOC, GPIOC_SDIO_D2, mode | PAL_STM32_PUDR_PULLUP);
-  palSetPadMode (GPIOC, GPIOC_SDIO_D3, mode | PAL_STM32_PUDR_PULLUP);
-  palSetPadMode (GPIOC, GPIOC_SDIO_CK, mode);
-  palSetPadMode (GPIOD, GPIOD_SDIO_CMD, mode | PAL_STM32_PUDR_PULLUP);
-  // palSetPadMode (GPIOD, GPIOD_SDIO_CMD, mode);
+  /* palSetPadMode (GPIOC, GPIOC_SDIO_D0, mode | PAL_STM32_PUDR_PULLUP); */
+  /* palSetPadMode (GPIOC, GPIOC_SDIO_D1, mode | PAL_STM32_PUDR_PULLUP); */
+  /* palSetPadMode (GPIOC, GPIOC_SDIO_D2, mode | PAL_STM32_PUDR_PULLUP); */
+  /* palSetPadMode (GPIOC, GPIOC_SDIO_D3, mode | PAL_STM32_PUDR_PULLUP); */
+  /* palSetPadMode (GPIOC, GPIOC_SDIO_CK, mode); */
+  /* palSetPadMode (GPIOD, GPIOD_SDIO_CMD, mode | PAL_STM32_PUDR_PULLUP); */
+  /* // palSetPadMode (GPIOD, GPIOD_SDIO_CMD, mode); */
 
-  chThdSleepMilliseconds(100);
+  /* chThdSleepMilliseconds(100); */
 
 
   sdcStart(&SDCD1, NULL);   
