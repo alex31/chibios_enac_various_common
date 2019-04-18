@@ -328,6 +328,11 @@ struct _Icm20600Data
 };
 
 
+typedef struct {
+  uint8_t factory; // score : 0 is defective unit, 100 is perfect unit
+  bool	  bias;    // true is ok
+  bool	  passed;  // true if all test are ok
+} Icm20600TestResult;
 
 msg_t icm20600_init (Icm20600Data *imu, Icm20600Config* initParam);
 void icm20600_setGyroLpf (Icm20600Data *imu, const uint8_t lpf);
@@ -338,7 +343,7 @@ void icm20600_setAccelFsr (Icm20600Data *imu, const uint8_t fsr);
 void icm20600_fetch(Icm20600Data *imu);
 
 // temp in celcius degree, gyro in rad/s, accel in m/s², 
-void icm20600_getVal  (Icm20600Data *imu, float *temp, 
+void icm20600_getVal (Icm20600Data *imu, float *temp, 
 		      Vec3f *gyro, Vec3f *acc);
 Icm20600_interruptStatus icm20600_getItrStatus  (Icm20600Data *imu);
 uint8_t icm20600_getDevid (Icm20600Data *imu);
@@ -388,5 +393,7 @@ void icm20600_activateMotionDetect (Icm20600Data *imu, const uint32_t threadshol
 void icm20600_setModeDeepSleep (Icm20600Data *imu);
 
 
-
-
+// run self test and return results on each axis :
+// a zero value means selftest passed, otherwise bit in bitfield indicate which
+// axis is doomed
+Icm20600TestResult icm20600_runSelfTests (Icm20600Data *imu);

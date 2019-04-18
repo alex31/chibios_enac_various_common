@@ -13,8 +13,8 @@
 
 #define SPI_WRITE_REGISTERS(spid, regAdr,...)   {			\
     spiSelect(spid);							\
-    const uint8_t w_array[] __attribute__((aligned(CACHE_ALIGN))) = {regAdr, __VA_ARGS__}; \
-    cacheBufferFlush(w_array, sizeof(w_array));				\
+    uint8_t CACHE_ALIGNED(w_array[]) = {regAdr, __VA_ARGS__};		\
+    cacheBufferFlush(w_array, 1);				\
     spiSend(spid, sizeof(w_array), w_array);				\
     spiUnselect(spid);							\
   }
@@ -30,10 +30,10 @@ static inline void spiReadRegisters(SPIDriver *spid, const uint8_t regAddr,
 {
   spiSelect(spid);
   const size_t w_len = r_arrayLen + 1;
-  uint8_t w_array[w_len] __attribute__((aligned(CACHE_ALIGN)));
-  uint8_t lr_array[w_len] __attribute__((aligned(CACHE_ALIGN)));
+  uint8_t CACHE_ALIGNED(w_array[w_len]);
+  uint8_t CACHE_ALIGNED(lr_array[w_len]);
   w_array[0] = regAddr | 0x80;
-  cacheBufferFlush( w_array, 2);
+  cacheBufferFlush( w_array, w_len);
   spiExchange(spid, w_len, w_array, lr_array);
   cacheBufferInvalidate(lr_array, w_len);
   spiUnselect(spid);
@@ -44,13 +44,29 @@ static inline void spiReadRegisters(SPIDriver *spid, const uint8_t regAddr,
 static inline uint8_t spiReadOneRegister(SPIDriver *spid, const uint8_t regAddr)
 {
   spiSelect(spid);
-  uint8_t w_array[2] __attribute__((aligned(CACHE_ALIGN))) = {regAddr | 0x80, 0};
-  uint8_t r_array[sizeof(w_array)] __attribute__((aligned(CACHE_ALIGN)));
+  uint8_t CACHE_ALIGNED(w_array[2]) = {regAddr | 0x80, 0};
+  uint8_t CACHE_ALIGNED(r_array[2]);
+
   cacheBufferFlush( w_array, sizeof(w_array));
   spiExchange(spid, sizeof(w_array), w_array, r_array);
   cacheBufferInvalidate(r_array, sizeof(r_array));
   spiUnselect(spid);
   return r_array[1];
+}
+
+static inline void spiModifyRegister(SPIDriver *spid, const uint8_t regAddr,
+				     const uint8_t clearMask, const uint8_t setMask)
+{
+  uint8_t reg = spiReadOneRegister(spid, regAddr);
+  MODIFY_REG(reg, clearMask, setMask);
+  SPI_WRITE_REGISTERS(spid, regAddr, reg);
+}
+
+static inline void spiSetBitsRegister(SPIDriver *spid, const uint8_t regAddr, const uint8_t setMask)
+{
+  uint8_t reg = spiReadOneRegister(spid, regAddr);
+  reg |= setMask;
+  SPI_WRITE_REGISTERS(spid, regAddr, reg);
 }
 
 
