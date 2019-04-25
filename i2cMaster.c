@@ -38,6 +38,7 @@ static msg_t  i2cMasterControlForMPL3115A2_SLV_RW_01 (I2CDriver *i2cd);
 #endif
 
 static bool i2cMasterResetBus (I2CDriver *i2cd);
+static void restartI2c(I2CDriver *i2cp);
 static bool i2cMasterUnhangBus (I2CDriver *i2cd);
 static void   i2cMasterSetModePeriphI2c (I2CDriver *i2cd);
 static msg_t  i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  
@@ -927,6 +928,15 @@ static bool   i2cMasterResetBus (I2CDriver *i2cd)
   i2cMasterSetModePeriphI2c (i2cd);
   i2cStart(i2cd, getMasterConfigFromDriver(i2cd)->i2ccfg);
   return res;
+}
+
+static void restartI2c(I2CDriver *i2cp)
+{
+  const I2CConfig *cfg = i2cp->config;
+  i2cStop(i2cp);
+  chThdSleepMilliseconds(1); 
+  i2cStart(i2cp, cfg);
+  chThdSleepMilliseconds(1); 
 }
 
 

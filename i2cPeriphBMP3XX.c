@@ -13,7 +13,6 @@ static int8_t i2cWrite (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_
 static int8_t i2cRead (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t len,
 		       void *userData);
 static void   waitMilliseconds (uint32_t period);
-static void resetI2c(I2CDriver *i2cp);
 
 msg_t  bmp3xxStart (Bmp3xxDriver *bmpp, Bmp3xxConfig *config)
 {
@@ -50,23 +49,55 @@ static int8_t i2cWrite (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_
 {
   I2CDriver *i2cp = (I2CDriver *) userData;
   const size_t wlen = len + 1;
-  uint8_t writeBuffer[wlen];
+  uint8_t CACHE_ALIGNED(writeBuffer[wlen]);
 
   //  DebugTrace("write %u b @r%u", len, reg_addr);
   
   writeBuffer[0] = reg_addr;
   memcpy(&writeBuffer[1], data, len);
+
+  cacheBufferFlush(writeBuffer, wlen);
   const msg_t status = i2cMasterTransmitTimeout(i2cp, dev_id,
 						writeBuffer, wlen,
 						NULL, 0, 100);
   if (status != MSG_OK) {
-    resetI2c(i2cp);
+    restartI2c(i2cp);
     return BMP3_E_COMM_FAIL;
   }
   
   return BMP3_OK;
 }
 
+
+// have to manage cache in case of STM32F7XX or STM32H7XX
+#if defined STM32F7XX || defined STM32H7XX
+static int8_t i2cRead (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t len,
+		       void *userData)
+{
+  I2CDriver * const i2cp = (I2CDriver *) userData;
+  const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg_addr};
+  uint8_t       CACHE_ALIGNED(readBuffer[len+32]); // +32 to isolate cache line
+
+  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
+  const msg_t status = i2cMasterTransmitTimeout(i2cp, dev_id,
+						writeBuffer, sizeof(writeBuffer),
+						readBuffer, len, 100);
+  cacheBufferInvalidate(readBuffer, len);
+  memcpy(data, readBuffer, len);
+  /* DebugTrace("read %u b @r%u", len, reg_addr); */
+  /* for (size_t i=0; i<len; i++) { */
+  /*   DebugTrace("R[%u]=0x%x",  reg_addr+i, data[i]); */
+  /* } */
+
+  if (status != MSG_OK) {
+    restartI2c(i2cp);
+    return BMP3_E_COMM_FAIL;
+  }
+  
+  return BMP3_OK;
+}
+
+#else // Mcu without cache
 
 static int8_t i2cRead (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t len,
 		       void *userData)
@@ -83,7 +114,7 @@ static int8_t i2cRead (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t
   /* } */
 
   if (status != MSG_OK) {
-    resetI2c(i2cp);
+    restartI2c(i2cp);
     return BMP3_E_COMM_FAIL;
   }
   
@@ -91,16 +122,10 @@ static int8_t i2cRead (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t
 }
 
 
+#endif // defined STM32F7XX || defined STM32H7XX
+
 static void waitMilliseconds (uint32_t period)
 {
   chThdSleepMilliseconds(period);
 }
 
-static void resetI2c(I2CDriver *i2cp)
-{
-    const I2CConfig *cfg = i2cp->config;
-    i2cStop(i2cp);
-    chThdSleepMilliseconds(1); 
-    i2cStart(i2cp, cfg);
-    chThdSleepMilliseconds(1); 
-}

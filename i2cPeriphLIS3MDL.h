@@ -166,7 +166,7 @@ typedef struct __attribute__((packed)) {
 
 typedef struct {
   Lis3mdlRaw	CACHE_ALIGNED(raw);
-  const Lis3mdlConfig *config;
+  const Lis3mdlConfig CACHE_ALIGNED(*config);
 } Lis3mdlDriver;
 
 

@@ -2,7 +2,6 @@
 
 #include "globalVar.h"
 
-static void resetI2c(I2CDriver *i2cp);
 
 typedef struct __attribute__((packed)) {
   uint8_t data[2];
@@ -112,7 +111,7 @@ msg_t  sdp3xRequest(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 				   I2C_TIMOUT_MS);
   
   if (status != MSG_OK) {
-    resetI2c(sdpp->i2cp);
+    restartI2c(sdpp->i2cp);
 #if I2C_USE_MUTUAL_EXCLUSION
     i2cReleaseBus(sdpp->i2cp);
 #endif
@@ -161,7 +160,7 @@ msg_t  sdp3xWakeup(Sdp3xDriver *sdpp)
 					   dummy, sizeof(dummy),
 					   NULL, 0, I2C_TIMOUT_MS) ;
   if (status != MSG_OK) {
-    resetI2c(sdpp->i2cp);
+    restartI2c(sdpp->i2cp);
   }
 
 #if I2C_USE_MUTUAL_EXCLUSION
@@ -192,7 +191,7 @@ msg_t  sdp3xGeneralReset(I2CDriver *i2cp)
 					  command, sizeof(command),
 					  NULL, 0, I2C_TIMOUT_MS) ;
   if (status != MSG_OK) {
-    resetI2c(i2cp);
+    restartI2c(i2cp);
   }
 #if I2C_USE_MUTUAL_EXCLUSION
     i2cReleaseBus(i2cp);
@@ -236,7 +235,7 @@ msg_t  sdp3xFetch(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 				   I2C_TIMOUT_MS);
   
   if (status != MSG_OK) {
-    resetI2c(sdpp->i2cp);
+    restartI2c(sdpp->i2cp);
 #if I2C_USE_MUTUAL_EXCLUSION
     i2cReleaseBus(sdpp->i2cp);
 #endif
@@ -289,7 +288,7 @@ msg_t  sdp3xGetIdent(Sdp3xDriver *sdpp, Sdp3xIdent *id)
 					 (uint8_t *) &rid, sizeof(rid),
 					 I2C_TIMOUT_MS);
   if (status != MSG_OK) {
-    resetI2c(sdpp->i2cp);
+    restartI2c(sdpp->i2cp);
 #if I2C_USE_MUTUAL_EXCLUSION
     i2cReleaseBus(sdpp->i2cp);
 #endif
@@ -327,7 +326,7 @@ msg_t sdp3xSend(const Sdp3xDriver *sdpp, const Sdp3xCommand cmd)
 					  (uint8_t *) &cmd, sizeof(cmd),
 					  NULL, 0, I2C_TIMOUT_MS) ;
   if (status != MSG_OK) 
-    resetI2c(sdpp->i2cp);
+    restartI2c(sdpp->i2cp);
 
 #if I2C_USE_MUTUAL_EXCLUSION
     i2cReleaseBus(sdpp->i2cp);
@@ -383,11 +382,3 @@ static bool atomCheck(const Sdp3xDataAtom *atom)
   return crc8_poly31_calc(atom->data, sizeof(atom->data)) == atom->crc;
 }
 
-static void resetI2c(I2CDriver *i2cp)
-{
-    const I2CConfig *cfg = i2cp->config;
-    i2cStop(i2cp);
-    chThdSleepMilliseconds(1); 
-    i2cStart(i2cp, cfg);
-    chThdSleepMilliseconds(1); 
-}
