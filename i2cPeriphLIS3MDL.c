@@ -21,33 +21,16 @@ msg_t lis3mdlStart(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg)
   }
   memset(&ldp->raw, 0, sizeof(ldp->raw));
   
-  static const uint8_t lisReg[] = {LIS3_WHO_AM_I};
-  uint8_t	    CACHE_ALIGNED(response[1]);
-  const uint8_t numSlave = ldp->config->numSlave;
 
-#if I2C_USE_MUTUAL_EXCLUSION
-  i2cAcquireBus(ldp->config->i2cp);
-#endif
-  msg_t  status = i2cMasterTransmitTimeout(ldp->config->i2cp, numSlave,
-					   lisReg, sizeof(lisReg),        
-					   response, sizeof(response), 100) ;
-  cacheBufferInvalidate(response, sizeof(response));
-
+  uint8_t    whoAmIResponse;
+  msg_t  status = readOneRegister(ldp, LIS3_WHO_AM_I, &whoAmIResponse);
   if (status != MSG_OK) {
     DebugTrace("lis i²c init error status = %ld", status);
-    resetI2c(ldp->config->i2cp);
-#if I2C_USE_MUTUAL_EXCLUSION
-  i2cReleaseBus(ldp->config->i2cp);
-#endif
     return status;
   }
-
-#if I2C_USE_MUTUAL_EXCLUSION
-  i2cReleaseBus(ldp->config->i2cp);
-#endif
-
-  if (response[0] != LIS3_WHO_AM_I_ANSWER) {
-    DebugTrace("reveice LIS3_WHO_AM 0x%x instead of 0x%x", response[0], LIS3_WHO_AM_I_ANSWER);
+  
+  if (whoAmIResponse != LIS3_WHO_AM_I_ANSWER) {
+    DebugTrace("reveice LIS3_WHO_AM 0x%x instead of 0x%x", whoAmIResponse, LIS3_WHO_AM_I_ANSWER);
     return MSG_RESET;
   }
 
@@ -157,7 +140,6 @@ Lis3_InterruptSource lis3mdlGetIntSource(const Lis3mdlDriver *ldp)
 
 msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp)
 {
-  //  Lis3_Status CACHE_ALIGNED(lisStatus)=0;
   msg_t i2cStatus;
 
   while (true) {
@@ -357,18 +339,17 @@ static msg_t writeOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, const 
 
 static msg_t readOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, uint8_t *value)
 {
-  //  const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg};
-  static IN_DMA_SECTION_NOINIT(uint8_t writeBuffer[1]);
-  static IN_DMA_SECTION_NOINIT(uint8_t readBuffer[1]);
-  writeBuffer[0] = reg;
+  const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg};
+  uint8_t       CACHE_ALIGNED(readBuffer[1]);
+
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(ldp->config->i2cp);
 #endif
-  //cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
+  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
   msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 					  writeBuffer, sizeof(writeBuffer),  
 					  readBuffer, sizeof(readBuffer), 100) ;
-  //  cacheBufferInvalidate(value, 1);
+  cacheBufferInvalidate(readBuffer, sizeof(readBuffer));
   *value = readBuffer[0];
   if (status != MSG_OK) {
     resetI2c(ldp->config->i2cp);
