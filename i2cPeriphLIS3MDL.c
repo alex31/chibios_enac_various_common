@@ -22,7 +22,7 @@ msg_t lis3mdlStart(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg)
   memset(&ldp->raw, 0, sizeof(ldp->raw));
   
   static const uint8_t lisReg[] = {LIS3_WHO_AM_I};
-  uint8_t	    response[1];
+  uint8_t	    CACHE_ALIGNED(response[1]);
   const uint8_t numSlave = ldp->config->numSlave;
 
 #if I2C_USE_MUTUAL_EXCLUSION
@@ -31,9 +31,10 @@ msg_t lis3mdlStart(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg)
   msg_t  status = i2cMasterTransmitTimeout(ldp->config->i2cp, numSlave,
 					   lisReg, sizeof(lisReg),        
 					   response, sizeof(response), 100) ;
+  cacheBufferInvalidate(response, sizeof(response));
 
   if (status != MSG_OK) {
-    //    DebugTrace("lis i²c init error status = %ld", status);
+    DebugTrace("lis i²c init error status = %ld", status);
     resetI2c(ldp->config->i2cp);
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cReleaseBus(ldp->config->i2cp);
@@ -46,6 +47,7 @@ msg_t lis3mdlStart(Lis3mdlDriver *ldp, const Lis3mdlConfig *cfg)
 #endif
 
   if (response[0] != LIS3_WHO_AM_I_ANSWER) {
+    DebugTrace("reveice LIS3_WHO_AM 0x%x instead of 0x%x", response[0], LIS3_WHO_AM_I_ANSWER);
     return MSG_RESET;
   }
 
@@ -85,16 +87,19 @@ msg_t lis3mdlFetch(Lis3mdlDriver *ldp, const Lis3_RegAddr first,
 		(last > LIS3_OUT_Z_H)),
 	      "lis3mdlFetch cross 0x2D auto increment boundary");
 
-  const uint8_t writeBuffer[1] = {first | 0x80};
+  const uint8_t CACHE_ALIGNED(writeBuffer[1]) = {first | 0x80};
   uint8_t *readAddr = &ldp->raw.status + (first - LIS3_STATUS_REG);
   const size_t readLen = 1 + last - first;
 
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(ldp->config->i2cp);
 #endif
+  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
   status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 				    writeBuffer, sizeof(writeBuffer),        
 				    readAddr, readLen, 100) ;
+  cacheBufferInvalidate(&ldp->raw, sizeof(ldp->raw));
+
   
   if (status != MSG_OK) {
     resetI2c(ldp->config->i2cp);
@@ -152,14 +157,19 @@ Lis3_InterruptSource lis3mdlGetIntSource(const Lis3mdlDriver *ldp)
 
 msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp)
 {
-  Lis3_Status lisStatus=0;
+  //  Lis3_Status CACHE_ALIGNED(lisStatus)=0;
   msg_t i2cStatus;
-  _Static_assert(sizeof(lisStatus) == 1, "enum Lis3_Status size should be 1 byte");
 
-  while ((lisStatus & LIS3_STATUS_ZYX_AVAIL) == 0) {
+  while (true) {
+    Lis3_Status lisStatus;
+    _Static_assert(sizeof(lisStatus) == 1, "enum Lis3_Status size should be 1 byte");
+    
     if ((i2cStatus = readOneRegister(ldp, LIS3_STATUS_REG, &lisStatus)) != MSG_OK)
       return i2cStatus;
-    chThdSleep(1);
+    if ((lisStatus & LIS3_STATUS_ZYX_AVAIL))
+      break;
+    else
+      chThdYield();
   }
   
   return MSG_OK;
@@ -174,7 +184,7 @@ msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp)
 
   // initialize sensor
   static const float gaussFactor12g = 2281.0f;
-  static const size_t loop = 5;
+  static const int32_t loop = 5;
   
   if (writeOneRegister(ldp, LIS3_CTRL_REG1, 0x1C) != MSG_OK)
     return  LIS3_I2C_ERROR;
@@ -195,19 +205,19 @@ msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp)
   float out_nost[3] = {0.0f, 0.0f, 0.0f};
 
   // accumulate 5 samples
-  for (size_t i=0; i<loop; i++) {
+  for (int32_t i=0; i<loop; i++) {
     // wait for data
     if (lis3mdlWaitUntilDataReady(ldp) != MSG_OK)
       return  LIS3_I2C_ERROR;
     // read and sum
     if (lis3mdlFetch(ldp, LIS3_OUT_X_L, LIS3_OUT_Z_H) != MSG_OK)
       return  LIS3_I2C_ERROR;
-    for (size_t j=0; j<3; j++) {
+    for (int32_t j=0; j<3; j++) {
       out_nost[j] += ldp->raw.out[j];
     }
   }
   // average
-  for (size_t j=0; j<3; j++) {
+  for (int32_t j=0; j<3; j++) {
     out_nost[j] /= loop;
   }
 
@@ -226,29 +236,29 @@ msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp)
   float out_st[3] = {0.0f, 0.0f, 0.0f};
 
   // accumulate 5 samples
-  for (size_t i=0; i<loop; i++) {
+  for (int32_t i=0; i<loop; i++) {
     // wait for data
     if (lis3mdlWaitUntilDataReady(ldp) != MSG_OK)
       return  LIS3_I2C_ERROR;
     // read and sum
     if (lis3mdlFetch(ldp, LIS3_OUT_X_L, LIS3_OUT_Z_H) != MSG_OK)
       return  LIS3_I2C_ERROR;
-    for (size_t j=0; j<3; j++) {
+    for (int32_t j=0; j<3; j++) {
       out_st[j] += ldp->raw.out[j];
     }
   }
   // average
-  for (size_t j=0; j<3; j++) {
+  for (int32_t j=0; j<3; j++) {
     out_st[j] /= loop;
   }
 
   const float diff[3] = {
-    (out_st[0]-out_nost[0]) / gaussFactor12g,
-    (out_st[1]-out_nost[1]) / gaussFactor12g,
-    (out_st[2]-out_nost[2]) / gaussFactor12g
+    fabs((out_st[0]-out_nost[0])) / gaussFactor12g,
+    fabs((out_st[1]-out_nost[1])) / gaussFactor12g,
+    fabs((out_st[2]-out_nost[2])) / gaussFactor12g
   };
 
-  /* for (size_t j=0; j<3; j++) { */
+  /* for (int32_t j=0; j<3; j++) { */
   /*   DebugTrace("diff[%u] = %.3f", j, diff[j]); */
   /* } */
 
@@ -262,12 +272,18 @@ msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp)
     return  LIS3_I2C_ERROR;
     
   Lis3_ErrorMask mask = 0;
-  if ((diff[0] < 1.0f) || (diff[0] > 3.0f))
+  if ((diff[0] < 1.0f) || (diff[0] > 3.0f)) {
+    DebugTrace("LIS3MDL self test X fail D=%.2f not in [1.0 - 3.0]", diff[0]);
     mask |= LIS3_X_TEST_FAIL;
-  if ((diff[1] < 1.0f) || (diff[1] > 3.0f))
+  }
+  if ((diff[1] < 1.0f) || (diff[1] > 3.0f)) {
+    DebugTrace("LIS3MDL self test Y fail D=%.2f not in [1.0 - 3.0]", diff[1]);
     mask |= LIS3_Y_TEST_FAIL;
-  if ((diff[2] < 0.1f) || (diff[2] > 1.0f))
+  }
+  if ((diff[2] < 0.1f) || (diff[2] > 1.0f)) {
+    DebugTrace("LIS3MDL self test Z fail D=%.2f not in [0.1 - 1.0]", diff[2]);
     mask |= LIS3_Z_TEST_FAIL;
+  }
 
   
   return mask;
@@ -276,12 +292,13 @@ msg_t lis3mdlWaitUntilDataReady(Lis3mdlDriver *ldp)
 
 static msg_t sendConfig(Lis3mdlDriver *ldp, const Lis3mdlConfigRegister *regs)
 {
-  uint8_t writeBuffer[8] = {[0] =  LIS3_CTRL_REG1 | 0X80};
+  uint8_t CACHE_ALIGNED(writeBuffer[sizeof(regs->cr)+1]) = {[0] =  LIS3_CTRL_REG1 | 0X80};
   memcpy(&writeBuffer[1], &regs->cr, sizeof(regs->cr));
 
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(ldp->config->i2cp);
 #endif
+  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
   msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 				    writeBuffer, sizeof(regs->cr) +1,        
 				    NULL, 0, 100) ;
@@ -290,6 +307,7 @@ static msg_t sendConfig(Lis3mdlDriver *ldp, const Lis3mdlConfigRegister *regs)
 
   writeBuffer[0] = LIS3_INT_CFG;
   writeBuffer[1] = regs->intCfg;
+  cacheBufferFlush(writeBuffer, 2);
   status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 				    writeBuffer, 2,        
 				    NULL, 0, 100) ;
@@ -298,6 +316,7 @@ static msg_t sendConfig(Lis3mdlDriver *ldp, const Lis3mdlConfigRegister *regs)
   writeBuffer[0] = LIS3_INT_THS_L | 0X80;
   writeBuffer[1] = 0xff & regs->threshold >> 8;
   writeBuffer[2] = 0xff & regs->threshold;
+  cacheBufferFlush(writeBuffer, 3);
   status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 				    writeBuffer, 3,        
 				    NULL, 0, 100) ;
@@ -318,18 +337,16 @@ static msg_t sendConfig(Lis3mdlDriver *ldp, const Lis3mdlConfigRegister *regs)
 
 static msg_t writeOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, const uint8_t value)
 {
-  const uint8_t writeBuffer[] = {reg, value};
+  const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg, value};
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(ldp->config->i2cp);
 #endif
+  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
   msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 					  writeBuffer, sizeof(writeBuffer),  
 					  NULL, 0, 100) ;
   if (status != MSG_OK) {
     resetI2c(ldp->config->i2cp);
-#if I2C_USE_MUTUAL_EXCLUSION
-    i2cReleaseBus(ldp->config->i2cp);
-#endif
   }
   
 #if I2C_USE_MUTUAL_EXCLUSION
@@ -340,22 +357,27 @@ static msg_t writeOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, const 
 
 static msg_t readOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, uint8_t *value)
 {
-  const uint8_t writeBuffer[] = {reg};
+  //  const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg};
+  static IN_DMA_SECTION_NOINIT(uint8_t writeBuffer[1]);
+  static IN_DMA_SECTION_NOINIT(uint8_t readBuffer[1]);
+  writeBuffer[0] = reg;
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(ldp->config->i2cp);
 #endif
+  //cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
   msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 					  writeBuffer, sizeof(writeBuffer),  
-					  value, 1, 100) ;
-  
+					  readBuffer, sizeof(readBuffer), 100) ;
+  //  cacheBufferInvalidate(value, 1);
+  *value = readBuffer[0];
   if (status != MSG_OK) {
     resetI2c(ldp->config->i2cp);
 #if I2C_USE_MUTUAL_EXCLUSION
     i2cReleaseBus(ldp->config->i2cp);
 #endif
   }
-
-
+  
+  
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cReleaseBus(ldp->config->i2cp);
 #endif
