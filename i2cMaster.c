@@ -45,6 +45,14 @@ static msg_t  i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,
 				const uint8_t regAdr, const uint8_t mask, 
 				bool enable);
 
+static inline msg_t i2cMasterCacheReceiveTimeout 	(I2CDriver *  	i2cp, i2caddr_t  	addr,
+							 uint8_t *  	rxbuf, size_t  	rxbytes,
+							 sysinterval_t  timeout);
+static inline msg_t i2cMasterCacheTransmitTimeout	(I2CDriver *i2cp, i2caddr_t addr,
+							 const uint8_t *txbuf, size_t txbytes,
+							 uint8_t *rxbuf, size_t	rxbytes,
+							 sysinterval_t timeout);
+
 //static IN_DMA_SECTION(uint8_t dmaArray[128]);
 
 /*      
@@ -1017,4 +1025,26 @@ msg_t i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  const uint8_t
   I2C_WRITE(i2cd, slaveAdr, recBuf);
   
   return RDY_OK;
+}
+
+
+static inline msg_t i2cMasterCacheReceiveTimeout 	(I2CDriver *  	i2cp, i2caddr_t  	addr,
+							 uint8_t *  	rxbuf, size_t  	rxbytes,
+							 sysinterval_t  timeout)
+{
+  const msg_t status = i2cMasterReceiveTimeout(i2cp, addr, rxbuf, rxbytes, timeout);
+  cacheBufferInvalidate(rxbuf, rxbytes);
+  return status;
+}
+
+static inline msg_t i2cMasterCacheTransmitTimeout	(I2CDriver *i2cp, i2caddr_t addr,
+							 const uint8_t *txbuf, size_t txbytes,
+							 uint8_t *rxbuf, size_t	rxbytes,
+							 sysinterval_t timeout)
+{
+  cacheBufferFlush(txbuf, txbytes);
+  const msg_t status = i2cMasterTransmitTimeout(i2cp, addr, txbuf, txbytes, rxbuf, rxbytes, timeout);
+  if (rxbuf)
+    cacheBufferInvalidate(rxbuf, rxbytes);
+  return status;
 }

@@ -69,8 +69,8 @@ void sdp3xStart(Sdp3xDriver *sdpp, I2CDriver *i2cp,
 
 msg_t  sdp3xRequest(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 {
-  Sdp3xMeasure meas;
-  Sdp3xCommand cmd;
+  Sdp3xMeasure CACHE_ALIGNED(meas);
+  Sdp3xCommand CACHE_ALIGNED(cmd);
   msg_t status;
   
   switch (request) {
@@ -106,7 +106,7 @@ msg_t  sdp3xRequest(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(sdpp->i2cp);
 #endif
-  status = i2cMasterReceiveTimeout(sdpp->i2cp, sdpp->slaveAddr,
+  status = i2cMasterCacheReceiveTimeout(sdpp->i2cp, sdpp->slaveAddr,
 				   (uint8_t *) &meas, sizeof(meas),
 				   I2C_TIMOUT_MS);
   
@@ -181,13 +181,13 @@ msg_t  sdp3xWakeup(Sdp3xDriver *sdpp)
   
 msg_t  sdp3xGeneralReset(I2CDriver *i2cp)
 {
-  static const uint8_t command[] = {SDP3X_GENERAL_RESET_COMMAND};
+  static const uint8_t CACHE_ALIGNED(command[]) = {SDP3X_GENERAL_RESET_COMMAND};
   
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(i2cp);
 #endif
 
-  msg_t status = i2cMasterTransmitTimeout(i2cp, SDP3X_GENERAL_RESET_ADDRESS,
+  msg_t status = i2cMasterCacheTransmitTimeout(i2cp, SDP3X_GENERAL_RESET_ADDRESS,
 					  command, sizeof(command),
 					  NULL, 0, I2C_TIMOUT_MS) ;
   if (status != MSG_OK) {
@@ -204,7 +204,7 @@ msg_t  sdp3xFetch(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 {
   msg_t status;
   size_t len;
-  Sdp3xMeasure meas;
+  Sdp3xMeasure CACHE_ALIGNED(meas);
   
   switch (request) {
   case SDP3X_massflow :
@@ -230,7 +230,7 @@ msg_t  sdp3xFetch(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(sdpp->i2cp);
 #endif
-  status = i2cMasterReceiveTimeout(sdpp->i2cp, sdpp->slaveAddr,
+  status = i2cMasterCacheReceiveTimeout(sdpp->i2cp, sdpp->slaveAddr,
 				   (uint8_t *) &meas, len,
 				   I2C_TIMOUT_MS);
   
@@ -273,7 +273,7 @@ msg_t  sdp3xFetch(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 
 msg_t  sdp3xGetIdent(Sdp3xDriver *sdpp, Sdp3xIdent *id)
 {
-  Sdp3xRawIdent rid;
+  Sdp3xRawIdent CACHE_ALIGNED(rid);
   id->sn = id->pn = 0U;
   
   
@@ -284,7 +284,7 @@ msg_t  sdp3xGetIdent(Sdp3xDriver *sdpp, Sdp3xIdent *id)
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(sdpp->i2cp);
 #endif
-  msg_t status = i2cMasterReceiveTimeout(sdpp->i2cp, sdpp->slaveAddr,
+  msg_t status = i2cMasterCacheReceiveTimeout(sdpp->i2cp, sdpp->slaveAddr,
 					 (uint8_t *) &rid, sizeof(rid),
 					 I2C_TIMOUT_MS);
   if (status != MSG_OK) {
@@ -321,18 +321,24 @@ msg_t sdp3xSend(const Sdp3xDriver *sdpp, const Sdp3xCommand cmd)
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(sdpp->i2cp);
 #endif
-  
-  msg_t status = i2cMasterTransmitTimeout(sdpp->i2cp, sdpp->slaveAddr,
-					  (uint8_t *) &cmd, sizeof(cmd),
-					  NULL, 0, I2C_TIMOUT_MS) ;
+#if __DCACHE_PRESENT != 0
+  const Sdp3xCommand CACHE_ALIGNED(alCmd) = cmd;
+  msg_t status = i2cMasterCacheTransmitTimeout(sdpp->i2cp, sdpp->slaveAddr,
+					       (uint8_t *) &alCmd, sizeof(alCmd),
+					       NULL, 0, I2C_TIMOUT_MS) ;
+#else
+  msg_t status = i2cMasterCacheTransmitTimeout(sdpp->i2cp, sdpp->slaveAddr,
+					       (uint8_t *) &cmd, sizeof(cmd),
+					       NULL, 0, I2C_TIMOUT_MS) ;
+#endif
   if (status != MSG_OK) 
     restartI2c(sdpp->i2cp);
-
+  
 #if I2C_USE_MUTUAL_EXCLUSION
-    i2cReleaseBus(sdpp->i2cp);
+  i2cReleaseBus(sdpp->i2cp);
 #endif
-    
-    return status;
+  
+  return status;
 }
 
 

@@ -56,10 +56,9 @@ static int8_t i2cWrite (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_
   writeBuffer[0] = reg_addr;
   memcpy(&writeBuffer[1], data, len);
 
-  cacheBufferFlush(writeBuffer, wlen);
-  const msg_t status = i2cMasterTransmitTimeout(i2cp, dev_id,
-						writeBuffer, wlen,
-						NULL, 0, 100);
+  const msg_t status = i2cMasterCacheTransmitTimeout(i2cp, dev_id,
+						     writeBuffer, wlen,
+						     NULL, 0, 100);
   if (status != MSG_OK) {
     restartI2c(i2cp);
     return BMP3_E_COMM_FAIL;
@@ -70,7 +69,7 @@ static int8_t i2cWrite (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_
 
 
 // have to manage cache in case of STM32F7XX or STM32H7XX
-#if defined STM32F7XX || defined STM32H7XX
+#if (__DCACHE_PRESENT != 0)
 static int8_t i2cRead (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t len,
 		       void *userData)
 {
@@ -78,11 +77,9 @@ static int8_t i2cRead (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t
   const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg_addr};
   uint8_t       CACHE_ALIGNED(readBuffer[len+32]); // +32 to isolate cache line
 
-  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
-  const msg_t status = i2cMasterTransmitTimeout(i2cp, dev_id,
-						writeBuffer, sizeof(writeBuffer),
-						readBuffer, len, 100);
-  cacheBufferInvalidate(readBuffer, len);
+  const msg_t status = i2cMasterCacheTransmitTimeout(i2cp, dev_id,
+						     writeBuffer, sizeof(writeBuffer),
+						     readBuffer, len, 100);
   memcpy(data, readBuffer, len);
   /* DebugTrace("read %u b @r%u", len, reg_addr); */
   /* for (size_t i=0; i<len; i++) { */

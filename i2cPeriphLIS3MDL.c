@@ -279,28 +279,25 @@ static msg_t sendConfig(Lis3mdlDriver *ldp, const Lis3mdlConfigRegister *regs)
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(ldp->config->i2cp);
 #endif
-  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
-  msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
-				    writeBuffer, sizeof(regs->cr) +1,        
-				    NULL, 0, 100) ;
+  msg_t status = i2cMasterCacheTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
+					       writeBuffer, sizeof(regs->cr) +1,        
+					       NULL, 0, 100) ;
   
   if (status != MSG_OK) goto i2cError;
 
   writeBuffer[0] = LIS3_INT_CFG;
   writeBuffer[1] = regs->intCfg;
-  cacheBufferFlush(writeBuffer, 2);
-  status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
-				    writeBuffer, 2,        
-				    NULL, 0, 100) ;
+  status = i2cMasterCacheTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
+					 writeBuffer, 2,        
+					 NULL, 0, 100) ;
   if (status != MSG_OK) goto i2cError;
 
   writeBuffer[0] = LIS3_INT_THS_L | 0X80;
   writeBuffer[1] = 0xff & regs->threshold >> 8;
   writeBuffer[2] = 0xff & regs->threshold;
-  cacheBufferFlush(writeBuffer, 3);
-  status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
-				    writeBuffer, 3,        
-				    NULL, 0, 100) ;
+  status = i2cMasterCacheTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
+					 writeBuffer, 3,        
+					 NULL, 0, 100) ;
   if (status != MSG_OK) goto i2cError;
 
 #if I2C_USE_MUTUAL_EXCLUSION
@@ -322,10 +319,9 @@ static msg_t writeOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, const 
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(ldp->config->i2cp);
 #endif
-  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
-  msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
-					  writeBuffer, sizeof(writeBuffer),  
-					  NULL, 0, 100) ;
+  msg_t status = i2cMasterCacheTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
+					       writeBuffer, sizeof(writeBuffer),  
+					       NULL, 0, 100) ;
   if (status != MSG_OK) {
     restartI2c(ldp->config->i2cp);
   }
@@ -344,11 +340,9 @@ static msg_t readOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, uint8_t
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(ldp->config->i2cp);
 #endif
-  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
-  msg_t status = i2cMasterTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
-					  writeBuffer, sizeof(writeBuffer),  
-					  readBuffer, 1, 100) ;
-  cacheBufferInvalidate(readBuffer, 1);
+  msg_t status = i2cMasterCacheTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
+					       writeBuffer, sizeof(writeBuffer),  
+					       readBuffer, 1, 100) ;
   *value = readBuffer[0];
   if (status != MSG_OK) {
     restartI2c(ldp->config->i2cp);

@@ -294,32 +294,32 @@ F7
 #define FAST_SECTION ".ram4" 
 #define DMA_SECTION ".ram0"    
 #define BCKP_SECTION ".ram5"
-#define CACHE_ALIGNED(var) var 
 #elif  defined STM32F7XX
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram0" 
 #define DMA_SECTION ".ram3"    
 #define BCKP_SECTION ".ram5"
-#define CACHE_ALIGNED(var) var __attribute__ ((aligned(32)))
 #elif (defined (STM32L431xx) || defined (STM32L432xx) || defined (STM32L433xx) || defined (STM32L442xx) || defined (STM32L443xx))
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram0" 
 #define DMA_SECTION ".ram0"    
-#define CACHE_ALIGNED(var) var 
 #elif  (defined (STM32L471xx) || defined (STM32L475xx) || defined (STM32L476xx) || defined (STM32L485xx) || defined (STM32L486xx))
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram4" 
 #define DMA_SECTION ".ram0"    
-#define CACHE_ALIGNED(var) var 
 #elif  defined STM32F3XX
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram4" 
 #define DMA_SECTION ".ram0"    
-#define CACHE_ALIGNED(var) var 
 #else
 #error "section defined only for STM32F3, STM32F4, STM32L4 and STM32F7"
 #endif
 
+#if (__DCACHE_PRESENT != 0) 
+#define CACHE_ALIGNED(var) var __attribute__ ((aligned(32)))
+#else
+#define CACHE_ALIGNED(var) var
+#endif
 
 #define IN_STD_SECTION_NOINIT(var) var __attribute__ ((section(STD_SECTION), aligned(8)))
 #define IN_STD_SECTION_CLEAR(var) var __attribute__ ((section(STD_SECTION "_clear"), aligned(8)))
