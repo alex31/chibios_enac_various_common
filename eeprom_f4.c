@@ -307,7 +307,7 @@ ErrorCond eepromStore (const EepromStructType eepromStructType, const void *data
     chThdSleepMilliseconds(100);
 #endif
 
-    if (((int) eepromStatus() - (int) len) < 8)  {
+    if ((eepromStatus() - len) < 8U)  {
 #ifdef TRACE_EEPROM
       DebugTrace ("eeprom full, has to wipe (remove obsolete data) before writing");
       chThdSleepMilliseconds(100);

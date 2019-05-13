@@ -357,6 +357,7 @@ static ShellCommand local_commands[] = {
  */
 #if (CH_KERNEL_MAJOR == 2)
 static msg_t shell_thread(void *p) {
+  
   msg_t msg = RDY_OK;
   chpg = ((ShellConfig *)p)->sc_channel;
   scpg = ((ShellConfig *)p)->sc_commands;

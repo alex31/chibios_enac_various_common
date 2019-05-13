@@ -438,8 +438,10 @@ static int escape_process (microrl_t * pThis, char ch)
 // insert len char of text at cursor position
 static int microrl_insert_text (microrl_t * pThis, const char * text, int len)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-overflow"
   if (pThis->cmdlen + len < _COMMAND_LINE_LEN) {
-   
+#pragma GCC diagnostic pop
     if (pThis->cmdlen != pThis->cursor) {
       memmove (pThis->cmdline + pThis->cursor + len,
 	       pThis->cmdline + pThis->cursor,
