@@ -276,6 +276,7 @@ void hd44780ObjectInit(HD44780Driver *lcdp){
   lcdp->state  = HD44780_STOP;
   lcdp->config = NULL;
   lcdp->backlight = 0;
+  lcdp->contrast = 0;
 }
 
 /**
@@ -295,16 +296,20 @@ void hd44780Start(HD44780Driver *lcdp, const HD44780Config *config) {
 
   lcdp->config = config;
   lcdp->backlight = lcdp->config->backlight;
+  lcdp->contrast = lcdp->config->contrast;
 
   /* Initializing HD44780 by instructions. */
   hd44780InitByIstructions(lcdp);
 
 #if HD44780_USE_DIMMABLE_BACKLIGHT
   pwmStart(lcdp->config->pwmp, lcdp->config->pwmcfgp);
-  pwmEnableChannel(lcdp->config->pwmp, lcdp->config->channelid,
+  pwmEnableChannel(lcdp->config->pwmp, lcdp->config->backlight_ch,
                    PWM_PERCENTAGE_TO_WIDTH(lcdp->config->pwmp,
                                            lcdp->config->backlight * 100));
-
+  pwmEnableChannel(lcdp->config->pwmp, lcdp->config->contrast_ch,
+                   PWM_PERCENTAGE_TO_WIDTH(lcdp->config->pwmp,
+                                           (100 - lcdp->config->contrast) * 100));
+  
 #else
   palWriteLine(lcdp->config->pinmap->A,
               lcdp->config->backlight ? PAL_HIGH : PAL_LOW);
@@ -325,13 +330,14 @@ void hd44780Stop(HD44780Driver *lcdp) {
   osalDbgCheck(lcdp != NULL);
 
   osalDbgAssert((lcdp->state == HD44780_STOP) || (lcdp->state == HD44780_ACTIVE),
-              "lcdStop(), invalid state");
+              "hd44780Stop(), invalid state");
 #if HD44780_USE_DIMMABLE_BACKLIGHT
   pwmStop(lcdp->config->pwmp);
 #else
   palClearLine(lcdp->config->pinmap->A);
 #endif
   lcdp->backlight = 0;
+  lcdp->contrast = 0;
   hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_DC);
   hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_CLEAR_DISPLAY);
   lcdp->state = HD44780_STOP;
@@ -347,9 +353,9 @@ void hd44780Stop(HD44780Driver *lcdp) {
 void hd44780BacklightOn(HD44780Driver *lcdp) {
 
   osalDbgCheck(lcdp != NULL);
-  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "lcdBacklightOn(), invalid state");
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "hd44780BacklightOn(), invalid state");
 #if HD44780_USE_DIMMABLE_BACKLIGHT
-  pwmEnableChannel(lcdp->config->pwmp, lcdp->config->channelid,
+  pwmEnableChannel(lcdp->config->pwmp, lcdp->config->backlight_ch,
                    PWM_PERCENTAGE_TO_WIDTH(lcdp->config->pwmp, 10000));
 
 #else
@@ -368,9 +374,9 @@ void hd44780BacklightOn(HD44780Driver *lcdp) {
 void hd44780BacklightOff(HD44780Driver *lcdp) {
 
   osalDbgCheck(lcdp != NULL);
-  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "lcdBacklightOff(), invalid state");
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "hd44780BacklightOff(), invalid state");
 #if HD44780_USE_DIMMABLE_BACKLIGHT
-  pwmDisableChannel(lcdp->config->pwmp, lcdp->config->channelid);
+  pwmDisableChannel(lcdp->config->pwmp, lcdp->config->backlight_ch);
 
 #else
   palClearLine(lcdp->config->pinmap->A);
@@ -388,7 +394,7 @@ void hd44780BacklightOff(HD44780Driver *lcdp) {
 void hd44780ClearDisplay(HD44780Driver *lcdp){
 
   osalDbgCheck(lcdp != NULL);
-  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "lcdClearDisplay(), invalid state");
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "hd44780ClearDisplay(), invalid state");
   hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_CLEAR_DISPLAY);
 }
 
@@ -402,7 +408,7 @@ void hd44780ClearDisplay(HD44780Driver *lcdp){
 void hd44780ReturnHome(HD44780Driver *lcdp){
 
   osalDbgCheck(lcdp != NULL);
-  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "lcdReturnHome(), invalid state");
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "hd44780ReturnHome(), invalid state");
   hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_RETURN_HOME);
 }
 
@@ -418,10 +424,28 @@ void hd44780SetAddress(HD44780Driver *lcdp, uint8_t add){
 
   osalDbgCheck(lcdp != NULL);
   osalDbgAssert((lcdp->state == HD44780_ACTIVE),
-                "lcdSetAddress(), invalid state");
+                "hd44780SetAddress(), invalid state");
   if(add > HD44780_SET_DDRAM_ADDRESS_MASK)
     return;
   hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_SET_DDRAM_ADDRESS | add);
+}
+
+/**
+ * @brief   Set DDRAM address position leaving data unchanged.
+ *
+ * @param[in] lcdp      pointer to the @p HD44780Driver object
+ * @param[in] add       DDRAM address (from 0 to HD44780_DDRAM_MAX_ADDRESS)
+ *
+ * @api
+ */
+void hd44780SetCGAddress(HD44780Driver *lcdp, uint8_t add){
+
+  osalDbgCheck(lcdp != NULL);
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE),
+                "hd44780SeCGtAddress(), invalid state");
+  if(add > HD44780_SET_CGRAM_ADDRESS_MASK)
+    return;
+  hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_SET_CGRAM_ADDRESS | add);
 }
 
 /**
@@ -435,13 +459,13 @@ void hd44780SetAddress(HD44780Driver *lcdp, uint8_t add){
  *
  * @api
  */
-void hd44780WriteString(HD44780Driver *lcdp, uint8_t pos, const char* fmt, ...){
+void hd44780Write(HD44780Driver *lcdp, uint8_t pos, const char* fmt, ...){
   va_list ap;
   char string[80];
   const char *s = string;
   osalDbgCheck((lcdp != NULL) && (string != NULL));
   osalDbgAssert((lcdp->state == HD44780_ACTIVE),
-                "lcdWriteString(), invalid state");
+                "Write(), invalid state");
 
   va_start(ap, fmt);
   vsnprintf(string, sizeof(string), fmt, ap);
@@ -457,6 +481,27 @@ void hd44780WriteString(HD44780Driver *lcdp, uint8_t pos, const char* fmt, ...){
     }
   }
 }
+/**
+ * @brief  register custom graphic character at position.
+ *
+ *
+ * @param[in] lcdp      pointer to the @p HD44780Driver object
+ * @param[in] pos       position for custom character : from 0 to 7
+ * @param[in] bitmap    string to write
+ *
+ * @api
+ */
+void hd44780CustomGraphic(HD44780Driver *lcdp, uint8_t pos, const uint8_t bitmap[8]) {
+  osalDbgCheck((lcdp != NULL) && (bitmap != NULL));
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE),
+                "CustomGraphic(), invalid state");
+  
+  hd44780SetCGAddress(lcdp, (pos*8));
+  for (int i=0; i<8; i++) {
+    hd44780WriteRegister(lcdp, HD44780_DATA_R, bitmap[i]);
+  }
+}
+
 
 /**
  * @brief   Makes a shift according to an arbitrary direction
@@ -470,7 +515,7 @@ void hd44780DoDisplayShift(HD44780Driver *lcdp, uint8_t dir){
 
   osalDbgCheck(lcdp != NULL);
   osalDbgAssert((lcdp->state == HD44780_ACTIVE),
-                "lcdDoDisplayShift(), invalid state");
+                "hd44780DoDisplayShift(), invalid state");
   hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_CDS | HD44780_CDS_SC | dir);
 }
 
@@ -486,10 +531,19 @@ void hd44780DoDisplayShift(HD44780Driver *lcdp, uint8_t dir){
 void hd44780SetBacklight(HD44780Driver *lcdp, uint32_t perc){
 
   osalDbgCheck(lcdp != NULL);
-  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "lcdSetBacklight(), invalid state");
-  pwmEnableChannel(lcdp->config->pwmp, lcdp->config->channelid,
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "hd44780SetBacklight(), invalid state");
+  pwmEnableChannel(lcdp->config->pwmp, lcdp->config->backlight_ch,
                    PWM_PERCENTAGE_TO_WIDTH(lcdp->config->pwmp, perc * 100));
   lcdp->backlight = perc;
+}
+
+void hd44780SetContrast(HD44780Driver *lcdp, uint32_t perc){
+
+  osalDbgCheck(lcdp != NULL);
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE), "hd44780SetContrast(), invalid state");
+  pwmEnableChannel(lcdp->config->pwmp, lcdp->config->contrast_ch,
+                   PWM_PERCENTAGE_TO_WIDTH(lcdp->config->pwmp, (100 - perc) * 100));
+  lcdp->contrast = perc;
 }
 
 /**
@@ -503,7 +557,7 @@ void hd44780BacklightFadeOut(HD44780Driver *lcdp){
   uint32_t curr = lcdp->backlight;
   osalDbgCheck(lcdp != NULL);
   osalDbgAssert((lcdp->state == HD44780_ACTIVE),
-                "lcdBacklightFadeOut(), invalid state");
+                "hd44780BacklightFadeOut(), invalid state");
   while(curr != 0){
     curr--;
     hd44780SetBacklight(lcdp, curr);
@@ -522,7 +576,7 @@ void hd44780BacklightFadeIn(HD44780Driver *lcdp){
   uint32_t curr = lcdp->backlight;
   osalDbgCheck(lcdp != NULL);
   osalDbgAssert((lcdp->state == HD44780_ACTIVE),
-                "lcdBacklightFadeIn(), invalid state");
+                "hd44780BacklightFadeIn(), invalid state");
   while(curr != 100){
     curr++;
     hd44780SetBacklight(lcdp, curr);

@@ -205,13 +205,15 @@ typedef struct {
   /**
    * @brief  PWM channel id
    */
-  uint32_t channelid;
+  uint32_t contrast_ch;
+  uint32_t backlight_ch;
+  uint16_t contrast;
 #endif
   /**
    * @brief  Initial Back-light percentage (from 0 to 100)
    * @note   If !HD44780_USE_DIMMABLE_BACKLIGHT this is just true or false
    */
-  uint32_t backlight;
+  uint16_t backlight;
 } HD44780Config;
 
 /**
@@ -227,7 +229,8 @@ typedef struct {
    *
    * @detail When HD44780_USE_DIMMABLE_BACKLIGHT is false, this is considered like boolean
    */
-  uint32_t           backlight;
+  uint16_t           backlight;
+  uint16_t           contrast;
   /**
    * @brief Current configuration data.
    */
@@ -247,21 +250,24 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
-void hd44780Init(void);
-void hd44780ObjectInit(HD44780Driver *lcdp);
-void hd44780Start(HD44780Driver *lcdp, const HD44780Config *config);
-void hd44780Stop(HD44780Driver *lcdp);
-void hd44780BacklightOn(HD44780Driver *lcdp);
-void hd44780BacklightOff(HD44780Driver *lcdp);
-void hd44780ClearDisplay(HD44780Driver *lcdp);
-void hd44780ReturnHome(HD44780Driver *lcdp);
-void hd44780SetAddress(HD44780Driver *lcdp, uint8_t add);
-void hd44780WriteString(HD44780Driver *lcdp, uint8_t pos, const char* fmt, ...);
-void hd44780DoDisplayShift(HD44780Driver *lcdp, uint8_t dir);
+  void hd44780Init(void);
+  void hd44780ObjectInit(HD44780Driver *lcdp);
+  void hd44780Start(HD44780Driver *lcdp, const HD44780Config *config);
+  void hd44780Stop(HD44780Driver *lcdp);
+  void hd44780BacklightOn(HD44780Driver *lcdp);
+  void hd44780BacklightOff(HD44780Driver *lcdp);
+  void hd44780ClearDisplay(HD44780Driver *lcdp);
+  void hd44780ReturnHome(HD44780Driver *lcdp);
+  void hd44780SetAddress(HD44780Driver *lcdp, uint8_t add);
+  void hd44780Write(HD44780Driver *lcdp, uint8_t pos, const char* fmt, ...)
+    __attribute__ ((format (printf, 3, 4)));
+  void hd44780CustomGraphic(HD44780Driver *lcdp, uint8_t pos, const uint8_t bitmap[5]);
+  void hd44780DoDisplayShift(HD44780Driver *lcdp, uint8_t dir);
 #if HD44780_USE_DIMMABLE_BACKLIGHT
-void hd44780SetBacklight(HD44780Driver *lcdp, uint32_t perc);
-void hd44780BacklightFadeOut(HD44780Driver *lcdp);
-void hd44780BacklightFadeIn(HD44780Driver *lcdp);
+  void hd44780SetBacklight(HD44780Driver *lcdp, uint32_t perc);
+  void hd44780SetContrast(HD44780Driver *lcdp, uint32_t perc);
+  void hd44780BacklightFadeOut(HD44780Driver *lcdp);
+  void hd44780BacklightFadeIn(HD44780Driver *lcdp);
 #endif /* HD44780_USE_DIMMABLE_BACKLIGHT */
 #ifdef __cplusplus
 }
