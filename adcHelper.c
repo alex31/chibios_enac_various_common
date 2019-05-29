@@ -6,10 +6,37 @@
 
 
 /*
+  exemple d'utilisation :
+
   adcFillConversionGroup(&cgrp, FALSE, &end_cb, 
   LINE_PC01_POTAR, ADC_SAMPLE_480,
   ADC_CHANNEL_SENSOR, ADC_SAMPLE_480, 
   NULL);
+
+
+  TODO : 
+  * passage des params sur 64 bits avec concatenation type | valeur par une MACRO par type
+    et recuperation type et valeur par deux macros
+  * API simple pour faire de la conversion continue pilotée par TIMER
+    - il faut passer la frequence : utilisation systematique de GPTD6
+  
+
+  ====
+  plages de valeur pour les paramètres :
+
+  lines                       : > 1_000_000
+  internal channels           : entre 16 et 18 inclus 
+  sampling cycles             : transposé entre 256 et 263 inclus
+  frequence d'échantillonnage : transposé entre 1001 et 101_000 depuis [1 - 100_000] 
+                                (utilisation de GPTD6), erreur si param défini et 
+                                GPT_USE_TIM6 non défini
+   
+   simplifier le cours en prenant en compte la nouvelle API
+   creer des TP
+   - mesure de la tension de pile de sauvegarde
+   - mesure du 5V venant du PC (introduire le pont de resistance)
+   - idée de tp qui a du sens pour la conversion continue ?
+
 
  */
 static void errorcallback (ADCDriver *adcp, adcerror_t err);
@@ -26,19 +53,20 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp,
   typedef enum {ArgLine=0, ArgCycle, ArgLast} NextArgType;
   va_list ap;
   int32_t curArg;
-  size_t  cnt=0;
+  size_t  sequenceIndex=0;
   int channel=-1;
   
   memset(cgrp, 0U, sizeof(ADCConversionGroup));
   cgrp->circular = circular;
   cgrp->end_cb = end_cb;
-  //cgrp->error_cb = &errorcallback;
+  cgrp->error_cb = &errorcallback;
   cgrp->cr2 = ADC_CR2_SWSTART;
   
   va_start(ap, end_cb);
   while ((curArg = va_arg(ap, int32_t)) != 0) {
-    const size_t sequenceIndex = cnt / ArgLast;
-    switch ((NextArgType) (cnt++ % ArgLast)) {
+    const NextArgType nat = (curArg >= ADC_CYCLE_START) && (curArg <= ADC_CYCLE_START+7) ?
+      ArgCycle : ArgLine;
+    switch (nat) {
     case ArgLine : {
       if (curArg > 1024) { // parameter is a line coumpound address
 	channel = getChannelFromLine((ioline_t) curArg);
@@ -51,6 +79,7 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp,
       } else {
 	chSysHalt("sequence parameter error : neither LINE or INTERNAL CHANNEL");
       }
+      sequenceIndex++;
     }
       break;
     case ArgCycle: 
@@ -63,11 +92,9 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp,
     }
   }
   
-  if ((cnt % ArgLast) != 0)
-    chSysHalt("not a set of complete sequences");
   va_end(ap);
   
-  cgrp->num_channels = cnt / ArgLast;
+  cgrp->num_channels = sequenceIndex;
 }
 
 
@@ -100,7 +127,7 @@ static int getChannelFromLine(ioline_t line)
 
 static void setSQR(ADCConversionGroup  *cgrp, size_t sequence, uint32_t channelMsk)
 {
-  DebugTrace("setSQR sequence = %u channelMsk = %lu", sequence, channelMsk);
+  //  DebugTrace("setSQR sequence = %u channelMsk = %lu", sequence, channelMsk);
   if (sequence <= 5) {
     cgrp->sqr3 |= (channelMsk << (sequence*5));
   } else if (sequence <= 11) {
@@ -110,25 +137,22 @@ static void setSQR(ADCConversionGroup  *cgrp, size_t sequence, uint32_t channelM
   } else {
     chSysHalt("setSQR : invalid sequence");
   }
+  setSMPR(cgrp, channelMsk, 7); // default value is maximum SMPR cycle for the channel
 }
 
 static void setSMPR(ADCConversionGroup  *cgrp, uint32_t channelMsk, uint32_t sampleCycleMsk)
 {
-  DebugTrace("setSMPR channelMsk = %lu sampleCycleMsk=%lu", channelMsk, sampleCycleMsk);
+  //  DebugTrace("setSMPR channelMsk = %lu sampleCycleMsk=%lu", channelMsk, sampleCycleMsk);
   if (channelMsk <= 9) {
     const uint32_t mask = 0b111 << (channelMsk * 3);
-    if (((cgrp->smpr2 & mask) == 0) || ((cgrp->smpr2 & mask) == sampleCycleMsk)) {
-      cgrp->smpr2 |= (sampleCycleMsk << (channelMsk * 3));
-    } else {
-      chSysHalt("try to set different sampleCycleMsk for same channel");
-    }
+    cgrp->smpr2 &= ~mask;
+    cgrp->smpr2 |= (sampleCycleMsk << (channelMsk * 3));
   } else if (channelMsk <= 18) {
+    if ((channelMsk >= 16) && (sampleCycleMsk < 7))
+      chSysHalt("Internal channels have to be sampled @ maximum SMPR cycles");
     const uint32_t mask = 0b111 << ((channelMsk-10) * 3);
-    if (((cgrp->smpr1 & mask) == 0) || ((cgrp->smpr1 & mask) == sampleCycleMsk)) {
-      cgrp->smpr1 |= (sampleCycleMsk << ((channelMsk-10) * 3));
-    } else {
-      chSysHalt("try to set different sampleCycleMsk for same channel");
-    }
+    cgrp->smpr1 &= ~mask;
+    cgrp->smpr1 |= (sampleCycleMsk << ((channelMsk-10) * 3));
   } else {
     chSysHalt("setSQR : invalid channelMsk");
   }
