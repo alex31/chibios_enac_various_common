@@ -42,63 +42,79 @@
    - idée de tp qui a du sens pour la conversion continue ?
 
 
- */
+*/
+
+
+#define CALLBACK_START_ADDR	0x8000000
+
+
 static void errorcallback (ADCDriver *adcp, adcerror_t err);
 static int getChannelFromLine(ioline_t line);
 static void setSQR(ADCConversionGroup  *cgrp, size_t sequence, uint32_t channelMsk);
 static void setSMPR(ADCConversionGroup  *cgrp, uint32_t channelMsk, uint32_t sampleCycleMsk);
+static void configureGptd6(uint32_t frequency);
 
 __attribute__ ((sentinel))
-void adcFillConversionGroup(ADCConversionGroup  *cgrp,
-			    const bool		circular,
-			    adccallback_t	end_cb,
-			    ...)
+void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
 {
   typedef enum {ArgLine=0, ArgCycle, ArgLast} NextArgType;
   va_list ap;
-  int32_t curArg;
+  uint32_t curArg;
   size_t  sequenceIndex=0;
   int channel=-1;
   
   memset(cgrp, 0U, sizeof(ADCConversionGroup));
-  cgrp->circular = circular;
-  cgrp->end_cb = end_cb;
-  cgrp->error_cb = &errorcallback;
+  cgrp->circular = false;
+  cgrp->end_cb = NULL;
+  cgrp->error_cb = errorcallback;
   cgrp->cr2 = ADC_CR2_SWSTART;
   
-  va_start(ap, end_cb);
-  while ((curArg = va_arg(ap, int32_t)) != 0) {
-    const NextArgType nat = (curArg >= ADC_CYCLE_START) && (curArg <= ADC_CYCLE_START+7) ?
-      ArgCycle : ArgLine;
-    switch (nat) {
-    case ArgLine : {
-      if (curArg > 1024) { // parameter is a line coumpound address
-	channel = getChannelFromLine((ioline_t) curArg);
-	if (channel < 0)
-	  chSysHalt("invalid LINE");
-	setSQR(cgrp, sequenceIndex, channel);
-      } else if  (curArg >= 16) { // parameter is an internal channel (ref, bat, temp)
-	channel = curArg;
-	setSQR(cgrp, sequenceIndex, channel);
-      } else {
-	chSysHalt("sequence parameter error : neither LINE or INTERNAL CHANNEL");
+  va_start(ap, cgrp);
+  while ((curArg = va_arg(ap, uint32_t)) != 0) {
+    if ((curArg > CALLBACK_START_ADDR) && (curArg <= PERIPH_BASE)) {
+      cgrp->end_cb = (adccallback_t) curArg;
+    } else if ((curArg >= ADC_ONE_SHOT ) &&
+	       (curArg <= ADC_TIMER_DRIVEN(ADC_TIMER_MAX_ALLOWED_FREQUENCY))) {
+      switch (curArg) {
+      case  ADC_ONE_SHOT :  cgrp->circular = false; break;
+      case ADC_CONTINUOUS :  cgrp->circular = true; break;
+      default: cgrp->circular = true;
+	configureGptd6(curArg-ADC_TIMER_DRIVEN(0));
       }
-      sequenceIndex++;
+    } else {
+      const NextArgType nat = (curArg >= ADC_CYCLE_START) && (curArg <= ADC_CYCLE_START+7) ?
+	ArgCycle : ArgLine;
+      switch (nat) {
+      case ArgLine : {
+	if (curArg > 1024) { // parameter is a line coumpound address
+	  channel = getChannelFromLine((ioline_t) curArg);
+	  if (channel < 0)
+	    chSysHalt("invalid LINE");
+	  setSQR(cgrp, sequenceIndex, channel);
+	} else if  (curArg >= 16) { // parameter is an internal channel (ref, bat, temp)
+	  channel = curArg;
+	  setSQR(cgrp, sequenceIndex, channel);
+	} else {
+	  chSysHalt("sequence parameter error : neither LINE or INTERNAL CHANNEL");
+	}
+	sequenceIndex++;
+      }
+	break;
+      case ArgCycle: 
+	if ((curArg < ADC_CYCLE_START ) || (curArg > (ADC_CYCLE_START+7)))
+	  chSysHalt("sequencesample cycle parameter error");
+	setSMPR(cgrp, channel, curArg-ADC_CYCLE_START);
+	break;
+      default:
+	chSysHalt("internal error");
+      }
     }
-      break;
-    case ArgCycle: 
-      if ((curArg < ADC_CYCLE_START ) || (curArg > (ADC_CYCLE_START+7)))
-	chSysHalt("sequencesample cycle parameter error");
-      setSMPR(cgrp, channel, curArg-ADC_CYCLE_START);
-      break;
-    default:
-      chSysHalt("internal error");
-    }
-  }
+    
   
   va_end(ap);
   
   cgrp->num_channels = sequenceIndex;
+  }
 }
 
 
@@ -162,3 +178,11 @@ static void setSMPR(ADCConversionGroup  *cgrp, uint32_t channelMsk, uint32_t sam
   }
 }
 
+static void configureGptd6(uint32_t frequency)
+{
+  (void) frequency;
+#if (STM32_GPT_USE_TIM6 == FALSE)
+  chDbgAssert(STM32_GPT_USE_TIM6 != FALSE, "timer driver ADC need  STM32_GPT_USE_TIM6 == TRUE");
+#endif
+
+}

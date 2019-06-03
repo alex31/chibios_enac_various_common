@@ -18,11 +18,13 @@ typedef enum {ADC_CYCLE_START=256, ADC_CYCLES_1P5=ADC_CYCLE_START, ADC_CYCLES_2P
 	      ADC_CYCLES_64P5, ADC_CYCLES_384P5, ADC_CYCLES_810P5} AdcSampleCycles;
 #endif
 
+#define ADC_ONE_SHOT	1000U
+#define ADC_CONTINUOUS	1001U
+#define ADC_TIMER_MAX_ALLOWED_FREQUENCY	100000U
+#define ADC_TIMER_DRIVEN(f) (f+ADC_CONTINUOUS+1)
+
 __attribute__ ((sentinel))
-void adcFillConversionGroup(ADCConversionGroup  *cgrp,
-			    const bool		circular,
-			    adccallback_t	end_cb,
-			    ...);
+void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...);
 
 
 
