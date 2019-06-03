@@ -24,10 +24,14 @@
   ====
   plages de valeur pour les paramètres :
 
-  lines                       : > 1_000_000
+  end_callback		      : > 0x80000000
+  lines                       : > 0x40000000
   internal channels           : entre 16 et 18 inclus 
   sampling cycles             : transposé entre 256 et 263 inclus
-  frequence d'échantillonnage : transposé entre 1001 et 101_000 depuis [1 - 100_000] 
+  
+  frequence d'échantillonnage : valeur speciale ADC_ONE_SHOT:1000, ADC_CONTINUOUS:1001, et macro 
+                                ADC_TIMER_DRIVEN(x) ->
+                                transposé entre 1002 et 101_002 depuis [1 - 100_000] 
                                 (utilisation de GPTD6), erreur si param défini et 
                                 GPT_USE_TIM6 non défini
    
