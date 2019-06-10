@@ -18,7 +18,7 @@
   * passage des params sur 64 bits avec concatenation type | valeur par une MACRO par type
     et recuperation type et valeur par deux macros
   * API simple pour faire de la conversion continue pilotée par TIMER
-    - il faut passer la frequence : utilisation systematique de GPTD6
+    - il faut passer la frequence : utilisation systematique de GPTD8
   
 
   ====
@@ -32,8 +32,8 @@
   frequence d'échantillonnage : valeur speciale ADC_ONE_SHOT:1000, ADC_CONTINUOUS:1001, et macro 
                                 ADC_TIMER_DRIVEN(x) ->
                                 transposé entre 1002 et 101_002 depuis [1 - 100_000] 
-                                (utilisation de GPTD6), erreur si param défini et 
-                                GPT_USE_TIM6 non défini
+                                (utilisation de GPTD8), erreur si param défini et 
+                                GPT_USE_TIM8 non défini
    
    simplifier le cours en prenant en compte la nouvelle API
    creer des TP
@@ -43,6 +43,7 @@
 
 
 */
+//float cbGptFrq = 0.0f;
 
 
 #define CALLBACK_START_ADDR	0x8000000
@@ -52,7 +53,8 @@ static void errorcallback (ADCDriver *adcp, adcerror_t err);
 static int getChannelFromLine(ioline_t line);
 static void setSQR(ADCConversionGroup  *cgrp, size_t sequence, uint32_t channelMsk);
 static void setSMPR(ADCConversionGroup  *cgrp, uint32_t channelMsk, uint32_t sampleCycleMsk);
-static void configureGptd6(uint32_t frequency);
+static void configureGptd8(uint32_t frequency);
+static uint32_t cyclesByMask(const AdcSampleCycles msk);
 
 __attribute__ ((sentinel))
 void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
@@ -60,8 +62,10 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
   typedef enum {ArgLine=0, ArgCycle, ArgLast} NextArgType;
   va_list ap;
   uint32_t curArg;
+  uint32_t totalAdcCycles = 0U;
   size_t  sequenceIndex=0;
   int channel=-1;
+  uint32_t timerFrequency = 0;
   
   memset(cgrp, 0U, sizeof(ADCConversionGroup));
   cgrp->circular = false;
@@ -79,7 +83,8 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
       case  ADC_ONE_SHOT :  cgrp->circular = false; break;
       case ADC_CONTINUOUS :  cgrp->circular = true; break;
       default: cgrp->circular = true;
-	configureGptd6(curArg-ADC_TIMER_DRIVEN(0));
+	configureGptd8((timerFrequency = curArg-ADC_TIMER_DRIVEN(0)));
+	cgrp->cr2 = ADC_CR2_EXTEN_RISING | ADC_CR2_EXTSEL_SRC(0b1110);
       }
     } else {
       const NextArgType nat = (curArg >= ADC_CYCLE_START) && (curArg <= ADC_CYCLE_START+7) ?
@@ -88,25 +93,27 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
       case ArgLine : {
 	if (curArg > 1024) { // parameter is a line coumpound address
 	  channel = getChannelFromLine((ioline_t) curArg);
-	  if (channel < 0)
-	    chSysHalt("invalid LINE");
+	  chDbgAssert(channel >= 0, "invalid LINE");
 	  setSQR(cgrp, sequenceIndex, channel);
 	} else if  (curArg >= 16) { // parameter is an internal channel (ref, bat, temp)
 	  channel = curArg;
 	  setSQR(cgrp, sequenceIndex, channel);
 	} else {
-	  chSysHalt("sequence parameter error : neither LINE or INTERNAL CHANNEL");
+	  chDbgAssert(FALSE, "sequence parameter error : neither LINE or INTERNAL CHANNEL");
 	}
+	totalAdcCycles += cyclesByMask(0x7+ADC_CYCLE_START);
 	sequenceIndex++;
       }
 	break;
-      case ArgCycle: 
-	if ((curArg < ADC_CYCLE_START ) || (curArg > (ADC_CYCLE_START+7)))
-	  chSysHalt("sequencesample cycle parameter error");
+      case ArgCycle:
+	chDbgAssert((curArg >= ADC_CYCLE_START ) && (curArg <= (ADC_CYCLE_START+7)),
+	  "sequence sample cycle parameter error");
 	setSMPR(cgrp, channel, curArg-ADC_CYCLE_START);
+	totalAdcCycles -= cyclesByMask(0x7+ADC_CYCLE_START);
+	totalAdcCycles += cyclesByMask(curArg);
 	break;
       default:
-	chSysHalt("internal error");
+	chDbgAssert(FALSE, "internal error");
       }
     }
     
@@ -114,6 +121,12 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
   va_end(ap);
   
   cgrp->num_channels = sequenceIndex;
+  }
+
+  if (timerFrequency) {
+    chDbgAssert((cgrp->num_channels * totalAdcCycles) < (STM32_ADCCLK / timerFrequency),
+		"cannot keep sampling pace. lower frequency or/and oversampling cycles"
+		" or/and number of channels");
   }
 }
 
@@ -124,7 +137,7 @@ static void errorcallback (ADCDriver *adcp, adcerror_t err)
 {
   (void) adcp;
   (void) err;
-  chSysHalt("ADC error callback");
+  chDbgAssert(FALSE, "ADC error callback");
 }
 
 
@@ -155,7 +168,7 @@ static void setSQR(ADCConversionGroup  *cgrp, size_t sequence, uint32_t channelM
   } else if (sequence <= 15) {
     cgrp->sqr1 |= (channelMsk << (sequence-12)*5);
   } else {
-    chSysHalt("setSQR : invalid sequence");
+    chDbgAssert(FALSE, "setSQR : invalid sequence");
   }
   setSMPR(cgrp, channelMsk, 7); // default value is maximum SMPR cycle for the channel
 }
@@ -168,21 +181,86 @@ static void setSMPR(ADCConversionGroup  *cgrp, uint32_t channelMsk, uint32_t sam
     cgrp->smpr2 &= ~mask;
     cgrp->smpr2 |= (sampleCycleMsk << (channelMsk * 3));
   } else if (channelMsk <= 18) {
-    if ((channelMsk >= 16) && (sampleCycleMsk < 7))
-      chSysHalt("Internal channels have to be sampled @ maximum SMPR cycles");
+    chDbgAssert((channelMsk < 16) || (sampleCycleMsk == 7),
+		"Internal channels have to be sampled @ maximum SMPR cycles");
     const uint32_t mask = 0b111 << ((channelMsk-10) * 3);
     cgrp->smpr1 &= ~mask;
     cgrp->smpr1 |= (sampleCycleMsk << ((channelMsk-10) * 3));
   } else {
-    chSysHalt("setSQR : invalid channelMsk");
+    chDbgAssert(FALSE, "setSQR : invalid channelMsk");
   }
 }
 
-static void configureGptd6(uint32_t frequency)
+/* static void gptcb (GPTDriver *gptp) */
+/* { */
+/*   (void) gptp; */
+  
+/*   static rtcnt_t ts = 0; */
+/*   const rtcnt_t now = chSysGetRealtimeCounterX(); */
+/*   cbGptFrq = ((float) STM32_SYSCLK / (now - ts)); */
+/*   ts = now; */
+/* } */
+
+
+static void configureGptd8(uint32_t frequency)
 {
   (void) frequency;
-#if (STM32_GPT_USE_TIM6 == FALSE)
-  chDbgAssert(STM32_GPT_USE_TIM6 != FALSE, "timer driver ADC need  STM32_GPT_USE_TIM6 == TRUE");
-#endif
+#if (STM32_GPT_USE_TIM8 == FALSE)
+  chDbgAssert(STM32_GPT_USE_TIM8 != FALSE, "timer driver ADC need  STM32_GPT_USE_TIM8 == TRUE");
+#else
+  /*
+    #                 _      _                                     _             _     __ _  
+    #                | |    (_)                                   | |           (_)   / _` | 
+    #                | |_    _    _ __ ___     ___   _ __         | |_    _ __   _   | (_| | 
+    #                | __|  | |  | '_ ` _ \   / _ \ | '__|        | __|  | '__| | |   \__, | 
+    #                \ |_   | |  | | | | | | |  __/ | |           \ |_   | |    | |    __/ | 
+    #                 \__|  |_|  |_| |_| |_|  \___| |_|            \__|  |_|    |_|   |___/  
+    #                  __ _                            _          
+    #                 / _` |                          | |         
+    #                | (_| |   ___   _ __    ___    __| |         
+    #                 \__, |  / _ \ | '__|  / _ \  / _` |         
+    #                  __/ | |  __/ | |    |  __/ | (_| |         
+    #                 |___/   \___| |_|     \___|  \__,_|         
+  */
 
+  static GPTConfig gpt8cfg1 = {
+  .frequency =  1e4,
+  .callback  =  NULL,//&gptcb,
+  .cr2       =  TIM_CR2_MMS_1,  /* MMS = 010 = TRGO on Update Event.        */
+  .dier      =  0U
+  };
+
+  gptStart(&GPTD8, &gpt8cfg1);
+  const uint16_t psc = (GPTD8.clock / frequency) / 60000U;
+  const uint16_t   timcnt = (GPTD8.clock / (psc+1)) / frequency;
+
+  //  DebugTrace ("DBG>> psc=%u timcnt=%u", psc, timcnt);
+  
+  GPTD8.tim->PSC = psc;
+  gptStartContinuous(&GPTD8, timcnt);
+#endif
+}
+
+
+
+static uint32_t cyclesByMask(const AdcSampleCycles msk)
+{
+#if defined ADC_SAMPLE_480 // ADCV2: F4 F7
+  switch (msk) {
+  case ADC_CYCLES_3   : return 3U+15U;
+  case ADC_CYCLES_15  : return 15U+15U;
+  case ADC_CYCLES_28  : return 28U+15U;
+  case ADC_CYCLES_56  : return 56U+15U;
+  case ADC_CYCLES_84  : return 84U+15U;
+  case ADC_CYCLES_112 : return 112U+15U;
+  case ADC_CYCLES_144 : return 144U+15U;
+  case ADC_CYCLES_480 : return 480U+15U;
+  }
+
+#elif defined ADC_SMPR_SMP_601P5 // ADCV3: L4
+
+#elif defined ADC_SMPR_SMP_810P5 // ADCV4: H7
+
+#endif
+  return 0;
 }
