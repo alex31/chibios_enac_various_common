@@ -27,6 +27,7 @@
   end_callback		      : > 0x80000000
   lines                       : > 0x40000000
   internal channels           : entre 16 et 18 inclus 
+  nombre de cannaux           : entre 1 et 15 inclus
   sampling cycles             : transposé entre 256 et 263 inclus
   
   frequence d'échantillonnage : valeur speciale ADC_ONE_SHOT:1000, ADC_CONTINUOUS:1001, et macro 
@@ -65,6 +66,7 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
   uint32_t totalAdcCycles = 0U;
   size_t  sequenceIndex=0;
   int channel=-1;
+  int numberOfChannel = -1;
   uint32_t timerFrequency = 0;
   
   memset(cgrp, 0U, sizeof(ADCConversionGroup));
@@ -86,6 +88,9 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
 	configureGptd8((timerFrequency = curArg-ADC_TIMER_DRIVEN(0)));
 	cgrp->cr2 = ADC_CR2_EXTEN_RISING | ADC_CR2_EXTSEL_SRC(0b1110);
       }
+    } else if ((curArg >= NUMBER_OF_CHANNEL_MIN ) &&
+	       (curArg <= NUMBER_OF_CHANNEL_MAX)) {
+      numberOfChannel = curArg;
     } else {
       const NextArgType nat = (curArg >= ADC_CYCLE_START) && (curArg <= ADC_CYCLE_START+7) ?
 	ArgCycle : ArgLine;
@@ -120,9 +125,14 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
   
   va_end(ap);
   
-  cgrp->num_channels = sequenceIndex;
+ 
   }
-
+  cgrp->num_channels = sequenceIndex;
+  chDbgAssert((numberOfChannel >= NUMBER_OF_CHANNEL_MIN) && (numberOfChannel <= NUMBER_OF_CHANNEL_MAX),
+	      "number of channels not given or out of bound");
+  chDbgAssert(numberOfChannel == cgrp->num_channels,
+	      "number of channels and sequence paramaters incoherency");
+  
   if (timerFrequency) {
     chDbgAssert((cgrp->num_channels * totalAdcCycles) < (STM32_ADCCLK / timerFrequency),
 		"cannot keep sampling pace. lower frequency or/and oversampling cycles"

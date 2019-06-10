@@ -3,6 +3,8 @@
 #include "ch.h"
 #include "hal.h"
 
+#define NUMBER_OF_CHANNEL_MIN	1
+#define NUMBER_OF_CHANNEL_MAX	15
 
 #if defined ADC_SAMPLE_480 // ADCV2: F4 F7
 typedef enum {ADC_CYCLE_START=256, ADC_CYCLES_3=ADC_CYCLE_START, ADC_CYCLES_15,
