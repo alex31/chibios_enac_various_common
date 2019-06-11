@@ -58,7 +58,7 @@ static void configureGptd8(uint32_t frequency);
 static uint32_t cyclesByMask(const AdcSampleCycles msk);
 
 __attribute__ ((sentinel))
-void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
+void adcFillConversionGroup(ADCConversionGroup  *cgrp, const uint8_t numberOfChannel, ...)
 {
   typedef enum {ArgLine=0, ArgCycle, ArgLast} NextArgType;
   va_list ap;
@@ -66,7 +66,6 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
   uint32_t totalAdcCycles = 0U;
   size_t  sequenceIndex=0;
   int channel=-1;
-  int numberOfChannel = -1;
   uint32_t timerFrequency = 0;
   
   memset(cgrp, 0U, sizeof(ADCConversionGroup));
@@ -75,7 +74,7 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
   cgrp->error_cb = errorcallback;
   cgrp->cr2 = ADC_CR2_SWSTART;
   
-  va_start(ap, cgrp);
+  va_start(ap, numberOfChannel);
   while ((curArg = va_arg(ap, uint32_t)) != 0) {
     if ((curArg > CALLBACK_START_ADDR) && (curArg <= PERIPH_BASE)) {
       cgrp->end_cb = (adccallback_t) curArg;
@@ -88,9 +87,6 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...)
 	configureGptd8((timerFrequency = curArg-ADC_TIMER_DRIVEN(0)));
 	cgrp->cr2 = ADC_CR2_EXTEN_RISING | ADC_CR2_EXTSEL_SRC(0b1110);
       }
-    } else if ((curArg >= NUMBER_OF_CHANNEL_MIN ) &&
-	       (curArg <= NUMBER_OF_CHANNEL_MAX)) {
-      numberOfChannel = curArg;
     } else {
       const NextArgType nat = (curArg >= ADC_CYCLE_START) && (curArg <= ADC_CYCLE_START+7) ?
 	ArgCycle : ArgLine;

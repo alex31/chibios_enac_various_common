@@ -26,7 +26,7 @@ typedef enum {ADC_CYCLE_START=256, ADC_CYCLES_1P5=ADC_CYCLE_START, ADC_CYCLES_2P
 #define ADC_TIMER_DRIVEN(f) (f+ADC_CONTINUOUS+1)
 
 __attribute__ ((sentinel))
-void adcFillConversionGroup(ADCConversionGroup  *cgrp, ...);
+void adcFillConversionGroup(ADCConversionGroup  *cgrp, const uint8_t numberOfChannel, ...);
 
 
 
