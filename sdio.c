@@ -483,7 +483,18 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
 #                |_| |_| |_|      |_____|        
 */
 
+bool sdioIsCardResponding(void)
+{
+  if (SDCD1.state == BLK_READY) 
+    return true;
+  
+  sdcStart(&SDCD1, NULL);
+  bool ret = sdcConnect(&SDCD1) == CH_SUCCESS;
 
+  sdcDisconnect(&SDCD1);
+  sdcStop(&SDCD1);
+  return ret;
+}
 
 bool sdioConnect (void) 
 {
