@@ -92,11 +92,11 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, const uint8_t numberOfCha
 	ArgCycle : ArgLine;
       switch (nat) {
       case ArgLine : {
-	if (curArg > 1024) { // parameter is a line coumpound address
+	if (curArg >= PERIPH_BASE) { // parameter is a line coumpound address
 	  channel = getChannelFromLine((ioline_t) curArg);
 	  chDbgAssert(channel >= 0, "invalid LINE");
 	  setSQR(cgrp, sequenceIndex, channel);
-	} else if  (curArg >= 16) { // parameter is an internal channel (ref, bat, temp)
+	} else if  (curArg <= 18) { // parameter is an internal channel (ref, bat, temp)
 	  channel = curArg;
 	  setSQR(cgrp, sequenceIndex, channel);
 	} else {
