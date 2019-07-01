@@ -1,6 +1,5 @@
 #include <ch.h>
 #include <hal.h>
-#include "bitband.h"
 #include "stdutil.h"
 #include "leds.h"
 #include <strings.h>
@@ -109,10 +108,10 @@ static noreturn void thdBlinkLed (void *arg)
 
   while (true) {
     switch (ledData->ledS) {
-    case LED_OFF : bb_palWriteLine (ledData->ledL, LED_COMMAND_INVERTED); break;
-    case LED_BLINKSLOW : bb_palWriteLine (ledData->ledL, blinkSlow); break;
-    case LED_BLINKFAST : bb_palWriteLine (ledData->ledL, blinkFast); break;
-    case LED_ON : bb_palWriteLine (ledData->ledL, !LED_COMMAND_INVERTED); break;
+    case LED_OFF : palWriteLine (ledData->ledL, LED_COMMAND_INVERTED); break;
+    case LED_BLINKSLOW : palWriteLine (ledData->ledL, (uint32_t) blinkSlow); break;
+    case LED_BLINKFAST : palWriteLine (ledData->ledL, (uint32_t) blinkFast); break;
+    case LED_ON : palWriteLine (ledData->ledL, !LED_COMMAND_INVERTED); break;
     }
     
     chThdSleepMilliseconds (20); 
