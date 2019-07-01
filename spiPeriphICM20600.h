@@ -93,16 +93,16 @@ typedef enum {ICM20600_XG_OFFS_TC_H           = 0x04,
  ICM20600 bitmask
  ***************************************************************/
 typedef enum {	      
-  ICM20600_GYRO_RATE_8K_BW_250	= (0 << 0),
-  ICM20600_GYRO_RATE_1K_BW_176	= (1 << 0),
-  ICM20600_GYRO_RATE_1K_BW_92	= (2 << 0),
-  ICM20600_GYRO_RATE_1K_BW_41	= (3 << 0),
-  ICM20600_GYRO_RATE_1K_BW_20	= (4 << 0),
-  ICM20600_GYRO_RATE_1K_BW_10	= (5 << 0),
-  ICM20600_GYRO_RATE_1K_BW_5	= (6 << 0),
-  ICM20600_GYRO_RATE_8K_BW_3281 = (7 << 0),
-  ICM20600_FIFO_OVERWRITE       = (1 << 6),
-  ICM20600_FIFO_BLOCK           = (0 << 6),
+  ICM20600_GYRO_RATE_8K_BW_250	= (0U << 0),
+  ICM20600_GYRO_RATE_1K_BW_176	= (1U << 0),
+  ICM20600_GYRO_RATE_1K_BW_92	= (2U << 0),
+  ICM20600_GYRO_RATE_1K_BW_41	= (3U << 0),
+  ICM20600_GYRO_RATE_1K_BW_20	= (4U << 0),
+  ICM20600_GYRO_RATE_1K_BW_10	= (5U << 0),
+  ICM20600_GYRO_RATE_1K_BW_5	= (6U << 0),
+  ICM20600_GYRO_RATE_8K_BW_3281 = (7U << 0),
+  ICM20600_FIFO_OVERWRITE       = (1U << 6),
+  ICM20600_FIFO_BLOCK           = (0U << 6),
 } Icm20600_config;
 
 
@@ -111,16 +111,16 @@ Gyroscope scale range
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_FCHOICE_RATE_32K_BW_8173 = (1 << 0),
-  ICM20600_FCHOICE_RATE_32K_BW_3281 = (2 << 0),
-  ICM20600_RANGE_250_DPS	    = (0 << 3),
-  ICM20600_RANGE_500_DPS	    = (1 << 3),
-  ICM20600_RANGE_1K_DPS		    = (2 << 3),
-  ICM20600_RANGE_2K_DPS		    = (3 << 3),
-  ICM20600_RANGE_GYRO_MASK	    = (3 << 3),
-  ICM20600_Z_GYRO_SELFTEST	    = (1 << 5),
-  ICM20600_Y_GYRO_SELFTEST	    = (1 << 6),
-  ICM20600_X_GYRO_SELFTEST	    = (1 << 7),
+  ICM20600_FCHOICE_RATE_32K_BW_8173 = (1U << 0),
+  ICM20600_FCHOICE_RATE_32K_BW_3281 = (2U << 0),
+  ICM20600_RANGE_250_DPS	    = (0U << 3),
+  ICM20600_RANGE_500_DPS	    = (1U << 3),
+  ICM20600_RANGE_1K_DPS		    = (2U << 3),
+  ICM20600_RANGE_2K_DPS		    = (3U << 3),
+  ICM20600_RANGE_GYRO_MASK	    = (3U << 3),
+  ICM20600_Z_GYRO_SELFTEST	    = (1U << 5),
+  ICM20600_Y_GYRO_SELFTEST	    = (1U << 6),
+  ICM20600_X_GYRO_SELFTEST	    = (1U << 7),
 } Icm20600_gyroConf;
 
 /***************************************************************
@@ -128,30 +128,30 @@ Accelerometer scale range
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_RANGE_2G	    = (0 << 3),
-  ICM20600_RANGE_4G	    = (1 << 3),
-  ICM20600_RANGE_8G	    = (2 << 3),
-  ICM20600_RANGE_16G	    = (3 << 3),
-  ICM20600_RANGE_ACCEL_MASK = (3 << 3),
-  ICM20600_Z_ACCEL_SELFTEST = (1 << 5),
-  ICM20600_Y_ACCEL_SELFTEST = (1 << 6),
-  ICM20600_X_ACCEL_SELFTEST = (1 << 7),
+  ICM20600_RANGE_2G	    = (0U << 3),
+  ICM20600_RANGE_4G	    = (1U << 3),
+  ICM20600_RANGE_8G	    = (2U << 3),
+  ICM20600_RANGE_16G	    = (3U << 3),
+  ICM20600_RANGE_ACCEL_MASK = (3U << 3),
+  ICM20600_Z_ACCEL_SELFTEST = (1U << 5),
+  ICM20600_Y_ACCEL_SELFTEST = (1U << 6),
+  ICM20600_X_ACCEL_SELFTEST = (1U << 7),
 } Icm20600_accelConf;
 
 typedef enum 
 {
-  ICM20600_ACC_RATE_4K_BW_1046	 = (8 << 0),
-  ICM20600_ACC_RATE_1K_BW_218	 = (1 << 0),
-  ICM20600_ACC_RATE_1K_BW_99	 = (2 << 0),
-  ICM20600_ACC_RATE_1K_BW_44	 = (3 << 0),
-  ICM20600_ACC_RATE_1K_BW_21	 = (4 << 0),
-  ICM20600_ACC_RATE_1K_BW_10	 = (5 << 0),
-  ICM20600_ACC_RATE_1K_BW_5	 = (6 << 0),
-  ICM20600_ACC_RATE_1K_BW_420	 = (7 << 0),
-  ICM20600_ACC_LOWPOW_AVERAGE_4	 = (0 << 4),
-  ICM20600_ACC_LOWPOW_AVERAGE_8	 = (1 << 4),
-  ICM20600_ACC_LOWPOW_AVERAGE_16 = (2 << 4),
-  ICM20600_ACC_LOWPOW_AVERAGE_32 = (3 << 4)
+  ICM20600_ACC_RATE_4K_BW_1046	 = (8U << 0),
+  ICM20600_ACC_RATE_1K_BW_218	 = (1U << 0),
+  ICM20600_ACC_RATE_1K_BW_99	 = (2U << 0),
+  ICM20600_ACC_RATE_1K_BW_44	 = (3U << 0),
+  ICM20600_ACC_RATE_1K_BW_21	 = (4U << 0),
+  ICM20600_ACC_RATE_1K_BW_10	 = (5U << 0),
+  ICM20600_ACC_RATE_1K_BW_5	 = (6U << 0),
+  ICM20600_ACC_RATE_1K_BW_420	 = (7U << 0),
+  ICM20600_ACC_LOWPOW_AVERAGE_4	 = (0U << 4),
+  ICM20600_ACC_LOWPOW_AVERAGE_8	 = (1U << 4),
+  ICM20600_ACC_LOWPOW_AVERAGE_16 = (2U << 4),
+  ICM20600_ACC_LOWPOW_AVERAGE_32 = (3U << 4)
 } Icm20600_accelConf2;
 
 
@@ -161,16 +161,16 @@ Averaging filter configuration for low-power gyroscope mode
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_GYRO_AVERAGE_1	  = (0 << 4),
-  ICM20600_GYRO_AVERAGE_2	  = (1 << 4),
-  ICM20600_GYRO_AVERAGE_4	  = (2 << 4),
-  ICM20600_GYRO_AVERAGE_8	  = (3 << 4),
-  ICM20600_GYRO_AVERAGE_16	  = (4 << 4),
-  ICM20600_GYRO_AVERAGE_32	  = (5 << 4),
-  ICM20600_GYRO_AVERAGE_64	  = (6 << 4),
-  ICM20600_GYRO_AVERAGE_128	  = (7 << 4),
-  ICM20600_GYRO_LOWPOWER_ENABLED  = (1 << 7),
-  ICM20600_GYRO_LOWPOWER_DISABLED = (1 << 7)
+  ICM20600_GYRO_AVERAGE_1	  = (0U << 4),
+  ICM20600_GYRO_AVERAGE_2	  = (1U << 4),
+  ICM20600_GYRO_AVERAGE_4	  = (2U << 4),
+  ICM20600_GYRO_AVERAGE_8	  = (3U << 4),
+  ICM20600_GYRO_AVERAGE_16	  = (4U << 4),
+  ICM20600_GYRO_AVERAGE_32	  = (5U << 4),
+  ICM20600_GYRO_AVERAGE_64	  = (6U << 4),
+  ICM20600_GYRO_AVERAGE_128	  = (7U << 4),
+  ICM20600_GYRO_LOWPOWER_ENABLED  = (1U << 7),
+  ICM20600_GYRO_LOWPOWER_DISABLED = (1U << 7)
 } Icm20600_gyroLowPower;
 
 /***************************************************************
@@ -178,10 +178,10 @@ Fifo configuration
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_ACCEL_FIFO_ENABLE  = (1 << 3),
-  ICM20600_ACCEL_FIFO_DISABLE = (0 << 3),
-  ICM20600_GYRO_FIFO_ENABLE   = (1 << 4),
-  ICM20600_GYRO_FIFO_DISABLE  = (0 << 4),
+  ICM20600_ACCEL_FIFO_ENABLE  = (1U << 3),
+  ICM20600_ACCEL_FIFO_DISABLE = (0U << 3),
+  ICM20600_GYRO_FIFO_ENABLE   = (1U << 4),
+  ICM20600_GYRO_FIFO_DISABLE  = (0U << 4),
 } Icm20600_fifoConfig;
 
 /***************************************************************
@@ -189,26 +189,26 @@ ICM20600 power mode
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_CLKSEL_20MHZ = (0 << 0),
-  ICM20600_CLKSEL_AUTO	= (1 << 0),
-  ICM20600_CLKSEL_STOP	= (7 << 0),
-  ICM20600_TEMP_DISABLE = (1 << 3),
-  ICM20600_GYRO_STANDBY = (1 << 4),
-  ICM20600_CYCLE_ENABLE = (1 << 5),
-  ICM20600_ENTER_SLEEP	= (1 << 6),
-  ICM20600_RESET	= (1 << 7)
+  ICM20600_CLKSEL_20MHZ = (0U << 0),
+  ICM20600_CLKSEL_AUTO	= (1U << 0),
+  ICM20600_CLKSEL_STOP	= (7U << 0),
+  ICM20600_TEMP_DISABLE = (1U << 3),
+  ICM20600_GYRO_STANDBY = (1U << 4),
+  ICM20600_CYCLE_ENABLE = (1U << 5),
+  ICM20600_ENTER_SLEEP	= (1U << 6),
+  ICM20600_RESET	= (1U << 7)
 } Icm20600_powerMgmt1;
 
 typedef enum 
 {
-  ICM20600_DISABLE_Z_GYRO  = (1 << 0),
-  ICM20600_DISABLE_Y_GYRO  = (1 << 1),
-  ICM20600_DISABLE_X_GYRO  = (1 << 2),
-  ICM20600_DISABLE_Z_ACCEL = (1 << 3),
-  ICM20600_DISABLE_Y_ACCEL = (1 << 4),
-  ICM20600_DISABLE_X_ACCEL = (1 << 5),
-  ICM20600_DISABLE_GYRO  = (7 << 0),
-  ICM20600_DISABLE_ACCEL  = (7 << 3)
+  ICM20600_DISABLE_Z_GYRO  = (1U << 0),
+  ICM20600_DISABLE_Y_GYRO  = (1U << 1),
+  ICM20600_DISABLE_X_GYRO  = (1U << 2),
+  ICM20600_DISABLE_Z_ACCEL = (1U << 3),
+  ICM20600_DISABLE_Y_ACCEL = (1U << 4),
+  ICM20600_DISABLE_X_ACCEL = (1U << 5),
+  ICM20600_DISABLE_GYRO  = (7U << 0),
+  ICM20600_DISABLE_ACCEL  = (7U << 3)
 } Icm20600_powerMgmt2;
 
 /***************************************************************
@@ -216,8 +216,8 @@ ICM20600 bus interface
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_SPI_MODE = (1 << 6),
-  ICM20600_I2C_MODE = (0 << 6)
+  ICM20600_SPI_MODE = (1U << 6),
+  ICM20600_I2C_MODE = (0U << 6)
 } Icm20600_Interface;
 
 /***************************************************************
@@ -225,20 +225,20 @@ ICM20600 interrupt and ready pin control
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_INT2_ENABLE		 = (1 << 0),
-  ICM20600_INT2_DISABLE		 = (1 << 0),
-  ICM20600_FSYNC_ITR_ENABLE	 = (1 << 2),
-  ICM20600_FSYNC_ITR_DISABLE	 = (0 << 2),
-  ICM20600_FSYNC_ACTIVE_LOW	 = (1 << 3),
-  ICM20600_FSYNC_ACTIVE_HIGH	 = (0 << 3),
-  ICM20600_CLEAR_ITR_READ_ANY	 = (1 << 4),
-  ICM20600_CLEAR_ITR_READ_STATUS = (0 << 4),
-  ICM20600_LATCH_UNTIL_CLEAR	 = (1 << 5),
-  ICM20600_PULSE_50_US		 = (0 << 5),
-  ICM20600_OPENDRAIN		 = (1 << 6),
-  ICM20600_PUSHPULL		 = (0 << 6),
-  ICM20600_ACTIVE_LOW		 = (1 << 7),
-  ICM20600_ACTIVE_HIGH		 = (0 << 7),
+  ICM20600_INT2_ENABLE		 = (1U << 0),
+  ICM20600_INT2_DISABLE		 = (1U << 0),
+  ICM20600_FSYNC_ITR_ENABLE	 = (1U << 2),
+  ICM20600_FSYNC_ITR_DISABLE	 = (0U << 2),
+  ICM20600_FSYNC_ACTIVE_LOW	 = (1U << 3),
+  ICM20600_FSYNC_ACTIVE_HIGH	 = (0U << 3),
+  ICM20600_CLEAR_ITR_READ_ANY	 = (1U << 4),
+  ICM20600_CLEAR_ITR_READ_STATUS = (0U << 4),
+  ICM20600_LATCH_UNTIL_CLEAR	 = (1U << 5),
+  ICM20600_PULSE_50_US		 = (0U << 5),
+  ICM20600_OPENDRAIN		 = (1U << 6),
+  ICM20600_PUSHPULL		 = (0U << 6),
+  ICM20600_ACTIVE_LOW		 = (1U << 7),
+  ICM20600_ACTIVE_HIGH		 = (0U << 7),
 } Icm20600_pinControl;
 
 /***************************************************************
@@ -246,12 +246,12 @@ ICM20600 accelerometer intelligence control
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_ONE_AXIS_REACHES_THRESHOLD = (0 << 0),
-  ICM20600_ALL_AXIS_REACH_THRESHOLD   = (1 << 0),
-  ICM20600_OUTPUT_LIMIT_ENABLED	      = (1 << 1),
-  ICM20600_OUTPUT_LIMIT_DISABLED      = (0 << 1),
-  ICM20600_WAKE_ON_MOTION_ENABLE      = (3 << 6),
-  ICM20600_WAKE_ON_MOTION_DISABLE     = (0 << 6)
+  ICM20600_ONE_AXIS_REACHES_THRESHOLD = (0U << 0),
+  ICM20600_ALL_AXIS_REACH_THRESHOLD   = (1U << 0),
+  ICM20600_OUTPUT_LIMIT_ENABLED	      = (1U << 1),
+  ICM20600_OUTPUT_LIMIT_DISABLED      = (0U << 1),
+  ICM20600_WAKE_ON_MOTION_ENABLE      = (3U << 6),
+  ICM20600_WAKE_ON_MOTION_DISABLE     = (0U << 6)
 } Icm20600_wakeOnMotion;
 
 /***************************************************************
@@ -259,10 +259,10 @@ ICM20600 user control
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_COLD_RESET	= (1 << 0),
-  ICM20600_FIFO_RESET	= (1 << 2),
-  ICM20600_FIFO_ENABLE	= (1 << 6),
-  ICM20600_FIFO_DISABLE = (0 << 6)
+  ICM20600_COLD_RESET	= (1U << 0),
+  ICM20600_FIFO_RESET	= (1U << 2),
+  ICM20600_FIFO_ENABLE	= (1U << 6),
+  ICM20600_FIFO_DISABLE = (0U << 6)
 } Icm20600_userControl;
 
 
@@ -271,12 +271,12 @@ ICM20600 interrupt status
  ***************************************************************/
 typedef enum 
 {
-  ICM20600_DATA_RDY_INT	  = (1 << 0),
-  ICM20600_GDRIVE_INT	  = (1 << 2),
-  ICM20600_FIFO_OFLOW_INT = (1 << 4),
-  ICM20600_WOM_Z_INT	  = (1 << 5),
-  ICM20600_WOM_Y_INT	  = (1 << 6),
-  ICM20600_WOM_X_INT	  = (1 << 7)
+  ICM20600_DATA_RDY_INT	  = (1U << 0),
+  ICM20600_GDRIVE_INT	  = (1U << 2),
+  ICM20600_FIFO_OFLOW_INT = (1U << 4),
+  ICM20600_WOM_Z_INT	  = (1U << 5),
+  ICM20600_WOM_Y_INT	  = (1U << 6),
+  ICM20600_WOM_X_INT	  = (1U << 7)
 } Icm20600_interruptStatus;
 
 
@@ -333,6 +333,11 @@ typedef struct {
   bool	  bias;    // true is ok
   bool	  passed;  // true if all test are ok
 } Icm20600TestResult;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 msg_t icm20600_init (Icm20600Data *imu, Icm20600Config* initParam);
 void icm20600_setGyroLpf (Icm20600Data *imu, const uint8_t lpf);
@@ -397,3 +402,13 @@ void icm20600_setModeDeepSleep (Icm20600Data *imu);
 // a zero value means selftest passed, otherwise bit in bitfield indicate which
 // axis is doomed
 Icm20600TestResult icm20600_runSelfTests (Icm20600Data *imu);
+
+#ifdef __cplusplus
+}
+#endif
+
+
+#ifdef __cplusplus
+constexpr static inline  Icm20600_gyroConf operator|(Icm20600_gyroConf a, Icm20600_gyroConf b)
+{return static_cast<Icm20600_gyroConf>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));}
+#endif
