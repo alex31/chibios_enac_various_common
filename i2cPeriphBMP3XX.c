@@ -48,7 +48,11 @@ static int8_t i2cWrite (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_
 			void *userData)
 {
   I2CDriver *i2cp = (I2CDriver *) userData;
-  const size_t wlen = len + 1;
+  const uint8_t wlen = len + 1;
+
+  if (wlen > 128)
+    return BMP3_E_INVALID_LEN;
+
   uint8_t CACHE_ALIGNED(writeBuffer[wlen]);
 
   //  DebugTrace("write %u b @r%u", len, reg_addr);
@@ -68,11 +72,15 @@ static int8_t i2cWrite (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_
 }
 
 
+
 // have to manage cache in case of STM32F7XX or STM32H7XX
 #if (__DCACHE_PRESENT != 0)
 static int8_t i2cRead (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t len,
 		       void *userData)
 {
+  if (len > 128-32)
+    return BMP3_E_INVALID_LEN;
+  
   I2CDriver * const i2cp = (I2CDriver *) userData;
   const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg_addr};
   uint8_t       CACHE_ALIGNED(readBuffer[len+32]); // +32 to isolate cache line
