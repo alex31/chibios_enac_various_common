@@ -359,6 +359,14 @@ F7
    (x + (typeof(x)) (w * (typeof(w))(y-x))) :	\
    (x - (typeof(x)) (w * (typeof(w))(x-y))))
 
+#define unlerp(x,y,x_y)				\
+  ((x_y - x) / (y - x))
+
+
+#define homothetie map(x, in_min, in_max, out_min, out_max) \
+((x - (typeof(x)) in_min) * ((typeof(x)) out_max - (typeof(x)) out_min) / ((typeof(x)) in_max - (typeof(x)) in_min) + (typeof(x)) out_min)
+
+
 #define isInRange(x, min, max) \
   ((x >= min) && (x <= max))
 
