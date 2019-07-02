@@ -57,48 +57,54 @@ static void setSMPR(ADCConversionGroup  *cgrp, uint32_t channelMsk, uint32_t sam
 static void configureGptd8(uint32_t frequency);
 static uint32_t cyclesByMask(const AdcSampleCycles msk);
 
-__attribute__ ((sentinel))
-void adcFillConversionGroup(ADCConversionGroup  *cgrp, const uint8_t numberOfChannel, ...)
+__attribute__ ((sentinel(1)))
+ADCConversionGroup adcGetConfig(const uint8_t numberOfChannel, ...)
 {
   typedef enum {ArgLine=0, ArgCycle, ArgLast} NextArgType;
   va_list ap;
-  uint32_t curArg;
+  uint32_t args[2];
   uint32_t totalAdcCycles = 0U;
   size_t  sequenceIndex=0;
   int channel=-1;
   uint32_t timerFrequency = 0;
+  ADCConversionGroup  cgr;
+
   
-  memset(cgrp, 0U, sizeof(ADCConversionGroup));
-  cgrp->circular = false;
-  cgrp->end_cb = NULL;
-  cgrp->error_cb = errorcallback;
-  cgrp->cr2 = ADC_CR2_SWSTART;
+  memset(&cgr, 0U, sizeof(ADCConversionGroup));
+  cgr.circular = false;
+  cgr.end_cb = NULL;
+  cgr.error_cb = errorcallback;
+  cgr.cr2 = ADC_CR2_SWSTART;
   
   va_start(ap, numberOfChannel);
-  while ((curArg = va_arg(ap, uint32_t)) != 0) {
-    if ((curArg > CALLBACK_START_ADDR) && (curArg <= PERIPH_BASE)) {
-      cgrp->end_cb = (adccallback_t) curArg;
-    } else if ((curArg >= ADC_ONE_SHOT ) &&
-	       (curArg <= ADC_TIMER_DRIVEN(ADC_TIMER_MAX_ALLOWED_FREQUENCY))) {
-      switch (curArg) {
-      case  ADC_ONE_SHOT :  cgrp->circular = false; break;
-      case ADC_CONTINUOUS :  cgrp->circular = true; break;
-      default: cgrp->circular = true;
-	configureGptd8((timerFrequency = curArg-ADC_TIMER_DRIVEN(0)));
-	cgrp->cr2 = ADC_CR2_EXTEN_RISING | ADC_CR2_EXTSEL_SRC(0b1110);
+  args[0] = va_arg(ap, uint32_t);
+
+  // look for double NULL arguments : one null is a valid arg for
+  // ADC_CHANNEL_IN0
+  while ( ((args[1] = va_arg(ap, uint32_t)) != 0) || (args[0] != 0) ) {
+    if ((args[0] > CALLBACK_START_ADDR) && (args[0] <= PERIPH_BASE)) {
+      cgr.end_cb = (adccallback_t) args[0];
+    } else if ((args[0] >= ADC_ONE_SHOT ) &&
+	       (args[0] <= ADC_TIMER_DRIVEN(ADC_TIMER_MAX_ALLOWED_FREQUENCY))) {
+      switch (args[0]) {
+      case  ADC_ONE_SHOT :  cgr.circular = false; break;
+      case ADC_CONTINUOUS :  cgr.circular = true; break;
+      default: cgr.circular = true;
+	configureGptd8((timerFrequency = args[0]-ADC_TIMER_DRIVEN(0)));
+	cgr.cr2 = ADC_CR2_EXTEN_RISING | ADC_CR2_EXTSEL_SRC(0b1110);
       }
     } else {
-      const NextArgType nat = (curArg >= ADC_CYCLE_START) && (curArg <= ADC_CYCLE_START+7) ?
+      const NextArgType nat = (args[0] >= ADC_CYCLE_START) && (args[0] <= ADC_CYCLE_START+7) ?
 	ArgCycle : ArgLine;
       switch (nat) {
       case ArgLine : {
-	if (curArg >= PERIPH_BASE) { // parameter is a line coumpound address
-	  channel = getChannelFromLine((ioline_t) curArg);
+	if (args[0] >= PERIPH_BASE) { // parameter is a line coumpound address
+	  channel = getChannelFromLine((ioline_t) args[0]);
 	  chDbgAssert(channel >= 0, "invalid LINE");
-	  setSQR(cgrp, sequenceIndex, channel);
-	} else if  (curArg <= 18) { // parameter is an internal channel (ref, bat, temp)
-	  channel = curArg;
-	  setSQR(cgrp, sequenceIndex, channel);
+	  setSQR(&cgr, sequenceIndex, channel);
+	} else if  (args[0] <= 18) { // parameter is an internal channel (ref, bat, temp)
+	  channel = args[0];
+	  setSQR(&cgr, sequenceIndex, channel);
 	} else {
 	  chDbgAssert(FALSE, "sequence parameter error : neither LINE or INTERNAL CHANNEL");
 	}
@@ -107,33 +113,32 @@ void adcFillConversionGroup(ADCConversionGroup  *cgrp, const uint8_t numberOfCha
       }
 	break;
       case ArgCycle:
-	chDbgAssert((curArg >= ADC_CYCLE_START ) && (curArg <= (ADC_CYCLE_START+7)),
+	chDbgAssert((args[0] >= ADC_CYCLE_START ) && (args[0] <= (ADC_CYCLE_START+7)),
 	  "sequence sample cycle parameter error");
-	setSMPR(cgrp, channel, curArg-ADC_CYCLE_START);
+	setSMPR(&cgr, channel, args[0]-ADC_CYCLE_START);
 	totalAdcCycles -= cyclesByMask(0x7+ADC_CYCLE_START);
-	totalAdcCycles += cyclesByMask(curArg);
+	totalAdcCycles += cyclesByMask(args[0]);
 	break;
       default:
 	chDbgAssert(FALSE, "internal error");
       }
     }
-    
-  
-  va_end(ap);
-  
- 
+    args[0] = args[1];
   }
-  cgrp->num_channels = sequenceIndex;
+  va_end(ap);
+  cgr.num_channels = sequenceIndex;
   chDbgAssert((numberOfChannel >= NUMBER_OF_CHANNEL_MIN) && (numberOfChannel <= NUMBER_OF_CHANNEL_MAX),
 	      "number of channels not given or out of bound");
-  chDbgAssert(numberOfChannel == cgrp->num_channels,
+  chDbgAssert(numberOfChannel == cgr.num_channels,
 	      "number of channels and sequence paramaters incoherency");
   
   if (timerFrequency) {
-    chDbgAssert((cgrp->num_channels * totalAdcCycles) < (STM32_ADCCLK / timerFrequency),
+    chDbgAssert((cgr.num_channels * totalAdcCycles) < (STM32_ADCCLK / timerFrequency),
 		"cannot keep sampling pace. lower frequency or/and oversampling cycles"
 		" or/and number of channels");
   }
+
+  return cgr;
 }
 
 

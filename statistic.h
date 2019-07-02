@@ -1,5 +1,7 @@
 #pragma once
 
+#include "stdutil.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,13 +21,6 @@ typedef struct {
   Statistic stat3[3];
 } Statistic3;
 
-typedef struct {
-  float v[3];
-} Vec3f;
-
-typedef struct {
-  long l[3];
-} Vec3l;
 
 
 void stat_clear(Statistic *s);
