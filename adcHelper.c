@@ -131,7 +131,7 @@ ADCConversionGroup adcGetConfig(const uint8_t numberOfChannel, ...)
 	      "number of channels and sequence paramaters incoherency");
   
   if (timerFrequency) {
-    chDbgAssert((cgr.num_channels * totalAdcCycles) < (STM32_ADCCLK / timerFrequency),
+    chDbgAssert(totalAdcCycles < (STM32_ADCCLK / timerFrequency),
 		"cannot keep sampling pace. lower frequency or/and oversampling cycles"
 		" or/and number of channels");
   }
