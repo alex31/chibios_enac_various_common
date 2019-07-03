@@ -24,7 +24,8 @@ typedef enum {ADC_CYCLE_START=256, ADC_CYCLES_1P5=ADC_CYCLE_START, ADC_CYCLES_2P
 #define ADC_CONTINUOUS	1001U
 #define ADC_TIMER_MAX_ALLOWED_FREQUENCY	100000U
 #define ADC_TIMER_DRIVEN(f) (f+ADC_CONTINUOUS+1)
-#define ADC_END NULL,NULL
+#define ADC_SENTINEL 0xFFFFFFFF
+#define ADC_END ADC_SENTINEL,NULL
 
 
 /*
@@ -85,7 +86,7 @@ typedef enum {ADC_CYCLE_START=256, ADC_CYCLES_1P5=ADC_CYCLE_START, ADC_CYCLES_2P
  */
 
 
-__attribute__ ((sentinel(1)))
+__attribute__ ((sentinel))
 ADCConversionGroup adcGetConfig(const uint8_t numberOfChannel, ...);
 
 
