@@ -345,6 +345,7 @@ static void sof_handler(USBDriver *usbp)
 
   chSysLockFromIsr();
 #if (CH_KERNEL_MAJOR > 2)
+  extern SerialUSBDriver SDU1;
   sduSOFHookI(&SDU1);
 #endif
   chSysUnlockFromIsr();
