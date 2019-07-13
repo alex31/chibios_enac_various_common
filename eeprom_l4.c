@@ -13,7 +13,7 @@
 
 #ifdef TRACE_EEPROM
 #include "printf.h"
-#include "globalVar.h"
+
 #endif
 
 static uint32_t GetPage(uint32_t Addr);

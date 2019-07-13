@@ -1,7 +1,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "stdutil.h"
-#include "globalVar.h"
+
 #include "sonar_sr04.h"
 
 

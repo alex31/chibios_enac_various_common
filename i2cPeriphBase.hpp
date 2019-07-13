@@ -7,7 +7,7 @@
 #include <ch.h>
 #include <hal.h>
 #include "stdutil.h"
-#include "globalVar.h"
+
 #include "stdutil++.hpp"
 
 

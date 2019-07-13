@@ -30,7 +30,6 @@
 #include "hal_serial_usb.h"
 #endif
 #include "usb_serial.h"
-#include "globalVar.h"
 #include "portage.h"
 
 #if HAL_USE_SERIAL_USB

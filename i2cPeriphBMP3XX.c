@@ -6,7 +6,7 @@
 
 // use DebugTrace for tuning
 //#include "stdutil.h"
-//#include "globalVar.h"
+
 
 static int8_t i2cWrite (uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t len,
 			void *userData);

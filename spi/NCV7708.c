@@ -1,6 +1,6 @@
 #include <ch.h>
 #include <hal.h>
-#include "globalVar.h"
+
 #include "printf.h"
 #include "stdutil.h"
 #include "NCV7708.h"

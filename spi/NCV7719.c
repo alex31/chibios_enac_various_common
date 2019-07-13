@@ -1,6 +1,6 @@
 #include <ch.h>
 #include <hal.h>
-#include "globalVar.h"
+
 #include "stdutil.h"
 #include "spi/NCV7719.h"
 #include "alloca.h"

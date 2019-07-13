@@ -10,7 +10,7 @@
 
 #ifdef TRACE_EEPROM
 #include "printf.h"
-#include "globalVar.h"
+
 #endif
 
 

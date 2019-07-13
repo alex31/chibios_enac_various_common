@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include "stdutil.h"
-#include "globalVar.h"
+
 
 
 

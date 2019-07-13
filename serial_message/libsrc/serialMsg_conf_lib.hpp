@@ -380,7 +380,7 @@ private:
   static void uartPumpThd(void *arg);
 };
 
-// #include "globalVar.h"
+
 template <size_t N>
 void SystemDependant_chibiosUART::write(const std::array<uint8_t, N> &wbuffer, size_t len)
 {

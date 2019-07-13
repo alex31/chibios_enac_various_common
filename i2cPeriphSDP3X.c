@@ -1,6 +1,6 @@
 #include "i2cPeriphSDP3X.h"
 
-#include "globalVar.h"
+
 
 
 typedef struct __attribute__((packed)) {

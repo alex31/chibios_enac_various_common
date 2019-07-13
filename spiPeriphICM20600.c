@@ -4,7 +4,7 @@
 #include <string.h>
 
 // to use DebugTrace
-#include "globalVar.h"
+
 #include "stdutil.h"
 
 /*

@@ -114,7 +114,7 @@ int findIndexOfNearestOld(const AT& arr, const typename AT::value_type value)
 }
 
 
-//#include "globalVar.h"
+
 template <typename T>
 int findIndexOfNearest(const std::vector<T> &vec, const T value)
 {

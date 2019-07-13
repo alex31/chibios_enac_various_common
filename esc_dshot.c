@@ -3,7 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include "stdutil.h"
-//#include "globalVar.h"
+
 
 /*
   TODO:

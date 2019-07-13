@@ -1,7 +1,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "stdutil.h"
-//#include "globalVar.h"
+
 #include "i2cPeriphLIS3MDL.h"
 #include <string.h>
 
