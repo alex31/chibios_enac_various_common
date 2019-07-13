@@ -31,7 +31,6 @@
 #include "printf.h"
 #include "ff.h"  
 #include "stdutil.h"
-#include "globalVar.h"
 #include "sdio.h"
 #include "portage.h"
 

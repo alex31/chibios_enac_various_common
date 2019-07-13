@@ -9,7 +9,6 @@
 #include "rtcAccess.h"
 #include <ctype.h>
 #include "stdutil.h"
-#include "globalVar.h"
 #include "revportage.h"
 
 #define likely(x)      __builtin_expect(!!(x), 1)

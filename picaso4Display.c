@@ -2,7 +2,6 @@
 #include <hal.h>
 #include <string.h>
 #include <ctype.h>
-#include "globalVar.h"
 #include "stdutil.h"
 #include "printf.h"
 #include "picaso4Display.h"

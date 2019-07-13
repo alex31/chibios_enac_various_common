@@ -1,5 +1,4 @@
-#ifndef __STD_UTIL_H__
-#define __STD_UTIL_H__
+#pragma once
 
 #include "ch.h"
 #include "hal.h"
@@ -45,6 +44,10 @@
 #define  CLAMP_TO(l, h, v) (clampToVerify (__FILE__, __LINE__, l, h, v))
 
 //#define DEBUG_MB 1
+
+#if defined CONSOLE_DEV_SD
+extern BaseSequentialStream *chp;
+#endif
 
 #if defined TRACE 
 #include "printf.h"
@@ -438,13 +441,24 @@ static inline  uint8_t revbit8 (uint8_t value)
   return(result>>24);
 }
 
+// STM UUID
 
 
-  
+// Legacy
+#define UniqProcessorIdLen 12
+extern const uint8_t *UniqProcessorId ;
+
+// new api
+typedef union {
+  uint8_t  bytes[UniqProcessorIdLen];
+  uint32_t words[UniqProcessorIdLen/sizeof(uint32_t)];
+} StmUuid;
+
+extern const StmUuid *stmUuid;
+
+
+
 #ifdef __cplusplus
 }
 #endif
 
-
-
-#endif // __STD_UTIL_H__

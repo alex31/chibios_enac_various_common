@@ -4,13 +4,15 @@
 #include "ch.h"
 #include "hal.h"
 #include "printf.h"
-#include "globalVar.h"
 #include "stdutil.h"
 
 #if CH_HEAP_USE_TLSF
 #include "tlsf_malloc.h"
 #endif
 
+#if defined CONSOLE_DEV_SD
+BaseSequentialStream *chp = (BaseSequentialStream *) &CONSOLE_DEV_SD;
+#endif
 
 
 float atof_m(const char *s)   
@@ -513,3 +515,8 @@ void *__dso_handle = 0;
 void __cxa_pure_virtual(void) {
   osalSysHalt("Pure virtual function call.");
 }
+
+
+// legacy
+const uint8_t *UniqProcessorId = (uint8_t *) UID_BASE;
+const StmUuid *stmUuid =  (StmUuid *) UID_BASE;

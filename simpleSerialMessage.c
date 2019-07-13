@@ -1,6 +1,5 @@
 #include "ch.h"
 #include "hal.h"
-#include "globalVar.h"
 #include "stdutil.h"
 #include "simpleSerialMessage.h"
 

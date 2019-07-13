@@ -133,18 +133,18 @@ void microrlSigint (void)
 }
 
 
-static void usage(BaseSequentialStream *chp, char *p) {
+static void usage(BaseSequentialStream *lchp, char *p) {
 
-  chprintf(chp, "Usage: %s\r\n", p);
+  chprintf(lchp, "Usage: %s\r\n", p);
 }
 
 
 
-static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const argv[]) {
+static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const argv[]) {
 
   (void)argv;
   if (argc > 0) {
-    usage(chp, "info");
+    usage(lchp, "info");
     return;
   }
 
@@ -270,70 +270,70 @@ static void cmd_info(BaseSequentialStream *chp, int argc,  const char * const ar
     break;
   }
   
-  chprintf(chp, "Kernel:       %s\r\n", CH_KERNEL_VERSION);
+  chprintf(lchp, "Kernel:       %s\r\n", CH_KERNEL_VERSION);
 #ifdef HAL_VERSION
-  chprintf(chp, "Hal:          %s\r\n", HAL_VERSION);
+  chprintf(lchp, "Hal:          %s\r\n", HAL_VERSION);
 #endif
 
 #ifdef CH_COMPILER_NAME
-  chprintf(chp, "Compiler:     %s\r\n", CH_COMPILER_NAME);
+  chprintf(lchp, "Compiler:     %s\r\n", CH_COMPILER_NAME);
 #endif
 #ifdef PORT_COMPILER_NAME
-  chprintf(chp, "Compiler:     %s\r\n", PORT_COMPILER_NAME);
+  chprintf(lchp, "Compiler:     %s\r\n", PORT_COMPILER_NAME);
 #endif
 
 #ifdef CH_ARCHITECTURE_NAME
-  chprintf(chp, "Architecture: %s\r\n", CH_ARCHITECTURE_NAME);
+  chprintf(lchp, "Architecture: %s\r\n", CH_ARCHITECTURE_NAME);
 #endif
 #ifdef PORT_ARCHITECTURE_NAME
-  chprintf(chp, "Architecture: %s\r\n", PORT_ARCHITECTURE_NAME);
+  chprintf(lchp, "Architecture: %s\r\n", PORT_ARCHITECTURE_NAME);
 #endif
   
 
 #ifdef CH_CORE_VARIANT_NAME
-  chprintf(chp, "Core Variant: %s\r\n", CH_CORE_VARIANT_NAME);
+  chprintf(lchp, "Core Variant: %s\r\n", CH_CORE_VARIANT_NAME);
 #endif
 #ifdef PORT_CORE_VARIANT_NAME
-  chprintf(chp, "Core Variant: %s\r\n", PORT_CORE_VARIANT_NAME);
+  chprintf(lchp, "Core Variant: %s\r\n", PORT_CORE_VARIANT_NAME);
 #endif
 #ifdef STM32_SYSCLK
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdouble-promotion"
-  chprintf(chp, "Main STM32_SYSCLK frequency %.2f Mhz\r\n", STM32_SYSCLK/1e6f);
+  chprintf(lchp, "Main STM32_SYSCLK frequency %.2f Mhz\r\n", STM32_SYSCLK/1e6f);
 #pragma GCC diagnostic pop
 #endif
 
 #ifdef CH_PORT_INFO
-  chprintf(chp, "Port Info:    %s\r\n", CH_PORT_INFO);
+  chprintf(lchp, "Port Info:    %s\r\n", CH_PORT_INFO);
 #endif
 #ifdef PORT_INFO
-  chprintf(chp, "Port Info:    %s\r\n", PORT_INFO);
+  chprintf(lchp, "Port Info:    %s\r\n", PORT_INFO);
 #endif
 
 #ifdef PLATFORM_NAME
-  chprintf(chp, "Platform:     %s\r\n", PLATFORM_NAME);
+  chprintf(lchp, "Platform:     %s\r\n", PLATFORM_NAME);
 #endif
 
 #ifdef BOARD_NAME
-  chprintf(chp, "Board:        %s\r\n", BOARD_NAME);
+  chprintf(lchp, "Board:        %s\r\n", BOARD_NAME);
 #endif
 
-  chprintf(chp, "Chip Revision: %s REV '%c' (0x%x:0x%x)\r\n", mcu_devid_str, mcu_revid_chr, mcu_devid, mcu_revid);
+  chprintf(lchp, "Chip Revision: %s REV '%c' (0x%x:0x%x)\r\n", mcu_devid_str, mcu_revid_chr, mcu_devid, mcu_revid);
 
 #if (!defined STM32_USE_REVISION_A_FIX) || (STM32_USE_REVISION_A_FIX == 0)
   if ((mcu_devid == 0x413) && (mcu_revid_chr == 'A')) {
-    chprintf(chp, "Chip Revision: %s REV '%c' PLEASE define STM32_USE_REVISION_A_FIX in mcuconf.h !!\r\n",
+    chprintf(lchp, "Chip Revision: %s REV '%c' PLEASE define STM32_USE_REVISION_A_FIX in mcuconf.h !!\r\n",
 	     mcu_devid_str, mcu_revid_chr);
   }
 #endif
   
 #ifdef __DATE__
 #ifdef __TIME__
-  chprintf(chp, "Build time:   %s%s%s\r\n", __DATE__, " - ", __TIME__);
+  chprintf(lchp, "Build time:   %s%s%s\r\n", __DATE__, " - ", __TIME__);
 #endif
 #endif
 
-  chprintf(chp, "systime= %lu\r\n", (unsigned long)chTimeNow());
+  chprintf(lchp, "systime= %lu\r\n", (unsigned long)chTimeNow());
 }
 
 

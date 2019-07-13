@@ -1,6 +1,5 @@
 #include "adcHelper.h"
 #include "stdutil.h"
-#include "globalVar.h"
 #include <string.h>
 #include <stdarg.h>
 
