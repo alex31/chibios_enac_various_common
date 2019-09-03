@@ -140,7 +140,7 @@ uint32_t arm_ror_imm(uint32_t v, uint32_t sh) {
 
 static inline __attribute__((always_inline))
 uint32_t arm_rol_imm(uint32_t v, const uint32_t sh) {
-  return arm_ror_imm(v, 32-sh);
+  return arm_ror_imm(v, 32U-sh);
 }
  
 static inline __attribute__((always_inline))
@@ -152,7 +152,7 @@ uint32_t arm_ror(uint32_t v, uint32_t sh) {
 
 static inline __attribute__((always_inline))
 uint32_t arm_rol(uint32_t v, const uint32_t sh) {
-  return arm_ror(v, 32-sh);
+  return arm_ror(v, 32U-sh);
 }
 
 
@@ -189,10 +189,25 @@ static inline halrtcnt_t halCounterDiffNow (const halrtcnt_t begin)
 #else // (CH_KERNEL_MAJOR > 2)
 static inline rtcnt_t rtcntDiff (const rtcnt_t start, const  rtcnt_t stop) 
 {
-  if (stop > start) 
-    return stop - start;
-  else
-    return start - stop; 
+  return (stop > start) ? stop - start : start - stop; 
+}
+
+static inline rtcnt_t rtcntDiffNow (const rtcnt_t begin)
+{
+  return rtcntDiff (begin, chSysGetRealtimeCounterX());
+}
+
+// old api name, for compatibility only
+__attribute__ ((deprecated))
+static inline rtcnt_t halCounterDiffNow (const rtcnt_t begin) 
+{
+  return rtcntDiffNow (begin);
+}
+
+__attribute__ ((deprecated))
+static inline rtcnt_t halCounterDiff (const rtcnt_t start, const  rtcnt_t stop) 
+{
+  return rtcntDiff(start, stop);
 }
 
 
@@ -206,16 +221,6 @@ static inline bool isTimerExpiredAndRearm (rtcnt_t *timer, const rtcnt_t interva
   }
 }
 
-
-static inline rtcnt_t halCounterDiff (const rtcnt_t begin, const rtcnt_t end)
-{
-  return   (end > begin) ? end-begin : (UINT32_MAX-begin) + end;
-}
-
-static inline rtcnt_t halCounterDiffNow (const rtcnt_t begin)
-{
-  return halCounterDiff (begin, chSysGetRealtimeCounterX());
-}
 
 #endif // (CH_KERNEL_MAJOR == 2)
 
