@@ -75,6 +75,10 @@ void oledDrawRect (OledConfig *oledConfig,
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
 		   const bool filled, const uint8_t index);
+void oledScreenCopyPaste (OledConfig *oledConfig, 
+			  const uint16_t xs, const uint16_t ys, 
+			  const uint16_t xd, const uint16_t yd,
+			  const uint16_t width, const uint16_t height);
 void oledEnableTouch (OledConfig *oledConfig, bool enable);
 uint16_t oledTouchGetStatus (OledConfig *oledConfig);
 uint16_t oledTouchGetXcoord (OledConfig *oledConfig);

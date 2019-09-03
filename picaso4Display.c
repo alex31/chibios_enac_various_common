@@ -568,7 +568,7 @@ uint8_t oledGetY  (const OledConfig *oledConfig)
   if (oledIsInitialised(oledConfig) == FALSE)
     return 0;
   
-  return oledConfig->curXpos;
+  return oledConfig->curYpos;
 }
 
 void oledGotoNextLine (OledConfig *oledConfig)
@@ -670,6 +670,34 @@ void oledDrawRect (OledConfig *oledConfig,
 	twoBytesFromWord(y2),
 	twoBytesFromWord(fg));
 }
+
+/*
+  API available for PICASO and DIABLO, not for GOLDELOX 
+
+ */
+void oledScreenCopyPaste (OledConfig *oledConfig, 
+			  const uint16_t xs, const uint16_t ys, 
+			  const uint16_t xd, const uint16_t yd,
+			  const uint16_t width, const uint16_t height)
+{
+  RET_UNLESS_INIT(oledConfig);
+  RET_UNLESS_4DSYS(oledConfig);
+  if (oledConfig->deviceType != PICASO) {
+    return;
+  }
+
+  const uint8_t cmdDR =  0xad;
+
+  OLED ("%c%c%c%c%c%c%c%c%c%c%c%c%c%c",
+	0xff, cmdDR,
+	twoBytesFromWord(xs),
+	twoBytesFromWord(ys),
+	twoBytesFromWord(xd),
+	twoBytesFromWord(yd),
+	twoBytesFromWord(width),
+	twoBytesFromWord(height));
+}
+
 
 void oledEnableTouch (OledConfig *oledConfig, bool enable)
 {
