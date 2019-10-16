@@ -466,8 +466,10 @@ sub verifyAf ($$$$)
 		(defined $family->[ADC_BY_PIN]->{$ppn}) && ($realName !~ /^P?[A-P]\d\d$/);
 	    
 	}
-	
+
 	next unless $af;
+
+	die "useless Alternate Function defined although mode is not ALTERNATE on pin $realName\n" if ($mode !~ /ALTERNATE/);
 
 	die "alternate function AF${af} cannot be affected to pin $realName" unless
 	    exists $family->[BY_PIN]->{$ppn}->{$af};
