@@ -179,6 +179,9 @@ void free_m(void *p)
 
 void systemReset(void)
 {
+  //  chSysLock();
+  __disable_irq();
+  
   NVIC_SystemReset();
 }
 
@@ -206,7 +209,7 @@ void systemDeepSleep (void)
 #elif defined(STM32L4XX)
   PWR->CR1 =  (PWR->CR1 & (~PWR_CR1_LPMS)) | PWR_CR1_LPMS_SHUTDOWN;
 #else
-#warning neither STM32F3XX,STM32F4XX,  STM32F7XX, STM32L4XX : should be implemented
+#error neither STM32F3XX, STM32F4XX, TM32F7XX, STM32L4XX : should be implemented
 #endif
 
   /* Setup the deepsleep mask */
