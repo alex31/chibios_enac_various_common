@@ -35,7 +35,7 @@ use feature ':5.14';
 use Getopt::Long;
  
 use constant BMPDEV => "/dev/bmp_gdb";
-use constant REVERT_BMPDEV => "/dev/ttyACM0";
+use constant REVERT_BMPDEV => ("/dev/ttyACM*", "/dev/cu.usbmodem*");
 use constant GDBINIT_PATH => "/tmp/__bmpflash.gdbinit";
 
 sub usage();
@@ -52,16 +52,24 @@ my $bmpdev;
 if (!exists  $options{device}) {
     if (-e BMPDEV) {
 	$bmpdev = BMPDEV;
-    } elsif (-e REVERT_BMPDEV) {
-	warn sprintf ("%s not found, please add udev rules. ".
-		      "Revert to generic %s hoping it's a black magic probe\n",
-		      BMPDEV, REVERT_BMPDEV);
-	$bmpdev = REVERT_BMPDEV;
     } else {
-	die sprintf ("neither %s nor %s device found, ".
-		     "black magic probe usb device not detected, aborting\n",
-		     BMPDEV, REVERT_BMPDEV);
-    }
+	my @dirs = (REVERT_BMPDEV);
+	foreach my $d (@dirs) {
+	    my @devs = glob($d);
+#	    say "DBG> \$d= $d ;; \@devs = @devs";
+	    if (scalar(@devs)) {
+		$bmpdev = $devs[0];
+		last;
+	    }
+	}
+	if (defined $bmpdev) {
+	    warn sprintf ("%s not found, please add udev rules. ".
+			  "Revert to %s hoping it's a black magic probe\n",
+			  BMPDEV, $bmpdev) if $^O =~ /linux/;
+	} else {
+	    die ("was not able to find a revert usb device\n");
+	}
+    } 
 } else {
     $bmpdev = $options{device};
     if (! -e $bmpdev) {
