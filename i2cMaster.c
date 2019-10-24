@@ -881,6 +881,10 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
 #include "i2cPeriphBMP3XX.c"
 #endif
 
+#ifdef I2C_USE_LPS33HW
+#include "i2cPeriphLPS33HW.c"
+#endif
+
 /*
 #                 _ __           _                    _                   
 #                | '_ \         (_)                  | |                  
