@@ -282,7 +282,9 @@ SdioError sdLogOpenLog(FileDes *fd, const char *directoryName, const char *prefi
     fileDes[ldf].tagAtClose = appendTagAtClose;
     fileDes[ldf].autoFlushPeriod = autoFlushPeriod;
     fileDes[ldf].lastFlushTs = 0;
-    sde = sdLogExpandLogFile(ldf, sizeInMo, preallocate);
+    if (sizeInMo) {
+      sde = sdLogExpandLogFile(ldf, sizeInMo, preallocate);
+    }
   }
   
   *fd = ldf;
@@ -385,11 +387,24 @@ SdioError sdLogExpandLogFile(const FileDes fd, const size_t sizeInMo,
    FD_CHECK(fd);
 
    // expand with opt=1 : pre allocate file now
-   const FRESULT rc = f_expand(&fileDes[fd].fil, sizeInMo*1024*1024, preallocate);
-   return (rc == FR_OK) ? SDLOG_OK : SDLOG_CANNOT_EXPAND;
+   if (sizeInMo != 0) {
+     const FRESULT rc = f_expand(&fileDes[fd].fil, sizeInMo*1024*1024, preallocate);
+     return (rc == FR_OK) ? SDLOG_OK : SDLOG_CANNOT_EXPAND;
+   } else {
+     return SDLOG_CANNOT_EXPAND;
+   }
 }
 
 SdioError sdLogWriteLog(const FileDes fd, const char* fmt, ...)
+{
+  va_list ap;
+
+  va_start(ap, fmt);
+  return sdLogvWriteLog(fd, fmt, ap);
+  va_end(ap);
+}
+
+SdioError sdLogvWriteLog(const FileDes fd, const char* fmt, va_list ap)
 {
   FD_CHECK(fd);
 
@@ -398,12 +413,8 @@ SdioError sdLogWriteLog(const FileDes fd, const char* fmt, ...)
     return status;
   }
   
-  va_list ap;
-  va_start(ap, fmt);
-  
   LogMessage *lm = tlsf_malloc_r(&HEAP_DEFAULT, LOG_MESSAGE_PREBUF_LEN);
   if (lm == NULL) {
-    va_end(ap);
     return SDLOG_MEMFULL;
   }
   
@@ -412,7 +423,7 @@ SdioError sdLogWriteLog(const FileDes fd, const char* fmt, ...)
   
   chvsnprintf(lm->mess, SDLOG_MAX_MESSAGE_LEN-1,  fmt, ap);
   lm->mess[SDLOG_MAX_MESSAGE_LEN-1]=0;
-  va_end(ap);
+  
 
   const size_t msgLen =  logMessageLen(lm);
   lm = tlsf_realloc_r(&HEAP_DEFAULT, lm, msgLen);
@@ -921,39 +932,58 @@ static msg_t thdSdLog(void *arg)
 	
       case FCNTL_WRITE:
 	{
-	  const uint16_t curBufFill = perfBuffers[lm->op.fd].size;
 	  if (fileDes[lm->op.fd].inUse) {
+	    const systime_t now = chVTGetSystemTimeX();
+	    bool shouldSync = false;
+	    FRESULT rc = 0;
+	    
+	    
+	    if (fileDes[lm->op.fd].autoFlushPeriod) {
+	      if ((now - fileDes[lm->op.fd].lastFlushTs) >
+		  (fileDes[lm->op.fd].autoFlushPeriod * CH_CFG_ST_FREQUENCY)) {
+		shouldSync = true;
+		fileDes[lm->op.fd].lastFlushTs = now;
+	      }
+	    }
+	    
+	    const uint16_t curBufFill = perfBuffers[lm->op.fd].size;
 	    const int32_t messLen = retLen-(int32_t) (sizeof(LogMessage));
 	    if (messLen < (SDLOG_WRITE_BUFFER_SIZE-curBufFill)) {
 	      // the buffer can accept this message
-	      memcpy(&(perfBuffer[curBufFill]), lm->mess, (size_t) (messLen));
-	      perfBuffers[lm->op.fd].size = (uint16_t) ((perfBuffers[lm->op.fd].size)+messLen);
+	      memcpy(perfBuffer+curBufFill, lm->mess, (size_t) (messLen));
+	      perfBuffers[lm->op.fd].size += messLen;
+	      if (shouldSync) {
+		rc = f_write(fo, perfBuffer, perfBuffers[lm->op.fd].size, &bw);
+		nbBytesWritten += bw;
+		f_sync(fo);
+		if (bw != perfBuffers[lm->op.fd].size) {
+		  chThdExit (storageStatus = SDLOG_FSFULL);
+		}
+		perfBuffers[lm->op.fd].size = 0;
+	      }
 	    } else {
 	      // fill the buffer
 	      const int32_t stayLen = SDLOG_WRITE_BUFFER_SIZE-curBufFill;
 	      memcpy(&(perfBuffer[curBufFill]), lm->mess, (size_t)(stayLen));
-	      FRESULT rc = f_write(fo, perfBuffer, SDLOG_WRITE_BUFFER_SIZE, &bw);
+	      rc = f_write(fo, perfBuffer, SDLOG_WRITE_BUFFER_SIZE, &bw);
+	      if (bw != SDLOG_WRITE_BUFFER_SIZE) {
+	      chThdExit (storageStatus = SDLOG_FSFULL);
+	      }
 	      nbBytesWritten += bw;
+
 	      // if there an autoflush period specified, flush to the mass storage media
 	      // if timer has expired and rearm.
-	      if (fileDes[lm->op.fd].autoFlushPeriod) {
-		const systime_t now = chVTGetSystemTimeX();
-		if ((now - fileDes[lm->op.fd].lastFlushTs) >
-		    (fileDes[lm->op.fd].autoFlushPeriod * CH_CFG_ST_FREQUENCY)) {
-		  f_sync(fo);
-		  fileDes[lm->op.fd].lastFlushTs = now;
-		}
-	      }
-	      if (rc) {
-		//chThdExit (storageStatus = SDLOG_FATFS_ERROR);
-	          storageStatus = SDLOG_FATFS_ERROR;
-	      } else if (bw != SDLOG_WRITE_BUFFER_SIZE) {
-		chThdExit (storageStatus = SDLOG_FSFULL);
+	      if (shouldSync) {
+		f_sync(fo);
 	      }
 	      
 	      memcpy(perfBuffer, &(lm->mess[stayLen]),  (uint32_t) (messLen-stayLen));
 	      perfBuffers[lm->op.fd].size = (uint16_t) (messLen-stayLen); // curBufFill
 	    }
+	    if (rc) {
+	      //chThdExit (storageStatus = SDLOG_FATFS_ERROR);
+	      storageStatus = SDLOG_FATFS_ERROR;
+	    } 
 	  }
 	}
       }

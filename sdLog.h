@@ -77,6 +77,9 @@ extern "C" {
 #define LOG_PREALLOCATION_DISABLED false
 #define LOG_APPEND_TAG_AT_CLOSE_ENABLED true
 #define LOG_APPEND_TAG_AT_CLOSE_DISABLED false
+#define LOG_FLUSH_BUFFER true
+#define LOG_DONT_FLUSH_BUFFER false
+
 
 
 #ifdef SDLOG_NEED_QUEUE
@@ -97,6 +100,7 @@ typedef enum {
   SDLOG_CANNOT_EXPAND,
   SDLOG_LOGNUM_ERROR,
   SDLOG_WAS_LAUNCHED,
+  SDLOG_NOT_READY
 } SdioError;
 
 typedef struct _SdLogBuffer SdLogBuffer;
@@ -222,6 +226,15 @@ SdioError sdLogCloseAllLogs (bool flush);
 SdioError sdLogWriteLog (const FileDes fileObject, const char* fmt, ...)
   __attribute__ ((format (printf, 2, 3)));
 
+
+/**
+ * @brief	log text
+ * @param[in]	fileObject : file descriptor returned by sdLogOpenLog
+ * @param[in]	fmt : format and args in printf convention
+ * @param[in]	ap  : va_list
+ * @return	status (always check status)
+ */
+SdioError sdLogvWriteLog (const FileDes fileObject, const char* fmt, va_list ap);
 
 
 /**
