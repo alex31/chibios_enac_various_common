@@ -1,4 +1,5 @@
 #include "i2cPeriphLPS33HW.h"
+#include <string.h>
 
 static int32_t i2cWrite (void *userData, uint8_t reg_addr, uint8_t *data, uint16_t len)
 {
