@@ -362,17 +362,21 @@ F7
 #endif
 #endif
 
+// c++20 define std::lerp
+#if (! defined(__cplusplus)) || __cplusplus <= 201703L
 #define lerp(x,y,w)				\
-  ((y>x) ?					\
-   (x + (typeof(x)) (w * (typeof(w))(y-x))) :	\
-   (x - (typeof(x)) (w * (typeof(w))(x-y))))
+  (((y)>(x)) ?					\
+   ((x) + (typeof((x))) ((w) * (typeof((w)))((y)-(x)))) :	\
+   ((x) - (typeof((x))) ((w) * (typeof((w)))((x)-(y)))))
+#endif
 
 #define unlerp(x,y,x_y)				\
-  ((x_y - x) / (y - x))
+  ((x_y - (x)) / ((y) - (x)))
 
 
 #define homothetie map(x, in_min, in_max, out_min, out_max) \
-((x - (typeof(x)) in_min) * ((typeof(x)) out_max - (typeof(x)) out_min) / ((typeof(x)) in_max - (typeof(x)) in_min) + (typeof(x)) out_min)
+((x - (typeof(x)) in_min) * ((typeof(x)) out_max - (typeof(x)) out_min) / \
+ ((typeof(x)) in_max - (typeof(x)) in_min) + (typeof(x)) out_min)
 
 
 #define isInRange(x, min, max) \
