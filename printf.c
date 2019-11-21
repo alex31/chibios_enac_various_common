@@ -79,15 +79,15 @@ static msg_t serialPrint (void *arg)
   chRegSetThreadName("serialPrint");
   
   while (TRUE) { 
-    Thread *sender = chMsgWait ();
+    Thread *sender = chMsgWait();
     synchronous_print_arg_t *spat = (synchronous_print_arg_t *) chMsgGet (sender);
     // do the print
     if (spat->destBuf == NULL) {
       directchvprintf(spat->chp, spat->fmt, spat->ap);
     } else {
-      chvsnprintf (spat->destBuf, spat->size, spat->fmt, spat->ap);
+      chvsnprintf(spat->destBuf, spat->size, spat->fmt, spat->ap);
     }
-    chMsgRelease (sender, RDY_OK);
+    chMsgRelease(sender, RDY_OK);
   }
 #if (CH_KERNEL_MAJOR == 2)
   return RDY_OK;
@@ -212,7 +212,7 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
 #if (CH_KERNEL_MAJOR <= 3)
       chSequentialStreamPut(chp, _c);
 #else
-      streamPut (chp, _c);
+      streamPut(chp, _c);
 #endif
       return FALSE;
     }
@@ -249,7 +249,7 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
       fmt++;
       filler = '0';
 #if CHPRINTF_USE_FLOAT
-      fprec = intPow (10, (*fmt)-'0');
+      fprec = intPow(10, (*fmt)-'0');
 #endif
     }
     width = 0;
@@ -389,15 +389,15 @@ unsigned_common:
       width--;
     }
   }
-  _putChar (0) ;
+  _putChar(0) ;
 }
 #endif
 
 void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
 #if CHPRINTF_USE_STDLIB
   uint8_t buffer[CHPRINTF_BUFFER_SIZE];
-  const uint32_t len = vsnprintf ((char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
-  streamWrite (chp, buffer, len);
+  const uint32_t len = vsnprintf((char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
+  streamWrite(chp, buffer, len);
 #else
   _chvsnprintf(NULL, chp, 0, fmt, ap);
 #endif
@@ -405,7 +405,7 @@ void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
 
 void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
 #if CHPRINTF_USE_STDLIB
-  vsnprintf (buffer, size, fmt, ap);
+  vsnprintf(buffer, size, fmt, ap);
 #else
   _chvsnprintf(buffer, NULL, size, fmt, ap);
 #endif
@@ -417,7 +417,7 @@ void chsnprintf(char *buffer, size_t size, const char *fmt, ...)
   
   va_start(ap, fmt);
 #if CHPRINTF_USE_STDLIB
-  vsnprintf (buffer, size, fmt, ap);
+  vsnprintf(buffer, size, fmt, ap);
 #else
   _chvsnprintf(buffer, NULL, size, fmt, ap);
 #endif
@@ -431,8 +431,8 @@ void directchprintf(BaseSequentialStream *chp, const char *fmt, ...)
   va_start(ap, fmt);
 #if CHPRINTF_USE_STDLIB
   uint8_t buffer[CHPRINTF_BUFFER_SIZE];
-  const uint32_t len = vsnprintf ((char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
-  streamWrite (chp, buffer, len);
+  const uint32_t len = vsnprintf((char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
+  streamWrite(chp, buffer, len);
 #else
   _chvsnprintf(NULL, chp, 0, fmt, ap);
 #endif
@@ -442,7 +442,7 @@ void directchprintf(BaseSequentialStream *chp, const char *fmt, ...)
 
 void chprintf(BaseSequentialStream *lchp, const char *fmt, ...) 
 {
-  chMtxLock (&printThreadMutex); {
+  chMtxLock(&printThreadMutex); {
 
     va_list ap;
     
@@ -455,10 +455,10 @@ void chprintf(BaseSequentialStream *lchp, const char *fmt, ...)
 				    .fmt = fmt,
 				    .ap = ap};
     
-    chMsgSend (printThreadPtr, (msg_t) &spat);
+    chMsgSend(printThreadPtr, (msg_t) &spat);
     va_end(ap);
   }
-  chMtxUnlock (&printThreadMutex);
+  chMtxUnlock(&printThreadMutex);
 }
 
 void chvprintf(BaseSequentialStream *lchp, const char *fmt, va_list ap)
@@ -471,7 +471,7 @@ void chvprintf(BaseSequentialStream *lchp, const char *fmt, va_list ap)
 				  .fmt = fmt,
 				  .ap = ap};
   
-  chMsgSend (printThreadPtr, (msg_t) &spat);
+  chMsgSend(printThreadPtr, (msg_t) &spat);
 }
 
 
@@ -489,7 +489,7 @@ void smchsnprintf(char *buffer, size_t size, const char *fmt, ...)
 				  .fmt = fmt,
 				  .ap = ap};
   
-  chMsgSend (printThreadPtr, (msg_t) &spat);
+  chMsgSend(printThreadPtr, (msg_t) &spat);
   
   va_end(ap);
 }
@@ -505,7 +505,7 @@ void smchvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap)
 				  .fmt = fmt,
 				  .ap = ap};
   
-  chMsgSend (printThreadPtr, (msg_t) &spat);
+  chMsgSend(printThreadPtr, (msg_t) &spat);
 }
 
 
