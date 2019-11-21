@@ -953,13 +953,18 @@ static msg_t thdSdLog(void *arg)
 	      memcpy(perfBuffer+curBufFill, lm->mess, (size_t) (messLen));
 	      perfBuffers[lm->op.fd].size += messLen;
 	      if (shouldSync) {
-		rc = f_write(fo, perfBuffer, perfBuffers[lm->op.fd].size, &bw);
+		// should stay world aligned 
+		const size_t stayLen = perfBuffers[lm->op.fd].size % 4;
+		const size_t writeLen = perfBuffers[lm->op.fd].size - stayLen;
+		rc = f_write(fo, perfBuffer, writeLen, &bw);
 		nbBytesWritten += bw;
 		f_sync(fo);
-		if (bw != perfBuffers[lm->op.fd].size) {
+		if (bw != writeLen) {
 		  chThdExit (storageStatus = SDLOG_FSFULL);
 		}
-		perfBuffers[lm->op.fd].size = 0;
+		perfBuffers[lm->op.fd].size = stayLen;
+		if (stayLen)
+		  memmove(perfBuffer, perfBuffer+writeLen, stayLen);
 	      }
 	    } else {
 	      // fill the buffer
