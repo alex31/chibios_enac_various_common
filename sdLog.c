@@ -689,7 +689,7 @@ SdioError getFileName(const char* prefix, const char* directoryName,
   int32_t maxCurrentIndex = 0;
 
 
-  const size_t directoryNameLen = MIN(strlen(directoryName), 128U);
+  const size_t directoryNameLen = MIN(strlen(directoryName), 126U);
   const size_t slashDirNameLen = directoryNameLen+2;
   char slashDirName[slashDirNameLen];
   strlcpy(slashDirName, "/", slashDirNameLen);
