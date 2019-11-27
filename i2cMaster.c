@@ -150,7 +150,7 @@ static const I2cMasterConfig  *i2c2=NULL;
 __attribute__((section(".data")))
 static const I2cMasterConfig  *i2c3=NULL;
 #endif
-#if STM32_I2C_USE_I2C4
+#if defined(STM32_I2C_USE_I2C4) && STM32_I2C_USE_I2C4
 __attribute__((section(".data")))
 static const I2cMasterConfig  *i2c4=NULL;
 #endif
@@ -175,7 +175,7 @@ bool initI2cDriver (const I2cMasterConfig *mconf)
   }
 #endif
 
-#if STM32_I2C_USE_I2C4
+#if defined(STM32_I2C_USE_I2C4) && STM32_I2C_USE_I2C4
   if (mconf->driver == &I2CD4) {
     i2c4 = mconf;
   }
@@ -211,7 +211,7 @@ static const I2cMasterConfig * getMasterConfigFromDriver (I2CDriver *i2cd)
     return i2c3 ;
 #endif
 
-#if STM32_I2C_USE_I2C4
+#if defined(STM32_I2C_USE_I2C4) && STM32_I2C_USE_I2C4
   if (i2cd == &I2CD4) 
     return i2c4 ;
 #endif
