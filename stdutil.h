@@ -279,6 +279,9 @@ typedef struct {
   float v[3];
 } Vec3f;
 
+static inline bool vec3fIsEqual(const Vec3f *v1, const Vec3f *v2) {
+  return  v1->v[0] == v2->v[0] &&  v1->v[1] == v2->v[1] &&  v1->v[2] == v2->v[2];
+}
 
 /*
  F4
