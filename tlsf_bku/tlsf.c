@@ -47,14 +47,14 @@ enum tlsf_private
     /* All allocation sizes and addresses are aligned to 4 bytes. */
     ALIGN_SIZE_LOG2 = 2,
 #endif
-    ALIGN_SIZE = (1 << ALIGN_SIZE_LOG2),
+    ALIGN_SIZE = (1UL << ALIGN_SIZE_LOG2),
 
     /*
-    ** We support allocations of sizes up to (1 << FL_INDEX_MAX) bits.
+    ** We support allocations of sizes up to (1UL << FL_INDEX_MAX) bits.
     ** However, because we linearly subdivide the second-level lists, and
     ** our minimum size granularity is 4 bytes, it doesn't make sense to
     ** create first-level lists for sizes smaller than SL_INDEX_COUNT * 4,
-    ** or (1 << (SL_INDEX_COUNT_LOG2 + 2)) bytes, as there we will be
+    ** or (1UL << (SL_INDEX_COUNT_LOG2 + 2)) bytes, as there we will be
     ** trying to split size ranges into more slots than we have available.
     ** Instead, we calculate the minimum threshold size, and place all
     ** blocks below that size into the 0th first-level list.
@@ -71,11 +71,11 @@ enum tlsf_private
 #else
     FL_INDEX_MAX = 30,
 #endif
-    SL_INDEX_COUNT = (1 << SL_INDEX_COUNT_LOG2),
+    SL_INDEX_COUNT = (1UL << SL_INDEX_COUNT_LOG2),
     FL_INDEX_SHIFT = (SL_INDEX_COUNT_LOG2 + ALIGN_SIZE_LOG2),
     FL_INDEX_COUNT = (FL_INDEX_MAX - FL_INDEX_SHIFT + 1),
 
-    SMALL_BLOCK_SIZE = (1 << FL_INDEX_SHIFT),
+    SMALL_BLOCK_SIZE = (1UL << FL_INDEX_SHIFT),
   };
 
 
@@ -155,8 +155,8 @@ typedef struct block_header_t
 ** - bit 0: whether block is busy or free
 ** - bit 1: whether previous block is busy or free
 */
-static const size_t block_header_free_bit = 1 << 0;
-static const size_t block_header_prev_free_bit = 1 << 1;
+static const size_t block_header_free_bit = 1UL << 0;
+static const size_t block_header_prev_free_bit = 1UL << 1;
 
 /*
 ** The size of the block header exposed to used blocks is the size field.
@@ -351,7 +351,7 @@ static void mapping_insert(size_t size, int* fli, int* sli)
   else
     {
       fl = tlsf_fls_sizet(size);
-      sl = tlsf_cast(int, size >> (fl - SL_INDEX_COUNT_LOG2)) ^ (1 << SL_INDEX_COUNT_LOG2);
+      sl = tlsf_cast(int, size >> (fl - SL_INDEX_COUNT_LOG2)) ^ (1UL << SL_INDEX_COUNT_LOG2);
       fl -= (FL_INDEX_SHIFT - 1);
     }
   *fli = fl;
@@ -361,9 +361,9 @@ static void mapping_insert(size_t size, int* fli, int* sli)
 /* This version rounds up to the next block size (for allocations) */
 static void mapping_search(size_t size, int* fli, int* sli)
 {
-  if (size >= (1 << SL_INDEX_COUNT_LOG2))
+  if (size >= (1UL << SL_INDEX_COUNT_LOG2))
     {
-      const size_t round = (1 << (tlsf_fls_sizet(size) - SL_INDEX_COUNT_LOG2)) - 1;
+      const size_t round = (1UL << (tlsf_fls_sizet(size) - SL_INDEX_COUNT_LOG2)) - 1;
       size += round;
     }
   mapping_insert(size, fli, sli);
@@ -419,12 +419,12 @@ static void remove_free_block(control_t* control, block_header_t* block, int fl,
       /* If the new head is null, clear the bitmap. */
       if (next == &control->block_null)
 	{
-	  control->sl_bitmap[fl] &= ~(1 << sl);
+	  control->sl_bitmap[fl] &= ~(1UL << sl);
 
 	  /* If the second bitmap is now empty, clear the fl bitmap. */
 	  if (!control->sl_bitmap[fl])
 	    {
-	      control->fl_bitmap &= ~(1 << fl);
+	      control->fl_bitmap &= ~(1UL << fl);
 	    }
 	}
     }
@@ -447,8 +447,8 @@ static void insert_free_block(control_t* control, block_header_t* block, int fl,
   ** and second-level bitmaps appropriately.
   */
   control->blocks[fl][sl] = block;
-  control->fl_bitmap |= (1 << fl);
-  control->sl_bitmap[fl] |= (1 << sl);
+  control->fl_bitmap |= (1UL << fl);
+  control->sl_bitmap[fl] |= (1UL << sl);
 }
 
 /* Remove a given block from the free list. */
@@ -672,9 +672,9 @@ int tlsf_check(tlsf_t tlsf)
     {
       for (j = 0; j < SL_INDEX_COUNT; ++j)
 	{
-	  const int fl_map = control->fl_bitmap & (1 << i);
+	  const int fl_map = control->fl_bitmap & (1UL << i);
 	  const int sl_list = control->sl_bitmap[i];
-	  const int sl_map = sl_list & (1 << j);
+	  const int sl_map = sl_list & (1UL << j);
 	  const block_header_t* block = control->blocks[i][j];
 
 	  /* Check that first- and second-level lists agree. */
