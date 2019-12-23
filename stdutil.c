@@ -504,7 +504,7 @@ int32_t get_stack_free (const thread_t *tp)
 /* libc stub */
 int _getpid(void) {return 1;}
 /* libc stub */
-void _exit(int i) {(void)i; while(1);}
+void _exit(int i) {(void) i; chSysHalt("_exit"); while(true);}
 /* libc stub */
 #include <errno.h>
 #undef errno

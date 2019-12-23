@@ -7,7 +7,7 @@
 
 #define NUMBERLEN 4
 #define NUMBERMAX 9999
-#define NUMBERFMF "%s\\%s%.04d.LOG"
+#define NUMBERFMF "%s\\%s%.04ld.LOG"
 
 #ifdef __cplusplus
 extern "C" {
@@ -234,7 +234,7 @@ SdioError sdLogWriteLog (const FileDes fileObject, const char* fmt, ...)
  * @param[in]	ap  : va_list
  * @return	status (always check status)
  */
-SdioError sdLogvWriteLog (const FileDes fileObject, const char* fmt, va_list ap);
+SdioError sdLogvWriteLog (const FileDes fileObject, const char* fmt, va_list *ap);
 
 
 /**

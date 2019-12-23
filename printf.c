@@ -48,9 +48,16 @@
 #endif
 #include <stdio.h>
 #include <stdarg.h>
-#else
+#include <reent.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+static struct _reent reent =  _REENT_INIT(reent);
+#pragma GCC diagnostic pop
+#else // CHPRINTF_USE_STDLIB not defined
 #define CHPRINTF_USE_STDLIB 0
 #endif
+
+
 
 
 typedef struct {
@@ -60,13 +67,13 @@ typedef struct {
   };
   char *destBuf;
   const char *fmt;
-  va_list ap;
+  va_list *ap;
 } synchronous_print_arg_t;
 
 static Thread *printThreadPtr = NULL;
 MUTEX_DECL(printThreadMutex);
 
-static WORKING_AREA(waSerialPrint, CHPRINTF_USE_STDLIB ? 1024 : 420);
+static WORKING_AREA(waSerialPrint, CHPRINTF_USE_STDLIB ? 2048 : 512);
 
 #if (CH_KERNEL_MAJOR != 2)
 static noreturn void serialPrint (void *arg)
@@ -81,12 +88,15 @@ static msg_t serialPrint (void *arg)
   while (TRUE) { 
     Thread *sender = chMsgWait();
     synchronous_print_arg_t *spat = (synchronous_print_arg_t *) chMsgGet (sender);
+    va_list ap;
+    va_copy(ap, *spat->ap);
     // do the print
     if (spat->destBuf == NULL) {
-      directchvprintf(spat->chp, spat->fmt, spat->ap);
+      directchvprintf(spat->chp, spat->fmt, ap);
     } else {
-      chvsnprintf(spat->destBuf, spat->size, spat->fmt, spat->ap);
+      chvsnprintf(spat->destBuf, spat->size, spat->fmt, ap);
     }
+    va_end(ap);
     chMsgRelease(sender, RDY_OK);
   }
 #if (CH_KERNEL_MAJOR == 2)
@@ -396,7 +406,8 @@ unsigned_common:
 void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
 #if CHPRINTF_USE_STDLIB
   uint8_t buffer[CHPRINTF_BUFFER_SIZE];
-  const uint32_t len = vsnprintf((char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
+  const uint32_t len = _vsnprintf_r(&reent, (char *) buffer,
+				    CHPRINTF_BUFFER_SIZE, fmt, ap);
   streamWrite(chp, buffer, len);
 #else
   _chvsnprintf(NULL, chp, 0, fmt, ap);
@@ -405,7 +416,7 @@ void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
 
 void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
 #if CHPRINTF_USE_STDLIB
-  vsnprintf(buffer, size, fmt, ap);
+  _vsnprintf_r(&reent, buffer, size, fmt, ap);
 #else
   _chvsnprintf(buffer, NULL, size, fmt, ap);
 #endif
@@ -417,7 +428,7 @@ void chsnprintf(char *buffer, size_t size, const char *fmt, ...)
   
   va_start(ap, fmt);
 #if CHPRINTF_USE_STDLIB
-  vsnprintf(buffer, size, fmt, ap);
+  _vsnprintf_r(&reent, buffer, size, fmt, ap);
 #else
   _chvsnprintf(buffer, NULL, size, fmt, ap);
 #endif
@@ -431,7 +442,7 @@ void directchprintf(BaseSequentialStream *chp, const char *fmt, ...)
   va_start(ap, fmt);
 #if CHPRINTF_USE_STDLIB
   uint8_t buffer[CHPRINTF_BUFFER_SIZE];
-  const uint32_t len = vsnprintf((char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
+  const uint32_t len = _vsnprintf_r(&reent, (char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
   streamWrite(chp, buffer, len);
 #else
   _chvsnprintf(NULL, chp, 0, fmt, ap);
@@ -453,7 +464,7 @@ void chprintf(BaseSequentialStream *lchp, const char *fmt, ...)
     synchronous_print_arg_t spat = {.chp = lchp,
 				    .destBuf = NULL,
 				    .fmt = fmt,
-				    .ap = ap};
+				    .ap = &ap};
     
     chMsgSend(printThreadPtr, (msg_t) &spat);
     va_end(ap);
@@ -469,7 +480,7 @@ void chvprintf(BaseSequentialStream *lchp, const char *fmt, va_list ap)
   synchronous_print_arg_t spat = {.chp = lchp,
 				  .destBuf = NULL,
 				  .fmt = fmt,
-				  .ap = ap};
+				  .ap = &ap};
   
   chMsgSend(printThreadPtr, (msg_t) &spat);
 }
@@ -487,7 +498,7 @@ void smchsnprintf(char *buffer, size_t size, const char *fmt, ...)
   synchronous_print_arg_t spat = {.size = size,
 				  .destBuf = buffer,
 				  .fmt = fmt,
-				  .ap = ap};
+				  .ap = &ap};
   
   chMsgSend(printThreadPtr, (msg_t) &spat);
   
@@ -503,7 +514,7 @@ void smchvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap)
   synchronous_print_arg_t spat = {.size = size,
 				  .destBuf = buffer,
 				  .fmt = fmt,
-				  .ap = ap};
+				  .ap = &ap};
   
   chMsgSend(printThreadPtr, (msg_t) &spat);
 }

@@ -283,6 +283,40 @@ static inline bool vec3fIsEqual(const Vec3f *v1, const Vec3f *v2) {
   return  v1->v[0] == v2->v[0] &&  v1->v[1] == v2->v[1] &&  v1->v[2] == v2->v[2];
 }
 
+static inline Vec3f vec3fAdd(const Vec3f *v1, const Vec3f *v2) {
+    Vec3f v;
+    v.v[0] = v1->v[0] + v2->v[0];
+    v.v[1] = v1->v[1] + v2->v[1];
+    v.v[2] = v1->v[2] + v2->v[2];
+    return v;
+}
+
+  static inline Vec3f vec3fSub(const Vec3f *v1, const Vec3f *v2) {
+    Vec3f v;
+    v.v[0] = v1->v[0] - v2->v[0];
+    v.v[1] = v1->v[1] - v2->v[1];
+    v.v[2] = v1->v[2] - v2->v[2];
+    return v;
+}
+
+  static inline Vec3f vec3fMult(const Vec3f *v1, const float f) {
+    Vec3f v;
+    v.v[0] = v1->v[0] * f;
+    v.v[1] = v1->v[1] * f;
+    v.v[2] = v1->v[2] * f;
+    return v;
+}
+
+  static inline Vec3f vec3fDiv(const Vec3f *v1, const float f) {
+    Vec3f v;
+    v.v[0] = v1->v[0] / f;
+    v.v[1] = v1->v[1] / f;
+    v.v[2] = v1->v[2] / f;
+    return v;
+}
+
+
+  
 /*
  F4
  ram4: 64ko ccm, fast, no dma	 
@@ -474,3 +508,30 @@ extern const StmUuid *stmUuid;
 }
 #endif
 
+#ifdef __cplusplus
+ static inline bool operator!=(const Vec3f& a, const Vec3f& b)
+{
+  return !vec3fIsEqual(&a, &b);
+};
+
+static inline Vec3f operator+(const Vec3f& a, const Vec3f& b)
+{
+  return vec3fAdd(&a, &b);
+}
+  
+static inline Vec3f operator-(const Vec3f& a, const Vec3f& b)
+{
+  return vec3fSub(&a, &b);
+}
+
+static inline Vec3f operator*(const Vec3f& a, const float f)
+{
+  return vec3fMult(&a, f);
+}
+
+static inline Vec3f operator/(const Vec3f& a, const float f)
+{
+  return vec3fDiv(&a, f);
+}
+
+#endif

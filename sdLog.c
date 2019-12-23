@@ -1,16 +1,16 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "sdLog.h"
 #include "ch.h"
 #include "hal.h"
 #include "ff.h"
-#include "printf.h"
 #include "sdio.h"
 #include "rtcAccess.h"
 #include <ctype.h>
 #include "stdutil.h"
 #include "revportage.h"
-
+#include <reent.h>
 
 #ifndef MIN
 #define MIN(x , y)  (((x) < (y)) ? (x) : (y))
@@ -89,6 +89,16 @@
  */
 
 
+/*
+  s*printf functions are supposed to be thread safe, but the ones provided by
+  newlib function are not.  One has to use _s*printf_r family that take a
+  struct _reent as first parameter.
+ */
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+static struct _reent reent =  _REENT_INIT(reent);
+#pragma GCC diagnostic pop
 
 static msg_t   IN_STD_SECTION_CLEAR (queMbBuffer[SDLOG_QUEUE_BUCKETS]);
 static MsgQueue messagesQueue;
@@ -400,13 +410,16 @@ SdioError sdLogWriteLog(const FileDes fd, const char* fmt, ...)
   va_list ap;
 
   va_start(ap, fmt);
-  return sdLogvWriteLog(fd, fmt, ap);
+  return sdLogvWriteLog(fd, fmt, &ap);
   va_end(ap);
 }
 
-SdioError sdLogvWriteLog(const FileDes fd, const char* fmt, va_list ap)
+SdioError sdLogvWriteLog(const FileDes fd, const char* fmt, va_list *ap)
 {
   FD_CHECK(fd);
+  va_list ap1;
+  va_copy(ap1, *ap);
+  static MUTEX_DECL(mu);
 
   const SdioError status = flushWriteByteBuffer(fd);
   if (status != SDLOG_OK) {
@@ -420,10 +433,12 @@ SdioError sdLogvWriteLog(const FileDes fd, const char* fmt, va_list ap)
   
   lm->op.fcntl = FCNTL_WRITE;
   lm->op.fd = fd & 0x1f;
-  
-  chvsnprintf(lm->mess, SDLOG_MAX_MESSAGE_LEN-1,  fmt, ap);
+
+  chMtxLock(&mu); // cannot use chSysLock because inner function in lib call chsyslock
+  _vsnprintf_r(&reent, lm->mess, SDLOG_MAX_MESSAGE_LEN-1,  fmt, ap1);
+  chMtxUnlock(&mu);
   lm->mess[SDLOG_MAX_MESSAGE_LEN-1]=0;
-  
+  va_end(ap1);
 
   const size_t msgLen =  logMessageLen(lm);
   lm = tlsf_realloc_r(&HEAP_DEFAULT, lm, msgLen);
@@ -730,11 +745,11 @@ SdioError getFileName(const char* prefix, const char* directoryName,
   }
   
   if (maxCurrentIndex < NUMBERMAX) {
-    chsnprintf(nextFileName, nameLength, NUMBERFMF,
+    _snprintf_r(&reent, nextFileName, nameLength, NUMBERFMF,
 		directoryName, prefix, maxCurrentIndex+indexOffset);
     return SDLOG_OK;
   } else {
-    chsnprintf(nextFileName, nameLength, "%s\\%s%.ERR",
+    _snprintf_r(&reent, nextFileName, nameLength, "%s\\%s.ERR",
 		directoryName, prefix);
     return SDLOG_LOGNUM_ERROR;
   }
