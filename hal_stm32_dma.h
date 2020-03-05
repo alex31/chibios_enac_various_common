@@ -25,6 +25,9 @@
 #include <ch.h>
 #include <hal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @brief   Enables synchronous APIs.
@@ -218,9 +221,6 @@ static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err);
 
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * @brief   DMA stream configuration structure.
