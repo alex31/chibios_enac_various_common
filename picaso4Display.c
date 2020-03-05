@@ -52,7 +52,7 @@ static void oledPreInit (OledConfig *oledConfig, uint32_t baud);
 static void oledReInit (OledConfig *oledConfig);
 static uint32_t oledGetFileError  (OledConfig *oledConfig);
 static bool oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const uint32_t offset);
-static uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t index);
+static uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t colorIndex);
 static uint16_t oledTouchGet (OledConfig *oledConfig, uint16_t mode);
 static uint16_t getResponseAsUint16 (OledConfig *oledConfig);
 
@@ -436,42 +436,42 @@ void oledSetTextFgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
 
 
 
-void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
-  if (++index >= COLOR_TABLE_SIZE) return;
+  if (++colorIndex >= COLOR_TABLE_SIZE) return;
 
-  oledConfig->tbg[index] = mkColor24(r,g,b);
+  oledConfig->tbg[colorIndex] = mkColor24(r,g,b);
 }
 
-void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(oledConfig);
-  if (++index >= COLOR_TABLE_SIZE) return;
+  if (++colorIndex >= COLOR_TABLE_SIZE) return;
 
-  oledConfig->fg[index] = mkColor24(r,g,b);
+  oledConfig->fg[colorIndex] = mkColor24(r,g,b);
 }
 
-void oledUseColorIndex (OledConfig *oledConfig, uint8_t index)
+void oledUseColorIndex (OledConfig *oledConfig, uint8_t colorIndex)
 {
   RET_UNLESS_INIT(oledConfig);
-  if (++index >= COLOR_TABLE_SIZE) return;
+  if (++colorIndex >= COLOR_TABLE_SIZE) return;
 
   if (oledConfig->deviceType != TERM_VT100) {
-    if (oledConfig->fg[0].rgb != oledConfig->fg[index].rgb)  {
-      oledSetTextFgColor (oledConfig, oledConfig->fg[index].r, 
-			  oledConfig->fg[index].g, oledConfig->fg[index].b);
+    if (oledConfig->fg[0].rgb != oledConfig->fg[colorIndex].rgb)  {
+      oledSetTextFgColor (oledConfig, oledConfig->fg[colorIndex].r, 
+			  oledConfig->fg[colorIndex].g, oledConfig->fg[colorIndex].b);
     }
     
-    if (oledConfig->tbg[0].rgb != oledConfig->tbg[index].rgb)  {
-      oledSetTextBgColor (oledConfig, oledConfig->tbg[index].r, 
-			  oledConfig->tbg[index].g, oledConfig->tbg[index].b);
+    if (oledConfig->tbg[0].rgb != oledConfig->tbg[colorIndex].rgb)  {
+      oledSetTextBgColor (oledConfig, oledConfig->tbg[colorIndex].r, 
+			  oledConfig->tbg[colorIndex].g, oledConfig->tbg[colorIndex].b);
     }
   } else {
-    oledSetTextFgColor (oledConfig, oledConfig->fg[index].r, 
-			oledConfig->fg[index].g, oledConfig->fg[index].b);
-    oledSetTextBgColor (oledConfig, oledConfig->tbg[index].r, 
-			oledConfig->tbg[index].g, oledConfig->tbg[index].b);
+    oledSetTextFgColor (oledConfig, oledConfig->fg[colorIndex].r, 
+			oledConfig->fg[colorIndex].g, oledConfig->fg[colorIndex].b);
+    oledSetTextBgColor (oledConfig, oledConfig->tbg[colorIndex].r, 
+			oledConfig->tbg[colorIndex].g, oledConfig->tbg[colorIndex].b);
   }
 }
 
@@ -611,13 +611,13 @@ void oledClearScreen (OledConfig *oledConfig)
 
 
 void oledDrawPoint (OledConfig *oledConfig, const uint16_t x, const uint16_t y, 
-		    const uint8_t index)
+		    const uint8_t colorIndex)
 {
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_4DSYS(oledConfig);
 
   const uint8_t cmdDP =  ISPIC(oledConfig) ? 0xc1 : 0xcb;
-  const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (index+1));
+  const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (colorIndex+1));
 
   OLED ("%c%c%c%c%c%c%c%c",
 	0xff, cmdDP,
@@ -630,13 +630,13 @@ void oledDrawPoint (OledConfig *oledConfig, const uint16_t x, const uint16_t y,
 void oledDrawLine (OledConfig *oledConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
-		   const uint8_t index)
+		   const uint8_t colorIndex)
 {
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_4DSYS(oledConfig);
 
   const uint8_t cmdDL =  ISPIC(oledConfig) ? 0xc8 : 0xd2;
-  const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (index+1));
+  const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (colorIndex+1));
 
   OLED ("%c%c%c%c%c%c%c%c%c%c%c%c",
 	0xff, cmdDL,
@@ -651,7 +651,7 @@ void oledDrawRect (OledConfig *oledConfig,
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2,
 		   const bool filled,
-		   const uint8_t index)
+		   const uint8_t colorIndex)
 {
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_4DSYS(oledConfig);
@@ -660,7 +660,7 @@ void oledDrawRect (OledConfig *oledConfig,
   if (filled) 
     cmdDR--;
 
-  const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (index+1));
+  const uint16_t fg = fgColorIndexTo16b (oledConfig, (uint8_t) (colorIndex+1));
 
   OLED ("%c%c%c%c%c%c%c%c%c%c%c%c",
 	0xff, cmdDR,
@@ -878,8 +878,8 @@ static uint16_t getResponseAsUint16 (OledConfig *oledConfig)
   return (uint16_t) ((oledConfig->response[1] << 8) | oledConfig->response[2]);
 }
 
-static  uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t index) {
-  const Color24 fg = oledConfig->fg[index];
+static  uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t colorIndex) {
+  const Color24 fg = oledConfig->fg[colorIndex];
   
   return (colorDecTo16b(fg.r, fg.g, fg.b));
 }

@@ -48,11 +48,11 @@ void oledGetVersion (OledConfig *oledConfig, char *buffer, const size_t buflen);
 void oledChangeBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
 void oledSetTextFgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
 void oledSetTextBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
-void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t index, 
+void oledSetTextBgColorTable (OledConfig *oledConfig, uint8_t colorIndex, 
 			      uint8_t r, uint8_t g, uint8_t b);
-void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t index, 
+void oledSetTextFgColorTable (OledConfig *oledConfig,  uint8_t colorIndex, 
 			      uint8_t r, uint8_t g, uint8_t b);
-void oledUseColorIndex (OledConfig *oledConfig, uint8_t index);
+void oledUseColorIndex (OledConfig *oledConfig, uint8_t colorIndex);
 void oledSetTextOpacity (OledConfig *oledConfig, bool opaque);
 void oledSetTextAttributeMask (OledConfig *oledConfig, enum OledTextAttribute attrib);
 void oledSetTextGap (OledConfig *oledConfig, uint8_t xgap, uint8_t ygap);
@@ -66,15 +66,15 @@ void oledGotoNextLine (OledConfig *oledConfig);
 void oledClearScreen (OledConfig *oledConfig);
 bool oledInitSdCard (OledConfig *oledConfig);
 void oledDrawPoint (OledConfig *oledConfig, const uint16_t x, 
-		    const uint16_t y, const uint8_t index);
+		    const uint16_t y, const uint8_t colorIndex);
 void oledDrawLine (OledConfig *oledConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
-		   const uint8_t index);
+		   const uint8_t colorIndex);
 void oledDrawRect (OledConfig *oledConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
-		   const bool filled, const uint8_t index);
+		   const bool filled, const uint8_t colorIndex);
 void oledScreenCopyPaste (OledConfig *oledConfig, 
 			  const uint16_t xs, const uint16_t ys, 
 			  const uint16_t xd, const uint16_t yd,
