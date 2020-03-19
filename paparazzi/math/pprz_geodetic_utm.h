@@ -43,6 +43,8 @@ extern "C" {
 #define N (K0*A)
 
 #define LambdaOfUtmZone(utm_zone) RadOfDeg((utm_zone-1)*6-180+3)
+#define UtmZoneOfLlaLonRad(lla_lon) (floor(DegOfRad(lla_lon) + 180) / 6) + 1
+#define UtmZoneOfLlaLonDeg(lla_lon) (floor((lla_lon) / 1e7 + 180) / 6) + 1
 
 static const float serie_coeff_proj_mercator[5] = {
   0.99832429842242842444,
