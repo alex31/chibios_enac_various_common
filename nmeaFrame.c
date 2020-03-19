@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include "fnmatch.h"
 #include "stdutil.h"
 
 
@@ -115,7 +116,13 @@ static int32_t parseNMEA (const NmeaBinder *nbs, const void * const  userData,
   NmeaParam nmeaParam[MAX_NUM_OF_FIELD];
   uint32_t i=0;
 
-  while ((field = strsep (&nmeaFrame, ",")) != NULL)  {  
+  while ((field = strsep (&nmeaFrame, ",")) != NULL)  {
+    // case of PUBX where the first comma sepatared field is not a parameter
+    // but the PUBX sub message index
+    if (strcmp(field, "$PUBX") == 0) {
+      strsep (&nmeaFrame, ","); // go to real first parameter
+      field[5] = ','; // revert the \0 that have been placed by a comma
+    }
     fieldsPtr[sep++] = field;
     if (sep >= MAX_NUM_OF_FIELD) {
       (error_cb) ( NMEA_OVERFIELD_ERR, userData, nmeaFrame);
@@ -128,7 +135,8 @@ static int32_t parseNMEA (const NmeaBinder *nbs, const void * const  userData,
 
   while (nbs[i].fieldClass != NULL) {
     const NmeaBinder * const nb = &nbs[i++];
-    if (strcmp (fieldsPtr[0], nb->fieldClass) == 0) {
+    //    if (strcmp(nb->fieldClass, fieldsPtr[0]) == 0) {
+    if (fnmatch(nb->fieldClass, fieldsPtr[0], 0) == 0) {
       // recuperer les arguments
       uint32_t j=0;
       uint8_t writeFieldIndex=0;

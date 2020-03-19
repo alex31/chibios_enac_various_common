@@ -4,6 +4,9 @@
 #include "ch.h"
 #include "hal.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 /*
@@ -17,7 +20,7 @@
 
 
 #define MAX_NUM_OF_FIELD 22
-#define LINK_TIMOUT	 100 // in milliseconds
+#define LINK_TIMOUT	 TIME_MS2I(200U) // in internal systick
 
 struct _NmeaBinder;
 typedef struct _NmeaBinder NmeaBinder;
@@ -60,7 +63,7 @@ typedef enum {
 
 // type of the error callback function
 typedef void (*ErrorCallback) (const NmeaError error, const void * const userData,
-			       const char * const msg) ;
+			       const char * const msg);
 
 // static definition of field for binding
 typedef struct  {
@@ -225,6 +228,12 @@ main (...)
 }
 
 */
+
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif // __NMEA_FRAME
 
