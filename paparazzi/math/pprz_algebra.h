@@ -40,9 +40,16 @@
 extern "C" {
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+
+
 #include <float.h>  /* for FLT_EPSILON */
 #include <string.h> /* for memcpy      */
 #include "paparazzi/std.h" /* for ABS */
+
+
+
 
 #define SQUARE(_a) ((_a)*(_a))
 
@@ -742,6 +749,8 @@ extern "C" {
     (_ef).y = MAG_BFP_OF_REAL((_ei).y);   \
     (_ef).z = MAG_BFP_OF_REAL((_ei).z);   \
   }
+
+#pragma GCC diagnostic pop
 
 #ifdef __cplusplus
 } /* extern "C" */

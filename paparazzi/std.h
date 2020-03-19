@@ -26,7 +26,11 @@
 #ifndef STD_H
 #define STD_H
 
+#pragma GCC diagnostic push
+
+#ifndef __cplusplus
 #pragma GCC diagnostic ignored "-Wunsuffixed-float-constants" 
+#endif
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -239,5 +243,8 @@ static inline bool_t str_equal(const char * a, const char * b) {
 #  define UNUSED
 #  define WEAK
 #endif
+
+#pragma GCC diagnostic pop
+
 
 #endif /* STD_H */

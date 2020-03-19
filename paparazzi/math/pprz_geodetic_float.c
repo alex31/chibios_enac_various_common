@@ -25,6 +25,10 @@
  *
  */
 
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+
 #include "pprz_geodetic_float.h"
 
 #include "pprz_algebra_float.h"
@@ -262,7 +266,7 @@ void ecef_of_lla_f(struct EcefCoor_f *out, struct LlaCoor_f *in)
 
 
 
-#include "math/pprz_geodetic_utm.h"
+#include "pprz_geodetic_utm.h"
 
 struct complex { float re; float im; };
 #define CScal(k, z) { z.re *= k;  z.im *= k; }
@@ -352,3 +356,5 @@ void lla_of_utm_f(struct LlaCoor_f *lla, struct UtmCoor_f *utm)
   // copy alt above reference ellipsoid
   lla->alt = utm->alt;
 }
+
+#pragma GCC diagnostic pop

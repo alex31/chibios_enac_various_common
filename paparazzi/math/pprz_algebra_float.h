@@ -368,7 +368,7 @@ static inline void float_quat_invert(struct FloatQuat *qo, struct FloatQuat *qi)
 
 static inline void float_quat_wrap_shortest(struct FloatQuat *q)
 {
-  if (q->qi < 0.) {
+  if (q->qi < 0.f) {
     QUAT_EXPLEMENTARY(*q, *q);
   }
 }
@@ -561,7 +561,7 @@ static inline void float_vect_smul(float *o, const float *a, const float s, cons
 static inline void float_vect_sdiv(float *o, const float *a, const float s, const int n)
 {
   int i;
-  if (fabs(s) > 1e-5) {
+  if (fabs(s) > 1e-5f) {
     for (i = 0; i < n; i++) { o[i] = a[i] / s; }
   }
 }
@@ -649,7 +649,7 @@ static inline void float_mat_mul(float **o, float **a, float **b, int m, int n, 
   int i, j, k;
   for (i = 0; i < m; i++) {
     for (j = 0; j < l; j++) {
-      o[i][j] = 0.;
+      o[i][j] = 0.f;
       for (k = 0; k < n; k++) {
         o[i][j] += a[i][k] * b[k][j];
       }
@@ -667,7 +667,7 @@ static inline void float_mat_minor(float **o, float **a, int m, int n, int d)
 {
   int i, j;
   float_mat_zero(o, m, n);
-  for (i = 0; i < d; i++) { o[i][i] = 1.0; }
+  for (i = 0; i < d; i++) { o[i][i] = 1.0f; }
   for (i = d; i < m; i++) {
     for (j = d; j < n; j++) {
       o[i][j] = a[i][j];
@@ -681,11 +681,11 @@ static inline void float_mat_vmul(float **o, float *v, int n)
   int i, j;
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++) {
-      o[i][j] = -2. *  v[i] * v[j];
+      o[i][j] = -2.f *  v[i] * v[j];
     }
   }
   for (i = 0; i < n; i++) {
-    o[i][i] += 1.;
+    o[i][i] += 1.f;
   }
 }
 

@@ -132,7 +132,7 @@ static inline double double_quat_norm(struct DoubleQuat *q)
 static inline void double_quat_normalize(struct DoubleQuat *q)
 {
   double qnorm = double_quat_norm(q);
-  if (qnorm > FLT_MIN) {
+  if (qnorm > (double)FLT_MIN) {
     q->qi = q->qi / qnorm;
     q->qx = q->qx / qnorm;
     q->qy = q->qy / qnorm;
