@@ -263,9 +263,6 @@ static inline bool isTimerExpiredAndRearm (rtcnt_t *timer, const rtcnt_t interva
 /*===========================================================================*/
 
 
-
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -509,7 +506,12 @@ extern const StmUuid *stmUuid;
 #endif
 
 #ifdef __cplusplus
- static inline bool operator!=(const Vec3f& a, const Vec3f& b)
+
+extern "C++" {
+
+#include "cpp_heap_alloc.hpp"
+
+static inline bool operator!=(const Vec3f& a, const Vec3f& b)
 {
   return !vec3fIsEqual(&a, &b);
 };
@@ -534,4 +536,6 @@ static inline Vec3f operator/(const Vec3f& a, const float f)
   return vec3fDiv(&a, f);
 }
 
+}
+  
 #endif

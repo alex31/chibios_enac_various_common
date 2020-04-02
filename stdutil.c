@@ -179,7 +179,7 @@ void free_m(void *p)
 
 void systemReset(void)
 {
-  //  chSysLock();
+  chSysLock();
   __disable_irq();
   
   NVIC_SystemReset();

@@ -503,7 +503,6 @@ bool sdioConnect (void)
   }
 
   if (SDCD1.state == BLK_READY) {
-    DebugTrace ("allready connected");
     return TRUE;
   }
 
