@@ -42,7 +42,7 @@
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 100000
 
-#ifdef CHPRINTF_USE_STDLIB
+#if defined CHPRINTF_USE_STDLIB && CHPRINTF_USE_STDLIB
 #ifndef CHPRINTF_BUFFER_SIZE
 #define CHPRINTF_BUFFER_SIZE 160
 #endif
@@ -51,7 +51,9 @@
 #include <reent.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#if defined CHPRINTF_USE_STDLIB && CHPRINTF_USE_STDLIB
 static struct _reent reent =  _REENT_INIT(reent);
+#endif
 #pragma GCC diagnostic pop
 #else // CHPRINTF_USE_STDLIB not defined
 #define CHPRINTF_USE_STDLIB 0
@@ -211,11 +213,12 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
   // return TRUE if space exhausted
   bool _putChar (const char _c)  {
     if (buffer != NULL) {
-      if (size) {
+      if (size > 1) {
 	*buffer = _c;
 	buffer++;
 	return (--size == 0);
       } else {
+	*buffer = 0;
 	return TRUE;
       }
     } else if (chp != NULL) {
