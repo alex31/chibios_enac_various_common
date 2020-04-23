@@ -49,7 +49,7 @@
 extern BaseSequentialStream *chp;
 #endif
 
-#if defined TRACE 
+#if defined TRACE && defined CONSOLE_DEV_SD
 #include "printf.h"
 #define DebugTrace(fmt, ...) chprintf (chp, fmt "\r\n", ## __VA_ARGS__ )
 #else
@@ -454,6 +454,7 @@ const char* getGpioName (const ioportid_t p);
 
 #if HAL_USE_PWM 
 pwmcnt_t  pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq);
+pwmcnt_t  pwmChangeFrequencyI (PWMDriver *pwmd, const uint32_t freq);
 void	   pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
 				const bool masked);
 void	   pwmMaskChannelSide(PWMDriver *pwmd, const  pwmchannel_t channel,

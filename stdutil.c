@@ -359,11 +359,11 @@ uint16_t fletcher16 (uint8_t const *data, size_t bytes)
 }
 
 #if HAL_USE_PWM
-pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq)
+pwmcnt_t pwmChangeFrequencyI (PWMDriver *pwmd, const uint32_t freq)
 {
   const pwmcnt_t newPeriod = pwmd->config->frequency / freq;
   if (newPeriod && (newPeriod <= 65535)) {
-    pwmChangePeriod(pwmd, newPeriod);
+    pwmChangePeriodI(pwmd, newPeriod);
     return newPeriod;
   } else {
     return -1;
@@ -371,14 +371,13 @@ pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq)
 }
 
 
-
-
-
-
-
-
-
-
+pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq)
+{
+  chSysLock();
+  const pwmcnt_t ret = pwmChangeFrequencyI(pwmd, freq);
+  chSysUnlock();
+  return ret;
+}
 
 #if defined (STM32F7XX)
 static  inline void  peri_set_bit (volatile uint32_t *addr, const uint32_t pos,
