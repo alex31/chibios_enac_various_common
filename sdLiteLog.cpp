@@ -17,6 +17,12 @@ thread_t *SdLiteLogBase::workerThdPtr = nullptr;
 uint32_t SdLiteLogBase::freeSpaceInKo=0;
 
 
+SdLiteLogBase::SdLiteLogBase(uint32_t syncPeriodSeconds)
+{
+  syncPeriod = TIME_S2I(syncPeriodSeconds);
+  syncTs = chVTGetSystemTimeX();
+}
+
 SdLiteLogBase::~SdLiteLogBase(void)
 {
    closeLog();
@@ -41,9 +47,12 @@ void SdLiteLogBase::workerThd([[maybe_unused]] void* opt) {
     chMBFetchTimeout(&SdLiteLogBase::mbChunk, &msg, TIME_INFINITE);
     const SdChunk& sdChunk = *(reinterpret_cast<SdChunk *>(msg));
     const auto [s, l] = sdChunk.getView().get();
-    f_write(sdChunk.getFil(), s, l, &bw);
+    FIL * const fil = sdChunk.getFil();
+    f_write(fil, s, l, &bw);
     SdLiteLogBase::nbBytesWritten += bw;
-    
+    if (sdChunk.needSync()) {
+      f_sync(fil);
+    }
     if (bw != l) {
       DebugTrace("f_write length error %u != %u", bw, l);
     } 
@@ -190,7 +199,7 @@ SdLiteStatus SdLiteLogBase::initOnce(uint32_t* freeSpaceInKo)
     *freeSpaceInKo = clusters * (uint32_t)fatfs.csize / 2;
   }
 
-  workerThdPtr =  chThdCreateFromHeap(nullptr, 1024U, "sdLiteLogThd",
+  workerThdPtr =  chThdCreateFromHeap(nullptr, 2560U, "sdLiteLogThd",
 				      NORMALPRIO+2,
 				      &workerThd, nullptr);
   return workerThdPtr ? SdLiteStatus::OK : SdLiteStatus::OUT_OF_RAM;

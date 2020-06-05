@@ -15,6 +15,9 @@
 #include <algorithm>
 #include <etl/vector.h>
 
+/*
+  TODO:
+ */
 static inline  constexpr size_t numberMax = 9999;
 
 enum class SdLiteStatus  {
@@ -104,10 +107,13 @@ class SdLiteLogBase {
       view = f;
       chMtxUnlock(&mut);
     }
-    
+    void setSync(const bool sync) {shouldSync=sync;}
+    bool needSync(void) const {return shouldSync;} 
+
   private:
     SdView view;
     FIL* const  fil;
+    bool shouldSync=false;
     mutable mutex_t mut = _MUTEX_DATA(mut);
   };
 
@@ -115,7 +121,8 @@ class SdLiteLogBase {
 
   
 public:
-  SdLiteLogBase(void) {};
+  SdLiteLogBase(time_secs_t syncPeriodSeconds);
+
   ~SdLiteLogBase(void);
   SdLiteStatus openLog(const char* prefix, const char* directoryName);
   SdLiteStatus closeLog(void);
@@ -135,6 +142,8 @@ protected:
   SdLiteStatus status = SdLiteStatus::NOT_READY;
   FIL fil{};
   size_t borrowSize = NO_BORROW;
+  sysinterval_t syncPeriod;
+  systime_t     syncTs;
   static SdLiteStatus initOnce(uint32_t* freeSpaceInKo);
   static SdLiteStatus getFileName(const char* prefix, const char* directoryName,
 				  char* nextFileName, const size_t nameLength,
@@ -153,7 +162,8 @@ template <size_t N>
 class SdLiteLog : public SdLiteLogBase
 {
  public:
-  SdLiteLog() :  chunk(&fil) {};
+  SdLiteLog(time_secs_t syncPeriodSeconds) : SdLiteLogBase(syncPeriodSeconds),
+					   chunk(&fil) {};
   ~SdLiteLog() {flushHalfBuffer();}
   SdLiteStatus writeFmt(const char* fmt, ...) // low perf, high lag, reentrant API
     __attribute__ ((format (printf, 2, 3)));
@@ -207,7 +217,6 @@ SdLiteStatus SdLiteLog<N>::writeFmt(const char* fmt, ...)
       b[nbbytes++] = '\n';
       giveBack(nbbytes);
       flushHalfBuffer();
-      f_sync(&fil);
     }
   } else {
     DebugTrace("writeFmt borrow error");
@@ -293,6 +302,8 @@ template <size_t N>
 void SdLiteLog<N>::flushHalfBuffer()
 {
   chunk.setView(SdView(halfPtr, getSize()));
+  chunk.setSync(not
+	chTimeIsInRangeX(chVTGetSystemTimeX(), syncTs, syncTs+syncPeriod));
   //  DebugTrace("flushHalfBuffer w=%p h=%p [%p %p] len=%u",
   //	     writePtr, halfPtr, buffer, secondHalf, getSize());
   chMBPostTimeout(&mbChunk, (msg_t) &chunk, TIME_INFINITE);
