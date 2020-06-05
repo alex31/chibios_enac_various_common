@@ -495,6 +495,12 @@ bool sdioIsCardResponding(void)
   return ret;
 }
 
+bool sdioIsConnected (void) 
+{
+  return (SDCD1.state == BLK_READY);
+}
+
+
 bool sdioConnect (void) 
 {
   if (!sdc_lld_is_card_inserted (NULL)) {

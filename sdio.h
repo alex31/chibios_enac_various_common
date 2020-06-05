@@ -7,6 +7,7 @@ extern "C" {
 
 
 bool sdioConnect (void);
+bool sdioIsConnected (void);
 bool sdioDisconnect (void);
 bool isCardInserted  (void);
 bool sdioIsCardResponding(void);
