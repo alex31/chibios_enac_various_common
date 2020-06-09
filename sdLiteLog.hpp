@@ -2,16 +2,17 @@
 
 #include "ch.h"
 #include "hal.h"
-#include <cstring>
-#include <stdlib.h>
-#include <cstdio>
 #include "ff.h"
 #include "sdio.h"
 #include "rtcAccess.h"
-#include <ctype.h>
 #include "stdutil.h"
+#include <cstring>
+#include <stdlib.h>
+#include <cstdio>
+#include <ctype.h>
 #include <reent.h>
 #include <cstddef>
+#include <stdarg.h>
 #include <algorithm>
 #include <etl/vector.h>
 
@@ -123,11 +124,13 @@ class SdLiteLogBase {
 public:
   SdLiteLogBase(time_secs_t syncPeriodSeconds);
 
-  ~SdLiteLogBase(void);
+  virtual ~SdLiteLogBase(void);
   SdLiteStatus openLog(const char* prefix, const char* directoryName);
   SdLiteStatus closeLog(void);
+  static SdLiteStatus initOnce(uint32_t* freeSpaceInKo);
   static void terminate(const TerminateBehavior tb = TerminateBehavior::DONT_WAIT);
-
+  static void flushAllLogs(void);
+  
 protected:
   static FATFS fatfs; 
   static struct _reent reent;
@@ -144,12 +147,12 @@ protected:
   size_t borrowSize = NO_BORROW;
   sysinterval_t syncPeriod;
   systime_t     syncTs;
-  static SdLiteStatus initOnce(uint32_t* freeSpaceInKo);
   static SdLiteStatus getFileName(const char* prefix, const char* directoryName,
 				  char* nextFileName, const size_t nameLength,
 				  const int indexOffset);
   static int32_t uiGetIndexOfLogFile(const char* prefix, const char* fileName);
   static SdLiteStatus closeAllLogs(void);
+  virtual void flushHalfBuffer(void) = 0;
 
   static void workerThd(void* opt);
 };
@@ -165,8 +168,9 @@ class SdLiteLog : public SdLiteLogBase
   SdLiteLog(time_secs_t syncPeriodSeconds) : SdLiteLogBase(syncPeriodSeconds),
 					   chunk(&fil) {};
   ~SdLiteLog() {flushHalfBuffer();}
-  SdLiteStatus writeFmt(const char* fmt, ...) // low perf, high lag, reentrant API
-    __attribute__ ((format (printf, 2, 3)));
+  SdLiteStatus writeFmt(int borrowLen, const char* fmt, ...) 
+    __attribute__ ((format (printf, 3, 4)));
+  SdLiteStatus writeFmt(int borrowLen, const char* fmt, va_list *ap);
   template <typename T>
   std::tuple<SdLiteStatus, T&> borrow(void);
   template <typename T>
@@ -183,7 +187,7 @@ private:
 				  & ~(align -1U));
   }
 
-  void flushHalfBuffer();
+  void flushHalfBuffer(void) override;
   size_t getSize(void);
   size_t getRemainingSize(void);
 
@@ -199,31 +203,50 @@ private:
 
 
 template <size_t N>
-SdLiteStatus SdLiteLog<N>::writeFmt(const char* fmt, ...) 
+SdLiteStatus SdLiteLog<N>::writeFmt(int borrowLen,
+				    const char* fmt, ...) 
 {
-  using Buf_t = std::array<char, (N/2)>;
-  
   va_list ap;
+
   va_start(ap, fmt);
+  const auto s = writeFmt(borrowLen, fmt, &ap);
+  va_end(ap);
   
-  chMtxLock(&mutFmt); // no queue, just a lock to make API reentrant,
-		      // enough for low bandwidth log
-  auto [s, b] = borrow<Buf_t>();
+  return s;
+}
+
+template <size_t N>
+SdLiteStatus SdLiteLog<N>::writeFmt(int borrowLen,
+				    const char* fmt, va_list *ap) 
+{
+  if (borrowLen == 0)
+    borrowLen =  N/2;
+  
+  const bool logMode = (syncPeriod == 0);
+  
+  if (logMode)
+    chMtxLock(&mutFmt); // no queue, just a lock to make API reentrant,
+			// enough for low bandwidth log
+  auto [s, b] = borrow<char>(borrowLen);
   if (s == SdLiteStatus::OK) {
-    int nbbytes = std::min(static_cast<int>((N/2)-2),
-			   _vsnprintf_r(&reent, b.data(), (N/2)-2,  fmt, ap));
+    int nbbytes = std::min(borrowLen-2,
+			   _vsnprintf_r(&reent, b, borrowLen-2,
+					fmt, *ap));
+    DebugTrace("b=%p len=%d nbbytes=%d", b, borrowLen, nbbytes);
     if (nbbytes > 0) {
       b[nbbytes++] = '\r';
       b[nbbytes++] = '\n';
       giveBack(nbbytes);
-      flushHalfBuffer();
+      if (logMode)
+	flushHalfBuffer();
     }
   } else {
     DebugTrace("writeFmt borrow error");
   }
   
-  va_end(ap);
-  chMtxUnlock(&mutFmt);
+
+  if (logMode)
+    chMtxUnlock(&mutFmt);
   return s;
 }
 
@@ -278,7 +301,7 @@ SdLiteStatus SdLiteLog<N>::giveBack(const size_t l)
     return SdLiteStatus::BORROW_ERROR;
   } 
   writePtr += l;
-  borrowSize = NO_BORROW; 
+  borrowSize = NO_BORROW;
   return SdLiteStatus::OK;
 }
 
@@ -304,8 +327,8 @@ void SdLiteLog<N>::flushHalfBuffer()
   chunk.setView(SdView(halfPtr, getSize()));
   chunk.setSync(not
 	chTimeIsInRangeX(chVTGetSystemTimeX(), syncTs, syncTs+syncPeriod));
-  //  DebugTrace("flushHalfBuffer w=%p h=%p [%p %p] len=%u",
-  //	     writePtr, halfPtr, buffer, secondHalf, getSize());
+  DebugTrace("flushHalfBuffer w=%p h=%p [%p %p] len=%u",
+  	     writePtr, halfPtr, buffer, secondHalf, getSize());
   chMBPostTimeout(&mbChunk, (msg_t) &chunk, TIME_INFINITE);
   writePtr = halfPtr = (halfPtr == buffer) ? secondHalf : buffer;
 }

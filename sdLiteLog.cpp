@@ -84,13 +84,14 @@ SdLiteStatus SdLiteLogBase::openLog(const char* prefix, const char* directoryNam
 
 SdLiteStatus SdLiteLogBase::closeLog(void)
 {
+  DebugTrace("closeLog");
   const FRESULT rc = f_close(&fil);
   if (rc) 
     status = SdLiteStatus::FATFS_ERROR;
   else
     status = SdLiteStatus::OK;
   
-  //  DebugTrace("close FIL %p", &fil);
+  DebugTrace("close FIL %p", &fil);
   return status;
 }
 
@@ -103,6 +104,12 @@ SdLiteStatus SdLiteLogBase::closeAllLogs(void)
   }
   
   return status;
+}
+
+void SdLiteLogBase::flushAllLogs(void)
+{
+  for (auto &obj : instances)
+    obj->flushHalfBuffer();
 }
 
 SdLiteStatus  SdLiteLogBase::getFileName(const char* prefix,
