@@ -232,7 +232,7 @@ SdLiteStatus SdLiteLog<N>::writeFmt(int borrowLen,
     int nbbytes = std::min(borrowLen-2,
 			   _vsnprintf_r(&reent, b, borrowLen-2,
 					fmt, *ap));
-    DebugTrace("b=%p len=%d nbbytes=%d", b, borrowLen, nbbytes);
+    // DebugTrace("b=%p len=%d nbbytes=%d", b, borrowLen, nbbytes);
     if (nbbytes > 0) {
       b[nbbytes++] = '\r';
       b[nbbytes++] = '\n';
@@ -327,8 +327,8 @@ void SdLiteLog<N>::flushHalfBuffer()
   chunk.setView(SdView(halfPtr, getSize()));
   chunk.setSync(not
 	chTimeIsInRangeX(chVTGetSystemTimeX(), syncTs, syncTs+syncPeriod));
-  DebugTrace("flushHalfBuffer w=%p h=%p [%p %p] len=%u",
-  	     writePtr, halfPtr, buffer, secondHalf, getSize());
+  // DebugTrace("flushHalfBuffer w=%p h=%p [%p %p] len=%u",
+  //  	     writePtr, halfPtr, buffer, secondHalf, getSize());
   chMBPostTimeout(&mbChunk, (msg_t) &chunk, TIME_INFINITE);
   writePtr = halfPtr = (halfPtr == buffer) ? secondHalf : buffer;
 }
