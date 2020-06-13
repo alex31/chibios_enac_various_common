@@ -11,7 +11,6 @@ MAILBOX_DECL(SdLiteLogBase::mbChunk, mbChunkBuffer, mbChunkSize);
 //
 //
 IN_DMA_SECTION(FATFS    SdLiteLogBase::fatfs);
-_reent   SdLiteLogBase::reent = _REENT_INIT(reent);
 size_t   SdLiteLogBase::nbBytesWritten = 0U;
 thread_t *SdLiteLogBase::workerThdPtr = nullptr;
 uint32_t SdLiteLogBase::freeSpaceInKo=0;
@@ -165,11 +164,11 @@ SdLiteStatus  SdLiteLogBase::getFileName(const char* prefix,
    }
    
    if (maxCurrentIndex < numberMax) {
-     _snprintf_r(&reent, nextFileName, nameLength, "%s\\%s%.04d.LOG",
-		 directoryName, prefix, maxCurrentIndex+indexOffset);
+     snprintf(nextFileName, nameLength, "%s\\%s%.04d.LOG",
+	      directoryName, prefix, maxCurrentIndex+indexOffset);
      return SdLiteStatus::OK;
    } else {
-     _snprintf_r(&reent, nextFileName, nameLength, "%s\\%s.ERR",
+     snprintf(nextFileName, nameLength, "%s\\%s.ERR",
 		 directoryName, prefix);
      return SdLiteStatus::LOGNUM_ERROR;
    }

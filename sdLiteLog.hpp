@@ -133,7 +133,6 @@ public:
   
 protected:
   static FATFS fatfs; 
-  static struct _reent reent;
   static size_t nbBytesWritten;
   static thread_t *workerThdPtr;
   static uint32_t freeSpaceInKo;
@@ -142,6 +141,7 @@ protected:
 
 
 
+  struct _reent reent = _REENT_INIT(reent);
   SdLiteStatus status = SdLiteStatus::NOT_READY;
   FIL fil{};
   size_t borrowSize = NO_BORROW;
@@ -239,6 +239,8 @@ SdLiteStatus SdLiteLog<N>::writeFmt(int borrowLen,
       giveBack(nbbytes);
       if (logMode)
 	flushHalfBuffer();
+    } else {
+      DebugTrace("ERR : fmt=%s b=%p len=%d nbbytes=%d", fmt, b, borrowLen, nbbytes);
     }
   } else {
     DebugTrace("writeFmt borrow error");
