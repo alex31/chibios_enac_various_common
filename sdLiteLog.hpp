@@ -92,21 +92,21 @@ class SdLiteLogBase {
     SdChunk(FIL* const  _fil) : view(SdView()), fil(_fil) {};
       
     SdView getView(void) const {
-      chMtxLock(&mut);
       SdView ret = view;
-      chMtxUnlock(&mut);
       return ret;
     }
     FIL* getFil(void) const {
-      chMtxLock(&mut);
       FIL* ret = fil;
-      chMtxUnlock(&mut);
       return ret;
     }
     void setView(const SdView &f) {
-      chMtxLock(&mut);
       view = f;
-      chMtxUnlock(&mut);
+    }
+    void waitSem(void) const {
+      chBSemWait(&sem);
+    }
+    void signalSem(void) const {
+      chBSemSignal(&sem);
     }
     void setSync(const bool sync) {shouldSync=sync;}
     bool needSync(void) const {return shouldSync;} 
@@ -115,7 +115,8 @@ class SdLiteLogBase {
     SdView view;
     FIL* const  fil;
     bool shouldSync=false;
-    mutable mutex_t mut = _MUTEX_DATA(mut);
+    mutable binary_semaphore_t sem =
+      _BSEMAPHORE_DATA(sem, false);
   };
 
   static constexpr size_t NO_BORROW = 0U; 
@@ -166,11 +167,11 @@ class SdLiteLog : public SdLiteLogBase
 {
  public:
   SdLiteLog(time_secs_t syncPeriodSeconds) : SdLiteLogBase(syncPeriodSeconds),
-					   chunk(&fil) {};
+					     chunk0(&fil), chunk1(&fil) {};
   ~SdLiteLog() {flushHalfBuffer();}
   SdLiteStatus writeFmt(int borrowLen, const char* fmt, ...) 
     __attribute__ ((format (printf, 3, 4)));
-  SdLiteStatus writeFmt(int borrowLen, const char* fmt, va_list *ap);
+  SdLiteStatus vwriteFmt(int borrowLen, const char* fmt, va_list *ap);
   template <typename T>
   std::tuple<SdLiteStatus, T&> borrow(void);
   template <typename T>
@@ -196,9 +197,9 @@ private:
   std::byte *writePtr = buffer;
   std::byte * const secondHalf = buffer + N/2;
   std::byte * const secondEnd = buffer + N;
+ 
   size_t    currLen=0U;
-  SdChunk chunk;
-  mutable mutex_t mutFmt = _MUTEX_DATA(mutFmt);
+  SdChunk chunk0, chunk1;
 };
 
 
@@ -209,14 +210,14 @@ SdLiteStatus SdLiteLog<N>::writeFmt(int borrowLen,
   va_list ap;
 
   va_start(ap, fmt);
-  const auto s = writeFmt(borrowLen, fmt, &ap);
+  const auto s = vwriteFmt(borrowLen, fmt, &ap);
   va_end(ap);
   
   return s;
 }
 
 template <size_t N>
-SdLiteStatus SdLiteLog<N>::writeFmt(int borrowLen,
+SdLiteStatus SdLiteLog<N>::vwriteFmt(int borrowLen,
 				    const char* fmt, va_list *ap) 
 {
   if (borrowLen == 0)
@@ -224,9 +225,6 @@ SdLiteStatus SdLiteLog<N>::writeFmt(int borrowLen,
   
   const bool logMode = (syncPeriod == 0);
   
-  if (logMode)
-    chMtxLock(&mutFmt); // no queue, just a lock to make API reentrant,
-			// enough for low bandwidth log
   auto [s, b] = borrow<char>(borrowLen);
   if (s == SdLiteStatus::OK) {
     int nbbytes = std::min(borrowLen-2,
@@ -240,15 +238,13 @@ SdLiteStatus SdLiteLog<N>::writeFmt(int borrowLen,
       if (logMode)
 	flushHalfBuffer();
     } else {
-      DebugTrace("ERR : fmt=%s b=%p len=%d nbbytes=%d", fmt, b, borrowLen, nbbytes);
+      DebugTrace("writeFmt _vsnprintf_r error : "
+		 "fmt=%s b=%p len=%d nbbytes=%d", fmt, b, borrowLen, nbbytes);
     }
   } else {
     DebugTrace("writeFmt borrow error");
   }
   
-
-  if (logMode)
-    chMtxUnlock(&mutFmt);
   return s;
 }
 
@@ -261,6 +257,11 @@ std::tuple<SdLiteStatus, T&> SdLiteLog<N>::borrow(void)
   constexpr size_t l = sizeof(T);
   T* tptr = nullptr;
 
+  SdChunk &chunk = (halfPtr == buffer) ? chunk0 : chunk1;
+  chunk.waitSem();
+  chunk.signalSem();
+ 
+  // give back last borrowed
   if (borrowSize != NO_BORROW) 
     writePtr += borrowSize;
   
@@ -281,6 +282,12 @@ template <typename T>
 std::tuple<SdLiteStatus, T*> SdLiteLog<N>::borrow(const size_t l)
 {
   T* tptr = nullptr;
+
+  SdChunk &chunk = (halfPtr == buffer) ? chunk0 : chunk1;
+  chunk.waitSem();
+  chunk.signalSem();
+
+  // give back last borrowed
   if (borrowSize != NO_BORROW) 
     writePtr += borrowSize;
   
@@ -326,11 +333,17 @@ size_t  SdLiteLog<N>::getSize(void)
 template <size_t N>
 void SdLiteLog<N>::flushHalfBuffer()
 {
+  SdChunk &chunk = (halfPtr == buffer) ? chunk0 : chunk1;
+  chunk.waitSem();
   chunk.setView(SdView(halfPtr, getSize()));
-  chunk.setSync(not
-	chTimeIsInRangeX(chVTGetSystemTimeX(), syncTs, syncTs+syncPeriod));
-  // DebugTrace("flushHalfBuffer w=%p h=%p [%p %p] len=%u",
-  //  	     writePtr, halfPtr, buffer, secondHalf, getSize());
+  if (chTimeIsInRangeX(chVTGetSystemTimeX(), syncTs, syncTs+syncPeriod)) {
+    chunk.setSync(false);
+  } else {
+    syncTs = chVTGetSystemTimeX();
+    chunk.setSync(true);
+  }
+  //  DebugTrace("flushHalfBuffer w=%p h=%p [%p %p] len=%u",
+  //	      writePtr, halfPtr, buffer, secondHalf, getSize());
   chMBPostTimeout(&mbChunk, (msg_t) &chunk, TIME_INFINITE);
   writePtr = halfPtr = (halfPtr == buffer) ? secondHalf : buffer;
 }

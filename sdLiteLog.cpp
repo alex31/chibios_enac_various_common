@@ -1,7 +1,7 @@
 #include "sdLiteLog.hpp"
 
 namespace {
-  constexpr size_t mbChunkSize = 1U;
+  constexpr size_t mbChunkSize = 2U;
   msg_t mbChunkBuffer[mbChunkSize];
 }
 
@@ -48,6 +48,7 @@ void SdLiteLogBase::workerThd([[maybe_unused]] void* opt) {
     const auto [s, l] = sdChunk.getView().get();
     FIL * const fil = sdChunk.getFil();
     f_write(fil, s, l, &bw);
+    sdChunk.signalSem();
     SdLiteLogBase::nbBytesWritten += bw;
     if (sdChunk.needSync()) {
       f_sync(fil);
