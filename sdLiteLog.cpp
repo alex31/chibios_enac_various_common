@@ -1,7 +1,7 @@
 #include "sdLiteLog.hpp"
 
 namespace {
-  constexpr size_t mbChunkSize = 2U;
+  constexpr size_t mbChunkSize = 16U;
   msg_t mbChunkBuffer[mbChunkSize];
 }
 
