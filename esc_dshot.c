@@ -89,7 +89,8 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   };
   
   driver->config = config;
-  
+  // use pburst, mburst only if buffer size satisfy aligmnent requirement
+  const uint8_t burstSize = DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0U : 16U;
   driver->dma_conf = (DMAConfig) {
     .stream = config->dma_stream,
     .channel = config->dma_channel,
@@ -104,9 +105,8 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .circular = false,
     .error_cb = NULL,
     .end_cb = NULL,
-    .pburst = 0,
-    // use mburst only if buffer size satisfy aligmnent requirement
-    .mburst = DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0 : 4,
+    .pburst = burstSize,
+    .mburst = burstSize,
     .fifo = 0
   };
 
@@ -397,7 +397,7 @@ static size_t   getTimerWidth(const PWMDriver *pwmp)
 #if STM32_PWM_USE_TIM5
 	   || (pwmp == &PWMD5)
 #endif
-	   ) ? 4 : 2;
+	   ) ? 4 : 4;
 }
 
 
