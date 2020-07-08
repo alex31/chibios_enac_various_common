@@ -415,10 +415,10 @@ bool  dmaStart(DMADriver *dmap, const DMAConfig *cfg);
 void  dmaStop(DMADriver *dmap);
 
 #if STM32_DMA_USE_WAIT == TRUE
-msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void * volatile mem0p, const size_t size,
+msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, volatile void * mem0p, const size_t size,
 		   sysinterval_t timeout);
 // helper
-static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void * volatile mem0p, const size_t size)
+static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, volatile void * mem0p, const size_t size)
 {
   return dmaTransfertTimeout(dmap, periphp, mem0p, size, TIME_INFINITE);
 }

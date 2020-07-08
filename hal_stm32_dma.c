@@ -176,10 +176,18 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  volatile void 
 		  "memory address alignment rule not respected");
   }
   if (cfg->pburst) {
-    osalDbgAssert((size % (cfg->pburst *  cfg->psize)) == 0,
-		  "pburst alignment rule not respected");
+    osalDbgAssert((size % (cfg->pburst * cfg->psize)) == 0,
+                  "pburst alignment rule not respected");
+    osalDbgAssert((((uint32_t) periphp) % (cfg->pburst * cfg->psize)) == 0,
+                  "peripheral address alignment rule not respected");
   }
-  
+  if (cfg->mburst) {
+    osalDbgAssert((size % (cfg->mburst * cfg->msize)) == 0,
+                  "mburst alignment rule not respected");
+    osalDbgAssert((((uint32_t) mem0p) % (cfg->mburst * cfg->msize)) == 0,
+                  "memory address alignment rule not respected");
+  }
+
 # endif
 #endif
 #if STM32_DMA_USE_ASYNC_TIMOUT
@@ -687,8 +695,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
       ( (flags & STM32_DMA_ISR_FEIF)  ? DMA_ERR_FIFO_ERROR : 0UL);
     
     _dma_isr_error_code(dmap, err);
-  }
-  else {
+  } else {
     /* It is possible that the transaction has already be reset by the
        DMA error handler, in this case this interrupt is spurious.*/
     if (dmap->state == DMA_ACTIVE) {
@@ -696,8 +703,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
       if ((flags & STM32_DMA_ISR_TCIF) != 0) {
         /* Transfer complete processing.*/
         _dma_isr_full_code(dmap);
-      }
-      else if ((flags & STM32_DMA_ISR_HTIF) != 0) {
+      } else if ((flags & STM32_DMA_ISR_HTIF) != 0) {
         /* Half transfer processing.*/
         _dma_isr_half_code(dmap);
       }
