@@ -359,6 +359,13 @@ static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * cons
       }
     }
     // the bits for silence sync in case of continous sending are zeroed once at init
+    if (timerWidth == 2) {
+      for (size_t bitIdx=DSHOT_BIT_WIDTHS; bitIdx < DSHOT_DMA_BUFFER_SIZE; bitIdx++)
+    	dma->widths16[bitIdx][chanIdx] =0U;
+      } else {
+      for (size_t bitIdx=DSHOT_BIT_WIDTHS; bitIdx < DSHOT_DMA_BUFFER_SIZE; bitIdx++)
+    	dma->widths32[bitIdx][chanIdx] =0U;
+    }
   }
 }
 
@@ -389,7 +396,10 @@ __attribute__ ((const))
 static size_t   getTimerWidth(const PWMDriver *pwmp) 
 {
   (void) pwmp;
-  
+  /* return timer width 
+     until more comprehension of STM32 DMA -> interaction 
+     use 4 bytes transfert for all the timer, even the 16 bits ones
+  */
   return ( 0 
 #if STM32_PWM_USE_TIM2
 	   || (pwmp == &PWMD2)
@@ -397,7 +407,7 @@ static size_t   getTimerWidth(const PWMDriver *pwmp)
 #if STM32_PWM_USE_TIM5
 	   || (pwmp == &PWMD5)
 #endif
-	   ) ? 4 : 4;
+	   ) ? 4 : 2;
 }
 
 
