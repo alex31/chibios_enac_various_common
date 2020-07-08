@@ -214,5 +214,5 @@ struct  DSHOTDriver {
   THD_WORKING_AREA(waDshotTlmRec, 512);
 
   DshotPackets dshotMotors;
-  DshotDmaBuffer dsdb;
+  volatile DshotDmaBuffer dsdb;
 };
