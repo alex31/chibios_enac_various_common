@@ -178,14 +178,10 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  volatile void 
   if (cfg->pburst) {
     osalDbgAssert((size % (cfg->pburst * cfg->psize)) == 0,
                   "pburst alignment rule not respected");
-    osalDbgAssert((((uint32_t) periphp) % (cfg->pburst * cfg->psize)) == 0,
-                  "peripheral address alignment rule not respected");
   }
   if (cfg->mburst) {
     osalDbgAssert((size % (cfg->mburst * cfg->msize)) == 0,
                   "mburst alignment rule not respected");
-    osalDbgAssert((((uint32_t) mem0p) % (cfg->mburst * cfg->msize)) == 0,
-                  "memory address alignment rule not respected");
   }
 
 # endif
