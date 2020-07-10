@@ -46,8 +46,9 @@
 //float cbGptFrq = 0.0f;
 
 
-#define CALLBACK_START_ADDR	0x8000000
-
+#define CALLBACK_START_ADDR_AXIM	0x8000000
+#define CALLBACK_START_ADDR_ITCM	0x200000
+#define FLASH_LENGTH			(2U*1024U*1024U)
 
 static void errorcallback (ADCDriver *adcp, adcerror_t err);
 static int getChannelFromLine(ioline_t line);
@@ -55,6 +56,16 @@ static void setSQR(ADCConversionGroup  *cgrp, size_t sequence, uint32_t channelM
 static void setSMPR(ADCConversionGroup  *cgrp, uint32_t channelMsk, uint32_t sampleCycleMsk);
 static void configureGptd8(uint32_t frequency);
 static uint32_t cyclesByMask(const AdcSampleCycles msk);
+static bool isFlashAddr(const uint32_t addr);
+
+static bool isFlashAddr(const uint32_t addr)
+{
+  return ((addr > CALLBACK_START_ADDR_AXIM) &&
+	  (addr < CALLBACK_START_ADDR_AXIM+FLASH_LENGTH))
+    ||
+    ((addr > CALLBACK_START_ADDR_ITCM) &&
+     (addr < CALLBACK_START_ADDR_ITCM+FLASH_LENGTH));
+}
 
 __attribute__ ((sentinel(1)))
 ADCConversionGroup adcGetConfig(const uint8_t numberOfChannel, ...)
@@ -80,7 +91,7 @@ ADCConversionGroup adcGetConfig(const uint8_t numberOfChannel, ...)
   // look for double NULL arguments : one null is a valid arg for
   // ADC_CHANNEL_IN0
   while ( (curArg = va_arg(ap, uint32_t)) != ADC_SENTINEL)  {
-    if ((curArg > CALLBACK_START_ADDR) && (curArg <= PERIPH_BASE)) {
+    if (isFlashAddr(curArg)) {
       cgr.end_cb = (adccallback_t) curArg;
     } else if ((curArg >= ADC_ONE_SHOT ) &&
 	       (curArg <= ADC_TIMER_DRIVEN(ADC_TIMER_MAX_ALLOWED_FREQUENCY))) {
