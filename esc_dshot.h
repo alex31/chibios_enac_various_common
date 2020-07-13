@@ -162,9 +162,9 @@ typedef struct {
 } DshotPackets;
 
 typedef union {
-  uint16_t widths16[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS];
+  uint16_t widths16[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS] __attribute__((aligned(16)));
 #if DSHOT_AT_LEAST_ONE_32B_TIMER
-  uint32_t widths32[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS];
+  uint32_t widths32[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS] __attribute__((aligned(16)));
 #endif
 } DshotDmaBuffer __attribute__((aligned(16)));   // alignment to satisfy dma requirement
 
@@ -214,5 +214,5 @@ struct  DSHOTDriver {
   THD_WORKING_AREA(waDshotTlmRec, 512);
 
   DshotPackets dshotMotors;
-  volatile DshotDmaBuffer dsdb;
+  volatile DshotDmaBuffer dsdb __attribute__((aligned(16)));
 };

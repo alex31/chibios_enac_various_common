@@ -440,18 +440,18 @@ bool dma_lld_start(DMADriver *dmap)
   }
   switch (cfg->mburst) {
   case 0 : mburst_msk = 0UL; break;
-  case 4 : mburst_msk  = STM32_DMA_CR_MBURST_INCR4; break;
-  case 8 : mburst_msk  = STM32_DMA_CR_MBURST_INCR8; break;
+  case 4 : mburst_msk  = STM32_DMA_CR_MBURST_INCR4;  break;
+  case 8 : mburst_msk  = STM32_DMA_CR_MBURST_INCR8;  break;
   case 16 : mburst_msk = STM32_DMA_CR_MBURST_INCR16; break;
   default: osalDbgAssert(false, "mburst size should be 0 or 4 or 8 or 16");
     return false;
   }
   switch (cfg->fifo) {
   case 0 : fifo_msk = 0UL; break;
-  case 1 : fifo_msk = STM32_DMA_FCR_FTH_1Q; break;
+  case 1 : fifo_msk = STM32_DMA_FCR_FTH_1Q;    break;
   case 2 : fifo_msk  = STM32_DMA_FCR_FTH_HALF; break;
-  case 3 : fifo_msk  = STM32_DMA_FCR_FTH_3Q;  break;
-  case 4 : fifo_msk =  STM32_DMA_FCR_FTH_FULL; ; break;
+  case 3 : fifo_msk  = STM32_DMA_FCR_FTH_3Q;   break;
+  case 4 : fifo_msk =  STM32_DMA_FCR_FTH_FULL; break;
   default: osalDbgAssert(false, "fifo threshold should be 1(/4) or 2(/4) or 3(/4) or 4(/4)");
     return false;
   }

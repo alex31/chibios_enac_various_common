@@ -312,7 +312,7 @@ typedef struct  {
    */
   uint8_t		msize; // 1,2,4
 #if STM32_DMA_ADVANCED
-#define STM32_DMA_FIFO_SIZE 4 // hardware specification for dma V2
+#define STM32_DMA_FIFO_SIZE 16 // hardware specification for dma V2
   
   /**
    * @brief   DMA peripheral burst size 

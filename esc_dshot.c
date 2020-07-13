@@ -95,8 +95,8 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   driver->dma_conf = (DMAConfig) {
     .stream = config->dma_stream,
     .channel = config->dma_channel,
-    .dma_priority = 2,
-    .irq_priority = 6,
+    .dma_priority = 3,
+    .irq_priority = 2,
     .direction = DMA_DIR_M2P,
 
     .psize = timerWidthInBytes, // if we change for a 32 bit timer just have to change
@@ -106,8 +106,11 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .circular = false,
     .error_cb = NULL,
     .end_cb = NULL,
+    /* .pburst = 0, */
+    /* .mburst = DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0U : 16U, */
+    /* .fifo = 0 */
     .pburst = 0,
-    .mburst = DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0U : 16U,
+    .mburst = 0,
     .fifo = 0
   };
 
