@@ -1,15 +1,15 @@
 #include "hal_stm32_dma.h"
 
-
+#define CACHE_ASSERT_OF_SAME_SIZE FALSE
 /*
-TODO : 
+  TODO : 
 
 
-° split lld and hardware independant code : hal_stm32_dma et hal_lld_stm32_dma
+  ° split lld and hardware independant code : hal_stm32_dma et hal_lld_stm32_dma
 
-° port to H7,L4+ : bdma, dmav3, mdma+dmamux
+  ° port to H7,L4+ : bdma, dmav3, mdma+dmamux
 
-° allow fifo burst when STM32_DMA_USE_ASYNC_TIMOUT is true by forcing a flush of the fifo : could be
+  ° allow fifo burst when STM32_DMA_USE_ASYNC_TIMOUT is true by forcing a flush of the fifo : could be
   done disabling stream : should flush fifo and trig full code ISR. full code ISR should re-enable stream
   after a timout. 
   
@@ -38,10 +38,14 @@ void dmaObjectInit(DMADriver *dmap)
   osalMutexObjectInit(&dmap->mutex);
 #endif
 #if defined( STM32_DMA_DRIVER_EXT_INIT_HOOK)
-   STM32_DMA_DRIVER_EXT_INIT_HOOK(dmap);
+  STM32_DMA_DRIVER_EXT_INIT_HOOK(dmap);
+#endif
+#if CH_DBG_SYSTEM_STATE_CHECK == TRUE
+  dmap->nbTransferError = dmap->nbDirectModeError = dmap->nbFifoError = 0U;
+  dmap->lastError = 0U;
 #endif
 #if STM32_DMA_USE_ASYNC_TIMOUT
-   chVTObjectInit(&dmap->vt);
+  chVTObjectInit(&dmap->vt);
 #endif
 }
 
@@ -141,60 +145,74 @@ bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp,  volatile void *
 bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  volatile void *  mem0p, const size_t size)
 {
   osalDbgCheckClassI();
-  osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
-               (size > 0U) && ((size == 1U) || ((size & 1U) == 0U)));
-
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
-  const DMAConfig	    *cfg = dmap->config;
-  osalDbgAssert((dmap->state == DMA_READY) ||
-                (dmap->state == DMA_COMPLETE) ||
-                (dmap->state == DMA_ERROR),
-                "not ready");
-
-  osalDbgAssert((uint32_t) periphp % cfg->psize == 0, "peripheral address not aligned");
-  osalDbgAssert((uint32_t) mem0p % cfg->msize == 0, "memory address not aligned");
-
-  /*
-    In the circular mode, it is mandatory to respect the following rule in case of a burst mode
-    configured for memory:
-    DMA_SxNDTR = Multiple of ((Mburst beat) × (Msize)/(Psize)), where:
-    – (Mburst beat) = 4, 8 or 16 (depending on the MBURST bits in the DMA_SxCR
-    register)
-    – ((Msize)/(Psize)) = 1, 2, 4, 1/2 or 1/4 (Msize and Psize represent the MSIZE and
-    PSIZE bits in the DMA_SxCR register. They are byte dependent)
-    – DMA_SxNDTR = Number of data items to transfer on the AHB peripheral port
-
-    NDTR must also be a multiple of the Peripheral burst size multiplied by the peripheral data
-    size, otherwise this could result in a bad DMA behavior.
-
-   */
-# if  STM32_DMA_ADVANCED
-  if (cfg->mburst) {
-    osalDbgAssert((size % (cfg->mburst * cfg->msize / cfg->psize)) == 0,
-		  "mburst alignment rule not respected");
-    osalDbgAssert((((uint32_t) mem0p) % (cfg->mburst * cfg->msize / cfg->psize)) == 0,
-		  "memory address alignment rule not respected");
-  }
-  if (cfg->pburst) {
-    osalDbgAssert((size % (cfg->pburst * cfg->psize)) == 0,
-                  "pburst alignment rule not respected");
-  }
-  if (cfg->mburst) {
-    osalDbgAssert((size % (cfg->mburst * cfg->msize)) == 0,
-                  "mburst alignment rule not respected");
-  }
-
-# endif
+#if CACHE_ASSERT_OF_SAME_SIZE
+  if (size != dmap->size) {
 #endif
+    osalSysUnlock();
+    osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
+		 (size > 0U) && ((size == 1U) || ((size & 1U) == 0U)));
+    
+    const DMAConfig	    *cfg = dmap->config;
+    osalDbgAssert((dmap->state == DMA_READY) ||
+		  (dmap->state == DMA_COMPLETE) ||
+		  (dmap->state == DMA_ERROR),
+		  "not ready");
+#endif
+    dmap->state    = DMA_ACTIVE;
+#if (CH_DBG_ENABLE_ASSERTS != FALSE) 
+    osalDbgAssert((uint32_t) periphp % cfg->psize == 0, "peripheral address not aligned");
+    osalDbgAssert((uint32_t) mem0p % cfg->msize == 0, "memory address not aligned");
+    
+    /*
+      In the circular mode, it is mandatory to respect the following rule in case of a burst mode
+      configured for memory:
+      DMA_SxNDTR = Multiple of ((Mburst beat) × (Msize)/(Psize)), where:
+      – (Mburst beat) = 4, 8 or 16 (depending on the MBURST bits in the DMA_SxCR
+      register)
+      – ((Msize)/(Psize)) = 1, 2, 4, 1/2 or 1/4 (Msize and Psize represent the MSIZE and
+      PSIZE bits in the DMA_SxCR register. They are byte dependent)
+      – DMA_SxNDTR = Number of data items to transfer on the AHB peripheral port
+      
+      NDTR must also be a multiple of the Peripheral burst size multiplied by the peripheral data
+      size, otherwise this could result in a bad DMA behavior.
+      
+    */
+# if  STM32_DMA_ADVANCED
+    if (cfg->mburst) {
+      osalDbgAssert((size % (cfg->mburst * cfg->msize / cfg->psize)) == 0,
+		    "mburst alignment rule not respected");
+      osalDbgAssert((((uint32_t) mem0p) % 8) == 0,
+		    "memory address alignment rule not respected");
+    }
+    if (cfg->pburst) {
+      osalDbgAssert((size % (cfg->pburst * cfg->psize)) == 0,
+		    "pburst alignment rule not respected");
+    }
+    if (cfg->mburst) {
+      osalDbgAssert((size % (cfg->mburst * cfg->msize)) == 0,
+		    "mburst alignment rule not respected");
+    }
+    
+    
+# endif //  STM32_DMA_ADVANCED
+  osalSysLock();
+#if CACHE_ASSERT_OF_SAME_SIZE
+  }
+#endif
+
+
+
+#endif // CH_DBG_ENABLE_ASSERTS != FALSE
+
 #if STM32_DMA_USE_ASYNC_TIMOUT
   dmap->currPtr = mem0p;
   if (dmap->config->timeout != TIME_INFINITE) {
     chVTSetI(&dmap->vt, dmap->config->timeout,
 	     &dma_lld_serve_timeout_interrupt, (void *) dmap);
   } 
-#endif
+#endif // CH_DBG_ENABLE_ASSERTS != FALSE
   
-  dmap->state    = DMA_ACTIVE;
   return dma_lld_start_transfert(dmap, periphp, mem0p, size);
 }
   
@@ -336,18 +354,18 @@ void dmaReleaseBus(DMADriver *dmap) {
 
 
 /*
-#                 _                                  _                              _          
-#                | |                                | |                            | |         
-#                | |        ___   __      __        | |        ___  __   __   ___  | |         
-#                | |       / _ \  \ \ /\ / /        | |       / _ \ \ \ / /  / _ \ | |         
-#                | |____  | (_) |  \ V  V /         | |____  |  __/  \ V /  |  __/ | |         
-#                |______|  \___/    \_/\_/          |______|  \___|   \_/    \___| |_|         
-#                 _____            _                                
-#                |  __ \          (_)                               
-#                | |  | |   _ __   _   __   __   ___   _ __         
-#                | |  | |  | '__| | |  \ \ / /  / _ \ | '__|        
-#                | |__| |  | |    | |   \ V /  |  __/ | |           
-#                |_____/   |_|    |_|    \_/    \___| |_|           
+  #                 _                                  _                              _          
+  #                | |                                | |                            | |         
+  #                | |        ___   __      __        | |        ___  __   __   ___  | |         
+  #                | |       / _ \  \ \ /\ / /        | |       / _ \ \ \ / /  / _ \ | |         
+  #                | |____  | (_) |  \ V  V /         | |____  |  __/  \ V /  |  __/ | |         
+  #                |______|  \___/    \_/\_/          |______|  \___|   \_/    \___| |_|         
+  #                 _____            _                                
+  #                |  __ \          (_)                               
+  #                | |  | |   _ __   _   __   __   ___   _ __         
+  #                | |  | |  | '__| | |  \ \ / /  / _ \ | '__|        
+  #                | |__| |  | |    | |   \ V /  |  __/ | |           
+  #                |_____/   |_|    |_|    \_/    \___| |_|           
 */
 
 
@@ -413,19 +431,19 @@ bool dma_lld_start(DMADriver *dmap)
 #endif
 
   dmap->dmamode = STM32_DMA_CR_PL(cfg->dma_priority) |
-		 dir_msk | psize_msk | msize_msk | isr_flags |
-                 (cfg->circular ? STM32_DMA_CR_CIRC : 0UL) |
-                 (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
-	         (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL)
+    dir_msk | psize_msk | msize_msk | isr_flags |
+    (cfg->circular ? STM32_DMA_CR_CIRC : 0UL) |
+    (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
+    (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL)
 
 #if STM32_DMA_SUPPORTS_CSELR
-                  | STM32_DMA_CR_CHSEL(cfg->request)    
+    | STM32_DMA_CR_CHSEL(cfg->request)    
 #elif STM32_DMA_ADVANCED
-                 | STM32_DMA_CR_CHSEL(cfg->channel)    
-		 | (cfg->periph_inc_size_4 ? STM32_DMA_CR_PINCOS : 0UL) |
-		   (cfg->transfert_end_ctrl_by_periph? STM32_DMA_CR_PFCTRL : 0UL)
+    | STM32_DMA_CR_CHSEL(cfg->channel)    
+    | (cfg->periph_inc_size_4 ? STM32_DMA_CR_PINCOS : 0UL) |
+    (cfg->transfert_end_ctrl_by_periph? STM32_DMA_CR_PFCTRL : 0UL)
 #   endif
-		 ;
+    ;
                  
 
 #if STM32_DMA_ADVANCED
@@ -470,8 +488,8 @@ bool dma_lld_start(DMADriver *dmap)
 
   // lot of combination of parameters are forbiden, and some conditions must be meet
   if (!cfg->msize !=  !cfg->psize) {
-     osalDbgAssert(false, "psize and msize should be enabled or disabled together");
-     return false;
+    osalDbgAssert(false, "psize and msize should be enabled or disabled together");
+    return false;
   }
 
   if (cfg->fifo) {
@@ -682,13 +700,14 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
 {
 
   /* DMA errors handling.*/
-  if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF | STM32_DMA_ISR_FEIF)) != 0) {
+  const uint32_t feif_msk = dmap->config->fifo != 0U ? STM32_DMA_ISR_FEIF : 0U;
+  if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF | feif_msk)) != 0U) {
     /* DMA, this could help only if the DMA tries to access an unmapped
        address space or violates alignment rules.*/
     const dmaerrormask_t err =
       ( (flags & STM32_DMA_ISR_TEIF)  ? DMA_ERR_TRANSFER_ERROR : 0UL) |
       ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL) |
-      ( (flags & STM32_DMA_ISR_FEIF)  ? DMA_ERR_FIFO_ERROR : 0UL);
+      ( (flags & feif_msk)  ? DMA_ERR_FIFO_ERROR : 0UL);
     
     _dma_isr_error_code(dmap, err);
   } else {

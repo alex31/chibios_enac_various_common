@@ -396,6 +396,12 @@ struct DMADriver {
    */
   size_t		     size;
 
+#if CH_DBG_SYSTEM_STATE_CHECK
+  volatile size_t		     nbTransferError;
+  volatile size_t		     nbDirectModeError;
+  volatile size_t		     nbFifoError;
+  volatile dmaerrormask_t	     lastError;
+#endif
   /**
    * @brief	Driver state 
    */
@@ -568,14 +574,23 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
 }
 
 static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
-  dma_lld_stop_transfert(dmap);                                             
+  dma_lld_stop_transfert(dmap);
+#if CH_DBG_SYSTEM_STATE_CHECK == TRUE
+  if (err & DMA_ERR_TRANSFER_ERROR)
+    dmap->nbTransferError++;
+  if (err & DMA_ERR_DIRECTMODE_ERROR)
+    dmap->nbDirectModeError++;
+  if (err & DMA_ERR_FIFO_ERROR)
+    dmap->nbFifoError++;;
+  dmap->lastError = err;
+#endif
+  
   if (dmap->config->error_cb != NULL) {                                   
     dmap->state = DMA_ERROR;                                              
     dmap->config->error_cb(dmap, err);                                    
     if (dmap->state == DMA_ERROR)                                         
       dmap->state = DMA_READY;                                            
-  }                                                                         
-  else {                                                                    
+  } else {                                                                    
     dmap->state = DMA_READY;                                              
   }                                                                         
   _dma_timeout_isr(dmap);                                                   

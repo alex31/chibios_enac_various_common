@@ -40,6 +40,15 @@
 
 #define DSHOT_MAX_VALUE ((1<<11)-1) // 11 bits used to send command, so maximum value is 2047
 
+#if CH_DBG_ENABLE_ASSERTS
+#define BURST_SIZE 0U
+#elif DSHOT_AT_LEAST_ONE_32B_TIMER
+#define BURST_SIZE 8U
+#else
+#define BURST_SIZE 16U
+#endif
+
+
 /*
 #                 _ __                   _              _      _   _    _ __                 
 #                | '_ \                 | |            | |    | | | |  | '_ \                
@@ -75,9 +84,6 @@ static size_t   getTimerWidth(const PWMDriver *pwmp);
  */
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
-  _Static_assert((void *) &driver->dsdb == (void *) &driver->dsdb.widths16);
-  _Static_assert((void *) &driver->dsdb.widths32 == (void *) &driver->dsdb.widths16);
-  
   memset((void *) &driver->dsdb, 0, sizeof(driver->dsdb));
   const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
   /* DebugTrace("timerWidthInBytes = %u; mburst = %u", */
@@ -92,7 +98,6 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   };
 
   driver->config = config;
-  // use pburst, mburst only if buffer size satisfy aligmnent requirement
   driver->dma_conf = (DMAConfig) {
     .stream = config->dma_stream,
     .channel = config->dma_channel,
@@ -100,15 +105,15 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .irq_priority = 2,
     .direction = DMA_DIR_M2P,
 
-    .psize = timerWidthInBytes, // if we change for a 32 bit timer just have to change
-    .msize = timerWidthInBytes, // type of width array
+    .psize = timerWidthInBytes, 
+    .msize = timerWidthInBytes, 
     .inc_peripheral_addr = false,
     .inc_memory_addr = true,
     .circular = false,
     .error_cb = NULL,
     .end_cb = NULL,
-    .pburst = 8,
-    .mburst = 8,
+    .pburst = BURST_SIZE,
+    .mburst = BURST_SIZE,
     .fifo = 0
   };
 
@@ -371,6 +376,7 @@ static void buildDshotDmaBuffer(DshotPackets *const dsp,  volatile DshotDmaBuffe
     }
     // the bits for silence sync in case of continous sending are zeroed once at init
   }
+
 }
 
 
