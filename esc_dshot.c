@@ -56,6 +56,7 @@ static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed);
 static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen);
 static noreturn void dshotTlmRec (void *arg);
 static size_t   getTimerWidth(const PWMDriver *pwmp);
+//static void dmaErrCb(DMADriver *dmap, dmaerrormask_t err);
 /*
 #                         _ __    _          
 #                        | '_ \  (_)         
@@ -106,11 +107,8 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .circular = false,
     .error_cb = NULL,
     .end_cb = NULL,
-    /* .pburst = 0, */
-    /* .mburst = DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0U : 16U, */
-    /* .fifo = 0 */
-    .pburst = 0,
-    .mburst = 0,
+    .pburst = 8,
+    .mburst = 8,
     .fifo = 0
   };
 
@@ -453,3 +451,9 @@ static noreturn void dshotTlmRec (void *arg)
 
 
 
+/* static void dmaErrCb(DMADriver *dmap, dmaerrormask_t err) */
+/* { */
+/*   (void) dmap; */
+/*   (void) err; */
+/*   chDbgAssert(false, "dma error"); */
+/* } */
