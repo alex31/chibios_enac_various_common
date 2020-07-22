@@ -60,7 +60,7 @@
 static DshotPacket makeDshotPacket(const uint16_t throttle, const bool tlmRequest);
 static inline void setDshotPacketThrottle(DshotPacket * const dp, const uint16_t throttle);
 static inline void setDshotPacketTlm(DshotPacket * const dp, const bool tlmRequest);
-static void buildDshotDmaBuffer(DshotPackets * const dsp,  volatile DshotDmaBuffer * const dma, const size_t timerWidth);
+static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * const dma, const size_t timerWidth);
 static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed);
 static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen);
 static noreturn void dshotTlmRec (void *arg);
@@ -84,7 +84,7 @@ static size_t   getTimerWidth(const PWMDriver *pwmp);
  */
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
-  memset((void *) &driver->dsdb, 0, sizeof(driver->dsdb));
+  memset((void *) config->uncached_dma_buf, 0, sizeof(*(config->uncached_dma_buf)));
   const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
   /* DebugTrace("timerWidthInBytes = %u; mburst = %u", */
   /* 	     timerWidthInBytes, */
@@ -273,10 +273,10 @@ void dshotSendFrame(DSHOTDriver *driver)
       chMBPostTimeout(&driver->mb, driver->dshotMotors.currentTlmQry, TIME_IMMEDIATE);
     }
 
-    buildDshotDmaBuffer(&driver->dshotMotors, &driver->dsdb, getTimerWidth(driver->config->pwmp));
+    buildDshotDmaBuffer(&driver->dshotMotors, driver->config->uncached_dma_buf, getTimerWidth(driver->config->pwmp));
     dmaStartTransfert(&driver->dmap,
                       &driver->config->pwmp->tim->DMAR,
-                      &driver->dsdb, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
+                      driver->config->uncached_dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
 
   }
 }
@@ -348,7 +348,7 @@ static inline void setDshotPacketTlm(DshotPacket *const dp, const bool tlmReques
   dp->telemetryRequest =  tlmRequest ? 1 : 0;
 }
 
-static void buildDshotDmaBuffer(DshotPackets *const dsp,  volatile DshotDmaBuffer *const dma, const size_t timerWidth)
+static void buildDshotDmaBuffer(DshotPackets *const dsp, DshotDmaBuffer *const dma, const size_t timerWidth)
 {
   for (size_t chanIdx = 0; chanIdx < DSHOT_CHANNELS; chanIdx++) {
     // compute checksum

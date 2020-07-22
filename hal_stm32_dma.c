@@ -117,7 +117,7 @@ void dmaStop(DMADriver *dmap)
  *
  * @api
  */
-bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp,  volatile void * mem0p, const size_t size)
+bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp,  void * mem0p, const size_t size)
 {
   osalSysLock();
   const bool statusOk = dmaStartTransfertI(dmap, periphp, mem0p, size);
@@ -142,7 +142,7 @@ bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp,  volatile void *
  *
  * @iclass
  */
-bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  volatile void *  mem0p, const size_t size)
+bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p, const size_t size)
 {
   osalDbgCheckClassI();
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
@@ -648,7 +648,7 @@ bool dma_lld_start(DMADriver *dmap)
  *
  * @notapi
  */
-bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, volatile void *mem0p, const size_t size)
+bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
   dmap->mem0p = mem0p;
   dmap->size = size;
