@@ -45,7 +45,17 @@
 */
 //float cbGptFrq = 0.0f;
 
+#if defined STM32F4XX	    
+#define TIM8TRGO    0b1110
+#elif  defined STM32F7XX
+#define TIM8TRGO    0b0111
+#elif (defined (STM32L431xx) || defined (STM32L432xx) || defined (STM32L433xx) || defined (STM32L442xx) || defined (STM32L443xx))
+#error "stm32L4 not yet supported"
+#else
+#error "unknow stm32 family not yet supported"							    
+#endif
 
+							    
 #define CALLBACK_START_ADDR_AXIM	0x8000000
 #define CALLBACK_START_ADDR_ITCM	0x200000
 #define FLASH_LENGTH			(2U*1024U*1024U)
@@ -100,7 +110,7 @@ ADCConversionGroup adcGetConfig(const uint8_t numberOfChannel, ...)
       case ADC_CONTINUOUS :  cgr.circular = true; break;
       default: cgr.circular = true;
 	configureGptd8((timerFrequency = curArg-ADC_TIMER_DRIVEN(0)));
-	cgr.cr2 = ADC_CR2_EXTEN_RISING | ADC_CR2_EXTSEL_SRC(0b1110);
+	cgr.cr2 = ADC_CR2_EXTEN_RISING | ADC_CR2_EXTSEL_SRC(TIM8TRGO);
       }
     } else {
       const NextArgType nat = (curArg >= ADC_CYCLE_START) && (curArg <= ADC_CYCLE_START+7) ?
