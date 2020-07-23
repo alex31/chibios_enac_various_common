@@ -112,9 +112,12 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .circular = false,
     .error_cb = NULL,
     .end_cb = NULL,
-    .pburst = BURST_SIZE,
-    .mburst = BURST_SIZE,
-    .fifo = 0
+    /* .pburst = BURST_SIZE, */
+    /* .mburst = BURST_SIZE, */
+    /* .fifo = 0 */
+    .pburst = 4,
+    .mburst = 4,
+    .fifo = 4
   };
 
   driver->pwm_conf = (PWMConfig) {     
