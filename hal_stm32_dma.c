@@ -23,7 +23,9 @@
  * @param[in] flags     pre-shifted content of the ISR register
  */
 static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags);
-
+static inline uint32_t getFCR_FS(const DMADriver *dmap) {
+  return (dmap->dmastream->stream->FCR & DMA_SxFCR_FS_Msk);
+}
 void dmaObjectInit(DMADriver *dmap)
 {
   osalDbgCheck(dmap != NULL);
@@ -466,10 +468,10 @@ bool dma_lld_start(DMADriver *dmap)
   }
   switch (cfg->fifo) {
   case 0 : fifo_msk = 0UL; break;
-  case 1 : fifo_msk = STM32_DMA_FCR_FTH_1Q;    break;
-  case 2 : fifo_msk  = STM32_DMA_FCR_FTH_HALF; break;
-  case 3 : fifo_msk  = STM32_DMA_FCR_FTH_3Q;   break;
-  case 4 : fifo_msk =  STM32_DMA_FCR_FTH_FULL; break;
+  case 1 : fifo_msk = STM32_DMA_FCR_FTH_1Q;   break;
+  case 2 : fifo_msk = STM32_DMA_FCR_FTH_HALF; break;
+  case 3 : fifo_msk = STM32_DMA_FCR_FTH_3Q;   break;
+  case 4 : fifo_msk = STM32_DMA_FCR_FTH_FULL; break;
   default: osalDbgAssert(false, "fifo threshold should be 1(/4) or 2(/4) or 3(/4) or 4(/4)");
     return false;
   }
@@ -707,7 +709,9 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
     const dmaerrormask_t err =
       ( (flags & STM32_DMA_ISR_TEIF)  ? DMA_ERR_TRANSFER_ERROR : 0UL) |
       ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL) |
-      ( (flags & feif_msk)  ? DMA_ERR_FIFO_ERROR : 0UL);
+      ( (flags & feif_msk)  ? DMA_ERR_FIFO_ERROR : 0UL) |
+      ( getFCR_FS(dmap) == (0b100 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_EMPTY: 0UL) |
+      ( getFCR_FS(dmap) == (0b101 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_FULL: 0UL);
     
     _dma_isr_error_code(dmap, err);
   } else {

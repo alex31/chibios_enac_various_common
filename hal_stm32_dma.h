@@ -68,9 +68,11 @@ typedef enum {
  *          upon.
  */
 typedef enum {
-  DMA_ERR_TRANSFER_ERROR   = 1<<0,          /**< DMA transfer failure.         */
-  DMA_ERR_DIRECTMODE_ERROR = 1<<1,          /**< DMA Direct Mode failure.      */
-  DMA_ERR_FIFO_ERROR       = 1<<2           /**< DMA FIFO overrun or underrun. */
+  DMA_ERR_TRANSFER_ERROR   = 1U<<0U,          /**< DMA transfer failure.         */
+  DMA_ERR_DIRECTMODE_ERROR = 1U<<1U,          /**< DMA Direct Mode failure.      */
+  DMA_ERR_FIFO_ERROR       = 1U<<2U,          /**< DMA FIFO error.  */
+  DMA_ERR_FIFO_FULL        = 1U<<3U,          /**< DMA FIFO overrun */
+  DMA_ERR_FIFO_EMPTY       = 1U<<4U,          /**< DMA FIFO underrun. */
 } dmaerrormask_t;
 
 /**
@@ -400,6 +402,8 @@ struct DMADriver {
   volatile size_t		     nbTransferError;
   volatile size_t		     nbDirectModeError;
   volatile size_t		     nbFifoError;
+  volatile size_t		     nbFifoFull;
+  volatile size_t		     nbFifoEmpty;
   volatile dmaerrormask_t	     lastError;
 #endif
   /**
@@ -580,8 +584,13 @@ static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
     dmap->nbTransferError++;
   if (err & DMA_ERR_DIRECTMODE_ERROR)
     dmap->nbDirectModeError++;
-  if (err & DMA_ERR_FIFO_ERROR)
-    dmap->nbFifoError++;;
+  if (err & DMA_ERR_FIFO_ERROR) {
+    dmap->nbFifoError++;
+    if (err & DMA_ERR_FIFO_FULL)
+       dmap->nbFifoFull++;
+    if (err & DMA_ERR_FIFO_EMPTY)
+       dmap->nbFifoEmpty++;
+  }
   dmap->lastError = err;
 #endif
   
