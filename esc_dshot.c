@@ -40,14 +40,6 @@
 
 #define DSHOT_MAX_VALUE ((1<<11)-1) // 11 bits used to send command, so maximum value is 2047
 
-#if CH_DBG_ENABLE_ASSERTS
-#define BURST_SIZE 0U
-#elif DSHOT_AT_LEAST_ONE_32B_TIMER
-#define BURST_SIZE 8U
-#else
-#define BURST_SIZE 16U
-#endif
-
 
 /*
 #                 _ __                   _              _      _   _    _ __                 
@@ -97,6 +89,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .cr3 = 0                                       // pas de controle de flux hardware (CTS, RTS)
   };
 
+#define BURST_AND_FIFO 4
   driver->config = config;
   driver->dma_conf = (DMAConfig) {
     .stream = config->dma_stream,
@@ -112,12 +105,9 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .circular = false,
     .error_cb = NULL,
     .end_cb = NULL,
-    /* .pburst = BURST_SIZE, */
-    /* .mburst = BURST_SIZE, */
-    /* .fifo = 0 */
-    .pburst = 4,
-    .mburst = 4,
-    .fifo = 4
+    .pburst = BURST_AND_FIFO,
+    .mburst = BURST_AND_FIFO,
+    .fifo = BURST_AND_FIFO
   };
 
   driver->pwm_conf = (PWMConfig) {     

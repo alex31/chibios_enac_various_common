@@ -162,9 +162,16 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
 		  "not ready");
 #endif
     dmap->state    = DMA_ACTIVE;
-#if (CH_DBG_ENABLE_ASSERTS != FALSE) 
-    osalDbgAssert((uint32_t) periphp % cfg->psize == 0, "peripheral address not aligned");
-    osalDbgAssert((uint32_t) mem0p % cfg->msize == 0, "memory address not aligned");
+#if (CH_DBG_ENABLE_ASSERTS != FALSE)
+    /* if (cfg->pburst) */
+    /*   osalDbgAssert((uint32_t) periphp % (cfg->pburst * cfg->psize) == 0, "peripheral address not aligned"); */
+    /* else */
+      osalDbgAssert((uint32_t) periphp % cfg->psize == 0, "peripheral address not aligned");
+
+    /* if (cfg->mburst) */
+    /*   osalDbgAssert((uint32_t) mem0p % (cfg->mburst * cfg->msize) == 0, "memory address not aligned"); */
+    /* else */
+      osalDbgAssert((uint32_t) mem0p % cfg->msize == 0, "memory address not aligned");
     
     /*
       In the circular mode, it is mandatory to respect the following rule in case of a burst mode
@@ -184,17 +191,18 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
     if (cfg->mburst) {
       osalDbgAssert((size % (cfg->mburst * cfg->msize / cfg->psize)) == 0,
 		    "mburst alignment rule not respected");
-      osalDbgAssert((((uint32_t) mem0p) % 8) == 0,
+      osalDbgAssert((size % (cfg->mburst * cfg->msize)) == 0,
+		    "mburst alignment rule not respected");
+      osalDbgAssert((((uint32_t) mem0p) % cfg->mburst) == 0,
 		    "memory address alignment rule not respected");
     }
     if (cfg->pburst) {
       osalDbgAssert((size % (cfg->pburst * cfg->psize)) == 0,
 		    "pburst alignment rule not respected");
-    }
-    if (cfg->mburst) {
-      osalDbgAssert((size % (cfg->mburst * cfg->msize)) == 0,
-		    "mburst alignment rule not respected");
-    }
+      osalDbgAssert((((uint32_t) periphp) % cfg->pburst) == 0,
+		    "peripheral address alignment rule not respected");
+   }
+
     
     
 # endif //  STM32_DMA_ADVANCED
@@ -496,58 +504,58 @@ bool dma_lld_start(DMADriver *dmap)
 
   if (cfg->fifo) {
     switch (cfg->msize) {
-    case 1:
+    case 1: // msize 1
       switch (cfg->mburst) {
-      case 4 :
+      case 4 : // msize 1 mburst 4
 	switch (cfg->fifo) {
-	case 1: break;
-	case 2: break;
-	case 3: break;
-	case 4: break;
+	case 1: break; // msize 1 mburst 4 fifo 1/4
+	case 2: break; // msize 1 mburst 4 fifo 2/4
+	case 3: break; // msize 1 mburst 4 fifo 3/4
+	case 4: break; // msize 1 mburst 4 fifo 4/4
 	}
 	break;
-      case 8 :
+      case 8 : // msize 1 mburst 8
 	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination;
-	case 2: break;
-	case 3: goto forbiddenCombination;
-	case 4: break;
+	case 1: goto forbiddenCombination;  // msize 1 mburst 8 fifo 1/4
+	case 2: break;			    // msize 1 mburst 8 fifo 2/4
+	case 3: goto forbiddenCombination;  // msize 1 mburst 8 fifo 3/4
+	case 4: break;			    // msize 1 mburst 8 fifo 4/4
 	}
 	break;
-      case 16 :
+      case 16 :  // msize 1 mburst 16
 	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination;
-	case 2: goto forbiddenCombination;
-	case 3: goto forbiddenCombination;
-	case 4: break;
+	case 1: goto forbiddenCombination; // msize 1 mburst 16 fifo 1/4
+	case 2: goto forbiddenCombination; // msize 1 mburst 16 fifo 2/4
+	case 3: goto forbiddenCombination; // msize 1 mburst 16 fifo 3/4
+	case 4: break;			   // msize 1 mburst 16 fifo 4/4
 	}
 	break;
       }
       break;
-    case 2:
+    case 2: // msize 2
       switch (cfg->mburst) {
-      case 4 :
+      case 4 : // msize 2 mburst 4
 	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination;
-	case 2: break;
-	case 3: goto forbiddenCombination;
-	case 4: break;
+	case 1: goto forbiddenCombination; // msize 2 mburst 4 fifo 1/4
+	case 2: break;			   // msize 2 mburst 4 fifo 2/4
+	case 3: goto forbiddenCombination; // msize 2 mburst 4 fifo 3/4
+	case 4: break;			   // msize 2 mburst 4 fifo 4/4
 	}
 	break;
       case 8 :
 	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination;
-	case 2: goto forbiddenCombination;
-	case 3: goto forbiddenCombination;
-	case 4: break;
+	case 1: goto forbiddenCombination; // msize 2 mburst 8 fifo 1/4
+	case 2: goto forbiddenCombination; // msize 2 mburst 8 fifo 2/4
+	case 3: goto forbiddenCombination; // msize 2 mburst 8 fifo 3/4
+	case 4: break;			   // msize 2 mburst 8 fifo 4/4
 	}
 	break;
       case 16 :
 	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination;
-	case 2: goto forbiddenCombination;
-	case 3: goto forbiddenCombination;
-	case 4: goto forbiddenCombination;
+	case 1: goto forbiddenCombination; // msize 2 mburst 16 fifo 1/4
+	case 2: goto forbiddenCombination; // msize 2 mburst 16 fifo 2/4
+	case 3: goto forbiddenCombination; // msize 2 mburst 16 fifo 3/4
+	case 4: goto forbiddenCombination; // msize 2 mburst 16 fifo 4/4
 	}
       }
       break;
@@ -555,26 +563,26 @@ bool dma_lld_start(DMADriver *dmap)
       switch (cfg->mburst) {
       case 4 :
 	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination;
-	case 2: goto forbiddenCombination;
-	case 3: goto forbiddenCombination;
-	case 4: break;
+	case 1: goto forbiddenCombination; // msize 4 mburst 4 fifo 1/4
+	case 2: goto forbiddenCombination; // msize 4 mburst 4 fifo 2/4
+	case 3: goto forbiddenCombination; // msize 4 mburst 4 fifo 3/4
+	case 4: break;			   // msize 4 mburst 4 fifo 4/4
 	}
 	break;
       case 8 :
 	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination;
-	case 2: goto forbiddenCombination;
-	case 3: goto forbiddenCombination;
-	case 4: goto forbiddenCombination;
+	case 1: goto forbiddenCombination; // msize 4 mburst 8 fifo 1/4
+	case 2: goto forbiddenCombination; // msize 4 mburst 8 fifo 2/4
+	case 3: goto forbiddenCombination; // msize 4 mburst 8 fifo 3/4
+	case 4: goto forbiddenCombination; // msize 4 mburst 8 fifo 4/4
 	}
 	break;
       case 16 :
 	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination;
-	case 2: goto forbiddenCombination;
-	case 3: goto forbiddenCombination;
-	case 4: goto forbiddenCombination;
+	case 1: goto forbiddenCombination; // msize 4 mburst 16 fifo 1/4
+	case 2: goto forbiddenCombination; // msize 4 mburst 16 fifo 2/4
+	case 3: goto forbiddenCombination; // msize 4 mburst 16 fifo 3/4
+	case 4: goto forbiddenCombination; // msize 4 mburst 16 fifo 4/4
 	}
       }
     }
@@ -703,6 +711,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
 
   /* DMA errors handling.*/
   const uint32_t feif_msk = dmap->config->fifo != 0U ? STM32_DMA_ISR_FEIF : 0U;
+  //const uint32_t feif_msk = STM32_DMA_ISR_FEIF;
   if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF | feif_msk)) != 0U) {
     /* DMA, this could help only if the DMA tries to access an unmapped
        address space or violates alignment rules.*/
