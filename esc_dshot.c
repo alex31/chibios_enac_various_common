@@ -358,16 +358,16 @@ static void buildDshotDmaBuffer(DshotPackets *const dsp, DshotDmaBuffer *const d
                              (1 << ((DSHOT_BIT_WIDTHS - 1) - bitIdx)) ?
                              DSHOT_BIT1_DUTY : DSHOT_BIT0_DUTY;
       if (timerWidth == 2) {
-        dma->widths16[bitIdx][chanIdx] = value;
+        dma->widths16[bitIdx+DSHOT_PRE_FRAME_SILENT_SYNC_BITS][chanIdx] = value;
       } else {
 #if DSHOT_AT_LEAST_ONE_32B_TIMER
-        dma->widths32[bitIdx][chanIdx] = value;
+        dma->widths32[bitIdx+DSHOT_PRE_FRAME_SILENT_SYNC_BITS][chanIdx] = value;
 #else
         chSysHalt("use of 32 bit timer implies to define DSHOT_AT_LEAST_ONE_32B_TIMER to TRUE");
 #endif
       }
     }
-    // the bits for silence sync in case of continous sending are zeroed once at init
+    // the bits for silence sync (pre and post) in case of continous sending are zeroed once at init
   }
 
 }
