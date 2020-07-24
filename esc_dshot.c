@@ -89,7 +89,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .cr3 = 0                                       // pas de controle de flux hardware (CTS, RTS)
   };
 
-#define BURST_AND_FIFO 4
+#define BURST_AND_FIFO 0
   driver->config = config;
   driver->dma_conf = (DMAConfig) {
     .stream = config->dma_stream,
