@@ -76,7 +76,7 @@ static size_t   getTimerWidth(const PWMDriver *pwmp);
  */
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
-  memset((void *) config->uncached_dma_buf, 0, sizeof(*(config->uncached_dma_buf)));
+  memset((void *) config->dma_buf, 0, sizeof(*(config->dma_buf)));
   const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
   /* DebugTrace("timerWidthInBytes = %u; mburst = %u", */
   /* 	     timerWidthInBytes, */
@@ -89,7 +89,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .cr3 = 0                                       // pas de controle de flux hardware (CTS, RTS)
   };
 
-#define BURST_AND_FIFO 0
+
   driver->config = config;
   driver->dma_conf = (DMAConfig) {
     .stream = config->dma_stream,
@@ -99,15 +99,16 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .direction = DMA_DIR_M2P,
 
     .psize = timerWidthInBytes, 
-    .msize = timerWidthInBytes, 
+    .msize = timerWidthInBytes,
+    .dcache_memory_in_use = config->dcache_memory_in_use,
     .inc_peripheral_addr = false,
     .inc_memory_addr = true,
     .circular = false,
     .error_cb = NULL,
     .end_cb = NULL,
-    .pburst = BURST_AND_FIFO,
-    .mburst = BURST_AND_FIFO,
-    .fifo = BURST_AND_FIFO
+    .pburst = 0,
+    .mburst = 0,
+    .fifo = 4
   };
 
   driver->pwm_conf = (PWMConfig) {     
@@ -132,7 +133,8 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   dmaObjectInit(&driver->dmap);
   chMBObjectInit (&driver->mb, driver->_mbBuf, ARRAY_LEN(driver->_mbBuf));
 
-  dmaStart(&driver->dmap, &driver->dma_conf);
+  const bool dmaOk = dmaStart(&driver->dmap, &driver->dma_conf);
+  chDbgAssert(dmaOk == true, "dshot dma start error");
 
   if (driver->config->tlm_sd) {
     sdStart(driver->config->tlm_sd, &tlmcfg);
@@ -266,10 +268,10 @@ void dshotSendFrame(DSHOTDriver *driver)
       chMBPostTimeout(&driver->mb, driver->dshotMotors.currentTlmQry, TIME_IMMEDIATE);
     }
 
-    buildDshotDmaBuffer(&driver->dshotMotors, driver->config->uncached_dma_buf, getTimerWidth(driver->config->pwmp));
+    buildDshotDmaBuffer(&driver->dshotMotors, driver->config->dma_buf, getTimerWidth(driver->config->pwmp));
     dmaStartTransfert(&driver->dmap,
                       &driver->config->pwmp->tim->DMAR,
-                      driver->config->uncached_dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
+                      driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
 
   }
 }
@@ -400,14 +402,15 @@ static size_t   getTimerWidth(const PWMDriver *pwmp)
 {
   (void) pwmp;
 
-  return (0
-#if STM32_PWM_USE_TIM2
-          || (pwmp == &PWMD2)
-#endif
-#if STM32_PWM_USE_TIM5
-          || (pwmp == &PWMD5)
-#endif
-         ) ? 4 : 2;
+  return 4U;
+/*   return(0 */
+/* #if STM32_PWM_USE_TIM2 */
+/*           || (pwmp == &PWMD2) */
+/* #endif */
+/* #if STM32_PWM_USE_TIM5 */
+/*           || (pwmp == &PWMD5) */
+/* #endif */
+/*          ) ? 4 : 2; */
 }
 
 

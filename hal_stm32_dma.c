@@ -1,6 +1,5 @@
 #include "hal_stm32_dma.h"
 
-#define CACHE_ASSERT_OF_SAME_SIZE FALSE
 /*
   TODO : 
 
@@ -148,9 +147,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
 {
   osalDbgCheckClassI();
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
-#if CACHE_ASSERT_OF_SAME_SIZE
   if (size != dmap->size) {
-#endif
     osalSysUnlock();
     osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
 		 (size > 0U) && ((size == 1U) || ((size & 1U) == 0U)));
@@ -207,9 +204,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
     
 # endif //  STM32_DMA_ADVANCED
   osalSysLock();
-#if CACHE_ASSERT_OF_SAME_SIZE
   }
-#endif
 
 
 
@@ -660,6 +655,12 @@ bool dma_lld_start(DMADriver *dmap)
  */
 bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
+#ifdef STM32F7XX
+  if (dmap->config->dcache_memory_in_use &&
+      (dmap->config->direction == DMA_DIR_M2P)) {
+    cacheBufferFlush(mem0p, size * dmap->config->msize);
+  }
+#endif
   dmap->mem0p = mem0p;
   dmap->size = size;
   dmaStreamSetPeripheral(dmap->dmastream, periphp);
@@ -727,6 +728,13 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
     /* It is possible that the transaction has already be reset by the
        DMA error handler, in this case this interrupt is spurious.*/
     if (dmap->state == DMA_ACTIVE) {
+#ifdef STM32F7XX
+      if (dmap->config->dcache_memory_in_use &&
+	  (dmap->config->direction == DMA_DIR_P2M)) {
+	cacheBufferInvalidate(dmap->mem0p,
+			      dmap->size * dmap->config->msize);
+      }
+#endif
 
       if ((flags & STM32_DMA_ISR_TCIF) != 0) {
         /* Transfer complete processing.*/

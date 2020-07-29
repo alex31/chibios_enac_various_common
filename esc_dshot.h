@@ -127,7 +127,12 @@ typedef struct  {
   /**
    * @brief dshot dma buffer, sgould be defined in a non Dcached region
    */
-  DshotDmaBuffer *uncached_dma_buf;
+  DshotDmaBuffer *dma_buf;
+
+  /**
+   * @brief   DMA memory is in a cached section and beed to be flushed 
+   */
+  bool		 dcache_memory_in_use;
 } DSHOTConfig;
 
 

@@ -313,6 +313,12 @@ typedef struct  {
    * @brief   DMA memory data granurality in bytes (1,2,4)
    */
   uint8_t		msize; // 1,2,4
+#ifdef STM32F7XX
+  /**
+   * @brief   DMA memory is in a cached section and beed to be flushed 
+   */
+bool		dcache_memory_in_use;
+#endif
 #if STM32_DMA_ADVANCED
 #define STM32_DMA_FIFO_SIZE 16 // hardware specification for dma V2
   
