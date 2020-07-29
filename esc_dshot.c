@@ -106,8 +106,8 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .circular = false,
     .error_cb = NULL,
     .end_cb = NULL,
-    .pburst = 0,
-    .mburst = 0,
+    .pburst = 4,
+    .mburst = 4,
     .fifo = 4
   };
 

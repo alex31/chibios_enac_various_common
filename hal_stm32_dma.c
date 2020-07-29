@@ -612,15 +612,6 @@ bool dma_lld_start(DMADriver *dmap)
 
 #  endif
 #endif
-    
-  const bool error = dmaStreamAllocate( dmap->dmastream,
-					cfg->irq_priority,
-					(stm32_dmaisr_t) &dma_lld_serve_interrupt,
-					(void *) dmap );
-  if (error) {
-    osalDbgAssert(false, "stream already allocated");
-    return false;
-  }
 
 #if STM32_DMA_ADVANCED
   if (cfg->fifo) {
@@ -630,8 +621,15 @@ bool dma_lld_start(DMADriver *dmap)
     osalDbgAssert(cfg->psize == cfg->msize, "msize == psize is mandatory when fifo is disabled");
   }
 #endif
-
   
+  const bool error = dmaStreamAllocate( dmap->dmastream,
+					cfg->irq_priority,
+					(stm32_dmaisr_t) &dma_lld_serve_interrupt,
+					(void *) dmap );
+  if (error) {
+    osalDbgAssert(false, "stream already allocated");
+    return false;
+  }
   
   return true;
   
