@@ -106,8 +106,8 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .circular = false,
     .error_cb = NULL,
     .end_cb = NULL,
-    .pburst = 4,
-    .mburst = 4,
+    .pburst = 0,
+    .mburst = 0,
     .fifo = 4
   };
 
@@ -402,15 +402,14 @@ static size_t   getTimerWidth(const PWMDriver *pwmp)
 {
   (void) pwmp;
 
-  return 4U;
-/*   return(0 */
-/* #if STM32_PWM_USE_TIM2 */
-/*           || (pwmp == &PWMD2) */
-/* #endif */
-/* #if STM32_PWM_USE_TIM5 */
-/*           || (pwmp == &PWMD5) */
-/* #endif */
-/*          ) ? 4 : 2; */
+  return(0
+#if STM32_PWM_USE_TIM2
+          || (pwmp == &PWMD2)
+#endif
+#if STM32_PWM_USE_TIM5
+          || (pwmp == &PWMD5)
+#endif
+         ) ? 4 : 2;
 }
 
 
