@@ -615,10 +615,12 @@ bool dma_lld_start(DMADriver *dmap)
 
 #if STM32_DMA_ADVANCED
   if (cfg->fifo) {
-    dmaStreamSetFIFO(dmap->dmastream, STM32_DMA_FCR_DMDIS | STM32_DMA_FCR_FEIE | fifo_msk);
+    dmap->fifomode = STM32_DMA_FCR_DMDIS | STM32_DMA_FCR_FEIE | fifo_msk;
   } else {
     osalDbgAssert(cfg->direction != DMA_DIR_M2M, "fifo mode mandatory for M2M");
-    osalDbgAssert(cfg->psize == cfg->msize, "msize == psize is mandatory when fifo is disabled");
+    osalDbgAssert(cfg->psize == cfg->msize,
+		  "msize == psize is mandatory when fifo is disabled");
+    dmap->fifomode = 0U;
   }
 #endif
   
@@ -655,16 +657,22 @@ bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0
 {
 #ifdef STM32F7XX
   if (dmap->config->dcache_memory_in_use &&
-      (dmap->config->direction == DMA_DIR_M2P)) {
+      (dmap->config->direction != DMA_DIR_P2M)) {
     cacheBufferFlush(mem0p, size * dmap->config->msize);
   }
 #endif
   dmap->mem0p = mem0p;
+#ifdef STM32F7XX
+  dmap->periphp = periphp;
+#endif
   dmap->size = size;
   dmaStreamSetPeripheral(dmap->dmastream, periphp);
   dmaStreamSetMemory0(dmap->dmastream, mem0p);
   dmaStreamSetTransactionSize(dmap->dmastream, size);
   dmaStreamSetMode(dmap->dmastream, dmap->dmamode);
+#if STM32_DMA_ADVANCED
+  dmaStreamSetFIFO(dmap->dmastream, dmap->fifomode);
+#endif
   dmaStreamEnable(dmap->dmastream);
   
   return true;
@@ -731,10 +739,17 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
        DMA error handler, in this case this interrupt is spurious.*/
     if (dmap->state == DMA_ACTIVE) {
 #ifdef STM32F7XX
-      if (dmap->config->dcache_memory_in_use &&
-	  (dmap->config->direction == DMA_DIR_P2M)) {
-	cacheBufferInvalidate(dmap->mem0p,
-			      dmap->size * dmap->config->msize);
+      if (dmap->config->dcache_memory_in_use) 
+	  switch (dmap->config->direction) {
+	  case DMA_DIR_M2P : break;
+	  case DMA_DIR_P2M :
+	    cacheBufferInvalidate(dmap->mem0p,
+				  dmap->size * dmap->config->msize);
+	    break;
+	  case DMA_DIR_M2M :
+	    cacheBufferInvalidate(dmap->periphp,
+				  dmap->size * dmap->config->msize);
+	    break;
       }
 #endif
 

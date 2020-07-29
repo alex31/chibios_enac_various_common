@@ -399,6 +399,20 @@ struct DMADriver {
    */
   uint32_t		     dmamode;
 
+#ifdef STM32F7XX
+  /**
+   * @brief	periph address (or destination memory in case of M2M)
+   */
+  volatile void			     * periphp;
+#endif
+  
+#if STM32_DMA_ADVANCED
+  /**
+   * @brief	hold DMA Fifo FCR register for the stream
+   */
+  uint32_t		     fifomode;
+#endif
+  
   /**
    * @brief	hold size of current transaction
    */
