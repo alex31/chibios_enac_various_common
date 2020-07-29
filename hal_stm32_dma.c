@@ -712,7 +712,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
 #if CH_DBG_SYSTEM_STATE_CHECK
   const uint32_t feif_msk = dmap->config->fifo != 0U ? STM32_DMA_ISR_FEIF : 0U;
 #else
-   static const uint32_t feif_msk = 0U;
+  static const uint32_t feif_msk = 0U;
 #endif
   //const uint32_t feif_msk = STM32_DMA_ISR_FEIF;
   if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF | feif_msk)) != 0U) {
