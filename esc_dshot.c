@@ -150,7 +150,8 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     pwmEnableChannel(driver->config->pwmp, j, 0);
     driver->dshotMotors.dp[j] =  makeDshotPacket(0,0);
   }
-
+  driver->dshotMotors.onGoingQry = false;
+  driver->dshotMotors.currentTlmQry = 0U;
 }
 
 
