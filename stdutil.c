@@ -500,6 +500,8 @@ int32_t get_stack_free (const thread_t *tp)
 #endif
 #endif
 
+#if (CH_KERNEL_MAJOR < 6)
+
 /* libc stub */
 int _getpid(void) {return 1;}
 /* libc stub */
@@ -508,13 +510,15 @@ void _exit(int i) {(void) i; chSysHalt("_exit"); while(true);}
 #include <errno.h>
 #undef errno
 extern int errno;
+void *__dso_handle = 0;
 int _kill(int pid, int sig) {
   (void)pid;
   (void)sig;
   errno = EINVAL;
   return -1;
 }
-void *__dso_handle = 0;
+#endif
+
 
 void __cxa_pure_virtual(void) {
   osalSysHalt("Pure virtual function call.");

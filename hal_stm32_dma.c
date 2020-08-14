@@ -425,9 +425,10 @@ bool dma_lld_start(DMADriver *dmap)
     isr_flags |= STM32_DMA_CR_DMEIE | STM32_DMA_CR_TCIE;
   }
 
-
+#if CH_KERNEL_MAJOR < 6
   dmap->dmastream =  STM32_DMA_STREAM(cfg->stream);
-
+#endif
+  
   // portable way (V1, V2) to retreive controler number
 #if STM32_DMA_ADVANCED
   dmap->controller = 1 + (cfg->stream / STM32_DMA_STREAM_ID(2,0));
@@ -623,11 +624,19 @@ bool dma_lld_start(DMADriver *dmap)
     dmap->fifomode = 0U;
   }
 #endif
-  
+
+#if CH_KERNEL_MAJOR < 6
   const bool error = dmaStreamAllocate( dmap->dmastream,
 					cfg->irq_priority,
 					(stm32_dmaisr_t) &dma_lld_serve_interrupt,
 					(void *) dmap );
+#else
+  dmap->dmastream = dmaStreamAllocI(dmap->config->stream,
+				    cfg->irq_priority,
+				    (stm32_dmaisr_t) &dma_lld_serve_interrupt,
+				    (void *) dmap );
+  bool error = dmap->dmastream == NULL;
+#endif
   if (error) {
     osalDbgAssert(false, "stream already allocated");
     return false;
@@ -699,7 +708,11 @@ void dma_lld_stop_transfert(DMADriver *dmap)
  */
 void dma_lld_stop(DMADriver *dmap)
 {
+#if CH_KERNEL_MAJOR < 6
   dmaStreamRelease(dmap->dmastream);
+#else
+  dmaStreamFree(dmap->dmastream);
+#endif
 }
 
 
