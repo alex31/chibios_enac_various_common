@@ -33,6 +33,7 @@
 use strict;
 use feature ':5.14';
 use Getopt::Long;
+use File::Which;
  
 use constant BMPDEV => "/dev/bmp_gdb";
 use constant REVERT_BMPDEV => ("/dev/ttyACM*", "/dev/cu.usbmodem*");
@@ -47,6 +48,10 @@ END {
 
 GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s');
 usage () if exists  $options{help};
+
+my $gdbPath = which('arm-none-eabi-gdb') // which('gdb-multiarch');
+
+die "please install arm-none-eabi-gdb or gdb-multiarch" unless defined $gdbPath;
 
 my $bmpdev;
 if (!exists  $options{device}) {
@@ -142,7 +147,7 @@ if ($options{load}) {
 	die sprintf "cannot create temporary gdbinit file in %s\n", GDBINIT_PATH;
     syswrite ($fhd, $gdbInitFlash);
     close ($fhd);
-    my $command = ("arm-none-eabi-gdb --batch -x " . GDBINIT_PATH . " " . $elf);
+    my $command = ("${gdbPath} --batch -x " . GDBINIT_PATH . " " . $elf);
     system $command;
     sleep 1;
 
@@ -157,7 +162,7 @@ if ($options{load}) {
 	die sprintf "cannot create temporary gdbinit file in %s\n", GDBINIT_PATH;
     syswrite ($fhd, $gdbEraseFlash);
     close ($fhd);
-    my $command = ("arm-none-eabi-gdb --batch -x " . GDBINIT_PATH);
+    my $command = ("${gdbPath} --batch -x " . GDBINIT_PATH);
     system $command;
     sleep 1;
 } else {
@@ -168,7 +173,7 @@ if ($options{load}) {
 	    die sprintf "cannot create temporary gdbinit file in %s\n", GDBINIT_PATH;
 	syswrite ($fhd, $gdbAttachForDebug);
 	close ($fhd);
-	my $command = ("arm-none-eabi-gdb  -x " . GDBINIT_PATH . " " . $elf);
+	my $command = ("${gdbPath}  -x " . GDBINIT_PATH . " " . $elf);
 	exec $command;
     } else {
 	# debug session
@@ -177,7 +182,7 @@ if ($options{load}) {
 	    die sprintf "cannot create temporary gdbinit file in %s\n", GDBINIT_PATH;
 	syswrite ($fhd, $gdbInitDebug);
 	close ($fhd);
-	my $command = ("arm-none-eabi-gdb  -x " . GDBINIT_PATH . " " . $elf);
+	my $command = ("${gdbPath}  -x " . GDBINIT_PATH . " " . $elf);
 	exec $command;
     }
 }
