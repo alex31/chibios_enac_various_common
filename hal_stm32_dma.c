@@ -148,7 +148,6 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
   osalDbgCheckClassI();
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
   if (size != dmap->size) {
-    osalSysUnlock();
     osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
 		 (size > 0U) && ((size == 1U) || ((size & 1U) == 0U)));
     
@@ -203,7 +202,6 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
     
     
 # endif //  STM32_DMA_ADVANCED
-  osalSysLock();
   }
 
 
