@@ -463,6 +463,7 @@ void  dmaStopTransfert(DMADriver *dmap);
 bool  dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size);
 void  dmaStopTransfertI(DMADriver *dmap);
 
+static  inline dmastate_t dmaGetState(DMADriver *dmap) {return dmap->state;}
 
 // low level driver
 			
