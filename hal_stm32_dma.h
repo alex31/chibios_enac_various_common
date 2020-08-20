@@ -599,7 +599,6 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
 }
 
 static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
-  dma_lld_stop_transfert(dmap);
 #if CH_DBG_SYSTEM_STATE_CHECK == TRUE
   if (err & DMA_ERR_TRANSFER_ERROR)
     dmap->nbTransferError++;
@@ -614,6 +613,10 @@ static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
   }
   dmap->lastError = err;
 #endif
+  if (err & (DMA_ERR_TRANSFER_ERROR | DMA_ERR_DIRECTMODE_ERROR))
+    dma_lld_stop_transfert(dmap);
+  else
+    return;
   
   if (dmap->config->error_cb != NULL) {                                   
     dmap->state = DMA_ERROR;                                              
