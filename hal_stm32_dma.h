@@ -347,6 +347,9 @@ bool		dcache_memory_in_use;
    */
   bool			transfert_end_ctrl_by_periph; // PFCTRL bit
 #endif
+#ifdef STM32_DMA_DRIVER_USER_DATA_FIELD
+  void *user_data;
+#endif
 }  DMAConfig;
 
 
