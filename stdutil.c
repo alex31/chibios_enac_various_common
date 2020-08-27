@@ -500,7 +500,7 @@ int32_t get_stack_free (const thread_t *tp)
 #endif
 #endif
 
-#if (CH_KERNEL_MAJOR < 6)
+#if ((CH_KERNEL_MAJOR * 10 + CH_KERNEL_MINOR) < 61)
 
 /* libc stub */
 int _getpid(void) {return 1;}
