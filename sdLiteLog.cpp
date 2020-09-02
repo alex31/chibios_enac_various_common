@@ -43,19 +43,21 @@ void SdLiteLogBase::workerThd([[maybe_unused]] void* opt) {
   msg_t msg{};
   UINT bw;
   while (!chThdShouldTerminateX()) {
-    chMBFetchTimeout(&SdLiteLogBase::mbChunk, &msg, TIME_INFINITE);
-    const SdChunk& sdChunk = *(reinterpret_cast<SdChunk *>(msg));
-    const auto [s, l] = sdChunk.getView().get();
-    FIL * const fil = sdChunk.getFil();
-    f_write(fil, s, l, &bw);
-    sdChunk.signalSem();
-    SdLiteLogBase::nbBytesWritten += bw;
-    if (sdChunk.needSync()) {
-      f_sync(fil);
+    if (chMBFetchTimeout(&SdLiteLogBase::mbChunk, &msg,
+			 TIME_MS2I(100)) == MSG_OK) {
+      const SdChunk& sdChunk = *(reinterpret_cast<SdChunk *>(msg));
+      const auto [s, l] = sdChunk.getView().get();
+      FIL * const fil = sdChunk.getFil();
+      f_write(fil, s, l, &bw);
+      sdChunk.signalSem();
+      SdLiteLogBase::nbBytesWritten += bw;
+      if (sdChunk.needSync()) {
+	f_sync(fil);
+      }
+      if (bw != l) {
+	DebugTrace("f_write length error %u != %u", bw, l);
+      } 
     }
-    if (bw != l) {
-      DebugTrace("f_write length error %u != %u", bw, l);
-    } 
   }
   chThdExit(0);
 }
