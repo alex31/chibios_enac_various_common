@@ -36,7 +36,6 @@ void SdLiteLogBase::terminate(const TerminateBehavior tb)
       chThdWait(workerThdPtr);
     workerThdPtr = nullptr;
   }
-  closeAllLogs();
 }
 
 void SdLiteLogBase::workerThd([[maybe_unused]] void* opt) {
@@ -59,6 +58,7 @@ void SdLiteLogBase::workerThd([[maybe_unused]] void* opt) {
       } 
     }
   }
+  closeAllLogs();
   chThdExit(0);
 }
 
