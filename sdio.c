@@ -324,7 +324,11 @@ void cmd_sdiotest(BaseSequentialStream *lchp, int argc,const char * const argv[]
     chprintf(lchp, "f_mkfs starting ... ");
     chThdSleepMilliseconds(100);
        /* Create FAT volume */
+#if FF_DEFINED == 87030
     err = f_mkfs("", FM_ANY, 0, work, sizeof work);
+#else
+    err = f_mkfs("", NULL, work, sizeof work);
+#endif
     if (err != FR_OK){
       goto error;
     }  else {

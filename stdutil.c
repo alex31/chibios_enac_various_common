@@ -510,7 +510,6 @@ void _exit(int i) {(void) i; chSysHalt("_exit"); while(true);}
 #include <errno.h>
 #undef errno
 extern int errno;
-void *__dso_handle = 0;
 int _kill(int pid, int sig) {
   (void)pid;
   (void)sig;
@@ -518,6 +517,7 @@ int _kill(int pid, int sig) {
   return -1;
 }
 #endif
+void *__dso_handle = 0;
 
 
 void __cxa_pure_virtual(void) {
