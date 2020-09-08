@@ -308,7 +308,7 @@ msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, 
   
   osalSysLock();
   osalDbgAssert(dmap->thread == NULL, "already waiting");
-  osalDbgAssert(dmap->config.circular == false, "blocking API is incompatible with circular mode");
+  osalDbgAssert(dmap->config->circular == false, "blocking API is incompatible with circular mode");
   dmaStartTransfertI(dmap, periphp, mem0p, size);
   msg = osalThreadSuspendTimeoutS(&dmap->thread, timeout);
   if (msg != MSG_OK) {
