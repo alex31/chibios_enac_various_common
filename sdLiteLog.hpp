@@ -232,7 +232,7 @@ SdLiteStatus SdLiteLog<N>::vwriteFmt(int borrowLen,
 					fmt, *ap));
     // DebugTrace("b=%p len=%d nbbytes=%d", b, borrowLen, nbbytes);
     if (nbbytes > 0) {
-      b[nbbytes++] = '\r';
+      b[nbbytes-1] = '\r';
       b[nbbytes++] = '\n';
       giveBack(nbbytes);
       if (logMode)
