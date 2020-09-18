@@ -26,18 +26,26 @@ namespace {
     FrontLed *fl = (FrontLed *) arg;
     chRegSetThreadName("ledPeriodic");
     size_t periodic(0), colIndex(0);
+    HSV hsv{0,1,1};
     
     while (!chThdShouldTerminateX()) {
-      const float &f = sinPowTable[periodic];
-      fl->leds[0].setRGB(fl->ledColor.c[colIndex][0] * f * 255,
-			 fl->ledColor.c[colIndex][1] * f * 255,
-			 fl->ledColor.c[colIndex][2] * f * 255);
-      fl->leds.emitFrame();
-      chThdSleepMilliseconds (fl->getPeriod());
-      if (periodic == sinPowTable.size()-1) {
-	colIndex = (colIndex+1)%2;
+      if (fl->getPeriod() != 0) {
+	const float &f = sinPowTable[periodic];
+	fl->leds[0].setRGB(fl->ledColor.c[colIndex][0] * f * 255,
+			   fl->ledColor.c[colIndex][1] * f * 255,
+			   fl->ledColor.c[colIndex][2] * f * 255);
+	fl->leds.emitFrame();
+	chThdSleepMilliseconds (fl->getPeriod());
+	if (periodic == sinPowTable.size()-1) {
+	  colIndex = (colIndex+1)%2;
+	}
+	periodic = (periodic+1)%sinPowTable.size();
+      } else { // led demo mode at start : cycle over colors until initialisation is done
+	fl->leds[0].setHSV(hsv);
+	fl->leds.emitFrame();
+	hsv.h = fmod(hsv.h + 0.005f, 1.0f);
+	chThdSleepMilliseconds(10);
       }
-      periodic = (periodic+1)%sinPowTable.size();
     }
     chThdExit(0);
   }
@@ -63,6 +71,9 @@ FrontLed::FrontLed() : leds(ledPwm,
 void FrontLed::setError(const LedCode code)
 {
   switch (code) {
+  case LedCode::Starting :
+    period = 0;
+    break;
   case LedCode::Optimal :
     period = 50;
     ledColor = {{0, 1, 0}, {0, 1, 0}};

@@ -15,7 +15,7 @@ vert+blanc à 60hz : hardware ok sd ok, mais pb de config
 rouge à 60 hertz :  (sleep 16ms) : problème hardware à l'init
 */
 
-enum class LedCode {Optimal, DirtyBit, FatFsError, ConfigError, HardFault, UsbStorageVBus,
+enum class LedCode {Starting, Optimal, DirtyBit, FatFsError, ConfigError, HardFault, UsbStorageVBus,
 		    UsbStorageOff, UsbStorageOn};
 
 static constexpr PWMDriver *ledPwm = &PWMD1;
