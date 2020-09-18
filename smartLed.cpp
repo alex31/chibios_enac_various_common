@@ -106,6 +106,14 @@ void FrontLed::setError(const LedCode code)
     period = 16;
     ledColor = {{1, 0, 0}, {1, 0, 0}};
     break;
+  case LedCode::SwdioModeStart :
+    period = 16;
+    ledColor = {{1, 0.5, 0}, {0, 0, 0}};
+    break;
+  case LedCode::SwdioModeWait :
+    period = 16;
+    ledColor = {{1, 0.5, 0}, {1, 0.5, 0}};
+    break;
   }
 }
 

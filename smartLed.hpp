@@ -16,7 +16,7 @@ rouge à 60 hertz :  (sleep 16ms) : problème hardware à l'init
 */
 
 enum class LedCode {Starting, Optimal, DirtyBit, FatFsError, ConfigError, HardFault, UsbStorageVBus,
-		    UsbStorageOff, UsbStorageOn};
+		    UsbStorageOff, UsbStorageOn, SwdioModeStart, SwdioModeWait};
 
 static constexpr PWMDriver *ledPwm = &PWMD1;
 static constexpr LedTiming ledTiming = getClockByTimer(ledPwm);
