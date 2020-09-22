@@ -210,7 +210,11 @@ static    msg_t setInitialConfig( Icm20600Data *imu)
   SPI_WRITE_REGISTERS(spid, ICM20600_PWR_MGMT_1, ICM20600_CLKSEL_AUTO);
   chThdSleepMilliseconds(2);
   SPI_WRITE_REGISTERS(spid, ICM20600_I2C_IF, ICM20600_SPI_MODE);
- 
+  chThdSleepMilliseconds(2);
+  SPI_WRITE_REGISTERS(spid, ICM20600_INT_PIN_CFG, imu->config->pinControl);
+  SPI_WRITE_REGISTERS(spid,  ICM20600_INT_ENABLE, imu->config->interruptStatus);
+
+
   const uint8_t whoAmI = spiReadOneRegister(spid, ICM20600_WHO_AM_I);
 
   spiReleaseBus(spid);

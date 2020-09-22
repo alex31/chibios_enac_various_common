@@ -310,7 +310,10 @@ typedef struct
   Icm20600_gyroConf	gyroConfig;	// gyro scale (250 to 2000 °/second)
 
   Icm20600_accelConf	accelConf;	// accel scale (+/- 2g to +/- 16g)
-  Icm20600_accelConf2	accelConf2;       // accel low pass filter setting
+  Icm20600_accelConf2	accelConf2;     // accel low pass filter setting
+  Icm20600_interruptStatus interruptStatus; // INT1, INT2 interrupt pin function
+  Icm20600_pinControl	pinControl;	// INT1, INT2 pin configuration
+  
 } Icm20600Config;
 
 
