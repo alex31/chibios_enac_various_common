@@ -156,8 +156,6 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
 		  (dmap->state == DMA_COMPLETE) ||
 		  (dmap->state == DMA_ERROR),
 		  "not ready");
-#endif
-#if (CH_DBG_ENABLE_ASSERTS != FALSE)
     /* if (cfg->pburst) */
     /*   osalDbgAssert((uint32_t) periphp % (cfg->pburst * cfg->psize) == 0, "peripheral address not aligned"); */
     /* else */
@@ -202,19 +200,17 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
     
 # endif //  STM32_DMA_ADVANCED
   }
-  dmap->state    = DMA_ACTIVE;
-  
-
 
 #endif // CH_DBG_ENABLE_ASSERTS != FALSE
-
+  dmap->state    = DMA_ACTIVE;
+  
 #if STM32_DMA_USE_ASYNC_TIMOUT
   dmap->currPtr = mem0p;
   if (dmap->config->timeout != TIME_INFINITE) {
     chVTSetI(&dmap->vt, dmap->config->timeout,
 	     &dma_lld_serve_timeout_interrupt, (void *) dmap);
   } 
-#endif // CH_DBG_ENABLE_ASSERTS != FALSE
+#endif
   
   return dma_lld_start_transfert(dmap, periphp, mem0p, size);
 }
