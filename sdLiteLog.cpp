@@ -43,9 +43,7 @@ void SdLiteLogBase::workerThd([[maybe_unused]] void* opt) {
   UINT bw;
   while (!chThdShouldTerminateX()) {
     if (chMBFetchTimeout(&SdLiteLogBase::mbChunk, &msg,
-			 TIME_MS2I(100)) == MSG_OK) {
-      if (chThdShouldTerminateX())
-	break;
+			 TIME_MS2I(1)) == MSG_OK) {
       const SdChunk& sdChunk = *(reinterpret_cast<SdChunk *>(msg));
       const auto [s, l] = sdChunk.getView().get();
       FIL * const fil = sdChunk.getFil();

@@ -132,7 +132,6 @@ public:
   static SdLiteStatus initOnce(uint32_t* freeSpaceInKo);
   static void terminate(const TerminateBehavior tb = TerminateBehavior::DONT_WAIT);
   static void flushAllLogs(void);
-  static SdLiteStatus closeAllLogs(void);
   static SdLiteStatus getFileNameIndex(const char* prefix, const char* directoryName,
 				       size_t *index);
 
@@ -156,6 +155,7 @@ protected:
 				  char* nextFileName, const size_t nameLength,
 				  const int indexOffset, const size_t minimalIndex=0U);
   static int32_t uiGetIndexOfLogFile(const char* prefix, const char* fileName);
+  static SdLiteStatus closeAllLogs(void);
   virtual void flushHalfBuffer(void) = 0;
 
   static void workerThd(void* opt);
