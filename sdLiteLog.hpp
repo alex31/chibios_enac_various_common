@@ -126,12 +126,15 @@ public:
   SdLiteLogBase(time_secs_t syncPeriodSeconds);
 
   virtual ~SdLiteLogBase(void);
-  SdLiteStatus openLog(const char* prefix, const char* directoryName);
+  SdLiteStatus openLog(const char* prefix, const char* directoryName,
+		       const size_t minimalIndex=0U);
   SdLiteStatus closeLog(void);
   static SdLiteStatus initOnce(uint32_t* freeSpaceInKo);
   static void terminate(const TerminateBehavior tb = TerminateBehavior::DONT_WAIT);
   static void flushAllLogs(void);
-  
+  static SdLiteStatus getFileNameIndex(const char* prefix, const char* directoryName,
+				       size_t *index);
+
 protected:
   static FATFS fatfs; 
   static size_t nbBytesWritten;
@@ -150,15 +153,13 @@ protected:
   systime_t     syncTs;
   static SdLiteStatus getFileName(const char* prefix, const char* directoryName,
 				  char* nextFileName, const size_t nameLength,
-				  const int indexOffset);
+				  const int indexOffset, const size_t minimalIndex=0U);
   static int32_t uiGetIndexOfLogFile(const char* prefix, const char* fileName);
   static SdLiteStatus closeAllLogs(void);
   virtual void flushHalfBuffer(void) = 0;
 
   static void workerThd(void* opt);
 };
-
-
 
 
 

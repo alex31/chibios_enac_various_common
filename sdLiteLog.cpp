@@ -62,14 +62,15 @@ void SdLiteLogBase::workerThd([[maybe_unused]] void* opt) {
   chThdExit(0);
 }
 
-SdLiteStatus SdLiteLogBase::openLog(const char* prefix, const char* directoryName)
+SdLiteStatus SdLiteLogBase::openLog(const char* prefix, const char* directoryName,
+				    const size_t minimalIndex)
 {
   char fileName[32];
   if ((status = initOnce(&freeSpaceInKo));
       (status != SdLiteStatus::OK) && (status != SdLiteStatus::WAS_LAUNCHED))
     return status;
   
-  status = getFileName(prefix, directoryName, fileName, sizeof(fileName), +1);
+  status = getFileName(prefix, directoryName, fileName, sizeof(fileName), +1, minimalIndex);
   if (status != SdLiteStatus::OK) {
     return status;
   }
@@ -115,10 +116,74 @@ void SdLiteLogBase::flushAllLogs(void)
 }
 
 SdLiteStatus  SdLiteLogBase::getFileName(const char* prefix,
-					const char* directoryName,
-					char* nextFileName,
-					const size_t nameLength,
-					const int indexOffset)
+					 const char* directoryName,
+					 char* nextFileName,
+					 const size_t nameLength,
+					 const int indexOffset,
+					 const size_t minimalIndex
+					 )
+{
+   DIR dir; /* Directory object */
+   FRESULT rc; /* Result code */
+   FILINFO fno; /* File information object */
+   size_t fileIndex = 0 ;
+   size_t maxCurrentIndex = 0;
+
+   const size_t directoryNameLen = std::min(strlen(directoryName), 126U);
+   const size_t slashDirNameLen = directoryNameLen+2;
+   char slashDirName[slashDirNameLen];
+   strlcpy(slashDirName, "/", slashDirNameLen);
+   strlcat(slashDirName, directoryName, slashDirNameLen);
+   
+   rc = f_opendir(&dir, directoryName);
+   if (rc != FR_OK) {
+     rc = f_mkdir(slashDirName);
+     if (rc != FR_OK) {
+       return SdLiteStatus::FATFS_ERROR;
+     }
+     rc = f_opendir(&dir, directoryName);
+     if (rc != FR_OK) {
+       return SdLiteStatus::FATFS_ERROR;
+     }
+   }
+   
+   for (;;) {
+     rc = f_readdir(&dir, &fno); /* Read a directory item */
+     if (rc != FR_OK || fno.fname[0] ==  0) break; /* Error or end of dir */
+     
+     
+     if (fno.fname[0] == '.') continue;
+     
+     if (!(fno.fattrib & AM_DIR)) {
+       //      DebugTrace ("fno.fsize=%d  fn=%s\n", fno.fsize, fn);
+       fileIndex = uiGetIndexOfLogFile(prefix, fno.fname);
+       maxCurrentIndex = std::max(maxCurrentIndex, fileIndex);
+     }
+   }
+   if (rc) {
+     return SdLiteStatus::FATFS_ERROR;
+   }
+   
+   rc = f_closedir (&dir);
+   if (rc) {
+     return SdLiteStatus::FATFS_ERROR;
+   }
+
+   maxCurrentIndex = std::max(maxCurrentIndex, minimalIndex);
+   if (maxCurrentIndex < numberMax) {
+     snprintf(nextFileName, nameLength, "%s\\%s%.04d.LOG",
+	      directoryName, prefix, maxCurrentIndex+indexOffset);
+     return SdLiteStatus::OK;
+   } else {
+     snprintf(nextFileName, nameLength, "%s\\%s.ERR",
+		 directoryName, prefix);
+     return SdLiteStatus::LOGNUM_ERROR;
+   }
+}
+
+SdLiteStatus  SdLiteLogBase::getFileNameIndex(const char* prefix,
+					      const char* directoryName,
+					      size_t *index)
 {
    DIR dir; /* Directory object */
    FRESULT rc; /* Result code */
@@ -166,15 +231,8 @@ SdLiteStatus  SdLiteLogBase::getFileName(const char* prefix,
      return SdLiteStatus::FATFS_ERROR;
    }
    
-   if (maxCurrentIndex < numberMax) {
-     snprintf(nextFileName, nameLength, "%s\\%s%.04d.LOG",
-	      directoryName, prefix, maxCurrentIndex+indexOffset);
-     return SdLiteStatus::OK;
-   } else {
-     snprintf(nextFileName, nameLength, "%s\\%s.ERR",
-		 directoryName, prefix);
-     return SdLiteStatus::LOGNUM_ERROR;
-   }
+   *index = std::max(*index, maxCurrentIndex);
+   return SdLiteStatus::OK;
 }
 
 
