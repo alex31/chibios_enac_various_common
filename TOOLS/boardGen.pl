@@ -609,21 +609,25 @@ sub parseCfgFile ($)
 		} else {
 		    $name = $conf{A_NAME} = $pin;
 		}
-
+		
+		my $currentFunc;
 		foreach my $w (@words) {
-		    # passive admits a list of possibles affectation
-		    if ($w =~ '^PASSIVE\((.*)\)') {
-			fillPassiveFields($l, $pin, $name, $1);
-			$w = 'PASSIVE';
-		    }
 
 		    # if field is a key from configByParam we are done
 		    next if fillPinField (\%conf, $w);
 
+		    # passive admits a list of possibles affectation
+		    if ($w =~ '\((.*)\)') {
+			die "$l\n (passive list) must come after function\n"
+			    if ($1 eq '') and ($currentFunc eq '');
+			fillPassiveFields($l, $pin, $name, $1 ne '' ? $1 : $currentFunc);
+			next;
+		    }
 
 		    # not a key, perhaps an AF ?
 		    my $af = getAF_byName ($l, $pin, $w);
 		    if ($af >= 0) {
+			$currentFunc = $w;
 			$conf{A_AF} = $af;
 			next;
 		    }
@@ -631,13 +635,14 @@ sub parseCfgFile ($)
 		    # not a key, not an af, perhaps non af function ?
 		    if (isNonAfAltfuncIsRoutableOnPin ($pin, $w)) {
 			$conf{A_ADCCHAN} = 1;
+			$currentFunc = $w;
 		    } elsif ($w =~ /([0-9.]*).*volt/i) {
 			$conf{A_5V} = $1;
 #			say "DBG> $conf{A_5V} volts";
 		    } else {
 			die "function $w not routable with pin $pin\n";
 		    }
-
+		    
 		}
 
 		# at this point, all the fields should be defined
