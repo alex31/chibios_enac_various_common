@@ -9,6 +9,14 @@ use List::Util qw(min max);
 use XML::LibXML;
 use Data::Dumper;
 
+#define TIM_IDX 1
+#define PWMNAME(idx) PWMD##idx
+#define GETPWMD(idx) PWMNAME(idx)
+  
+#  // start timer in pwm mode
+#  pwmStart(&GETPWMD(TIM_IDX), &pwmCfg);
+  
+
 
 # linux, windows, standard path of standalone install
 my @CubeMXRootDir = (
@@ -64,8 +72,7 @@ my %pinTemplate = (A_PIN	=> undef,
 		   A_ASCR	=> undef,
 		   A_LOCKR	=> undef,
 		   A_ADCCHAN	=> undef,
-		   A_5V		=> undef
-);
+		   A_5V		=> undef);
 
 my %pinTemplateName = (A_PIN	 => 'PIN',
 		       A_NAME	 => 'NAME',
@@ -78,8 +85,7 @@ my %pinTemplateName = (A_PIN	 => 'PIN',
 		       A_ASCR	 => 'ANALOG SWITCH',
 		       A_LOCKR	 => 'LOCK SWITCH',
 		       A_ADCCHAN => 'ADC CHANNEL',
-		       A_5V	 => 'CONNECTED TO 5 VOLTS' 
-);
+		       A_5V	 => 'CONNECTED TO 5 VOLTS');
 
 my %rank = ('MODER'  => ['A_MODE',  'PIN_MODE'],
 	    'OTYPER' => ['A_OTYPE', 'PIN_OTYPE'],
@@ -149,7 +155,7 @@ my %configByParam = ('SYS'	=> {A_MODE => 'ALTERNATE', A_OTYPE => 'PUSHPULL',  A_
 			
 
 my %config = (); #'A13' =>  {A_PIN => 'A13', A_NAME => 'I2C1_SDA', ...}
-    
+my @passive = (); 
 
 my %localConfig ;
 
@@ -188,6 +194,8 @@ sub fillDmaV1ByFun ($$);
 sub fillDmaV2ByFun ($$);
 sub getdataFromCubeMx ($);
 sub fillPinField ($$); # $pinRef, $param return 0 if unable to find param
+sub fillPassiveFields ($$$$);
+sub generatePassiveAfMacro($$$); #pin, function, af
 sub usage();
 
 my @headerFromCfg;
@@ -305,6 +313,8 @@ foreach my $p (@ports) {
     }
 }
 genAfDefine();
+push (@boardContent, @passive);
+push (@boardContent, "\n");
 genFooter ();
 
 
@@ -469,9 +479,9 @@ sub verifyAf ($$$$)
 
 	next unless $af;
 
-	die "useless Alternate Function defined although mode is not ALTERNATE on pin $realName\n" if ($mode !~ /ALTERNATE/);
+	die "useless Alternate Function defined although mode is not ALTERNATE with pin $realName\n" if ($mode !~ /ALTERNATE/);
 
-	die "alternate function AF${af} cannot be affected to pin $realName" unless
+	die "alternate function AF${af} cannot be affected with pin $realName" unless
 	    exists $family->[BY_PIN]->{$ppn}->{$af};
 
 	next; # don't try to verify confordance with pin name
@@ -480,7 +490,7 @@ sub verifyAf ($$$$)
 	foreach my $fun (@{$family->[BY_PIN]->{$ppn}->{$af}}) {
 	    $lcsln = max ($lcsln, length String::LCSS::lcss ($fun, $realName) // 0);
 	    $fnnln = min ($fnnln, length ($fun));
-	    die sprintf ("function $fun cannot be affected to pin %s and pin %s\n",
+	    die sprintf ("function $fun cannot be affected with pin %s and pin %s\n",
 			$allFuns{$fun},	$realName) if exists $allFuns{$fun};
 	    $allFuns{$fun} = $realName;
 	}
@@ -581,6 +591,7 @@ sub parseCfgFile ($)
 		$l =~ s/#.*//;
 		$l =~ s|//.*||;
 		next if $l =~ /^\s*$/;
+		$l =~ s/\s+(?=[^()]*\))//g; #remove space in the parentheses
 		my @words = split (/\s+/, $l);
 
 		die "malformed line $l\n" if  scalar (@words) < 3;
@@ -600,8 +611,15 @@ sub parseCfgFile ($)
 		}
 
 		foreach my $w (@words) {
+		    # passive admits a list of possibles affectation
+		    if ($w =~ '^PASSIVE\((.*)\)') {
+			fillPassiveFields($l, $pin, $name, $1);
+			$w = 'PASSIVE';
+		    }
+
 		    # if field is a key from configByParam we are done
 		    next if fillPinField (\%conf, $w);
+
 
 		    # not a key, perhaps an AF ?
 		    my $af = getAF_byName ($l, $pin, $w);
@@ -617,8 +635,9 @@ sub parseCfgFile ($)
 			$conf{A_5V} = $1;
 #			say "DBG> $conf{A_5V} volts";
 		    } else {
-			die "function $w not routable on pin $pin\n";
+			die "function $w not routable with pin $pin\n";
 		    }
+
 		}
 
 		# at this point, all the fields should be defined
@@ -1290,7 +1309,7 @@ sub getAF_byName ($$$) # line, pin, af signal (could be AFx or AF:name)
 	    my $altfunc = $1;
 
 
-	    die "$line\nfunction $altfunc cannot be associated on pin $pin\n" unless
+	    die "$line\nfunction $altfunc cannot be associated with pin $pin\n" unless
 		exists $gpioAfInfo->{$altfunc}->{$pin};
 	    $af = $gpioAfInfo->{$altfunc}->{$pin};
 	}
@@ -1321,7 +1340,7 @@ sub isNonAfAltfuncIsRoutableOnPin ($$)
     }
 
 
-#    die "$line\nfunction $nonAfSignal cannot be associated on pin $pin\n" 
+#    die "$line\nfunction $nonAfSignal cannot be associated with pin $pin\n" 
 #        unless exists $pinsByNonAfSignal->{$nonAfSignal}->{$pin};
 
     return 0 unless exists $pinsByNonAfSignal->{$nonAfSignal}->{$pin};
@@ -1342,6 +1361,43 @@ sub fillPinField ($$)
     
 
     return 1;
+}
+
+sub fillPassiveFields ($$$$)
+{
+    my ($l, $pin, $pinName, $possibleFunc) = @_;
+    my @ps = split(/,/, $possibleFunc);
+    my %fun=();
+    foreach my $ps (@ps) {
+	my ($funType) = $ps =~ /([A-Z]+)\d/;
+	die "$l\nmore than one function of type $funType on " .
+	    "a passive pin\n" if defined $funType and exists $fun{$funType};
+	$fun{$funType}=1;
+	
+	my $af = getAF_byName ($l, $pin, $ps);
+	if ($af >= 0) {
+#	    	    say "$ps is an AF = $af";
+	    generatePassiveMacro($pinName, $ps, $af);
+	} elsif (isNonAfAltfuncIsRoutableOnPin($pin, $ps)) {
+#	    	    say "$ps is a routable function";
+	    generatePassiveMacro($pinName, $ps);
+	} else {
+	    die "$l\nfunction $ps cannot be associated with pin $pin\n";
+	}
+    }
+}
+
+sub generatePassiveMacro($$$)
+{
+    my ($name, $fun, $af) = @_;
+    $fun =~ s/AF://;
+    my ($periphTyp, $periphNum, $periphFunction, $periphFunctionNum) =
+	$fun =~ /([A-Z]+)(\d+)_([A-Z]+)(\d?)/;
+    push (@passive,  "#define ${name}_${periphTyp}\t $periphNum\n");
+    push (@passive,  "#define ${name}_${periphTyp}_FN\t $periphFunction\n");
+    push (@passive,  "#define ${name}_${periphTyp}_$periphFunction\t " .
+	  "$periphFunctionNum\n") if $periphFunctionNum ne "";
+    push (@passive,  "#define ${name}_${periphTyp}_AF\t $af\n") if defined $af;
 }
 
 
