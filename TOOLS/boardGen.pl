@@ -9,20 +9,20 @@ use List::Util qw(min max);
 use XML::LibXML;
 use Data::Dumper;
 
-#define TIM_IDX 1
-#define PWMNAME(idx) PWMD##idx
-#define GETPWMD(idx) PWMNAME(idx)
-  
-#  // start timer in pwm mode
-#  pwmStart(&GETPWMD(TIM_IDX), &pwmCfg);
-  
+#example of use of new symbol generation feature in C/C++ program
+#to avoid mismatch between code and board.cfg
+#define CONCAT_NS(st1, st2) st1 ## st2
+#define CONCAT(st1, st2) CONCAT_NS(st1, st2)
+# example of use :
+# static constexpr PWMDriver &PWM_F1 = CONCAT(PWMD, CLOCK_F1_OUT_TIM); 
 
 
 # linux, windows, standard path of standalone install
 my @CubeMXRootDir = (
+    $ENV{HOME} . '/STM32CubeMX',
     '/usr/local/STMicroelectronics/STM32Cube/STM32CubeMX',
     'C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeMX',
-    'C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeMX',
+    'C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeMX'
     );
 
 my @CubeMXPluginRootDir = ();
