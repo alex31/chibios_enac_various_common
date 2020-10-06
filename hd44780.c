@@ -35,6 +35,10 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#ifdef PAL_STM32_OSPEED_HIGH
+#define PAL_STM32_OSPEED_HIGHEST PAL_STM32_OSPEED_HIGH
+#endif
+
 #if USERLIB_USE_HD44780 || defined(__DOXYGEN__)
 
 /*===========================================================================*/
@@ -68,6 +72,11 @@
 #define HD44780_FS_F                        0x04
 #define HD44780_FS_N                        0x08
 #define HD44780_FS_DL                       0x10
+
+#define HD44780_NO_CURSOR                   0x0C
+#define HD44780_BLINK_CURSOR                0x0F
+
+
 
 #define HD44780_SET_CGRAM_ADDRESS           0x40
 #define HD44780_SET_CGRAM_ADDRESS_MASK      0X3F
@@ -296,8 +305,9 @@ void hd44780Start(HD44780Driver *lcdp, const HD44780Config *config) {
 
   lcdp->config = config;
   lcdp->backlight = lcdp->config->backlight;
+#if HD44780_USE_DIMMABLE_BACKLIGHT
   lcdp->contrast = lcdp->config->contrast;
-
+#endif
   /* Initializing HD44780 by instructions. */
   hd44780InitByIstructions(lcdp);
 
@@ -412,6 +422,7 @@ void hd44780ReturnHome(HD44780Driver *lcdp){
   hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_RETURN_HOME);
 }
 
+
 /**
  * @brief   Set DDRAM address position leaving data unchanged.
  *
@@ -519,18 +530,29 @@ void hd44780DoDisplayShift(HD44780Driver *lcdp, uint8_t dir){
   hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_CDS | HD44780_CDS_SC | dir);
 }
 
+void hd44780ShowCursor(HD44780Driver *lcdp, bool show){
+
+  osalDbgCheck(lcdp != NULL);
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE),
+                "hd44780DisplayCursor, invalid state");
+  hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R,
+		       show ? HD44780_BLINK_CURSOR : HD44780_NO_CURSOR);
+}
+
 #if HD44780_USE_DIMMABLE_BACKLIGHT
 /**
  * @brief   Set back-light percentage.
  *
  * @param[in] lcdp      pointer to the @p HD44780Driver object
- * @param[in] perc      back-light percentage (from 0 to 100)
+ * @param[i>n] perc      back-light percentage (from 0 to 100)
  *
  * @api
  */
 void hd44780SetBacklight(HD44780Driver *lcdp, uint32_t perc){
 
   osalDbgCheck(lcdp != NULL);
+  if (perc > 100U)
+    perc = 100;
   osalDbgAssert((lcdp->state == HD44780_ACTIVE), "hd44780SetBacklight(), invalid state");
   pwmEnableChannel(lcdp->config->pwmp, lcdp->config->backlight_ch,
                    PWM_PERCENTAGE_TO_WIDTH(lcdp->config->pwmp, perc * 100));
@@ -540,6 +562,8 @@ void hd44780SetBacklight(HD44780Driver *lcdp, uint32_t perc){
 void hd44780SetContrast(HD44780Driver *lcdp, uint32_t perc){
 
   osalDbgCheck(lcdp != NULL);
+  if (perc > 100U)
+    perc = 100;
   osalDbgAssert((lcdp->state == HD44780_ACTIVE), "hd44780SetContrast(), invalid state");
   pwmEnableChannel(lcdp->config->pwmp, lcdp->config->contrast_ch,
                    PWM_PERCENTAGE_TO_WIDTH(lcdp->config->pwmp, (100 - perc) * 100));

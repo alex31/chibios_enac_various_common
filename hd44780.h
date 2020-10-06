@@ -66,15 +66,6 @@
 #define HD44780_USE_DIMMABLE_BACKLIGHT               TRUE
 #endif
 
-/**
- * @brief   Enables 4 BIT mode.
- *
- * @note    Enabling this option HD44780 uses only D4 to D7 pins
- * @note    The default is @p FALSE.
- */
-#if !defined(HD44780_USE_4_BIT_MODE) || defined(__DOXYGEN__)
-#define HD44780_USE_4_BIT_MODE              FALSE
-#endif
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
@@ -250,7 +241,6 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void hd44780Init(void);
   void hd44780ObjectInit(HD44780Driver *lcdp);
   void hd44780Start(HD44780Driver *lcdp, const HD44780Config *config);
   void hd44780Stop(HD44780Driver *lcdp);
@@ -263,6 +253,7 @@ extern "C" {
     __attribute__ ((format (printf, 3, 4)));
   void hd44780CustomGraphic(HD44780Driver *lcdp, uint8_t pos, const uint8_t bitmap[8]);
   void hd44780DoDisplayShift(HD44780Driver *lcdp, uint8_t dir);
+  void hd44780ShowCursor(HD44780Driver *lcdp, bool display);
 #if HD44780_USE_DIMMABLE_BACKLIGHT
   void hd44780SetBacklight(HD44780Driver *lcdp, uint32_t perc);
   void hd44780SetContrast(HD44780Driver *lcdp, uint32_t perc);
