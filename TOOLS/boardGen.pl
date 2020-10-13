@@ -1397,7 +1397,7 @@ sub generatePassiveMacro($$$)
     my ($name, $fun, $af) = @_;
     $fun =~ s/AF://;
     my ($periphTyp, $periphNum, $periphFunction, $periphFunctionNum) =
-	$fun =~ /([A-Z]+)(\d+)_([A-Z]+)(\d?)/;
+	$fun =~ /([A-Z]+\d?[A-Z]+)(\d+)_([A-Z]+)(\d?)/;
     push (@passive,  "#define ${name}_${periphTyp}\t $periphNum\n");
     push (@passive,  "#define ${name}_${periphTyp}_FN\t $periphFunction\n");
     push (@passive,  "#define ${name}_${periphTyp}_$periphFunction\t " .
