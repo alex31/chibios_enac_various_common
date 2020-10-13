@@ -251,6 +251,7 @@ extern "C" {
   void hd44780SetAddress(HD44780Driver *lcdp, uint8_t add);
   void hd44780Write(HD44780Driver *lcdp, uint8_t pos, const char* fmt, ...)
     __attribute__ ((format (printf, 3, 4)));
+  void hd44780RawWrite(HD44780Driver *lcdp, uint8_t pos, const char* buf);
   void hd44780CustomGraphic(HD44780Driver *lcdp, uint8_t pos, const uint8_t bitmap[8]);
   void hd44780DoDisplayShift(HD44780Driver *lcdp, uint8_t dir);
   void hd44780ShowCursor(HD44780Driver *lcdp, bool display);

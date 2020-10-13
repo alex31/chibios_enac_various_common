@@ -492,6 +492,22 @@ void hd44780Write(HD44780Driver *lcdp, uint8_t pos, const char* fmt, ...){
     }
   }
 }
+void hd44780RawWrite(HD44780Driver *lcdp, uint8_t pos, const char* buf){
+  const char *s = buf;
+  osalDbgCheck((lcdp != NULL) && (buf != NULL));
+  osalDbgAssert((lcdp->state == HD44780_ACTIVE),
+                "Write(), invalid state");
+
+  int32_t  iteration = HD44780_SET_DDRAM_ADDRESS_MASK - pos + 1;
+  if(iteration > 0){
+    hd44780SetAddress(lcdp, pos);
+    while((*s != '\0') && (iteration > 0)){
+      hd44780WriteRegister(lcdp, HD44780_DATA_R, *s);
+      s++;
+      iteration--;
+    }
+  }
+}
 /**
  * @brief  register custom graphic character at position.
  *
