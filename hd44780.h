@@ -66,6 +66,10 @@
 #define HD44780_USE_DIMMABLE_BACKLIGHT               TRUE
 #endif
 
+#if !defined(HD44780_ENABLE_PULSE_US) || defined(__DOXYGEN__)
+#define HD44780_ENABLE_PULSE_US               (100U)
+#endif
+
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
