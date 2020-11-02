@@ -130,16 +130,16 @@ static bool hd44780IsBusy(HD44780Driver *lcdp) {
   palClearLine(lcdp->config->pinmap->RS);
 
   palSetLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
   busy = (palReadLine(lcdp->config->pinmap->D[LINE_DATA_LEN - 1]) == PAL_HIGH);
   palClearLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
 
 #if HD44780_USE_4_BIT_MODE
   palSetLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
 #endif
   return busy;
 }
@@ -176,9 +176,9 @@ static void hd44780WriteRegister(HD44780Driver *lcdp, uint8_t reg, uint8_t value
       palClearLine(lcdp->config->pinmap->D[ii]);
   }
   palSetLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
 
   for(ii = 0; ii < LINE_DATA_LEN; ii++) {
     if(value & (1 << ii))
@@ -187,9 +187,9 @@ static void hd44780WriteRegister(HD44780Driver *lcdp, uint8_t reg, uint8_t value
       palClearLine(lcdp->config->pinmap->D[ii]);
   }
   palSetLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
 #else
   for(ii = 0; ii < LINE_DATA_LEN; ii++){
       if(value & (1 << ii))
@@ -198,9 +198,9 @@ static void hd44780WriteRegister(HD44780Driver *lcdp, uint8_t reg, uint8_t value
         palClearLine(lcdp->config->pinmap->D[ii]);
   }
   palSetLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
 #endif
 }
 
@@ -231,24 +231,24 @@ static void hd44780InitByIstructions(HD44780Driver *lcdp) {
   palSetLine(lcdp->config->pinmap->D[LINE_DATA_LEN - 4]);
 
   palSetLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
   osalThreadSleepMilliseconds(5);
 
   palSetLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
 
   palSetLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
 
 #if HD44780_USE_4_BIT_MODE
   palSetLine(lcdp->config->pinmap->D[LINE_DATA_LEN - 3]);
   palClearLine(lcdp->config->pinmap->D[LINE_DATA_LEN - 4]);
   palSetLine(lcdp->config->pinmap->E);
-  osalThreadSleepMicroseconds(HD44780_ENABLE_PULSE_US);
+  HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
 #endif
 
