@@ -522,6 +522,11 @@ static inline Vec3f operator+(const Vec3f& a, const Vec3f& b)
   return vec3fAdd(&a, &b);
 }
   
+static inline Vec3f operator+=(Vec3f& a, const Vec3f& b)
+{
+  return (a = vec3fAdd(&a, &b));
+}
+  
 static inline Vec3f operator-(const Vec3f& a, const Vec3f& b)
 {
   return vec3fSub(&a, &b);
