@@ -141,14 +141,13 @@ typedef struct  {
 
 
 void     dshotStart(DSHOTDriver *driver, const DSHOTConfig *config);
-void     dshotSetThrottle(DSHOTDriver *driver, const  uint8_t index, const  uint16_t throttle);
+void     dshotSetThrottle(DSHOTDriver *driver, const uint8_t index, const uint16_t throttle);
 void     dshotSendFrame(DSHOTDriver *driver);
-void     dshotSendThrottles(DSHOTDriver *driver, const  uint16_t throttles[DSHOT_CHANNELS]);
-void     dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
-				 const dshot_special_commands_t specmd);
+void     dshotSendThrottles(DSHOTDriver *driver, const uint16_t throttles[DSHOT_CHANNELS]);
+void     dshotSendSpecialCommand(DSHOTDriver *driver, const uint8_t index, const dshot_special_commands_t specmd);
 
 uint32_t dshotGetCrcErrorsCount(DSHOTDriver *driver);
-const DshotTelemetry * dshotGetTelemetry(const DSHOTDriver *driver, const uint32_t index);
+const DshotTelemetry *dshotGetTelemetry(const DSHOTDriver *driver, const uint32_t index);
 
 
 /*

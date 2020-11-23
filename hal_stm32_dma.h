@@ -68,11 +68,11 @@ typedef enum {
  *          upon.
  */
 typedef enum {
-  DMA_ERR_TRANSFER_ERROR   = 1U<<0U,          /**< DMA transfer failure.         */
-  DMA_ERR_DIRECTMODE_ERROR = 1U<<1U,          /**< DMA Direct Mode failure.      */
-  DMA_ERR_FIFO_ERROR       = 1U<<2U,          /**< DMA FIFO error.  */
-  DMA_ERR_FIFO_FULL        = 1U<<3U,          /**< DMA FIFO overrun */
-  DMA_ERR_FIFO_EMPTY       = 1U<<4U,          /**< DMA FIFO underrun. */
+  DMA_ERR_TRANSFER_ERROR   = 1U << 0U,          /**< DMA transfer failure.         */
+  DMA_ERR_DIRECTMODE_ERROR = 1U << 1U,          /**< DMA Direct Mode failure.      */
+  DMA_ERR_FIFO_ERROR       = 1U << 2U,          /**< DMA FIFO error.  */
+  DMA_ERR_FIFO_FULL        = 1U << 3U,          /**< DMA FIFO overrun */
+  DMA_ERR_FIFO_EMPTY       = 1U << 4U,          /**< DMA FIFO underrun. */
 } dmaerrormask_t;
 
 /**

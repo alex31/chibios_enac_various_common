@@ -131,7 +131,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 
   driver->crc_errors = 0;
   dmaObjectInit(&driver->dmap);
-  chMBObjectInit (&driver->mb, driver->_mbBuf, ARRAY_LEN(driver->_mbBuf));
+  chMBObjectInit(&driver->mb, driver->_mbBuf, ARRAY_LEN(driver->_mbBuf));
 
   const bool dmaOk = dmaStart(&driver->dmap, &driver->dma_conf);
   chDbgAssert(dmaOk == true, "dshot dma start error");
@@ -146,7 +146,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   driver->config->pwmp->tim->DCR = DCR_DBL | DCR_DBA(driver->config->pwmp); // enable bloc register DMA transaction
   pwmChangePeriod(driver->config->pwmp, DSHOT_PWM_PERIOD);
 
-  for (size_t j=0;j<DSHOT_CHANNELS;j++) {
+  for (size_t j=0; j<DSHOT_CHANNELS; j++) {
     pwmEnableChannel(driver->config->pwmp, j, 0);
     driver->dshotMotors.dp[j] =  makeDshotPacket(0,0);
   }
