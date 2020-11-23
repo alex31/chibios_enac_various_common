@@ -234,7 +234,7 @@ static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err);
  */
 typedef struct  {
   /**
-   * @brief   stream associated with transaction 
+   * @brief   stream associated with transaction
    * @note    use STM32_DMA_STREAM_ID macro
    */
   uint32_t		stream;
@@ -253,7 +253,7 @@ typedef struct  {
 #endif
 
   /**
-   * @brief   Enable increment of peripheral address after each transfert 
+   * @brief   Enable increment of peripheral address after each transfert
    */
   bool			inc_peripheral_addr;
 
@@ -269,12 +269,12 @@ typedef struct  {
    */
   bool			circular;
 
-  
+
   /**
    * @brief   Callback function associated to the stream or @p NULL.
    */
   dmacallback_t         end_cb;
-  
+
   /**
    * @brief   Error callback or @p NULL.
    */
@@ -287,61 +287,61 @@ typedef struct  {
   sysinterval_t	timeout;
 #endif
 
-  
+
   /**
    * @brief   DMA transaction direction
    */
-  dmadirection_t	direction; 
+  dmadirection_t	direction;
 
-  
+
   /**
    * @brief   DMA priority (1 .. 4)
    */
   uint8_t		dma_priority;
-  
+
   /**
    * @brief   DMA IRQ priority (2 .. 7)
    */
   uint8_t		irq_priority;
-  
+
   /**
    * @brief   DMA peripheral data granurality in bytes (1,2,4)
    */
   uint8_t		psize; // 1,2,4
-  
+
   /**
    * @brief   DMA memory data granurality in bytes (1,2,4)
    */
   uint8_t		msize; // 1,2,4
 #ifdef STM32F7XX
   /**
-   * @brief   DMA memory is in a cached section and beed to be flushed 
+   * @brief   DMA memory is in a cached section and beed to be flushed
    */
 bool		dcache_memory_in_use;
 #endif
 #if STM32_DMA_ADVANCED
 #define STM32_DMA_FIFO_SIZE 16 // hardware specification for dma V2
-  
+
   /**
-   * @brief   DMA peripheral burst size 
+   * @brief   DMA peripheral burst size
    */
-  uint8_t		pburst; // 0(burst disabled), 4, 8, 16  
-  
+  uint8_t		pburst; // 0(burst disabled), 4, 8, 16
+
   /**
-   * @brief   DMA memory burst size 
+   * @brief   DMA memory burst size
    */
-  uint8_t		mburst; // 0(burst disabled), 4, 8, 16 
-  
+  uint8_t		mburst; // 0(burst disabled), 4, 8, 16
+
   /**
    * @brief   DMA fifo level trigger
    */
-  uint8_t		fifo;   // 0(fifo disabled), 1, 2, 3, 4 : 25, 50, 75, 100% 
-  
+  uint8_t		fifo;   // 0(fifo disabled), 1, 2, 3, 4 : 25, 50, 75, 100%
+
   /**
    * @brief   DMA enable 4 bytes increment independantly of psize
    */
   bool			periph_inc_size_4; // PINCOS bit
-  
+
   /**
    * @brief   DMA enable peripheral as flow controller
    */
@@ -366,7 +366,7 @@ struct DMADriver {
    * @brief Current configuration data.
    */
   const DMAConfig	    *config;
-  
+
 #if STM32_DMA_USE_WAIT || defined(__DOXYGEN__)
   /**
    * @brief Waiting thread.
@@ -383,7 +383,7 @@ struct DMADriver {
   /**
    * @brief manage double buffer as a circular buffer
    */
-  uint8_t	     * volatile currPtr; 
+  uint8_t	     * volatile currPtr;
 
   /**
    * @brief virtual timer for calling end_cb between half and full ISR
@@ -396,7 +396,7 @@ struct DMADriver {
    *            mem1p not yet interfaced
    */
   void			     * mem0p;
-  
+
   /**
    * @brief	hold DMA CR register for the stream
    */
@@ -408,14 +408,14 @@ struct DMADriver {
    */
   volatile void			     * periphp;
 #endif
-  
+
 #if STM32_DMA_ADVANCED
   /**
    * @brief	hold DMA Fifo FCR register for the stream
    */
   uint32_t		     fifomode;
 #endif
-  
+
   /**
    * @brief	hold size of current transaction
    */
@@ -430,11 +430,11 @@ struct DMADriver {
   volatile dmaerrormask_t	     lastError;
 #endif
   /**
-   * @brief	Driver state 
+   * @brief	Driver state
    */
   volatile dmastate_t		     state;
 
-  
+
   /**
    * @brief	controller associated with stream
    */
@@ -469,7 +469,7 @@ void  dmaStopTransfertI(DMADriver *dmap);
 static  inline dmastate_t dmaGetState(DMADriver *dmap) {return dmap->state;}
 
 // low level driver
-			
+
 bool  dma_lld_start(DMADriver *dmap);
 void  dma_lld_stop(DMADriver *dmap);
 
@@ -495,7 +495,7 @@ static inline void async_timout_enabled_call_end_cb(DMADriver *dmap, const CbCal
   uint8_t * const midPtr = ((uint8_t *) dmap->mem0p) + (dmap->config->msize * halfSize);
   uint8_t * const endPtr = ((uint8_t *) dmap->mem0p) + (dmap->config->msize * fullSize);
 
-  
+
   switch (context) {
   case (FROM_HALF_CODE) :
     if (midPtr > baseAddr) {
@@ -520,14 +520,14 @@ static inline void async_timout_enabled_call_end_cb(DMADriver *dmap, const CbCal
     if (fullSize >= (dmaCNT + index)) {
       rem = (fullSize - dmaCNT - index);
       dmap->currPtr = baseAddr + (rem * dmap->config->msize);
-    } 
+    }
   }
     break;
   }
 
   if (dmap->config->end_cb != NULL  && (rem > 0)) {
     dmap->config->end_cb(dmap, baseAddr, rem);
-  }                                                                     
+  }
 }
 #endif
 
@@ -541,14 +541,14 @@ static inline void _dma_isr_half_code(DMADriver *dmap) {
   }
   async_timout_enabled_call_end_cb(dmap, FROM_HALF_CODE);
 #else
-  if (dmap->config->end_cb != NULL) {                                     
-    dmap->config->end_cb(dmap, dmap->mem0p, dmap->size / 2);          
+  if (dmap->config->end_cb != NULL) {
+    dmap->config->end_cb(dmap, dmap->mem0p, dmap->size / 2);
   }
 #endif
 }
 
 static inline void _dma_isr_full_code(DMADriver *dmap) {
-  if (dmap->config->circular) {                                           
+  if (dmap->config->circular) {
 #if STM32_DMA_USE_ASYNC_TIMOUT
     if (dmap->config->timeout != TIME_INFINITE) {
       chSysLockFromISR();
@@ -558,22 +558,22 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
     }
     async_timout_enabled_call_end_cb(dmap, FROM_FULL_CODE);
 #else
-    /* Callback handling.*/                                                 
-    if (dmap->config->end_cb != NULL) {                                   
-      if (dmap->size > 1) {                                               
-        /* Invokes the callback passing the 2nd half of the buffer.*/       
-        const size_t half_index = dmap->size / 2;                         
-	const uint8_t *byte_array_p = ((uint8_t *) dmap->mem0p) +         
-	  dmap->config->msize * half_index;				    
-        dmap->config->end_cb(dmap, (void *) byte_array_p, half_index);    
-      } else {                                                                
-        /* Invokes the callback passing the whole buffer.*/                 
-        dmap->config->end_cb(dmap, dmap->mem0p, dmap->size);          
-      }                                                                     
+    /* Callback handling.*/
+    if (dmap->config->end_cb != NULL) {
+      if (dmap->size > 1) {
+        /* Invokes the callback passing the 2nd half of the buffer.*/
+        const size_t half_index = dmap->size / 2;
+	const uint8_t *byte_array_p = ((uint8_t *) dmap->mem0p) +
+	  dmap->config->msize * half_index;
+        dmap->config->end_cb(dmap, (void *) byte_array_p, half_index);
+      } else {
+        /* Invokes the callback passing the whole buffer.*/
+        dmap->config->end_cb(dmap, dmap->mem0p, dmap->size);
+      }
     }
 #endif
-  }                                                                         
-  else {  // not circular                                                                  
+  }
+  else {  // not circular
     /* End transfert.*/
 #if STM32_DMA_USE_ASYNC_TIMOUT
     if (dmap->config->timeout != TIME_INFINITE) {
@@ -582,23 +582,23 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
       chSysUnlockFromISR();
     }
 #endif
-    dma_lld_stop_transfert(dmap);                                           
-    if (dmap->config->end_cb != NULL) {                                   
-      dmap->state = DMA_COMPLETE;                                         
-      /* Invoke the callback passing the whole buffer.*/                    
+    dma_lld_stop_transfert(dmap);
+    if (dmap->config->end_cb != NULL) {
+      dmap->state = DMA_COMPLETE;
+      /* Invoke the callback passing the whole buffer.*/
 #if STM32_DMA_USE_ASYNC_TIMOUT
       async_timout_enabled_call_end_cb(dmap, FROM_NON_CIRCULAR_CODE);
 #else
       dmap->config->end_cb(dmap, dmap->mem0p, dmap->size);
 #endif
-      if (dmap->state == DMA_COMPLETE) {                                  
-        dmap->state = DMA_READY;                                          
-      }                                                                     
-    } else {                                                                  
-      dmap->state = DMA_READY;                                            
-    }                                                                       
-    _dma_wakeup_isr(dmap);                                                  
-  }                                                                    
+      if (dmap->state == DMA_COMPLETE) {
+        dmap->state = DMA_READY;
+      }
+    } else {
+      dmap->state = DMA_READY;
+    }
+    _dma_wakeup_isr(dmap);
+  }
 }
 
 static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
@@ -620,16 +620,16 @@ static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
     dma_lld_stop_transfert(dmap);
   else
     return;
-  
-  if (dmap->config->error_cb != NULL) {                                   
-    dmap->state = DMA_ERROR;                                              
-    dmap->config->error_cb(dmap, err);                                    
-    if (dmap->state == DMA_ERROR)                                         
-      dmap->state = DMA_READY;                                            
-  } else {                                                                    
-    dmap->state = DMA_READY;                                              
-  }                                                                         
-  _dma_timeout_isr(dmap);                                                   
+
+  if (dmap->config->error_cb != NULL) {
+    dmap->state = DMA_ERROR;
+    dmap->config->error_cb(dmap, err);
+    if (dmap->state == DMA_ERROR)
+      dmap->state = DMA_READY;
+  } else {
+    dmap->state = DMA_READY;
+  }
+  _dma_timeout_isr(dmap);
 }
 
 

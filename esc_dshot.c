@@ -9,30 +9,30 @@
   TODO:
 
   ° TEST telemetry driving more than one ESC
-  ° TEST special code sending  
+  ° TEST special code sending
 
- 
+
  */
 
 
 /*
-#                     _            __   _            _    _      _                          
-#                    | |          / _| (_)          (_)  | |    (_)                         
-#                  __| |    ___  | |_   _    _ __    _   | |_    _     ___    _ __          
-#                 / _` |   / _ \ |  _| | |  | '_ \  | |  | __|  | |   / _ \  | '_ \         
-#                | (_| |  |  __/ | |   | |  | | | | | |  \ |_   | |  | (_) | | | | |        
-#                 \__,_|   \___| |_|   |_|  |_| |_| |_|   \__|  |_|   \___/  |_| |_|        
+#                     _            __   _            _    _      _
+#                    | |          / _| (_)          (_)  | |    (_)
+#                  __| |    ___  | |_   _    _ __    _   | |_    _     ___    _ __
+#                 / _` |   / _ \ |  _| | |  | '_ \  | |  | __|  | |   / _ \  | '_ \
+#                | (_| |  |  __/ | |   | |  | | | | | |  \ |_   | |  | (_) | | | | |
+#                 \__,_|   \___| |_|   |_|  |_| |_| |_|   \__|  |_|   \___/  |_| |_|
 */
 #define PWM_FREQ         (STM32_SYSCLK/2000) // the timer will beat @84Mhz on STM32F4
 #define TICKS_PER_PERIOD 1000             // that let use any timer :
 			                  // does not care if linked to PCLK1 or PCLK2
-			                  // tick_per_period will be dynamically calculated 
+			                  // tick_per_period will be dynamically calculated
 			                  // after pwm init
 #define DSHOT_SPEED (DSHOT_SPEED_KHZ*1000)
 #define TICK_FREQ (PWM_FREQ * TICKS_PER_PERIOD)
 #define DSHOT_PWM_PERIOD (TICK_FREQ/DSHOT_SPEED)
 #define DSHOT_BIT0_DUTY (DSHOT_PWM_PERIOD * 373 / 1000)
-#define DSHOT_BIT1_DUTY (DSHOT_BIT0_DUTY*2)		  
+#define DSHOT_BIT1_DUTY (DSHOT_BIT0_DUTY*2)
 #define    DCR_DBL              ((DSHOT_CHANNELS-1) << 8) //  DSHOT_CHANNELS transfert(s)
 // first register to get is CCR1
 #define DCR_DBA(pwmd)                 (((uint32_t *) (&pwmd->tim->CCR) - ((uint32_t *) pwmd->tim)))
@@ -42,12 +42,12 @@
 
 
 /*
-#                 _ __                   _              _      _   _    _ __                 
-#                | '_ \                 | |            | |    | | | |  | '_ \                
-#                | |_) |  _ __    ___   | |_     ___   | |_   | |_| |  | |_) |   ___         
-#                | .__/  | '__|  / _ \  | __|   / _ \  | __|   \__, |  | .__/   / _ \        
-#                | |     | |    | (_) | \ |_   | (_) | \ |_     __/ |  | |     |  __/        
-#                |_|     |_|     \___/   \__|   \___/   \__|   |___/   |_|      \___|        
+#                 _ __                   _              _      _   _    _ __
+#                | '_ \                 | |            | |    | | | |  | '_ \
+#                | |_) |  _ __    ___   | |_     ___   | |_   | |_| |  | |_) |   ___
+#                | .__/  | '__|  / _ \  | __|   / _ \  | __|   \__, |  | .__/   / _ \
+#                | |     | |    | (_) | \ |_   | (_) | \ |_     __/ |  | |     |  __/
+#                |_|     |_|     \___/   \__|   \___/   \__|   |___/   |_|      \___|
 */
 static DshotPacket makeDshotPacket(const uint16_t throttle, const bool tlmRequest);
 static inline void setDshotPacketThrottle(DshotPacket * const dp, const uint16_t throttle);
@@ -59,19 +59,19 @@ static noreturn void dshotTlmRec (void *arg);
 static size_t   getTimerWidth(const PWMDriver *pwmp);
 //static void dmaErrCb(DMADriver *dmap, dmaerrormask_t err);
 /*
-#                         _ __    _          
-#                        | '_ \  (_)         
-#                  __ _  | |_) |  _          
-#                 / _` | | .__/  | |         
-#                | (_| | | |     | |         
-#                 \__,_| |_|     |_|         
+#                         _ __    _
+#                        | '_ \  (_)
+#                  __ _  | |_) |  _
+#                 / _` | | .__/  | |
+#                | (_| | | |     | |
+#                 \__,_| |_|     |_|
 */
 
 /**
  * @brief   Configures and activates the DSHOT peripheral.
  *
  * @param[in] driver    pointer to the @p DSHOTDriver object
- * @param[in] config    pointer to the @p DSHOTConfig object. 
+ * @param[in] config    pointer to the @p DSHOTConfig object.
  * @api
  */
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
@@ -81,7 +81,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   /* DebugTrace("timerWidthInBytes = %u; mburst = %u", */
   /* 	     timerWidthInBytes, */
   /* 	     DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0U : 4U); */
-  
+
   static const SerialConfig  tlmcfg =  {
     .speed = DSHOT_TELEMETRY_BAUD,
     .cr1 = 0,                                      // pas de parité
@@ -98,7 +98,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .irq_priority = 2,
     .direction = DMA_DIR_M2P,
 
-    .psize = timerWidthInBytes, 
+    .psize = timerWidthInBytes,
     .msize = timerWidthInBytes,
     .dcache_memory_in_use = config->dcache_memory_in_use,
     .inc_peripheral_addr = false,
@@ -111,10 +111,10 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .fifo = 4
   };
 
-  driver->pwm_conf = (PWMConfig) {     
-  .frequency = TICK_FREQ,       
+  driver->pwm_conf = (PWMConfig) {
+  .frequency = TICK_FREQ,
   .period    = TICKS_PER_PERIOD,
-  .callback  = NULL,            
+  .callback  = NULL,
   .channels  = {
     {.mode = PWM_OUTPUT_ACTIVE_HIGH,
      .callback = NULL},
@@ -125,7 +125,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     {.mode = DSHOT_CHANNELS > 3 ? PWM_OUTPUT_ACTIVE_HIGH : PWM_OUTPUT_DISABLED,
      .callback = NULL},
   },
-  .cr2  =  STM32_TIM_CR2_CCDS, 
+  .cr2  =  STM32_TIM_CR2_CCDS,
   .dier =  STM32_TIM_DIER_UDE
   };
 
@@ -141,7 +141,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     chThdCreateStatic(driver->waDshotTlmRec, sizeof(driver->waDshotTlmRec), NORMALPRIO,
 		      dshotTlmRec, driver);
   }
-  
+
   pwmStart(driver->config->pwmp, &driver->pwm_conf);
   driver->config->pwmp->tim->DCR = DCR_DBL | DCR_DBA(driver->config->pwmp); // enable bloc register DMA transaction
   pwmChangePeriod(driver->config->pwmp, DSHOT_PWM_PERIOD);
@@ -309,12 +309,12 @@ const DshotTelemetry *dshotGetTelemetry(const DSHOTDriver *driver, const uint32_
 
 
 /*
-#                 _ __           _                    _                   
-#                | '_ \         (_)                  | |                  
-#                | |_) |  _ __   _   __   __   __ _  | |_     ___         
-#                | .__/  | '__| | |  \ \ / /  / _` | | __|   / _ \        
-#                | |     | |    | |   \ V /  | (_| | \ |_   |  __/        
-#                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|        
+#                 _ __           _                    _
+#                | '_ \         (_)                  | |
+#                | |_) |  _ __   _   __   __   __ _  | |_     ___
+#                | .__/  | '__| | |  \ \ / /  / _` | | __|   / _ \
+#                | |     | |    | |   \ V /  | (_| | \ |_   |  __/
+#                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|
 */
 static DshotPacket makeDshotPacket(const uint16_t _throttle, const bool tlmRequest)
 {
@@ -329,7 +329,7 @@ static DshotPacket makeDshotPacket(const uint16_t _throttle, const bool tlmReque
     dp.crc ^=  csum;   // xor data by nibbles
     csum >>= 4;
   }
-  
+
   return dp;
 }
 
@@ -416,12 +416,12 @@ static size_t   getTimerWidth(const PWMDriver *pwmp)
 
 
 /*
-#                 _      _                                 _                 
-#                | |    | |                               | |                
-#                | |_   | |__    _ __    ___    __ _    __| |   ___          
-#                | __|  | '_ \  | '__|  / _ \  / _` |  / _` |  / __|         
-#                \ |_   | | | | | |    |  __/ | (_| | | (_| |  \__ \         
-#                 \__|  |_| |_| |_|     \___|  \__,_|  \__,_|  |___/         
+#                 _      _                                 _
+#                | |    | |                               | |
+#                | |_   | |__    _ __    ___    __ _    __| |   ___
+#                | __|  | '_ \  | '__|  / _ \  / _` |  / _` |  / __|
+#                \ |_   | | | | | |    |  __/ | (_| | | (_| |  \__ \
+#                 \__|  |_| |_| |_|     \___|  \__,_|  \__,_|  |___/
 */
 
 

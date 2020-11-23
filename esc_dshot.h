@@ -8,7 +8,7 @@
 
 /**
  * @brief   special value for index : send order to all channels
- * @note    could be used as index in dshotSetThrottle and 
+ * @note    could be used as index in dshotSetThrottle and
  *          dshotSendSpecialCommand functions
  */
 #define DSHOT_ALL_MOTORS 255
@@ -25,8 +25,8 @@ typedef enum {
 } dshotstate_t;
 
 /*
-  DshotSettingRequest (KISS24). Spin direction, 
- 3d and save Settings require 10 requests.. and the 
+  DshotSettingRequest (KISS24). Spin direction,
+ 3d and save Settings require 10 requests.. and the
  TLM Byte must always be high if 1-47 are used to send settings
 
   3D Mode:
@@ -115,10 +115,10 @@ typedef struct  {
   uint8_t	dma_channel;
 
   /**
-   * @brief PWM driver that feed up to 4 dshot lines 
+   * @brief PWM driver that feed up to 4 dshot lines
    */
   PWMDriver	*pwmp;
-  
+
   /**
    * @brief if non null : dshot telemetry serial driver
    */
@@ -130,7 +130,7 @@ typedef struct  {
   DshotDmaBuffer *dma_buf;
 
   /**
-   * @brief   DMA memory is in a cached section and beed to be flushed 
+   * @brief   DMA memory is in a cached section and beed to be flushed
    */
   bool		 dcache_memory_in_use;
 } DSHOTConfig;
@@ -139,7 +139,7 @@ typedef struct  {
 
 
 
-  
+
 void     dshotStart(DSHOTDriver *driver, const DSHOTConfig *config);
 void     dshotSetThrottle(DSHOTDriver *driver, const  uint8_t index, const  uint16_t throttle);
 void     dshotSendFrame(DSHOTDriver *driver);
@@ -152,12 +152,12 @@ const DshotTelemetry * dshotGetTelemetry(const DSHOTDriver *driver, const uint32
 
 
 /*
-#                 _ __           _                    _                   
-#                | '_ \         (_)                  | |                  
-#                | |_) |  _ __   _   __   __   __ _  | |_     ___         
-#                | .__/  | '__| | |  \ \ / /  / _` | | __|   / _ \        
-#                | |     | |    | |   \ V /  | (_| | \ |_   |  __/        
-#                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|        
+#                 _ __           _                    _
+#                | '_ \         (_)                  | |
+#                | |_) |  _ __   _   __   __   __ _  | |_     ___
+#                | .__/  | '__| | |  \ \ / /  / _` | | __|   / _ \
+#                | |     | |    | |   \ V /  | (_| | \ |_   |  __/
+#                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|
 */
 
 typedef union {
@@ -217,7 +217,7 @@ struct  DSHOTDriver {
    */
   uint32_t crc_errors;
 
-  
+
   /**
    * @brief stack working area for dshot telemetry thread
    */

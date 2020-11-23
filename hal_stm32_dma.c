@@ -1,7 +1,7 @@
 #include "hal_stm32_dma.h"
 
 /*
-  TODO : 
+  TODO :
 
 
   ° split lld and hardware independant code : hal_stm32_dma et hal_lld_stm32_dma
@@ -10,8 +10,8 @@
 
   ° allow fifo burst when STM32_DMA_USE_ASYNC_TIMOUT is true by forcing a flush of the fifo : could be
   done disabling stream : should flush fifo and trig full code ISR. full code ISR should re-enable stream
-  after a timout. 
-  
+  after a timout.
+
 */
 
 
@@ -28,7 +28,7 @@ static inline uint32_t getFCR_FS(const DMADriver *dmap) {
 void dmaObjectInit(DMADriver *dmap)
 {
   osalDbgCheck(dmap != NULL);
-  
+
   dmap->state    = DMA_STOP;
   dmap->config   = NULL;
   dmap->mem0p    = NULL;
@@ -55,7 +55,7 @@ void dmaObjectInit(DMADriver *dmap)
  * @brief   Configures and activates the DMA peripheral.
  *
  * @param[in] dmap      pointer to the @p DMADriver object
- * @param[in] config    pointer to the @p DMAConfig object. 
+ * @param[in] config    pointer to the @p DMAConfig object.
  * @return              The operation result.
  * @retval true         dma driver is OK
  * @retval false        incoherencies has been found in config
@@ -105,7 +105,7 @@ void dmaStop(DMADriver *dmap)
  * @brief   Starts a DMA transaction.
  * @details Starts one or many asynchronous dma transaction(s) depending on continuous field
  * @post    The callbacks associated to the DMA config will be invoked
- *          on buffer fill and error events, and timeout events in case 
+ *          on buffer fill and error events, and timeout events in case
  *          STM32_DMA_USE_ASYNC_TIMOUT == TRUE
  * @note    The datas are sequentially written into the buffer
  *          with no gaps.
@@ -130,7 +130,7 @@ bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp,  void * mem0p, c
  * @brief   Starts a DMA transaction.
  * @details Starts one or many asynchronous dma transaction(s) depending on continuous field
  * @post    The callbacks associated to the DMA config will be invoked
- *          on buffer fill and error events, and timeout events in case 
+ *          on buffer fill and error events, and timeout events in case
  *          STM32_DMA_USE_ASYNC_TIMOUT == TRUE
  * @note    The datas are sequentially written into the buffer
  *          with no gaps.
@@ -150,7 +150,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
   if (size != dmap->size) {
     osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
 		 (size > 0U) && ((size == 1U) || ((size & 1U) == 0U)));
-    
+
     const DMAConfig	    *cfg = dmap->config;
     osalDbgAssert((dmap->state == DMA_READY) ||
 		  (dmap->state == DMA_COMPLETE) ||
@@ -165,7 +165,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
     /*   osalDbgAssert((uint32_t) mem0p % (cfg->mburst * cfg->msize) == 0, "memory address not aligned"); */
     /* else */
       osalDbgAssert((uint32_t) mem0p % cfg->msize == 0, "memory address not aligned");
-    
+
     /*
       In the circular mode, it is mandatory to respect the following rule in case of a burst mode
       configured for memory:
@@ -175,10 +175,10 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
       – ((Msize)/(Psize)) = 1, 2, 4, 1/2 or 1/4 (Msize and Psize represent the MSIZE and
       PSIZE bits in the DMA_SxCR register. They are byte dependent)
       – DMA_SxNDTR = Number of data items to transfer on the AHB peripheral port
-      
+
       NDTR must also be a multiple of the Peripheral burst size multiplied by the peripheral data
       size, otherwise this could result in a bad DMA behavior.
-      
+
     */
 # if  STM32_DMA_ADVANCED
     if (cfg->mburst) {
@@ -196,25 +196,25 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
 		    "peripheral address alignment rule not respected");
    }
 
-    
-    
+
+
 # endif //  STM32_DMA_ADVANCED
   }
 
 #endif // CH_DBG_ENABLE_ASSERTS != FALSE
   dmap->state    = DMA_ACTIVE;
-  
+
 #if STM32_DMA_USE_ASYNC_TIMOUT
   dmap->currPtr = mem0p;
   if (dmap->config->timeout != TIME_INFINITE) {
     chVTSetI(&dmap->vt, dmap->config->timeout,
 	     &dma_lld_serve_timeout_interrupt, (void *) dmap);
-  } 
+  }
 #endif
-  
+
   return dma_lld_start_transfert(dmap, periphp, mem0p, size);
 }
-  
+
 
 /**
  * @brief   Stops an ongoing transaction.
@@ -262,7 +262,7 @@ void dmaStopTransfertI(DMADriver *dmap)
                 (dmap->state == DMA_ACTIVE) ||
                 (dmap->state == DMA_COMPLETE),
                 "invalid state");
-  
+
 
   if (dmap->state != DMA_READY) {
     dma_lld_stop_transfert(dmap);
@@ -285,7 +285,7 @@ void dmaStopTransfertI(DMADriver *dmap)
  * @param[in,out]  mem0p    pointer to the data buffer
  * @param[in]      size     buffer size. The buffer size
  *                          must be one or an even number.
- * @param[in]      timeout  function will exit after timeout is transaction is not done  
+ * @param[in]      timeout  function will exit after timeout is transaction is not done
  *                          can be TIME_INFINITE (but not TIME_IMMEDIATE)
  * @return              The operation result.
  * @retval MSG_OK       Transaction finished.
@@ -301,7 +301,7 @@ msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, 
 			  sysinterval_t timeout)
 {
   msg_t msg;
-  
+
   osalSysLock();
   osalDbgAssert(dmap->thread == NULL, "already waiting");
   osalDbgAssert(dmap->config->circular == false, "blocking API is incompatible with circular mode");
@@ -354,18 +354,18 @@ void dmaReleaseBus(DMADriver *dmap) {
 
 
 /*
-  #                 _                                  _                              _          
-  #                | |                                | |                            | |         
-  #                | |        ___   __      __        | |        ___  __   __   ___  | |         
-  #                | |       / _ \  \ \ /\ / /        | |       / _ \ \ \ / /  / _ \ | |         
-  #                | |____  | (_) |  \ V  V /         | |____  |  __/  \ V /  |  __/ | |         
-  #                |______|  \___/    \_/\_/          |______|  \___|   \_/    \___| |_|         
-  #                 _____            _                                
-  #                |  __ \          (_)                               
-  #                | |  | |   _ __   _   __   __   ___   _ __         
-  #                | |  | |  | '__| | |  \ \ / /  / _ \ | '__|        
-  #                | |__| |  | |    | |   \ V /  |  __/ | |           
-  #                |_____/   |_|    |_|    \_/    \___| |_|           
+  #                 _                                  _                              _
+  #                | |                                | |                            | |
+  #                | |        ___   __      __        | |        ___  __   __   ___  | |
+  #                | |       / _ \  \ \ /\ / /        | |       / _ \ \ \ / /  / _ \ | |
+  #                | |____  | (_) |  \ V  V /         | |____  |  __/  \ V /  |  __/ | |
+  #                |______|  \___/    \_/\_/          |______|  \___|   \_/    \___| |_|
+  #                 _____            _
+  #                |  __ \          (_)
+  #                | |  | |   _ __   _   __   __   ___   _ __
+  #                | |  | |  | '__| | |  \ \ / /  / _ \ | '__|
+  #                | |__| |  | |    | |   \ V /  |  __/ | |
+  #                |_____/   |_|    |_|    \_/    \___| |_|
 */
 
 
@@ -381,7 +381,7 @@ bool dma_lld_start(DMADriver *dmap)
   uint32_t psize_msk, msize_msk;
 
   const DMAConfig *cfg = dmap->config;
-				      
+
   switch (cfg->psize) {
   case 1 : psize_msk = STM32_DMA_CR_PSIZE_BYTE; break;
   case 2 : psize_msk = STM32_DMA_CR_PSIZE_HWORD; break;
@@ -402,7 +402,7 @@ bool dma_lld_start(DMADriver *dmap)
   case DMA_DIR_P2M: dir_msk=STM32_DMA_CR_DIR_P2M; break;
   case DMA_DIR_M2P: dir_msk=STM32_DMA_CR_DIR_M2P; break;
   case DMA_DIR_M2M: dir_msk=STM32_DMA_CR_DIR_M2M; break;
-  default: osalDbgAssert(false, "direction not set or incorrect"); 
+  default: osalDbgAssert(false, "direction not set or incorrect");
   }
 
   uint32_t isr_flags = cfg->circular ? 0UL: STM32_DMA_CR_TCIE;
@@ -412,10 +412,10 @@ bool dma_lld_start(DMADriver *dmap)
       isr_flags |=STM32_DMA_CR_TCIE;
       if (cfg->circular) {
 	isr_flags |= STM32_DMA_CR_HTIE;
-      } 
+      }
     }
   }
-  
+
   if (cfg->error_cb) {
     isr_flags |= STM32_DMA_CR_DMEIE | STM32_DMA_CR_TCIE;
   }
@@ -423,7 +423,7 @@ bool dma_lld_start(DMADriver *dmap)
 #if CH_KERNEL_MAJOR < 6
   dmap->dmastream =  STM32_DMA_STREAM(cfg->stream);
 #endif
-  
+
   // portable way (V1, V2) to retreive controler number
 #if STM32_DMA_ADVANCED
   dmap->controller = 1 + (cfg->stream / STM32_DMA_STREAM_ID(2,0));
@@ -438,14 +438,14 @@ bool dma_lld_start(DMADriver *dmap)
     (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL)
 
 #if STM32_DMA_SUPPORTS_CSELR
-    | STM32_DMA_CR_CHSEL(cfg->request)    
+    | STM32_DMA_CR_CHSEL(cfg->request)
 #elif STM32_DMA_ADVANCED
-    | STM32_DMA_CR_CHSEL(cfg->channel)    
+    | STM32_DMA_CR_CHSEL(cfg->channel)
     | (cfg->periph_inc_size_4 ? STM32_DMA_CR_PINCOS : 0UL) |
     (cfg->transfert_end_ctrl_by_periph? STM32_DMA_CR_PFCTRL : 0UL)
 #   endif
     ;
-                 
+
 
 #if STM32_DMA_ADVANCED
   uint32_t  pburst_msk, mburst_msk, fifo_msk; // STM32_DMA_CR_PBURST_INCRx, STM32_DMA_CR_MBURST_INCRx
@@ -483,7 +483,7 @@ bool dma_lld_start(DMADriver *dmap)
   osalDbgAssert(!((dmap->config->timeout != TIME_INFINITE) && (dmap->config->fifo != 0)),
 		"timeout should be dynamicly disabled (dmap->config->timeout = TIME_INFINITE) "
 		"if STM32_DMA_USE_ASYNC_TIMOUT is enabled and fifo is enabled (fifo != 0)");
-  
+
 #   endif
 
 
@@ -584,7 +584,7 @@ bool dma_lld_start(DMADriver *dmap)
 
 #  if (CH_DBG_ENABLE_ASSERTS != FALSE)
 
-  
+
   /*
     When burst transfers are requested on the peripheral AHB port and the FIFO is used
     (DMDIS = 1 in the DMA_SxCR register), it is mandatory to respect the following rule to
@@ -599,7 +599,7 @@ bool dma_lld_start(DMADriver *dmap)
     When memory-to-memory mode is used, the Circular and direct modes are not allowed.
     Only the DMA2 controller is able to perform memory-to-memory transfers.
   */
-  
+
   if (cfg->direction == DMA_DIR_M2M) {
     osalDbgAssert(dmap->controller == 2, "M2M not available on DMA1");
     osalDbgAssert(cfg->circular == false, "M2M not available in circular mode");
@@ -636,9 +636,9 @@ bool dma_lld_start(DMADriver *dmap)
     osalDbgAssert(false, "stream already allocated");
     return false;
   }
-  
+
   return true;
-  
+
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
 #if STM32_DMA_ADVANCED
  forbiddenCombination:
@@ -678,7 +678,7 @@ bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0
   dmaStreamSetFIFO(dmap->dmastream, dmap->fifomode);
 #endif
   dmaStreamEnable(dmap->dmastream);
-  
+
   return true;
 }
 
@@ -740,14 +740,14 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
       ( (flags & feif_msk)  ? DMA_ERR_FIFO_ERROR : 0UL) |
       ( getFCR_FS(dmap) == (0b100 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_EMPTY: 0UL) |
       ( getFCR_FS(dmap) == (0b101 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_FULL: 0UL);
-    
+
     _dma_isr_error_code(dmap, err);
   } else {
     /* It is possible that the transaction has already be reset by the
        DMA error handler, in this case this interrupt is spurious.*/
     if (dmap->state == DMA_ACTIVE) {
 #ifdef STM32F7XX
-      if (dmap->config->dcache_memory_in_use) 
+      if (dmap->config->dcache_memory_in_use)
 	  switch (dmap->config->direction) {
 	  case DMA_DIR_M2P : break;
 	  case DMA_DIR_P2M :
@@ -788,5 +788,5 @@ void dma_lld_serve_timeout_interrupt(void *arg)
     chSysUnlockFromISR();
   }
   async_timout_enabled_call_end_cb(dmap, FROM_TIMOUT_CODE);
-}                                                                         
+}
 #endif
