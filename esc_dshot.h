@@ -5,6 +5,9 @@
 #include "hal_stm32_dma.h"
 #include "esc_dshot_config.h"
 
+#ifndef DSHOT_CHANNEL_FIRST_INDEX
+#define DSHOT_CHANNEL_FIRST_INDEX 0
+#endif
 
 /**
  * @brief   special value for index : send order to all channels
