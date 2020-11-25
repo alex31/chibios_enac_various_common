@@ -6,7 +6,8 @@
 #include "esc_dshot_config.h"
 
 #ifndef DSHOT_CHANNEL_FIRST_INDEX
-#define DSHOT_CHANNEL_FIRST_INDEX 0
+#error DSHOT_CHANNEL_FIRST_INDEX must be defined
+#define DSHOT_CHANNEL_FIRST_INDEX 0U
 #endif
 
 /**
