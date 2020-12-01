@@ -55,9 +55,10 @@ typedef struct {
  */
 EventSource shell_terminated;
 
+static MUTEX_DECL(mut);
 static microrl_t rl;
 static BaseSequentialStream *chpg;
-const ShellCommand *scpg;
+static ShellCommand *scpg = NULL;
 const char * compl_world[64];
 uint32_t numOfCommand = 0;
 static ShellCommand local_commands[];
@@ -77,10 +78,12 @@ void microrlExecute (int argc,  const char * const *argv)
   const ShellCommand *scp = scpg;
   const char *name = argv[0];
 
+  chMtxLock(&mut);
+
   while (scp->sc_name != NULL) {
     if (strcasecmp(scp->sc_name, name) == 0) {
       scp->sc_function(chpg, argc-1, &argv[1]);
-      return;
+      goto exit;
     }
     scp++;
   }
@@ -89,10 +92,13 @@ void microrlExecute (int argc,  const char * const *argv)
    while (scp->sc_name != NULL) {
     if (strcasecmp(scp->sc_name, name) == 0) {
       scp->sc_function(chpg, argc-1, &argv[1]);
-      return;
+      goto exit;
     }
     scp++;
   }
+   
+ exit:
+   chMtxUnlock(&mut);
 }
 
 const char ** microrlComplet (int argc, const char * const * argv)
@@ -100,7 +106,8 @@ const char ** microrlComplet (int argc, const char * const * argv)
   uint32_t j = 0;
 
   compl_world [0] = NULL;
-
+  chMtxLock(&mut);
+  
   // if there is token in cmdline
   if (argc == 1) {
     // get last entered token
@@ -123,6 +130,7 @@ const char ** microrlComplet (int argc, const char * const * argv)
   // note! last ptr in array always must be NULL!!!
   compl_world [j] = NULL;
   // return set of variants
+  chMtxUnlock(&mut);
   return compl_world;
 }
 
@@ -377,11 +385,13 @@ static msg_t shell_thread(void *p) {
     if (chSequentialStreamRead(chpg, &c, 1) == 0) {
        readOk=FALSE;
     } else {
+      chMtxLock(&mut);
       if (altCbParam.altFunc == NULL) {
 	microrl_insert_char (&rl, c);
       } else {
 	(*altCbParam.altFunc) (c, altCbParam.param);
       }
+      chMtxUnlock(&mut);
     }
   }
   /* Atomically broadcasting the event source and terminating the thread,
@@ -475,16 +485,36 @@ Thread *shellCreateStatic(const ShellConfig *scp, void *wsp,
   return chThdCreateStatic(wsp, size, prio, shell_thread, (void *)scp);
 }
 
+bool shellAddEntry(const ShellCommand sc)
+{
+  ShellCommand* scp = scpg;
+  chMtxLock(&mut);
+  while ((scp->sc_function != NULL) &&
+	 (strcmp(scp->sc_name, sc.sc_name) != 0))
+    scp++;
+  if ((scp->sc_function == NULL) && (scp->sc_name == NULL)) {
+    chMtxUnlock(&mut);
+    return false;
+  }
+  scp->sc_function = sc.sc_function;
+  scp->sc_name = sc.sc_name;
+  chMtxUnlock(&mut);
+  return true;
+}
 
 void modeAlternate(void (*funcp) (uint8_t c, uint32_t mode), uint32_t mode)
 {
+  chMtxLock(&mut);
   altCbParam.altFunc = funcp;
   altCbParam.param = mode;
+  chMtxUnlock(&mut);
 }
 
 void modeShell(void)
 {
+  chMtxLock(&mut);
   altCbParam.altFunc = NULL;
+  chMtxUnlock(&mut);
   printScreen ("retour au shell");
 }
 

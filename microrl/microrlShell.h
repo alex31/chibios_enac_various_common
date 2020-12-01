@@ -62,7 +62,7 @@ typedef struct {
 typedef struct {
   BaseSequentialStream  *sc_channel;        /**< @brief I/O channel associated
                                                  to the shell.              */
-  const ShellCommand    *sc_commands;       /**< @brief Shell extra commands
+  ShellCommand    *sc_commands;       /**< @brief Shell extra commands
                                                  table.                     */
 } ShellConfig;
 
@@ -79,6 +79,7 @@ extern "C" {
   Thread *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio);
   Thread *shellCreateStatic(const ShellConfig *scp, void *wsp,
                             size_t size, tprio_t prio);
+  bool shellAddEntry(const ShellCommand sc);
   bool shellGetLine(BaseSequentialStream *chp, char *line, unsigned size);
   void modeAlternate (void (*) (uint8_t c, uint32_t mode), uint32_t mode);
   void modeShell (void);
