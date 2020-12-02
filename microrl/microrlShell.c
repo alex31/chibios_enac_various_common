@@ -1,23 +1,3 @@
-/*
-    ChibiOS/RT - Copyright (C) 2006,2007,2008,2009,2010,
-                 2011,2012 Giovanni Di Sirio.
-
-    This file is part of ChibiOS/RT.
-
-    ChibiOS/RT is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
-
-    ChibiOS/RT is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 /**
  * @file    shell.c
  * @brief   Enhanced CLI shell code.
@@ -27,7 +7,6 @@
  */
 
 #include <string.h>
-
 #include "ch.h"
 #include "hal.h"
 #include "microrl/microrlShell.h"
@@ -38,12 +17,6 @@
 
 #define printScreen(...) {chprintf (chpg, __VA_ARGS__); chprintf (chpg, "\r\n");}
 
-#if (CH_KERNEL_MAJOR > 3)
-#define chSequentialStreamPut streamPut
-#define chSequentialStreamRead streamRead
-#endif
-
-
 typedef struct {
   void (*altFunc) (uint8_t c, uint32_t mode);
   uint32_t param;
@@ -53,7 +26,7 @@ typedef struct {
 /**
  * @brief   Shell termination event source.
  */
-EventSource shell_terminated;
+ event_source_t shell_terminated;
 
 static MUTEX_DECL(mut);
 static microrl_t rl;
@@ -69,7 +42,7 @@ void microrlPrint (const char * str)
   int i = 0;
 
   while (str[i] != 0) {
-    chSequentialStreamPut(chpg, str[i++]);
+    streamPut(chpg, str[i++]);
   }
 }
 
@@ -341,7 +314,7 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
 #endif
 #endif
 
-  chprintf(lchp, "systime= %lu\r\n", (unsigned long)chTimeNow());
+  chprintf(lchp, "systime= %lu\r\n", (unsigned long)chVTGetSystemTimeX());
 }
 
 
@@ -360,51 +333,12 @@ static ShellCommand local_commands[] = {
  *
  * @param[in] p         pointer to a @p BaseSequentialStream object
  * @return              Termination reason.
- * @retval RDY_OK       terminated by command.
+ * @retval MSG_OK       terminated by command.
  * @retval RDY_RESET    terminated by reset condition on the I/O channel.
  */
-#if (CH_KERNEL_MAJOR == 2)
-static msg_t shell_thread(void *p) {
-  
-  msg_t msg = RDY_OK;
-  chpg = ((ShellConfig *)p)->sc_channel;
-  scpg = ((ShellConfig *)p)->sc_commands;
-  bool readOk=TRUE;
 
-  
-  const ShellCommand *scp = scpg;
-  while (scp->sc_name != NULL) {
-    scp++;
-    numOfCommand++;
-  }
-
-  chRegSetThreadName("Enhanced_shell");
-  printScreen ("ChibiOS/RT Enhanced Shell");
-  while (!chThdShouldTerminate() && readOk) {
-    uint8_t c;
-    if (chSequentialStreamRead(chpg, &c, 1) == 0) {
-       readOk=FALSE;
-    } else {
-      chMtxLock(&mut);
-      if (altCbParam.altFunc == NULL) {
-	microrl_insert_char (&rl, c);
-      } else {
-	(*altCbParam.altFunc) (c, altCbParam.param);
-      }
-      chMtxUnlock(&mut);
-    }
-  }
-  /* Atomically broadcasting the event source and terminating the thread,
-     there is not a chSysUnlock() because the thread terminates upon return.*/
-  printScreen ("exit");
-  chSysLock();
-  chEvtBroadcastI(&shell_terminated);
-  chThdExitS(msg);
-  return 0; /* Never executed.*/
-}
-#else // CH_KERNEL_MAJOR > 2
 static THD_FUNCTION(shell_thread, p) {
-  msg_t msg = RDY_OK;
+  msg_t msg = MSG_OK;
   chpg = ((ShellConfig *)p)->sc_channel;
   scpg = ((ShellConfig *)p)->sc_commands;
   bool readOk=TRUE;
@@ -418,9 +352,9 @@ static THD_FUNCTION(shell_thread, p) {
 
   chRegSetThreadName("Enhanced_shell");
   printScreen ("ChibiOS/RT Enhanced Shell");
-  while (!chThdShouldTerminate() && readOk) {
+  while (!chThdShouldTerminateX() && readOk) {
     uint8_t c;
-    if (chSequentialStreamRead(chpg, &c, 1) == 0) {
+    if (streamRead(chpg, &c, 1) == 0) {
        readOk=FALSE;
     } else {
       if (altCbParam.altFunc == NULL) {
@@ -437,13 +371,13 @@ static THD_FUNCTION(shell_thread, p) {
   chEvtBroadcastI(&shell_terminated);
   chThdExitS(msg);
 }
-#endif // if (CH_KERNEL_MAJOR == 2)
+
 /**
  * @brief   Shell manager initialization.
  */
 void shellInit(void) {
 
-  chEvtInit(&shell_terminated);
+  chEvtObjectInit(&shell_terminated);
   microrl_init (&rl, microrlPrint);
   microrl_set_execute_callback (&rl, &microrlExecute);
   microrl_set_complete_callback (&rl, &microrlComplet);
@@ -460,13 +394,9 @@ void shellInit(void) {
  * @return              A pointer to the shell thread.
  * @retval NULL         thread creation failed because memory allocation.
  */
-#if CH_USE_HEAP && CH_USE_DYNAMIC
-Thread *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio) {
-#if (CH_KERNEL_MAJOR <= 3)
-  return chThdCreateFromHeap(NULL, size, prio, shell_thread, (void *)scp);
-#else
+#if CH_CFG_USE_HEAP && CH_CFG_USE_DYNAMIC
+thread_t *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio) {
   return chThdCreateFromHeap(NULL, size, "shell", prio, shell_thread, (void *)scp);
-#endif
 }
 #endif
 
@@ -480,7 +410,7 @@ Thread *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio) {
  * @param[in] prio      priority level for the new shell
  * @return              A pointer to the shell thread.
  */
-Thread *shellCreateStatic(const ShellConfig *scp, void *wsp,
+ thread_t *shellCreateStatic(const ShellConfig *scp, void *wsp,
                           size_t size, tprio_t prio) {
   return chThdCreateStatic(wsp, size, prio, shell_thread, (void *)scp);
 }
