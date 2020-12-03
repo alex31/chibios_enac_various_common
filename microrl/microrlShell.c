@@ -7,8 +7,6 @@
  */
 
 #include <string.h>
-#include "ch.h"
-#include "hal.h"
 #include "microrl/microrlShell.h"
 #include "microrl/microrl.h"
 #include "printf.h"
@@ -22,6 +20,9 @@ typedef struct {
   uint32_t param;
 } AltCbParam;
   
+static void cmd_info(BaseSequentialStream *lchp, int argc,
+		     const char * const argv[]);
+
 
 /**
  * @brief   Shell termination event source.
@@ -31,10 +32,20 @@ typedef struct {
 static MUTEX_DECL(mut);
 static microrl_t rl;
 static BaseSequentialStream *chpg;
-static ShellCommand *scpg = NULL;
-const char * compl_world[64];
-uint32_t numOfCommand = 0;
-static ShellCommand local_commands[];
+static const ShellCommand *staticCommands = NULL;
+static const char * complWorlds[64];
+/**
+ * @brief   Array of the default  and dynamic commands.
+ */
+#if SHELL_DYNAMIC_ENTRIES_NUMBER // compatibility with legacy static only behavior
+static ShellCommand localCommands[SHELL_DYNAMIC_ENTRIES_NUMBER + 2U] =  {
+#else
+static const ShellCommand localCommands[] =  {
+#endif
+  {"info", cmd_info},
+  {NULL, NULL}
+};
+
 static AltCbParam altCbParam = {.altFunc = NULL, .param = 0};
 
 void microrlPrint (const char * str)
@@ -48,7 +59,7 @@ void microrlPrint (const char * str)
 
 void microrlExecute (int argc,  const char * const *argv)
 {
-  const ShellCommand *scp = scpg;
+  const ShellCommand *scp = staticCommands;
   const char *name = argv[0];
 
   chMtxLock(&mut);
@@ -61,7 +72,7 @@ void microrlExecute (int argc,  const char * const *argv)
     scp++;
   }
 
-  scp = local_commands;
+  scp = localCommands;
    while (scp->sc_name != NULL) {
     if (strcasecmp(scp->sc_name, name) == 0) {
       scp->sc_function(chpg, argc-1, &argv[1]);
@@ -78,33 +89,42 @@ const char ** microrlComplet (int argc, const char * const * argv)
 {
   uint32_t j = 0;
 
-  compl_world [0] = NULL;
+  complWorlds [0] = NULL;
   chMtxLock(&mut);
   
   // if there is token in cmdline
   if (argc == 1) {
     // get last entered token
-    char * bit = (char*)argv [argc-1];
+    const char *bit = argv[argc-1];
     // iterate through our available token and match it
-    for (uint32_t i = 0; i < numOfCommand; i++) {
+    for (const ShellCommand *scp = localCommands;
+	 scp->sc_name != NULL; scp++) {
       // if token is matched (text is part of our token starting from 0 char)
-      if (strstr(scpg[i].sc_name, bit) == scpg[i].sc_name) {
+      if (strstr(scp->sc_name, bit) == scp->sc_name) {
 	// add it to completion set
-	compl_world [j++] = scpg[i].sc_name;
+	complWorlds[j++] = scp->sc_name;
+      }
+    }
+    for (const ShellCommand *scp = staticCommands;
+	 scp->sc_name != NULL; scp++) {
+      // if token is matched (text is part of our token starting from 0 char)
+      if (strstr(scp->sc_name, bit) == scp->sc_name) {
+	// add it to completion set
+	complWorlds[j++] = scp->sc_name;
       }
     }
   } else { // if there is no token in cmdline, just print all available token
-    compl_world[0] = "info";
-    for (j=0; j <= numOfCommand; j++) {
-      compl_world[j+1] = scpg[j].sc_name;
-    }
+    for (const ShellCommand *scp = localCommands; scp->sc_name != NULL; scp++)
+      complWorlds[j++] = scp->sc_name;
+    for (const ShellCommand *scp = staticCommands; scp->sc_name != NULL; scp++)
+      complWorlds[j++] = scp->sc_name;
   }
 
   // note! last ptr in array always must be NULL!!!
-  compl_world [j] = NULL;
-  // return set of variants
+  complWorlds[j] = NULL;
   chMtxUnlock(&mut);
-  return compl_world;
+  // return set of variants
+  return complWorlds;
 }
 
 
@@ -319,16 +339,6 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
 
 
 /**
- * @brief   Array of the default commands.
- */
-static ShellCommand local_commands[] = {
-  {"info", cmd_info},
-  {NULL, NULL}
-};
-
-
-
-/**
  * @brief   Shell thread function.
  *
  * @param[in] p         pointer to a @p BaseSequentialStream object
@@ -340,16 +350,10 @@ static ShellCommand local_commands[] = {
 static THD_FUNCTION(shell_thread, p) {
   msg_t msg = MSG_OK;
   chpg = ((ShellConfig *)p)->sc_channel;
-  scpg = ((ShellConfig *)p)->sc_commands;
+  staticCommands = ((ShellConfig *)p)->sc_commands;
   bool readOk=TRUE;
 
   
-  const ShellCommand *scp = scpg;
-  while (scp->sc_name != NULL) {
-    scp++;
-    numOfCommand++;
-  }
-
   chRegSetThreadName("Enhanced_shell");
   printScreen ("ChibiOS/RT Enhanced Shell");
   while (!chThdShouldTerminateX() && readOk) {
@@ -395,7 +399,7 @@ void shellInit(void) {
  * @retval NULL         thread creation failed because memory allocation.
  */
 #if CH_CFG_USE_HEAP && CH_CFG_USE_DYNAMIC
-thread_t *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio) {
+thread_t *shellCreateFromHeap(const ShellConfig *scp, size_t size, tprio_t prio) {
   return chThdCreateFromHeap(NULL, size, "shell", prio, shell_thread, (void *)scp);
 }
 #endif
@@ -415,22 +419,39 @@ thread_t *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio) {
   return chThdCreateStatic(wsp, size, prio, shell_thread, (void *)scp);
 }
 
+#if  SHELL_DYNAMIC_ENTRIES_NUMBER
+/**
+ * @brief   add/change/remove dynamically new shell entries
+ * @pre     @p SHELL_DYNAMIC_ENTRIES_NUMBER must be set
+ * @note    if sc.sc_name already exists, entry will be overwrite
+            if sc.sc_name already exists and sc.sc_function is null, 
+            entry will be removed
+ * @param[in] sc        ShellCommand object
+ * @return              true : OK, false : error table is full.
+ */
 bool shellAddEntry(const ShellCommand sc)
 {
-  ShellCommand* scp = scpg;
+  ShellCommand* lcp = localCommands;
+  static const int len = (sizeof(localCommands) / sizeof(localCommands[0]))
+    -1U;
   chMtxLock(&mut);
-  while ((scp->sc_function != NULL) &&
-	 (strcmp(scp->sc_name, sc.sc_name) != 0))
-    scp++;
-  if ((scp->sc_function == NULL) && (scp->sc_name == NULL)) {
+  while ((lcp->sc_function != NULL) &&
+	 (strcmp(lcp->sc_name, sc.sc_name) != 0) &&
+	 ((lcp - localCommands) < len))
+    lcp++;
+  
+  if ((lcp - localCommands) == len) {
     chMtxUnlock(&mut);
     return false;
   }
-  scp->sc_function = sc.sc_function;
-  scp->sc_name = sc.sc_name;
+  lcp->sc_function = sc.sc_function;
+  lcp->sc_name = sc.sc_name;
+  *(++lcp) = (ShellCommand){NULL, NULL};
+  
   chMtxUnlock(&mut);
   return true;
 }
+#endif
 
 void modeAlternate(void (*funcp) (uint8_t c, uint32_t mode), uint32_t mode)
 {

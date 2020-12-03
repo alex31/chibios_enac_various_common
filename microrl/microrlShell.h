@@ -1,3 +1,4 @@
+#pragma once
 /**
  * @file    microrlShell.h
  * @brief   Simple CLI shell header.
@@ -6,8 +7,16 @@
  * @{
  */
 
-#pragma once
+#include "ch.h"
+#include "hal.h"
 
+
+#ifndef SHELL_DYNAMIC_ENTRIES_NUMBER
+#define SHELL_DYNAMIC_ENTRIES_NUMBER 0U
+#endif
+
+// legacy compatibility
+#define shellCreate(C, S, P) shellCreateFromHeap(C, S, P)
 
 /**
  * @brief   Command handler function type.
@@ -28,7 +37,7 @@ typedef struct {
 typedef struct {
   BaseSequentialStream  *sc_channel;        /**< @brief I/O channel associated
                                                  to the shell.              */
-  ShellCommand    *sc_commands;       /**< @brief Shell extra commands
+  const ShellCommand    *sc_commands;       /**< @brief Shell extra commands
                                                  table.                     */
 } ShellConfig;
 
@@ -40,10 +49,14 @@ extern  event_source_t shell_terminated;
 extern "C" {
 #endif
   void shellInit(void);
-   thread_t *shellCreate(const ShellConfig *scp, size_t size, tprio_t prio);
-   thread_t *shellCreateStatic(const ShellConfig *scp, void *wsp,
-                            size_t size, tprio_t prio);
+#if CH_CFG_USE_HEAP && CH_CFG_USE_DYNAMIC
+  thread_t *shellCreateFromHeap(const ShellConfig *scp, size_t size, tprio_t prio);
+#endif
+  thread_t *shellCreateStatic(const ShellConfig *scp, void *wsp,
+			      size_t size, tprio_t prio);
+#if  SHELL_DYNAMIC_ENTRIES_NUMBER
   bool shellAddEntry(const ShellCommand sc);
+#endif
   bool shellGetLine(BaseSequentialStream *chp, char *line, unsigned size);
   void modeAlternate (void (*) (uint8_t c, uint32_t mode), uint32_t mode);
   void modeShell (void);
