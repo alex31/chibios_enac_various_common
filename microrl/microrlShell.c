@@ -380,7 +380,6 @@ static THD_FUNCTION(shell_thread, p) {
  * @brief   Shell manager initialization.
  */
 void shellInit(void) {
-
   chEvtObjectInit(&shell_terminated);
   microrl_init (&rl, microrlPrint);
   microrl_set_execute_callback (&rl, &microrlExecute);

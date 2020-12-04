@@ -21,14 +21,15 @@
 /**
  * @brief   Command handler function type.
  */
-typedef void (*shellcmd_t)(BaseSequentialStream *chp, int argc, const char * const argv[]);
+typedef void (shellcmd_f)(BaseSequentialStream *chp, int argc, const char * const argv[]);
+
 
 /**
  * @brief   Custom command entry type.
  */
 typedef struct {
   const char            *sc_name;           /**< @brief Command name.       */
-  shellcmd_t            sc_function;        /**< @brief Command function.   */
+  shellcmd_f            *sc_function;        /**< @brief Command function.   */
 } ShellCommand;
 
 /**
