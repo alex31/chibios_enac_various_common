@@ -444,7 +444,7 @@ bool shellAddEntry(const ShellCommand sc)
     return false;
   }
   lcp->sc_function = sc.sc_function;
-  lcp->sc_name = sc.sc_name;
+  lcp->sc_name = sc.sc_function == NULL ? NULL : sc.sc_name;
   *(++lcp) = (ShellCommand){NULL, NULL};
   
   chMtxUnlock(&mut);
