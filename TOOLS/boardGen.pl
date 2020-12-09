@@ -19,7 +19,7 @@ use Data::Dumper;
 
 # linux, windows, standard path of standalone install
 my @CubeMXRootDir = (
-    $ENV{HOME} . '/STM32CubeMX',
+    ($ENV{HOME} // "") . '/STM32CubeMX',
     '/usr/local/STMicroelectronics/STM32Cube/STM32CubeMX',
     'C:\Program Files (x86)\STMicroelectronics\STM32Cube\STM32CubeMX',
     'C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeMX'
