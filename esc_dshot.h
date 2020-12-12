@@ -141,7 +141,7 @@ void     dshotSendThrottles(DSHOTDriver *driver, const uint16_t throttles[DSHOT_
 void     dshotSendSpecialCommand(DSHOTDriver *driver, const uint8_t index, const dshot_special_commands_t specmd);
 
 uint32_t dshotGetCrcErrorsCount(DSHOTDriver *driver);
-const DshotTelemetry *dshotGetTelemetry(const DSHOTDriver *driver, const uint32_t index);
+DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index);
 
 
 /*
@@ -166,8 +166,9 @@ typedef union {
 typedef struct {
   DshotPacket       dp[DSHOT_CHANNELS];
   DshotTelemetry    dt[DSHOT_CHANNELS];
-  uint8_t  currentTlmQry;
+  mutex_t	    tlmMtx[DSHOT_CHANNELS];
   volatile bool	    onGoingQry;
+  uint8_t  currentTlmQry;
 } DshotPackets;
 
 

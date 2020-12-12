@@ -149,6 +149,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   for (size_t j=0; j<DSHOT_CHANNELS; j++) {
     pwmEnableChannel(driver->config->pwmp, j, 0);
     driver->dshotMotors.dp[j] =  makeDshotPacket(0,0);
+    chMtxObjectInit(&driver->dshotMotors.tlmMtx[j]);
   }
   driver->dshotMotors.onGoingQry = false;
   driver->dshotMotors.currentTlmQry = 0U;
@@ -298,12 +299,15 @@ uint32_t dshotGetCrcErrorsCount(DSHOTDriver *driver)
  *
  * @param[in] driver    pointer to the @p DSHOTDriver object
  * @param[in] index     channel : [0..3] or [0..1] depending on driver used
- * @return    pointer on a telemetry structure
+ * @return    telemetry structure by copy
  * @api
  */
-const DshotTelemetry *dshotGetTelemetry(const DSHOTDriver *driver, const uint32_t index)
+DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
 {
-  return &driver->dshotMotors.dt[index];
+  chMtxLock(&driver->dshotMotors.tlmMtx[index]);
+  const DshotTelemetry tlm = driver->dshotMotors.dt[index];
+  chMtxUnlock(&driver->dshotMotors.tlmMtx[index]);
+  return tlm;
 }
 
 
@@ -432,7 +436,8 @@ static size_t   getTimerWidth(const PWMDriver *pwmp)
 static noreturn void dshotTlmRec (void *arg)
 {
   DSHOTDriver *driver = (DSHOTDriver *) arg;
-
+  DshotTelemetry tlm;
+  
   msg_t escIdx = 0;
 
   chRegSetThreadName("dshotTlmRec");
@@ -440,17 +445,19 @@ static noreturn void dshotTlmRec (void *arg)
     chMBFetchTimeout(&driver->mb,  &escIdx, TIME_INFINITE);
     const uint32_t idx = escIdx;
     const bool success =
-      (sdReadTimeout(driver->config->tlm_sd, driver->dshotMotors.dt[idx].rawData, sizeof(DshotTelemetry),
+      (sdReadTimeout(driver->config->tlm_sd, tlm.rawData, sizeof(DshotTelemetry),
                      TIME_MS2I(DSHOT_TELEMETRY_TIMEOUT_MS)) == sizeof(DshotTelemetry));
     if (!success ||
-        (calculateCrc8(driver->dshotMotors.dt[idx].rawData,
-                       sizeof(driver->dshotMotors.dt[idx].rawData)) != driver->dshotMotors.dt[idx].crc8)) {
+        (calculateCrc8(tlm.rawData, sizeof(tlm.rawData)) != tlm.crc8)) {
       // empty buffer to resync
       while (sdGetTimeout(driver->config->tlm_sd, TIME_IMMEDIATE) >= 0) {};
-      memset(driver->dshotMotors.dt[idx].rawData, 0U, sizeof(DshotTelemetry));
+      memset(tlm.rawData, 0U, sizeof(DshotTelemetry));
       // count errors
       driver->crc_errors++;
     }
+    chMtxLock(&driver->dshotMotors.tlmMtx[idx]);
+    driver->dshotMotors.dt[idx] = tlm;
+    chMtxUnlock(&driver->dshotMotors.tlmMtx[idx]);
     driver->dshotMotors.onGoingQry = false;
   }
 }
