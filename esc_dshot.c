@@ -267,10 +267,10 @@ void dshotSendFrame(DSHOTDriver *driver)
     if ((driver->config->tlm_sd != NULL) &&
         (driver->dshotMotors.onGoingQry == false)) {
       driver->dshotMotors.onGoingQry = true;
-      const uint32_t index = (driver->dshotMotors.currentTlmQry + 1) % DSHOT_CHANNELS;
-      driver->dshotMotors.currentTlmQry = index;
+      const msg_t index = (driver->dshotMotors.currentTlmQry + 1U) % DSHOT_CHANNELS;
+      driver->dshotMotors.currentTlmQry = (uint8_t) index;
       setDshotPacketTlm(&driver->dshotMotors.dp[index], true);
-      chMBPostTimeout(&driver->mb, driver->dshotMotors.currentTlmQry, TIME_IMMEDIATE);
+      chMBPostTimeout(&driver->mb, index, TIME_IMMEDIATE);
     }
 
     buildDshotDmaBuffer(&driver->dshotMotors, driver->config->dma_buf, getTimerWidth(driver->config->pwmp));
@@ -433,11 +433,11 @@ static noreturn void dshotTlmRec (void *arg)
 {
   DSHOTDriver *driver = (DSHOTDriver *) arg;
 
-  uint32_t escIdx = 0;
+  msg_t escIdx = 0;
 
   chRegSetThreadName("dshotTlmRec");
   while (true) {
-    chMBFetchTimeout(&driver->mb, (msg_t *) &escIdx, TIME_INFINITE);
+    chMBFetchTimeout(&driver->mb,  &escIdx, TIME_INFINITE);
     const uint32_t idx = escIdx;
     const bool success =
       (sdReadTimeout(driver->config->tlm_sd, driver->dshotMotors.dt[idx].rawData, sizeof(DshotTelemetry),

@@ -17,16 +17,6 @@
  */
 #define DSHOT_ALL_MOTORS 255
 
-/**
- * @brief   Driver state machine possible states.
- */
-typedef enum {
-  DSHOT_UNINIT = 0,                       /**< Not initialized.          */
-  DSHOT_STOP,                             /**< Stopped.                  */
-  DSHOT_READY,                            /**< Ready.                    */
-  DSHOT_ONGOING_TELEMETRY_QUERY,          /**< Transfering.              */
-  DSHOT_ERROR                             /**< Transfert error.          */
-} dshotstate_t;
 
 /*
   DshotSettingRequest (KISS24). Spin direction,
@@ -176,7 +166,7 @@ typedef union {
 typedef struct {
   DshotPacket       dp[DSHOT_CHANNELS];
   DshotTelemetry    dt[DSHOT_CHANNELS];
-  volatile uint8_t  currentTlmQry;
+  uint8_t  currentTlmQry;
   volatile bool	    onGoingQry;
 } DshotPackets;
 
