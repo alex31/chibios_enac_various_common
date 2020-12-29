@@ -6,7 +6,6 @@
 #include "esc_dshot_config.h"
 
 #ifndef DSHOT_CHANNEL_FIRST_INDEX
-#error DSHOT_CHANNEL_FIRST_INDEX must be defined
 #define DSHOT_CHANNEL_FIRST_INDEX 0U
 #endif
 
@@ -124,9 +123,11 @@ typedef struct  {
   DshotDmaBuffer *dma_buf;
 
   /**
-   * @brief   DMA memory is in a cached section and beed to be flushed
+   * @brief   DMA memory is in a cached section and need to be flushed
    */
+#if __DCACHE_PRESENT
   bool		 dcache_memory_in_use;
+#endif
 } DSHOTConfig;
 
 
@@ -168,7 +169,7 @@ typedef struct {
   DshotTelemetry    dt[DSHOT_CHANNELS];
   mutex_t	    tlmMtx[DSHOT_CHANNELS];
   volatile bool	    onGoingQry;
-  uint8_t  currentTlmQry;
+  volatile uint8_t  currentTlmQry;
 } DshotPackets;
 
 
@@ -195,16 +196,6 @@ struct  DSHOTDriver {
    * @brief DMA driver associated with pwm timer
    */
   DMADriver	dmap;
-
-  /**
-   * @brief mailbox buffer for dshot telemetry thread
-   */
-  msg_t  _mbBuf[1];
-
-  /**
-   * @brief mailbox for dshot telemetry thread
-   */
-  mailbox_t mb;
 
   /**
    * @brief number of crc errors
