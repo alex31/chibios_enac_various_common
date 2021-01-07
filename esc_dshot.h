@@ -124,7 +124,7 @@ typedef struct  {
 
 #if __DCACHE_PRESENT
   /**
-   * @brief   DMA memory is in a cached section and beed to be flushed
+   * @brief   DMA memory is in a cached section and need to be flushed
    */
   bool		 dcache_memory_in_use;
 #endif

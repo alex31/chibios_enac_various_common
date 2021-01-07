@@ -315,7 +315,7 @@ typedef struct  {
   uint8_t		msize; // 1,2,4
 #if __DCACHE_PRESENT
   /**
-   * @brief   DMA memory is in a cached section and beed to be flushed
+   * @brief   DMA memory is in a cached section and need to be flushed
    */
 bool		dcache_memory_in_use;
 #endif
