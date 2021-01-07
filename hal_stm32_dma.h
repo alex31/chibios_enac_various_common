@@ -313,9 +313,9 @@ typedef struct  {
    * @brief   DMA memory data granurality in bytes (1,2,4)
    */
   uint8_t		msize; // 1,2,4
-#ifdef __DCACHE_PRESENT
+#if __DCACHE_PRESENT
   /**
-   * @brief   DMA memory is in a cached section and beed to be flushed
+   * @brief   DMA memory is in a cached section and need to be flushed
    */
 bool		dcache_memory_in_use;
 #endif
@@ -402,7 +402,7 @@ struct DMADriver {
    */
   uint32_t		     dmamode;
 
-#ifdef __DCACHE_PRESENT
+#if __DCACHE_PRESENT
   /**
    * @brief	periph address (or destination memory in case of M2M)
    */

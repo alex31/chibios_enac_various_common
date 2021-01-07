@@ -357,7 +357,7 @@ F7
 #error "section defined only for STM32F3, STM32F4, STM32L4 and STM32F7"
 #endif
 
-#if (!defined (__DCACHE_PRESENT) || (__DCACHE_PRESENT != 0))
+#if __DCACHE_PRESENT
 #define CACHE_ALIGNED(var) var __attribute__ ((aligned(32)))
 #else
 #define CACHE_ALIGNED(var) var
