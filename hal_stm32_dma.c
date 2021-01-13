@@ -3,10 +3,13 @@
 /*
   TODO :
 
+  DOUBLE BUFFER MODE :
+    implement inline setter getter for mem0p : depending on opMode
 
+===============================================================
   ° split lld and hardware independant code : hal_stm32_dma et hal_lld_stm32_dma
 
-  ° port to H7,L4+ : bdma, dmav3, mdma+dmamux
+  ° port to H7,L4+ : dmamux, bdma, mdma
 
   ° allow fifo burst when STM32_DMA_USE_ASYNC_TIMOUT is true by forcing a flush of the fifo : could be
   done disabling stream : should flush fifo and trig full code ISR. full code ISR should re-enable stream
@@ -22,6 +25,7 @@
  * @param[in] flags     pre-shifted content of the ISR register
  */
 static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags);
+
 static inline uint32_t getFCR_FS(const DMADriver *dmap) {
   return (dmap->dmastream->stream->FCR & DMA_SxFCR_FS_Msk);
 }
@@ -64,7 +68,11 @@ void dmaObjectInit(DMADriver *dmap)
 bool dmaStart(DMADriver *dmap, const DMAConfig *cfg)
 {
   osalDbgCheck((dmap != NULL) && (cfg != NULL));
+  osalDbgAssert((cfg->opMode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (!STM32_DMA_USE_ASYNC_TIMOUT),
+                "STM32_DMA_USE_ASYNC_TIMOUT not yet implemented in DMA_CONTINUOUS_DOUBLE_BUFFER mode");
 
+  osalDbgAssert((cfg->opMode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (cfg->next_cb != NULL),
+                "DMA_CONTINUOUS_DOUBLE_BUFFER mode implies next_cb not NULL");
   osalSysLock();
   osalDbgAssert((dmap->state == DMA_STOP) || (dmap->state == DMA_READY),
                 "invalid state");
@@ -146,6 +154,13 @@ bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp,  void * mem0p, c
 bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p, const size_t size)
 {
   osalDbgCheckClassI();
+
+  if (dmap->config->opMode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
+    osalDbgAssert(mem0p == NULL,
+		  "in double buffer mode memory pointer is dynamically completed by next_cb callback");
+    mem0p = dmap->config->next_cb(dmap, size);    
+  }
+  
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
   if (size != dmap->size) {
     osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
@@ -200,7 +215,6 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
 
 # endif //  STM32_DMA_ADVANCED
   }
-
 #endif // CH_DBG_ENABLE_ASSERTS != FALSE
   dmap->state    = DMA_ACTIVE;
 
@@ -304,7 +318,7 @@ msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, 
 
   osalSysLock();
   osalDbgAssert(dmap->thread == NULL, "already waiting");
-  osalDbgAssert(dmap->config->circular == false, "blocking API is incompatible with circular mode");
+  osalDbgAssert(dmap->config->opMode == DMA_ONESHOT, "blocking API is incompatible with circular modes");
   dmaStartTransfertI(dmap, periphp, mem0p, size);
   msg = osalThreadSuspendTimeoutS(&dmap->thread, timeout);
   if (msg != MSG_OK) {
@@ -405,12 +419,12 @@ bool dma_lld_start(DMADriver *dmap)
   default: osalDbgAssert(false, "direction not set or incorrect");
   }
 
-  uint32_t isr_flags = cfg->circular ? 0UL: STM32_DMA_CR_TCIE;
+  uint32_t isr_flags = cfg->opMode == DMA_ONESHOT ? STM32_DMA_CR_TCIE : 0UL;
 
   if (cfg->direction != DMA_DIR_M2M) {
     if (cfg->end_cb) {
-      isr_flags |=STM32_DMA_CR_TCIE;
-      if (cfg->circular) {
+      isr_flags |= STM32_DMA_CR_TCIE;
+      if (cfg->opMode == DMA_CONTINUOUS_HALF_BUFFER) {
 	isr_flags |= STM32_DMA_CR_HTIE;
       }
     }
@@ -419,7 +433,7 @@ bool dma_lld_start(DMADriver *dmap)
   if (cfg->error_cb) {
     isr_flags |= STM32_DMA_CR_DMEIE | STM32_DMA_CR_TCIE;
   }
-
+  
 #if CH_KERNEL_MAJOR < 6
   dmap->dmastream =  STM32_DMA_STREAM(cfg->stream);
 #endif
@@ -433,7 +447,8 @@ bool dma_lld_start(DMADriver *dmap)
 
   dmap->dmamode = STM32_DMA_CR_PL(cfg->dma_priority) |
     dir_msk | psize_msk | msize_msk | isr_flags |
-    (cfg->circular ? STM32_DMA_CR_CIRC : 0UL) |
+    (cfg->opMode == DMA_CONTINUOUS_HALF_BUFFER ? STM32_DMA_CR_CIRC : 0UL) |
+    (cfg->opMode == DMA_CONTINUOUS_DOUBLE_BUFFER ? STM32_DMA_CR_DBM : 0UL) |
     (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
     (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL)
 
@@ -602,7 +617,7 @@ bool dma_lld_start(DMADriver *dmap)
 
   if (cfg->direction == DMA_DIR_M2M) {
     osalDbgAssert(dmap->controller == 2, "M2M not available on DMA1");
-    osalDbgAssert(cfg->circular == false, "M2M not available in circular mode");
+    osalDbgAssert(cfg->opMode == DMA_ONESHOT, "M2M not available in circular modes");
   }
 
 
@@ -672,6 +687,9 @@ bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0
   dmap->size = size;
   dmaStreamSetPeripheral(dmap->dmastream, periphp);
   dmaStreamSetMemory0(dmap->dmastream, mem0p);
+  if (dmap->config->opMode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
+    dmaStreamSetMemory1(dmap->dmastream, dmap->config->next_cb(dmap, size));
+  }
   dmaStreamSetTransactionSize(dmap->dmastream, size);
   dmaStreamSetMode(dmap->dmastream, dmap->dmamode);
 #if STM32_DMA_ADVANCED
@@ -781,7 +799,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
 void dma_lld_serve_timeout_interrupt(void *arg)
 {
   DMADriver *dmap = (DMADriver *) arg;
-  if (dmap->config->circular) {
+  if (dmap->config->opMode != DMA_ONESHOT) {
     chSysLockFromISR();
     chVTSetI(&dmap->vt, dmap->config->timeout,
 	     &dma_lld_serve_timeout_interrupt, (void *) dmap);
@@ -790,3 +808,19 @@ void dma_lld_serve_timeout_interrupt(void *arg)
   async_timout_enabled_call_end_cb(dmap, FROM_TIMOUT_CODE);
 }
 #endif
+
+
+
+void* dma_lld_set_next_double_buffer(DMADriver *dmap, void *nextBuffer)
+{
+  void *lastBuffer;
+
+  if (dmaStreamGetCurrentTarget(dmap->dmastream)) {
+    lastBuffer = (void *) dmap->dmastream->stream->M0AR;
+    dmap->dmastream->stream->M0AR = (uint32_t) nextBuffer;
+  } else {
+    lastBuffer = (void *) dmap->dmastream->stream->M1AR;
+    dmap->dmastream->stream->M1AR = (uint32_t) nextBuffer;
+  }
+  return lastBuffer;
+}

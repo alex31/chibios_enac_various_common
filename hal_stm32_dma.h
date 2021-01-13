@@ -72,7 +72,7 @@ typedef enum {
   DMA_ERR_DIRECTMODE_ERROR = 1U << 1U,          /**< DMA Direct Mode failure.      */
   DMA_ERR_FIFO_ERROR       = 1U << 2U,          /**< DMA FIFO error.  */
   DMA_ERR_FIFO_FULL        = 1U << 3U,          /**< DMA FIFO overrun */
-  DMA_ERR_FIFO_EMPTY       = 1U << 4U,          /**< DMA FIFO underrun. */
+  DMA_ERR_FIFO_EMPTY       = 1U << 4U           /**< DMA FIFO underrun. */
 } dmaerrormask_t;
 
 /**
@@ -80,9 +80,18 @@ typedef enum {
  */
 typedef enum {
   DMA_DIR_P2M = 1,           /**< PERIPHERAL to MEMORY  */
-  DMA_DIR_M2P = 2,           /**< MEMORY to PERIPHERAL  */
-  DMA_DIR_M2M = 3,           /**< MEMORY to MEMORY      */
+  DMA_DIR_M2P,           /**< MEMORY to PERIPHERAL  */
+  DMA_DIR_M2M           /**< MEMORY to MEMORY      */
 } dmadirection_t;
+
+  /**
+ * @brief   DMA transfert memory mode
+ */
+typedef enum {
+  DMA_ONESHOT = 1,			/**< One transert then stop  */
+  DMA_CONTINUOUS_HALF_BUFFER,       /**< Continuous mode to/from the same buffer */
+  DMA_CONTINUOUS_DOUBLE_BUFFER     /**< Continuous mode to/from differents buffers */
+} dmaopmode_t;
 
 /**
  * @brief   Type of a structure representing an DMA driver.
@@ -94,10 +103,20 @@ typedef struct DMADriver DMADriver;
  *
  * @param[in] dmap      pointer to the @p DMADriver object triggering the
  *                      callback
- * @param[in] buffer    pointer to the most recent samples data
+ * @param[in] buffer    pointer to the most recent dma data
  * @param[in] n         number of buffer rows available starting from @p buffer
  */
 typedef void (*dmacallback_t)(DMADriver *dmap, void *buffer, const size_t n);
+
+/**
+ * @brief   DMA next buffer query callback type.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object triggering the
+ *                      callback
+ * @param[in] n         number of buffer rows available starting from @p buffer
+ * @return              pointer to the next to be used dma buffer 
+ */
+typedef void * (*dmanextcallback_t)(DMADriver *dmap, const size_t n);
 
 
 /**
@@ -265,9 +284,9 @@ typedef struct  {
 
 
   /**
-   * @brief   Enables the circular buffer mode for the stream.
+   * @brief   one shot, or circular half buffer, or circular double buffers
    */
-  bool			circular;
+  dmaopmode_t opMode;
 
 
   /**
@@ -275,6 +294,15 @@ typedef struct  {
    */
   dmacallback_t         end_cb;
 
+#if !STM32_DMA_USE_ASYNC_TIMOUT
+  /**
+   * @brief   Next data buffer callback function associated to the stream or @p NULL.
+   * @note    Mandatory in the DMA_CONTINUOUS_DOUBLE_BUFFER mode
+   *	      For now not compatible with STM32_DMA_USE_ASYNC_TIMOUT
+   */
+  dmanextcallback_t     next_cb;
+#endif
+  
   /**
    * @brief   Error callback or @p NULL.
    */
@@ -483,6 +511,8 @@ void  dma_lld_stop_transfert(DMADriver *dmap);
 void dma_lld_serve_timeout_interrupt(void *arg);
 #endif
 
+void* dma_lld_set_next_double_buffer(DMADriver *dmap, void *nextBuffer);
+
 #if STM32_DMA_USE_ASYNC_TIMOUT
 typedef enum {FROM_TIMOUT_CODE, FROM_HALF_CODE, FROM_FULL_CODE, FROM_NON_CIRCULAR_CODE} CbCallContext;
 static inline void async_timout_enabled_call_end_cb(DMADriver *dmap, const CbCallContext context)
@@ -548,7 +578,7 @@ static inline void _dma_isr_half_code(DMADriver *dmap) {
 }
 
 static inline void _dma_isr_full_code(DMADriver *dmap) {
-  if (dmap->config->circular) {
+  if (dmap->config->opMode == DMA_CONTINUOUS_HALF_BUFFER) {
 #if STM32_DMA_USE_ASYNC_TIMOUT
     if (dmap->config->timeout != TIME_INFINITE) {
       chSysLockFromISR();
@@ -573,7 +603,7 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
     }
 #endif
   }
-  else {  // not circular
+  else if (dmap->config->opMode == DMA_ONESHOT) {  // not circular
     /* End transfert.*/
 #if STM32_DMA_USE_ASYNC_TIMOUT
     if (dmap->config->timeout != TIME_INFINITE) {
@@ -598,6 +628,13 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
       dmap->state = DMA_READY;
     }
     _dma_wakeup_isr(dmap);
+  } else { // CONTINUOUS_DOUBLE_BUFFER
+    /* Next buffer handling */
+    void* memXp = dma_lld_set_next_double_buffer(dmap, dmap->config->next_cb(dmap, dmap->size));
+    /* Callback handling.*/
+    if (dmap->config->end_cb != NULL) {
+      dmap->config->end_cb(dmap, memXp, dmap->size);
+    }
   }
 }
 
