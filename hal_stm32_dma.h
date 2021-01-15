@@ -49,6 +49,9 @@ extern "C" {
 #define STM32_DMA_SUPPORTS_CSELR   FALSE
 #endif
 
+#if  !defined(STM32_DMA_DUMMY_MEMORY_AREA_ADDRESS) || defined(__DOXYGEN__)
+#define  STM32_DMA_DUMMY_MEMORY_AREA_ADDRESS 0x80000000
+#endif   
 
 /**
  * @brief   Driver state machine possible states.
@@ -630,9 +633,12 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
     _dma_wakeup_isr(dmap);
   } else { // CONTINUOUS_DOUBLE_BUFFER
     /* Next buffer handling */
-    void* memXp = dma_lld_set_next_double_buffer(dmap, dmap->config->next_cb(dmap, dmap->size));
+    void* const rawNextBuff =  dmap->config->next_cb(dmap, dmap->size);
+    void* const nextBuff = rawNextBuff ? rawNextBuff : (void *) STM32_DMA_DUMMY_MEMORY_AREA_ADDRESS;
+    void* const memXp = dma_lld_set_next_double_buffer(dmap, nextBuff);
     /* Callback handling.*/
-    if (dmap->config->end_cb != NULL) {
+    if ((dmap->config->end_cb != NULL) &&
+	(memXp != (void *) STM32_DMA_DUMMY_MEMORY_AREA_ADDRESS)){
       dmap->config->end_cb(dmap, memXp, dmap->size);
     }
   }
