@@ -40,9 +40,12 @@
  */
 static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags);
 
+#if STM32_DMA_ADVANCED
 static inline uint32_t getFCR_FS(const DMADriver *dmap) {
   return (dmap->dmastream->stream->FCR & DMA_SxFCR_FS_Msk);
 }
+#endif
+
 void dmaObjectInit(DMADriver *dmap)
 {
   osalDbgCheck(dmap != NULL);
@@ -768,7 +771,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
 {
 
   /* DMA errors handling.*/
-#if CH_DBG_SYSTEM_STATE_CHECK
+#if CH_DBG_SYSTEM_STATE_CHECK && STM32_DMA_ADVANCED
   const uint32_t feif_msk = dmap->config->fifo != 0U ? STM32_DMA_ISR_FEIF : 0U;
 #else
   static const uint32_t feif_msk = 0U;
@@ -780,9 +783,12 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
     const dmaerrormask_t err =
       ( (flags & STM32_DMA_ISR_TEIF)  ? DMA_ERR_TRANSFER_ERROR : 0UL) |
       ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL) |
-      ( (flags & feif_msk)  ? DMA_ERR_FIFO_ERROR : 0UL) |
-      ( getFCR_FS(dmap) == (0b100 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_EMPTY: 0UL) |
-      ( getFCR_FS(dmap) == (0b101 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_FULL: 0UL);
+      ( (flags & feif_msk)  ? DMA_ERR_FIFO_ERROR : 0UL)
+#if STM32_DMA_ADVANCED
+      | ( getFCR_FS(dmap) == (0b100 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_EMPTY: 0UL) 
+      | ( getFCR_FS(dmap) == (0b101 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_FULL: 0UL)
+#endif
+      ;
 
     _dma_isr_error_code(dmap, err);
   } else {

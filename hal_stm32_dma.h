@@ -71,6 +71,10 @@ extern "C" {
 #define  STM32_DMA_DUMMY_MEMORY_AREA_ADDRESS 0x80000000
 #endif   
 
+#if  !defined(__DCACHE_PRESENT) 
+#define  __DCACHE_PRESENT FALSE
+#endif   
+
 /**
  * @brief   Driver state machine possible states.
  */
