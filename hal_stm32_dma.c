@@ -4,7 +4,12 @@
   TODO :
 
   DOUBLE BUFFER MODE :
-    implement inline setter getter for mem0p : depending on opMode
+    ° TESTER allocation error counter, getter, resetter
+    ° DOUBLE_BUFFER_MODE (des)activable par une macro
+    ° impl TIMEOUT pour le double buffer mode
+    ° implement inline setter getter for mem0p : depending on opMode
+    ° doc doxygen
+    ° user data in callback ??
 
 ===============================================================
   ° split lld and hardware independant code : hal_stm32_dma et hal_lld_stm32_dma
@@ -16,6 +21,15 @@
   after a timout.
 
 */
+
+
+#if (! STM32_DMA_ADVANCED) && STM32_DMA_USE_DOUBLE_BUFFER
+#error "STM32_DMA_USE_DOUBLE_BUFFER only available on DMAv2" 
+#endif
+
+#if (STM32_DMA_USE_ASYNC_TIMOUT) && STM32_DMA_USE_DOUBLE_BUFFER
+#error "STM32_DMA_USE_DOUBLE_BUFFER only not yet compatible with STM32_DMA_USE_ASYNC_TIMOUT"
+#endif
 
 
 /**
@@ -68,17 +82,22 @@ void dmaObjectInit(DMADriver *dmap)
 bool dmaStart(DMADriver *dmap, const DMAConfig *cfg)
 {
   osalDbgCheck((dmap != NULL) && (cfg != NULL));
+#if STM32_DMA_USE_DOUBLE_BUFFER
   osalDbgAssert((cfg->opMode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (!STM32_DMA_USE_ASYNC_TIMOUT),
                 "STM32_DMA_USE_ASYNC_TIMOUT not yet implemented in DMA_CONTINUOUS_DOUBLE_BUFFER mode");
 
   osalDbgAssert((cfg->opMode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (cfg->next_cb != NULL),
                 "DMA_CONTINUOUS_DOUBLE_BUFFER mode implies next_cb not NULL");
+#endif
   osalSysLock();
   osalDbgAssert((dmap->state == DMA_STOP) || (dmap->state == DMA_READY),
                 "invalid state");
   dmap->config = cfg;
   const bool statusOk = dma_lld_start(dmap);
   dmap->state = DMA_READY;
+#if  STM32_DMA_USE_DOUBLE_BUFFER
+  dmap->next_cb_errors = 0U;
+#endif  
   osalSysUnlock();
   return statusOk;
 }
@@ -155,11 +174,13 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
 {
   osalDbgCheckClassI();
 
+#if STM32_DMA_USE_DOUBLE_BUFFER
   if (dmap->config->opMode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
     osalDbgAssert(mem0p == NULL,
 		  "in double buffer mode memory pointer is dynamically completed by next_cb callback");
     mem0p = dmap->config->next_cb(dmap, size);    
   }
+#endif
   
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
   if (size != dmap->size) {
@@ -448,7 +469,9 @@ bool dma_lld_start(DMADriver *dmap)
   dmap->dmamode = STM32_DMA_CR_PL(cfg->dma_priority) |
     dir_msk | psize_msk | msize_msk | isr_flags |
     (cfg->opMode == DMA_CONTINUOUS_HALF_BUFFER ? STM32_DMA_CR_CIRC : 0UL) |
+#if  STM32_DMA_USE_DOUBLE_BUFFER
     (cfg->opMode == DMA_CONTINUOUS_DOUBLE_BUFFER ? STM32_DMA_CR_DBM : 0UL) |
+#endif
     (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
     (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL)
 
@@ -687,9 +710,11 @@ bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0
   dmap->size = size;
   dmaStreamSetPeripheral(dmap->dmastream, periphp);
   dmaStreamSetMemory0(dmap->dmastream, mem0p);
+#if  STM32_DMA_USE_DOUBLE_BUFFER
   if (dmap->config->opMode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
     dmaStreamSetMemory1(dmap->dmastream, dmap->config->next_cb(dmap, size));
   }
+#endif
   dmaStreamSetTransactionSize(dmap->dmastream, size);
   dmaStreamSetMode(dmap->dmastream, dmap->dmamode);
 #if STM32_DMA_ADVANCED
@@ -810,7 +835,7 @@ void dma_lld_serve_timeout_interrupt(void *arg)
 #endif
 
 
-
+#if  STM32_DMA_USE_DOUBLE_BUFFER
 void* dma_lld_set_next_double_buffer(DMADriver *dmap, void *nextBuffer)
 {
   void *lastBuffer;
@@ -824,3 +849,4 @@ void* dma_lld_set_next_double_buffer(DMADriver *dmap, void *nextBuffer)
   }
   return lastBuffer;
 }
+#endif
