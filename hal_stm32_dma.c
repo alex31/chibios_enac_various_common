@@ -5,11 +5,8 @@
 
   DOUBLE BUFFER MODE :
     ° TESTER allocation error counter, getter, resetter
-    ° DOUBLE_BUFFER_MODE (des)activable par une macro
     ° impl TIMEOUT pour le double buffer mode
-    ° implement inline setter getter for mem0p : depending on opMode
     ° doc doxygen
-    ° user data in callback ??
 
 ===============================================================
   ° split lld and hardware independant code : hal_stm32_dma et hal_lld_stm32_dma
@@ -522,7 +519,7 @@ bool dma_lld_start(DMADriver *dmap)
   osalDbgAssert(dmap->config->timeout != 0,
 		"timeout cannot be 0 if STM32_DMA_USE_ASYNC_TIMOUT is enabled");
   osalDbgAssert(!((dmap->config->timeout != TIME_INFINITE) && (dmap->config->fifo != 0)),
-		"timeout should be dynamicly disabled (dmap->config->timeout = TIME_INFINITE) "
+		"timeout should be dynamically disabled (dmap->config->timeout = TIME_INFINITE) "
 		"if STM32_DMA_USE_ASYNC_TIMOUT is enabled and fifo is enabled (fifo != 0)");
 
 #   endif
