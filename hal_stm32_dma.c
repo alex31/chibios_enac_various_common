@@ -4,9 +4,7 @@
   TODO :
 
   DOUBLE BUFFER MODE :
-    ° TESTER allocation error counter, getter, resetter
     ° impl TIMEOUT pour le double buffer mode
-    ° doc doxygen
 
 ===============================================================
   ° split lld and hardware independant code : hal_stm32_dma et hal_lld_stm32_dma
@@ -839,6 +837,18 @@ void dma_lld_serve_timeout_interrupt(void *arg)
 
 
 #if  STM32_DMA_USE_DOUBLE_BUFFER
+/**
+ * @brief   Common ISR code, switch memory pointer in double buffer mode
+ * @note    This macro is meant to be used in the low level drivers
+ *          implementation only. This function must be called as soon as
+ *          DMA has switched buffer.
+ *
+ * @param[in] dmap        pointer to the @p DMADriver object
+ * @param[in] nextBuffer  pointer to a buffer that is set in MEM0xP or MEM1xP
+ *			  the one which is not occupied beeing filled
+ *                        by DMA.
+ * @notapi
+ */
 void* dma_lld_set_next_double_buffer(DMADriver *dmap, void *nextBuffer)
 {
   void *lastBuffer;

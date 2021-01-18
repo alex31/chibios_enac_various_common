@@ -39,7 +39,7 @@ extern "C" {
 
 /**
  * @brief   Enables user data in the callback
- * @note    Disabling this option saves both code and data space.
+ * @note    Disabling this option saves data space.
  */
 #if !defined(STM32_DMA_DRIVER_USER_DATA_FIELD) || defined(__DOXYGEN__)
 #define STM32_DMA_DRIVER_USER_DATA_FIELD                FALSE
@@ -48,7 +48,7 @@ extern "C" {
 /**
  * @brief   Enables double buffer APIs.
  * @note    Disabling this option saves both code and data space.
- *          This option in only available on ADVANCED DMAV2 (F4, F7, H7)
+ *          This option in only available on ADVANCED DMAv2 (F4, F7, H7)
  */
 #if !defined(STM32_DMA_USE_DOUBLE_BUFFER) || defined(__DOXYGEN__)
 #define STM32_DMA_USE_DOUBLE_BUFFER               STM32_DMA_ADVANCED 
@@ -104,9 +104,9 @@ typedef enum {
  * @brief   DMA transfert direction
  */
 typedef enum {
-  DMA_DIR_P2M = 1,           /**< PERIPHERAL to MEMORY  */
+  DMA_DIR_P2M = 1,       /**< PERIPHERAL to MEMORY  */
   DMA_DIR_M2P,           /**< MEMORY to PERIPHERAL  */
-  DMA_DIR_M2M           /**< MEMORY to MEMORY      */
+  DMA_DIR_M2M            /**< MEMORY to MEMORY      */
 } dmadirection_t;
 
   /**
@@ -140,7 +140,7 @@ typedef void (*dmacallback_t)(DMADriver *dmap, void *buffer, const size_t n);
  *
  * @param[in] dmap      pointer to the @p DMADriver object triggering the
  *                      callback
- * @param[in] n         number of buffer rows available starting from @p buffer
+ * @param[in] n         number of buffer rows needed in the returned buffer pointer
  * @return              pointer to the next to be used dma buffer 
  */
 typedef void * (*dmanextcallback_t)(DMADriver *dmap, const size_t n);
@@ -527,7 +527,22 @@ void  dmaStopTransfertI(DMADriver *dmap);
 static  inline dmastate_t dmaGetState(DMADriver *dmap) {return dmap->state;}
 
 #if  STM32_DMA_USE_DOUBLE_BUFFER
+/**
+ * @brief   get double buffer allocation errors counter
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object triggering the
+ *                      callback
+ * @return		the number of allocation error since the last call to
+ *			dmaClearNextErrors
+ * @note		there is allocation error when nect_cb callback return NULL pointer
+ */
 static  inline dmastate_t dmaGetNextErrors(DMADriver *dmap) {return dmap->next_cb_errors;}
+/**
+ * @brief   clear double buffer allocation errors counter
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object triggering the
+ *                      callback
+ */
 static  inline void dmaClearNextErrors(DMADriver *dmap) {dmap->next_cb_errors = 0U;}
 #endif
 
