@@ -649,7 +649,6 @@ bool dma_lld_start(DMADriver *dmap)
   if (cfg->fifo) {
     dmap->fifomode = STM32_DMA_FCR_DMDIS | STM32_DMA_FCR_FEIE | fifo_msk;
   } else {
-    osalDbgAssert(cfg->direction != DMA_DIR_M2M, "fifo mode mandatory for M2M");
     osalDbgAssert(cfg->psize == cfg->msize,
 		  "msize == psize is mandatory when fifo is disabled");
     dmap->fifomode = 0U;
