@@ -81,10 +81,10 @@ bool dmaStart(DMADriver *dmap, const DMAConfig *cfg)
 {
   osalDbgCheck((dmap != NULL) && (cfg != NULL));
 #if STM32_DMA_USE_DOUBLE_BUFFER
-  osalDbgAssert((cfg->opMode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (!STM32_DMA_USE_ASYNC_TIMOUT),
+  osalDbgAssert((cfg->op_mode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (!STM32_DMA_USE_ASYNC_TIMOUT),
                 "STM32_DMA_USE_ASYNC_TIMOUT not yet implemented in DMA_CONTINUOUS_DOUBLE_BUFFER mode");
 
-  osalDbgAssert((cfg->opMode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (cfg->next_cb != NULL),
+  osalDbgAssert((cfg->op_mode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (cfg->next_cb != NULL),
                 "DMA_CONTINUOUS_DOUBLE_BUFFER mode implies next_cb not NULL");
 #endif
   osalSysLock();
@@ -173,7 +173,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
   osalDbgCheckClassI();
 
 #if STM32_DMA_USE_DOUBLE_BUFFER
-  if (dmap->config->opMode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
+  if (dmap->config->op_mode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
     osalDbgAssert(mem0p == NULL,
 		  "in double buffer mode memory pointer is dynamically completed by next_cb callback");
     mem0p = dmap->config->next_cb(dmap, size);    
@@ -337,7 +337,7 @@ msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, 
 
   osalSysLock();
   osalDbgAssert(dmap->thread == NULL, "already waiting");
-  osalDbgAssert(dmap->config->opMode == DMA_ONESHOT, "blocking API is incompatible with circular modes");
+  osalDbgAssert(dmap->config->op_mode == DMA_ONESHOT, "blocking API is incompatible with circular modes");
   dmaStartTransfertI(dmap, periphp, mem0p, size);
   msg = osalThreadSuspendTimeoutS(&dmap->thread, timeout);
   if (msg != MSG_OK) {
@@ -438,12 +438,12 @@ bool dma_lld_start(DMADriver *dmap)
   default: osalDbgAssert(false, "direction not set or incorrect");
   }
 
-  uint32_t isr_flags = cfg->opMode == DMA_ONESHOT ? STM32_DMA_CR_TCIE : 0UL;
+  uint32_t isr_flags = cfg->op_mode == DMA_ONESHOT ? STM32_DMA_CR_TCIE : 0UL;
 
   if (cfg->direction != DMA_DIR_M2M) {
     if (cfg->end_cb) {
       isr_flags |= STM32_DMA_CR_TCIE;
-      if (cfg->opMode == DMA_CONTINUOUS_HALF_BUFFER) {
+      if (cfg->op_mode == DMA_CONTINUOUS_HALF_BUFFER) {
 	isr_flags |= STM32_DMA_CR_HTIE;
       }
     }
@@ -466,9 +466,9 @@ bool dma_lld_start(DMADriver *dmap)
 
   dmap->dmamode = STM32_DMA_CR_PL(cfg->dma_priority) |
     dir_msk | psize_msk | msize_msk | isr_flags |
-    (cfg->opMode == DMA_CONTINUOUS_HALF_BUFFER ? STM32_DMA_CR_CIRC : 0UL) |
+    (cfg->op_mode == DMA_CONTINUOUS_HALF_BUFFER ? STM32_DMA_CR_CIRC : 0UL) |
 #if  STM32_DMA_USE_DOUBLE_BUFFER
-    (cfg->opMode == DMA_CONTINUOUS_DOUBLE_BUFFER ? STM32_DMA_CR_DBM : 0UL) |
+    (cfg->op_mode == DMA_CONTINUOUS_DOUBLE_BUFFER ? STM32_DMA_CR_DBM : 0UL) |
 #endif
     (cfg->inc_peripheral_addr ? STM32_DMA_CR_PINC : 0UL) |
     (cfg->inc_memory_addr ? STM32_DMA_CR_MINC : 0UL)
@@ -638,7 +638,7 @@ bool dma_lld_start(DMADriver *dmap)
 
   if (cfg->direction == DMA_DIR_M2M) {
     osalDbgAssert(dmap->controller == 2, "M2M not available on DMA1");
-    osalDbgAssert(cfg->opMode == DMA_ONESHOT, "M2M not available in circular modes");
+    osalDbgAssert(cfg->op_mode == DMA_ONESHOT, "M2M not available in circular modes");
   }
 
 
@@ -709,7 +709,7 @@ bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0
   dmaStreamSetPeripheral(dmap->dmastream, periphp);
   dmaStreamSetMemory0(dmap->dmastream, mem0p);
 #if  STM32_DMA_USE_DOUBLE_BUFFER
-  if (dmap->config->opMode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
+  if (dmap->config->op_mode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
     dmaStreamSetMemory1(dmap->dmastream, dmap->config->next_cb(dmap, size));
   }
 #endif
@@ -825,7 +825,7 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
 void dma_lld_serve_timeout_interrupt(void *arg)
 {
   DMADriver *dmap = (DMADriver *) arg;
-  if (dmap->config->opMode != DMA_ONESHOT) {
+  if (dmap->config->op_mode != DMA_ONESHOT) {
     chSysLockFromISR();
     chVTSetI(&dmap->vt, dmap->config->timeout,
 	     &dma_lld_serve_timeout_interrupt, (void *) dmap);

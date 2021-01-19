@@ -313,7 +313,7 @@ typedef struct  {
   /**
    * @brief   one shot, or circular half buffer, or circular double buffers
    */
-  dmaopmode_t opMode;
+  dmaopmode_t op_mode;
 
 
   /**
@@ -628,7 +628,7 @@ static inline void _dma_isr_half_code(DMADriver *dmap) {
 }
 
 static inline void _dma_isr_full_code(DMADriver *dmap) {
-  if (dmap->config->opMode == DMA_CONTINUOUS_HALF_BUFFER) {
+  if (dmap->config->op_mode == DMA_CONTINUOUS_HALF_BUFFER) {
 #if STM32_DMA_USE_ASYNC_TIMOUT
     if (dmap->config->timeout != TIME_INFINITE) {
       chSysLockFromISR();
@@ -653,7 +653,7 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
     }
 #endif
   }
-  else if (dmap->config->opMode == DMA_ONESHOT) {  // not circular
+  else if (dmap->config->op_mode == DMA_ONESHOT) {  // not circular
     /* End transfert.*/
 #if STM32_DMA_USE_ASYNC_TIMOUT
     if (dmap->config->timeout != TIME_INFINITE) {
