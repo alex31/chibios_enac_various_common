@@ -105,7 +105,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 #endif
     .inc_peripheral_addr = false,
     .inc_memory_addr = true,
-    .opMode = DMA_ONESHOT,
+    .op_mode = DMA_ONESHOT,
     .error_cb = NULL,
     .end_cb = NULL,
     .pburst = 0,
