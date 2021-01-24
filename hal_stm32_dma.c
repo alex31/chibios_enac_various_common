@@ -684,6 +684,13 @@ bool dma_lld_start(DMADriver *dmap)
 #endif
 }
 
+static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
+						    const size_t size)
+{
+  const uint32_t extent = ((uint32_t) memp | 0x1f) +
+    (size | 0x1f);
+  return extent > 0x1f ? size+0x20 : size;
+}
 
 /**
  * @brief   Starts a DMA transaction.
@@ -697,7 +704,9 @@ bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0
 #if __DCACHE_PRESENT
   if (dmap->config->dcache_memory_in_use &&
       (dmap->config->direction != DMA_DIR_P2M)) {
-    cacheBufferFlush(mem0p, size * dmap->config->msize);
+    const size_t cacheSize = getCrossCacheBoundaryAwareSize(mem0p,
+						    size * dmap->config->msize);
+    cacheBufferFlush(mem0p, cacheSize);
   }
 #endif
   dmap->mem0p = mem0p;
@@ -793,14 +802,20 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
       if (dmap->config->dcache_memory_in_use)
 	  switch (dmap->config->direction) {
 	  case DMA_DIR_M2P : break;
-	  case DMA_DIR_P2M :
-	    cacheBufferInvalidate(dmap->mem0p,
-				  dmap->size * dmap->config->msize);
+	  case DMA_DIR_P2M : {
+	    const size_t cacheSize =
+	      getCrossCacheBoundaryAwareSize(dmap->mem0p, dmap->size *
+					     dmap->config->msize);
+	    cacheBufferInvalidate(dmap->mem0p, cacheSize);
 	    break;
-	  case DMA_DIR_M2M :
-	    cacheBufferInvalidate(dmap->periphp,
-				  dmap->size * dmap->config->msize);
+	  }
+	  case DMA_DIR_M2M : {
+	    const size_t cacheSize =
+	      getCrossCacheBoundaryAwareSize((void *) dmap->periphp,
+					     dmap->size * dmap->config->psize);
+	    cacheBufferInvalidate(dmap->periphp, cacheSize);
 	    break;
+	  }
       }
 #endif
 
