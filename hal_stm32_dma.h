@@ -51,7 +51,7 @@ extern "C" {
  *          This option in only available on ADVANCED DMAv2 (F4, F7, H7)
  */
 #if !defined(STM32_DMA_USE_DOUBLE_BUFFER) || defined(__DOXYGEN__)
-#define STM32_DMA_USE_DOUBLE_BUFFER               STM32_DMA_ADVANCED 
+#define STM32_DMA_USE_DOUBLE_BUFFER               FALSE
 #endif
 
 

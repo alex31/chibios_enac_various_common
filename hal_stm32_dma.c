@@ -638,7 +638,6 @@ bool dma_lld_start(DMADriver *dmap)
 
   if (cfg->direction == DMA_DIR_M2M) {
     osalDbgAssert(dmap->controller == 2, "M2M not available on DMA1");
-    osalDbgAssert(cfg->op_mode == DMA_ONESHOT, "M2M not available in circular modes");
   }
 
 
