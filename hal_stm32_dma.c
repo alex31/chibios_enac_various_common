@@ -685,11 +685,15 @@ bool dma_lld_start(DMADriver *dmap)
 }
 
 static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
-						    const size_t size)
+						    const size_t dsize)
 {
-  const uint32_t extent = ((uint32_t) memp | 0x1f) +
-    (size | 0x1f);
-  return extent > 0x1f ? size+0x20 : size;
+  // L1 cache on F7 and H7 is organised of line of 32 bytes
+  static const size_t dcacheLineSize = 32U;
+
+  const uint32_t endp = ((uint32_t) memp % dcacheLineSize +
+			 dsize % dcacheLineSize);
+  return endp < dcacheLineSize ? dsize + dcacheLineSize :
+    dsize + dcacheLineSize*2U;
 }
 
 /**
