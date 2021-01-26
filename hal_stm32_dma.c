@@ -440,12 +440,13 @@ bool dma_lld_start(DMADriver *dmap)
 
   uint32_t isr_flags = cfg->op_mode == DMA_ONESHOT ? STM32_DMA_CR_TCIE : 0UL;
 
-  if (cfg->direction != DMA_DIR_M2M) {
-    if (cfg->end_cb) {
-      isr_flags |= STM32_DMA_CR_TCIE;
-      if (cfg->op_mode == DMA_CONTINUOUS_HALF_BUFFER) {
-	isr_flags |= STM32_DMA_CR_HTIE;
-      }
+  // in M2M mode, half buffer transfert ISR is disabled, but
+  // full buffer transfert complete ISR is enabled
+  if (cfg->end_cb) {
+    isr_flags |= STM32_DMA_CR_TCIE;
+    if ((cfg->direction != DMA_DIR_M2M) &&
+	(cfg->op_mode == DMA_CONTINUOUS_HALF_BUFFER)) {
+      isr_flags |= STM32_DMA_CR_HTIE;
     }
   }
 
