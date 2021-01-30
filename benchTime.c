@@ -7,7 +7,6 @@ benchResults doBench(const benchmarkFn_t fn, const size_t iter,
 		 void *userData)
 {
   benchResults br = {0, 0, UINT32_MAX, 0};
-  rtcnt_t tsall = chSysGetRealtimeCounterX();
 
   size_t i = iter;
   while (i--) {
@@ -16,8 +15,8 @@ benchResults doBench(const benchmarkFn_t fn, const size_t iter,
     const rtcnt_t diff = rtcntDiff(ts, chSysGetRealtimeCounterX());
     br.minMicroSeconds = MIN(br.minMicroSeconds, diff);
     br.maxMicroSeconds = MAX(br.maxMicroSeconds, diff);
+    br.totalMicroSeconds += diff;
   }
-  br.totalMicroSeconds = rtcntDiff(tsall, chSysGetRealtimeCounterX());
   br.meanMicroSeconds = br.totalMicroSeconds / iter;
 
   br.minMicroSeconds = RTC2US(STM32_SYSCLK, br.minMicroSeconds);
