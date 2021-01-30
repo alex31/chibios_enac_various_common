@@ -15,7 +15,7 @@ benchResults doBench(const benchmarkFn_t fn, const size_t iter,
     fn(userData);
     const rtcnt_t diff = rtcntDiff(ts, chSysGetRealtimeCounterX());
     br.minMicroSeconds = MIN(br.minMicroSeconds, diff);
-    br.maxMicroSeconds = MAX(br.minMicroSeconds, diff);
+    br.maxMicroSeconds = MAX(br.maxMicroSeconds, diff);
   }
   br.totalMicroSeconds = rtcntDiff(tsall, chSysGetRealtimeCounterX());
   br.meanMicroSeconds = br.totalMicroSeconds / iter;
