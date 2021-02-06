@@ -525,95 +525,15 @@ bool dma_lld_start(DMADriver *dmap)
 
 
   // lot of combination of parameters are forbiden, and some conditions must be meet
-  if (!cfg->msize !=  !cfg->psize) {
-    osalDbgAssert(false, "psize and msize should be enabled or disabled together");
+  if (!cfg->mburst !=  !cfg->pburst) {
+    osalDbgAssert(false, "pburst and mburst should be enabled or disabled together");
     return false;
   }
 
-  if (cfg->fifo) {
-    switch (cfg->msize) {
-    case 1: // msize 1
-      switch (cfg->mburst) {
-      case 4 : // msize 1 mburst 4
-	switch (cfg->fifo) {
-	case 1: break; // msize 1 mburst 4 fifo 1/4
-	case 2: break; // msize 1 mburst 4 fifo 2/4
-	case 3: break; // msize 1 mburst 4 fifo 3/4
-	case 4: break; // msize 1 mburst 4 fifo 4/4
-	}
-	break;
-      case 8 : // msize 1 mburst 8
-	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination;  // msize 1 mburst 8 fifo 1/4
-	case 2: break;			    // msize 1 mburst 8 fifo 2/4
-	case 3: goto forbiddenCombination;  // msize 1 mburst 8 fifo 3/4
-	case 4: break;			    // msize 1 mburst 8 fifo 4/4
-	}
-	break;
-      case 16 :  // msize 1 mburst 16
-	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination; // msize 1 mburst 16 fifo 1/4
-	case 2: goto forbiddenCombination; // msize 1 mburst 16 fifo 2/4
-	case 3: goto forbiddenCombination; // msize 1 mburst 16 fifo 3/4
-	case 4: break;			   // msize 1 mburst 16 fifo 4/4
-	}
-	break;
-      }
-      break;
-    case 2: // msize 2
-      switch (cfg->mburst) {
-      case 4 : // msize 2 mburst 4
-	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination; // msize 2 mburst 4 fifo 1/4
-	case 2: break;			   // msize 2 mburst 4 fifo 2/4
-	case 3: goto forbiddenCombination; // msize 2 mburst 4 fifo 3/4
-	case 4: break;			   // msize 2 mburst 4 fifo 4/4
-	}
-	break;
-      case 8 :
-	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination; // msize 2 mburst 8 fifo 1/4
-	case 2: goto forbiddenCombination; // msize 2 mburst 8 fifo 2/4
-	case 3: goto forbiddenCombination; // msize 2 mburst 8 fifo 3/4
-	case 4: break;			   // msize 2 mburst 8 fifo 4/4
-	}
-	break;
-      case 16 :
-	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination; // msize 2 mburst 16 fifo 1/4
-	case 2: goto forbiddenCombination; // msize 2 mburst 16 fifo 2/4
-	case 3: goto forbiddenCombination; // msize 2 mburst 16 fifo 3/4
-	case 4: goto forbiddenCombination; // msize 2 mburst 16 fifo 4/4
-	}
-      }
-      break;
-    case 4:
-      switch (cfg->mburst) {
-      case 4 :
-	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination; // msize 4 mburst 4 fifo 1/4
-	case 2: goto forbiddenCombination; // msize 4 mburst 4 fifo 2/4
-	case 3: goto forbiddenCombination; // msize 4 mburst 4 fifo 3/4
-	case 4: break;			   // msize 4 mburst 4 fifo 4/4
-	}
-	break;
-      case 8 :
-	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination; // msize 4 mburst 8 fifo 1/4
-	case 2: goto forbiddenCombination; // msize 4 mburst 8 fifo 2/4
-	case 3: goto forbiddenCombination; // msize 4 mburst 8 fifo 3/4
-	case 4: goto forbiddenCombination; // msize 4 mburst 8 fifo 4/4
-	}
-	break;
-      case 16 :
-	switch (cfg->fifo) {
-	case 1: goto forbiddenCombination; // msize 4 mburst 16 fifo 1/4
-	case 2: goto forbiddenCombination; // msize 4 mburst 16 fifo 2/4
-	case 3: goto forbiddenCombination; // msize 4 mburst 16 fifo 3/4
-	case 4: goto forbiddenCombination; // msize 4 mburst 16 fifo 4/4
-	}
-      }
-    }
+  // from RM0090, Table 48. FIFO threshold configurations
+  if (cfg->fifo && cfg->mburst) {
+    const size_t fifo_level = cfg->fifo * 4U;
+    osalDbgAssert(fifo_level % (cfg->mburst * cfg->msize) == 0, "threshold combination forbidden");
   }
 # endif
 
@@ -628,15 +548,12 @@ bool dma_lld_start(DMADriver *dmap)
     avoid permanent underrun or overrun conditions, depending on the DMA stream direction:
     If (PBURST × PSIZE) = FIFO_SIZE (4 words), FIFO_Threshold = 3/4 is forbidden
   */
-
   if ( ((cfg->pburst * cfg->psize) == STM32_DMA_FIFO_SIZE) && (cfg->fifo == 3))
     goto forbiddenCombination;
 
   /*
-    When memory-to-memory mode is used, the Circular and direct modes are not allowed.
     Only the DMA2 controller is able to perform memory-to-memory transfers.
   */
-
   if (cfg->direction == DMA_DIR_M2M) {
     osalDbgAssert(dmap->controller == 2, "M2M not available on DMA1");
   }
