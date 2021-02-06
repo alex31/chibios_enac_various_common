@@ -229,8 +229,12 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
       osalDbgAssert((((uint32_t) periphp) % cfg->pburst) == 0,
 		    "peripheral address alignment rule not respected");
    }
-    if ((cfg->periph_inc_size_4) 
-	osalDbgAssert(inc_peripheral_addr, "periph_inc_size_4 implies inc_peripheral_addr");
+    if (cfg->periph_inc_size_4) {
+      osalDbgAssert(cfg->inc_peripheral_addr,
+		    "periph_inc_size_4 implies enabling inc_peripheral_addr");
+      osalDbgAssert(cfg->fifo,
+		    "periph_inc_size_4 implies enabling fifo");
+    }
 
 # endif //  STM32_DMA_ADVANCED
   }
