@@ -627,7 +627,7 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
 bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
 {
 #if __DCACHE_PRESENT
-  if (dmap->config->dcache_memory_in_use &&
+  if (dmap->config->activate_dcache_sync &&
       (dmap->config->direction != DMA_DIR_P2M)) {
     const size_t cacheSize = getCrossCacheBoundaryAwareSize(mem0p,
 						    size * dmap->config->msize);
@@ -724,24 +724,25 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
        DMA error handler, in this case this interrupt is spurious.*/
     if (dmap->state == DMA_ACTIVE) {
 #if __DCACHE_PRESENT
-      if (dmap->config->dcache_memory_in_use)
+      if (dmap->config->activate_dcache_sync)
 	  switch (dmap->config->direction) {
 	  case DMA_DIR_M2P : break;
-	  case DMA_DIR_P2M : {
-	    const size_t cacheSize =
-	      getCrossCacheBoundaryAwareSize(dmap->mem0p, dmap->size *
-					     dmap->config->msize);
-	    cacheBufferInvalidate(dmap->mem0p, cacheSize);
+	  case DMA_DIR_P2M : if (dmap->mem0p >= (void *) 0x20000000) {
+	      const size_t cacheSize =
+		getCrossCacheBoundaryAwareSize(dmap->mem0p, dmap->size *
+					       dmap->config->msize);
+	      cacheBufferInvalidate(dmap->mem0p, cacheSize);
+	    }
+	    break;
+
+	  case DMA_DIR_M2M :  if (dmap->periphp >=  (void *) 0x20000000) {
+	      const size_t cacheSize =
+		getCrossCacheBoundaryAwareSize((void *) dmap->periphp,
+					       dmap->size * dmap->config->psize);
+	      cacheBufferInvalidate(dmap->periphp, cacheSize);
+	    }
 	    break;
 	  }
-	  case DMA_DIR_M2M : {
-	    const size_t cacheSize =
-	      getCrossCacheBoundaryAwareSize((void *) dmap->periphp,
-					     dmap->size * dmap->config->psize);
-	    cacheBufferInvalidate(dmap->periphp, cacheSize);
-	    break;
-	  }
-      }
 #endif
 
       if ((flags & STM32_DMA_ISR_TCIF) != 0) {

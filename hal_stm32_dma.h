@@ -371,7 +371,10 @@ typedef struct  {
   /**
    * @brief   DMA memory is in a cached section and need to be flushed
    */
-bool		dcache_memory_in_use;
+  union {
+    bool		dcache_memory_in_use; // this name was hardly meaningfull
+    bool		activate_dcache_sync;
+  };
 #endif
 #if STM32_DMA_ADVANCED
 #define STM32_DMA_FIFO_SIZE 16 // hardware specification for dma V2
