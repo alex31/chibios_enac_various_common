@@ -258,7 +258,7 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
       plus_on_float = TRUE;
     }
     filler = ' ';
-    if (*fmt == '.') {
+    if ((*fmt == '.') || (*fmt == '0')) {
       fmt++;
       filler = '0';
 #if CHPRINTF_USE_FLOAT
