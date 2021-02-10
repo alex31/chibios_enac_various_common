@@ -609,6 +609,9 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
 						    const size_t dsize)
 {
   // L1 cache on F7 and H7 is organised of line of 32 bytes
+  // returned size is not 32 bytes aligned by a mask operation
+  // because cache management does internal mask and this operation
+  // would be useless
   static const size_t dcacheLineSize = 32U;
 
   const uint32_t endp = ((uint32_t) memp % dcacheLineSize +
