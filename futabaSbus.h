@@ -40,7 +40,7 @@ extern "C" {
   void sbusStop(SBUSDriver *sbusp);
   void sbusStartReceive(SBUSDriver *sbusp);
   void sbusStopReceive(SBUSDriver *sbusp);
-
+  void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame);
 
 #ifdef __cplusplus
  }

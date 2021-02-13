@@ -25,6 +25,7 @@ static SerialConfig sbusSerialConfig =
 
 static void receivingLoopThread(void *arg);
 static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm);
+static void encodeSbusBuffer (const SBUSFrame  *frm, uint8_t *dest);
 
 void sbusObjectInit(SBUSDriver *sbusp)
 {
@@ -38,11 +39,11 @@ void sbusStart(SBUSDriver *sbusp, const SBUSConfig *configp)
 #ifndef USART_CR2_RXINV
   // USARTv1 without level inversion capability
   // signal must have been inverted by external device
-  chDbgAssert(configp->invertedLevel == true,
+  chDbgAssert(configp->externallyInverted == true,
 	      "signal must have been inverted by external device on UARTv1 device");
 #else
   if (configp->externallyInverted == false)
-    sbusSerialConfig.cr2 |= USART_CR2_RXINV;
+    sbusSerialConfig.cr2 |= (USART_CR2_RXINV | USART_CR2_TXINV);
 #endif
 
   sdStart(configp->sd, &sbusSerialConfig);
@@ -125,6 +126,13 @@ static void receivingLoopThread (void *arg)
 }
 
 
+void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame)
+{
+  uint8_t  sbusBuffer[SBUS_BUFFLEN];
+  encodeSbusBuffer(frame, sbusBuffer);
+  // we should verify timing here, is the UART able to send 11 bits frame ? 
+  sdWrite(sbusp->config->sd, sbusBuffer, SBUS_BUFFLEN);
+}
 
 
 static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
@@ -148,4 +156,36 @@ static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
   dst[14] = ((src[19]>>2) | (src[20]<<6))                 & 0x07FF;
   dst[15] = ((src[20]>>5) | (src[21]<<3))                 & 0x07FF;
   frm->flags = src[22];
+}
+
+
+static void encodeSbusBuffer (const SBUSFrame  *frm, uint8_t *dest)
+{
+  const int16_t *chan = frm->channel;
+  
+  dest[0] = SBUS_START_BYTE;
+  dest[1] =   (uint8_t) ((chan[0]   & 0x07FF));
+  dest[2] =   (uint8_t) ((chan[0]   & 0x07FF) >> 8  | (chan[1]  & 0x07FF) << 3);
+  dest[3] =   (uint8_t) ((chan[1]   & 0x07FF) >> 5  | (chan[2]  & 0x07FF) << 6);
+  dest[4] =   (uint8_t) ((chan[2]   & 0x07FF) >> 2);
+  dest[5] =   (uint8_t) ((chan[2]   & 0x07FF) >> 10 | (chan[3]  & 0x07FF) << 1);
+  dest[6] =   (uint8_t) ((chan[3]   & 0x07FF) >> 7  | (chan[4]  & 0x07FF) << 4);
+  dest[7] =   (uint8_t) ((chan[4]   & 0x07FF) >> 4  | (chan[5]  & 0x07FF) << 7);
+  dest[8] =   (uint8_t) ((chan[5]   & 0x07FF) >> 1);
+  dest[9] =   (uint8_t) ((chan[5]   & 0x07FF) >> 9  | (chan[6]  & 0x07FF) << 2);
+  dest[10] =  (uint8_t) ((chan[6]   & 0x07FF) >> 6  | (chan[7]  & 0x07FF) << 5);
+  dest[11] =  (uint8_t) ((chan[7]   & 0x07FF) >> 3);
+  dest[12] =  (uint8_t) ((chan[8]   & 0x07FF));
+  dest[13] =  (uint8_t) ((chan[8]   & 0x07FF) >> 8  | (chan[9]  & 0x07FF) << 3);
+  dest[14] =  (uint8_t) ((chan[9]   & 0x07FF) >> 5  | (chan[10] & 0x07FF) << 6);
+  dest[15] =  (uint8_t) ((chan[10]  & 0x07FF) >> 2);
+  dest[16] =  (uint8_t) ((chan[10]  & 0x07FF) >> 10 | (chan[11] & 0x07FF) << 1);
+  dest[17] =  (uint8_t) ((chan[11]  & 0x07FF) >> 7  | (chan[12] & 0x07FF) << 4);
+  dest[18] =  (uint8_t) ((chan[12]  & 0x07FF) >> 4  | (chan[13] & 0x07FF) << 7);
+  dest[19] =  (uint8_t) ((chan[13]  & 0x07FF) >> 1);
+  dest[20] =  (uint8_t) ((chan[13]  & 0x07FF) >> 9  | (chan[14] & 0x07FF) << 2);
+  dest[21] =  (uint8_t) ((chan[14]  & 0x07FF) >> 6  | (chan[15] & 0x07FF) << 5);
+  dest[22] =  (uint8_t) ((chan[15]  & 0x07FF) >> 3);
+  dest[23] = frm->flags;
+  dest[24] = SBUS_END_BYTE;
 }
