@@ -23,7 +23,7 @@ typedef struct {
 } QEncoderCnt;
 
 /**
- * @brief   Driver configuration structure.
+ * @brief   QEncoder Driver configuration structure.
  */
 typedef struct {
 /**
@@ -34,7 +34,7 @@ typedef struct {
 
 
 /**
- * @brief   Structure representing an I2S driver.
+ * @brief   Structure representing a QEncoder driver.
  */
 typedef struct {
   /**
@@ -76,7 +76,7 @@ void qencoderStart(QEncoderDriver *qencoderp, const QEncoderConfig *configp);
  * @brief   stop a quadrature encoder driver
  *
  * @param[in]  qencoderp     pointer to a @p QEncoderDriver structure
- * @brief stop ans release the timer. After stop, any operation on qencoderp
+ * @brief stop and release the timer. After stop, any operation on qencoderp
  *        will result in undefined behavior and probably hardware fault
  */
 void qencoderStop(QEncoderDriver *qencoderp);
