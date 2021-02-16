@@ -384,20 +384,20 @@ static  inline void  peri_set_bit (volatile uint32_t *addr, const uint32_t pos,
 				   const bool level)
 {
   if (level)
-    *addr |= (1<<pos);
+    *addr |= (1U<<pos);
   else
-    *addr &= ~(1<<pos);
+    *addr &= ~(1U<<pos);
 };
 
-void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
-			     const bool masked)
+void	pwmEnableChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
+			       const bool enabled)
 {
   
   switch (channel) {
-  case 0 : peri_set_bit (&(pwmd->tim->CCMR1), 5, !masked); break;
-  case 1 : peri_set_bit (&(pwmd->tim->CCMR1), 13, !masked); break;
-  case 2 : peri_set_bit (&(pwmd->tim->CCMR2), 5, !masked); break;
-  case 3 : peri_set_bit (&(pwmd->tim->CCMR2), 13, !masked); break;
+  case 0 : peri_set_bit (&(pwmd->tim->CCMR1), 5, enabled); break;
+  case 1 : peri_set_bit (&(pwmd->tim->CCMR1), 13, enabled); break;
+  case 2 : peri_set_bit (&(pwmd->tim->CCMR2), 5, enabled); break;
+  case 3 : peri_set_bit (&(pwmd->tim->CCMR2), 13, enabled); break;
   }
   
 }
@@ -413,14 +413,14 @@ void	pwmMaskChannelSide(PWMDriver *pwmd, const  pwmchannel_t channel,
 }
 #else // not F7
 #include "bitband.h"
-void	pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
-			     const bool masked)
+void	pwmEnableChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
+			     const bool enabled)
 {
   switch (channel) {
-  case 0 : bb_peri_set_bit (&(pwmd->tim->CCMR1), 5, !masked); break;
-  case 1 : bb_peri_set_bit (&(pwmd->tim->CCMR1), 13, !masked); break;
-  case 2 : bb_peri_set_bit (&(pwmd->tim->CCMR2), 5, !masked); break;
-  case 3 : bb_peri_set_bit (&(pwmd->tim->CCMR2), 13, !masked); break;
+  case 0 : bb_peri_set_bit (&(pwmd->tim->CCMR1), 5, enabled); break;
+  case 1 : bb_peri_set_bit (&(pwmd->tim->CCMR1), 13, enabled); break;
+  case 2 : bb_peri_set_bit (&(pwmd->tim->CCMR2), 5, enabled); break;
+  case 3 : bb_peri_set_bit (&(pwmd->tim->CCMR2), 13, enabled); break;
   }
 }
 

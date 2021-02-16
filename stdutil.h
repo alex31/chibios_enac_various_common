@@ -455,8 +455,8 @@ const char* getGpioName (const ioportid_t p);
 #if HAL_USE_PWM 
 pwmcnt_t  pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq);
 pwmcnt_t  pwmChangeFrequencyI (PWMDriver *pwmd, const uint32_t freq);
-void	   pwmMaskChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
-				const bool masked);
+void	   pwmEnableChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
+				const bool enabled);
 void	   pwmMaskChannelSide(PWMDriver *pwmd, const  pwmchannel_t channel,
 			      const PwmOutputSide side, const bool masked);
 #endif
