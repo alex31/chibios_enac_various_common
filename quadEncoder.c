@@ -2,6 +2,7 @@
 
 
 static void rccEnable(const stm32_tim_t * const timer);
+static void rccDisable(const stm32_tim_t * const timer);
 static bool hasChanged(QEncoderDriver *qencoderp);
 
 void qencoderObjectInit(QEncoderDriver *qencoderp)
@@ -26,6 +27,14 @@ void qencoderStart(QEncoderDriver *qencoderp, const QEncoderConfig *configp)
   timer->CNT = 0;           // Initialize counter
   timer->EGR = 1;           // generate an update event
   timer->CR1 = 1;           // Enable the counter
+}
+
+void qencoderStop(QEncoderDriver *qencoderp)
+{
+  chMtxLock(&qencoderp->mut);
+  rccDisable(qencoderp->config->timer);
+  qencoderObjectInit(qencoderp);
+  chMtxUnlock(&qencoderp->mut);
 }
 
 
@@ -158,6 +167,115 @@ static void rccEnable(const stm32_tim_t * const timer)
   else  if (timer == STM32_TIM19) {
     rccEnableTIM19(true);
     rccResetTIM19();
+  }
+#endif
+  else {
+    chSysHalt("not a valid timer");
+  }
+};
+
+static void rccDisable(const stm32_tim_t * const timer)
+{
+#ifdef TIM2
+  if (timer == STM32_TIM1) {
+    rccResetTIM1();
+    rccDisableTIM1();
+  }
+#endif
+#ifdef TIM2
+  else  if (timer == STM32_TIM2) {
+    rccResetTIM2();
+    rccDisableTIM2();
+  }
+#endif
+#ifdef TIM3
+  else  if (timer == STM32_TIM3) {
+    rccResetTIM3();
+    rccDisableTIM3();
+  }
+#endif
+#ifdef TIM4
+  else  if (timer == STM32_TIM4) {
+    rccResetTIM4();
+    rccDisableTIM4();
+  }
+#endif
+#ifdef TIM5
+  else  if (timer == STM32_TIM5) {
+    rccResetTIM5();
+    rccDisableTIM5();
+  }
+#endif
+#ifdef TIM8
+  else  if (timer == STM32_TIM8) {
+    rccResetTIM8();
+    rccDisableTIM8();
+  }
+#endif
+#ifdef TIM9
+  else  if (timer == STM32_TIM9) {
+    rccResetTIM9();
+    rccDisableTIM9();
+  }
+#endif
+#ifdef TIM10
+  else  if (timer == STM32_TIM10) {
+    rccResetTIM10();
+    rccDisableTIM10();
+  }
+#endif
+#ifdef TIM11
+  else  if (timer == STM32_TIM11) {
+    rccResetTIM11();
+    rccDisableTIM11();
+  }
+#endif
+#ifdef TIM12
+  else  if (timer == STM32_TIM12) {
+    rccResetTIM12();
+    rccDisableTIM12();
+  }
+#endif
+#ifdef TIM13
+  else  if (timer == STM32_TIM13) {
+    rccResetTIM13();
+    rccDisableTIM13();
+  }
+#endif
+#ifdef TIM14
+  else  if (timer == STM32_TIM14) {
+    rccResetTIM14();
+    rccDisableTIM14();
+  }
+#endif
+#ifdef TIM15
+  else  if (timer == STM32_TIM15) {
+    rccResetTIM15();
+    rccDisableTIM15();
+  }
+#endif
+#ifdef TIM16
+  else  if (timer == STM32_TIM16) {
+    rccResetTIM16();
+    rccDisableTIM16();
+  }
+#endif
+#ifdef TIM17
+  else  if (timer == STM32_TIM17) {
+    rccResetTIM17();
+    rccDisableTIM17();
+  }
+#endif
+#ifdef TIM18
+  else  if (timer == STM32_TIM18) {
+    rccResetTIM18();
+    rccDisableTIM18();
+  }
+#endif
+#ifdef TIM19
+  else  if (timer == STM32_TIM19) {
+    rccResetTIM19();
+    rccDisableTIM19();
   }
 #endif
   else {
