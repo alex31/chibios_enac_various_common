@@ -155,6 +155,9 @@ static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
   dst[13] = ((src[17]>>7) | (src[18]<<1) | (src[19]<<9))  & 0x07FF;
   dst[14] = ((src[19]>>2) | (src[20]<<6))                 & 0x07FF;
   dst[15] = ((src[20]>>5) | (src[21]<<3))                 & 0x07FF;
+  for (size_t i=0; i<SBUS_NUM_CHANNEL; i++) {
+    dst[i] -= 1024;
+  }
   frm->flags = src[22];
 }
 
