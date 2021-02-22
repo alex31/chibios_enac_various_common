@@ -142,7 +142,7 @@ CircularBuffer SystemDependant_chibiosUART::ring = {
   .size = pipeLen,
   .keys = SystemDependant_chibiosUART::ringBuffer
 };
-Pipe SystemDependant_chibiosUART::pipe =  _PIPE_DATA(SystemDependant_chibiosUART::pipe,
+Pipe SystemDependant_chibiosUART::pipe =  _LPIPE_DATA(SystemDependant_chibiosUART::pipe,
 						     &SystemDependant_chibiosUART::ring);
 
 #ifndef USART_CR2_STOP1_BITS 
@@ -164,6 +164,9 @@ void SystemDependant_chibiosUART::initClass(UARTDriver &_ud, const uint32_t baud
     //    palSetLine(LINE_C02_DBG_LED);
     //  },
     .rxerr_cb = nullptr,
+#if CH_HAL_MAJOR >= 7
+    .timeout_cb = nullptr,
+#endif
     .speed = baud,
     .cr1 = 0,
     .cr2 = USART_CR2_STOP1_BITS | USART_CR2_LINEN,

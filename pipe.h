@@ -15,15 +15,15 @@ TODO:
 extern "C" {
 #endif
 
-#define _PIPE_DATA(name, _cb)  {	        \
+#define _LPIPE_DATA(name, _cb)  {	        \
   .cb = _cb,					\
   .mtx = _MUTEX_DATA(name.mtx),			\
   .cv_empty = _CONDVAR_DATA(name.cv_empty),	\
   .cv_full =_CONDVAR_DATA(name.cv_full)		\
 }
 
-#define PIPE_DECL(name, cb)		\
-  Pipe name = _PIPE_DATA(name, cb)
+#define LPIPE_DECL(name, cb)		\
+  Pipe name = _LPIPE_DATA(name, cb)
   
 typedef struct
 {
