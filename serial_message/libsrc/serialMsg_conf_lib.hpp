@@ -1,5 +1,6 @@
 #pragma once
-#include <stdint.h>
+#include <cstdint>
+#include <cstddef>
 #include <array>
 #include <type_traits>
 
