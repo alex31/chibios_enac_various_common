@@ -500,6 +500,9 @@ int32_t get_stack_free (const thread_t *tp)
 #endif
 #endif
 
+__attribute__((used))
+void _fini(void) {chSysHalt("_fini"); while(true);}
+
 #if ((CH_KERNEL_MAJOR * 10 + CH_KERNEL_MINOR) < 61)
 
 /* libc stub */
