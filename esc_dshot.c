@@ -27,12 +27,20 @@
 #define TICKS_PER_PERIOD 1000             // that let use any timer :
 			                  // does not care if linked to PCLK1 or PCLK2
 			                  // tick_per_period will be dynamically calculated
+
 			                  // after pwm init
-#define DSHOT_SPEED (DSHOT_SPEED_KHZ*1000)
+#if DSHOT_SPEED_KHZ != 0 // statically defined
+#   define DSHOT_SPEED (DSHOT_SPEED_KHZ*1000)
+#   define DSHOT_BIT0_DUTY (DSHOT_PWM_PERIOD * 373 / 1000)
+#   define DSHOT_BIT1_DUTY (DSHOT_BIT0_DUTY*2)
+#else			 // dynamically defined
+#   define DSHOT_SPEED (driver->config->speed_khz*1000)
+#   define DSHOT_BIT0_DUTY (driver->bit0Duty)
+#   define DSHOT_BIT1_DUTY (driver->bit1Duty)
+#endif
 #define TICK_FREQ (PWM_FREQ * TICKS_PER_PERIOD)
 #define DSHOT_PWM_PERIOD (TICK_FREQ/DSHOT_SPEED)
-#define DSHOT_BIT0_DUTY (DSHOT_PWM_PERIOD * 373 / 1000)
-#define DSHOT_BIT1_DUTY (DSHOT_BIT0_DUTY*2)
+
 #define    DCR_DBL              ((DSHOT_CHANNELS-1) << 8) //  DSHOT_CHANNELS transfert(s)
 // first register to get is CCR1
 #define DCR_DBA(pwmd)                 (((uint32_t *) (&pwmd->tim->CCR) - ((uint32_t *) pwmd->tim)))
@@ -52,7 +60,7 @@
 static DshotPacket makeDshotPacket(const uint16_t throttle, const bool tlmRequest);
 static inline void setDshotPacketThrottle(DshotPacket * const dp, const uint16_t throttle);
 static inline void setDshotPacketTlm(DshotPacket * const dp, const bool tlmRequest);
-static void buildDshotDmaBuffer(DshotPackets * const dsp,  DshotDmaBuffer * const dma, const size_t timerWidth);
+static void buildDshotDmaBuffer(DSHOTDriver *driver);
 static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed);
 static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen);
 static noreturn void dshotTlmRec (void *arg);
@@ -132,6 +140,13 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   };
 
   driver->crc_errors = 0;
+#if DSHOT_SPEED_KHZ == 0
+  driver->bit0Duty = (DSHOT_PWM_PERIOD * 373U / 1000U);
+  driver->bit1Duty = (driver->bit0Duty*2U)            ;
+#endif
+
+
+
   dmaObjectInit(&driver->dmap);
   chMBObjectInit(&driver->mb, driver->_mbBuf, ARRAY_LEN(driver->_mbBuf));
 
@@ -157,6 +172,18 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   driver->dshotMotors.currentTlmQry = 0U;
 }
 
+/**
+ * @brief   stop the DSHOT peripheral and free the 
+ *          related resources : pwm driver and dma driver.
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @api
+ */
+void     dshotStop(DSHOTDriver *driver)
+{
+  pwmStop(driver->config->pwmp);
+  dmaStop(&driver->dmap);
+}
 
 
 /**
@@ -276,7 +303,7 @@ void dshotSendFrame(DSHOTDriver *driver)
       chMBPostTimeout(&driver->mb, index, TIME_IMMEDIATE);
     }
 
-    buildDshotDmaBuffer(&driver->dshotMotors, driver->config->dma_buf, getTimerWidth(driver->config->pwmp));
+    buildDshotDmaBuffer(driver);
     dmaStartTransfert(&driver->dmap,
                       &driver->config->pwmp->tim->DMAR,
                       driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
@@ -354,8 +381,12 @@ static inline void setDshotPacketTlm(DshotPacket *const dp, const bool tlmReques
   dp->telemetryRequest =  tlmRequest ? 1 : 0;
 }
 
-static void buildDshotDmaBuffer(DshotPackets *const dsp, DshotDmaBuffer *const dma, const size_t timerWidth)
+static void buildDshotDmaBuffer(DSHOTDriver *driver)
 {
+  DshotPackets *const dsp = &driver->dshotMotors;
+  DshotDmaBuffer *const dma =  driver->config->dma_buf;
+  const size_t timerWidth = getTimerWidth(driver->config->pwmp);
+  
   for (size_t chanIdx = 0; chanIdx < DSHOT_CHANNELS; chanIdx++) {
     // compute checksum
     DshotPacket *const dp = &dsp->dp[chanIdx];

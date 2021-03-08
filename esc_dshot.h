@@ -5,6 +5,12 @@
 #include "hal_stm32_dma.h"
 #include "esc_dshot_config.h"
 
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef DSHOT_CHANNEL_FIRST_INDEX
 #define DSHOT_CHANNEL_FIRST_INDEX 0U
 #endif
@@ -33,7 +39,7 @@
  * @note    commands 48-2047 are used to send motor power
  */
 typedef enum {
-    DSHOT_CMD_MOTOR_STOP = 0,
+    DSHOT_CMD_MOTOR_STOP = 0U,
     DSHOT_CMD_BEACON1,
     DSHOT_CMD_BEACON2,
     DSHOT_CMD_BEACON3,
@@ -46,8 +52,8 @@ typedef enum {
     DSHOT_CMD_3D_MODE_ON,
     DSHOT_CMD_SETTINGS_REQUEST, // Currently not implemented
     DSHOT_CMD_SAVE_SETTINGS,
-    DSHOT_CMD_SPIN_DIRECTION_NORMAL = 20,
-    DSHOT_CMD_SPIN_DIRECTION_REVERSED = 21,
+    DSHOT_CMD_SPIN_DIRECTION_NORMAL = 20U,
+    DSHOT_CMD_SPIN_DIRECTION_REVERSED = 21U,
     DSHOT_CMD_LED0_ON, // BLHeli32 only
     DSHOT_CMD_LED1_ON, // BLHeli32 only
     DSHOT_CMD_LED2_ON, // BLHeli32 only
@@ -56,15 +62,19 @@ typedef enum {
     DSHOT_CMD_LED1_OFF, // BLHeli32 only
     DSHOT_CMD_LED2_OFF, // BLHeli32 only
     DSHOT_CMD_LED3_OFF, // BLHeli32 only
-    DSHOT_CMD_AUDIO_STREAM_MODE_ON_OFF = 30, // KISS audio Stream mode on/Off
-    DSHOT_CMD_SILENT_MODE_ON_OFF = 31, // KISS silent Mode on/Off
-    DSHOT_CMD_MAX = 47
+    DSHOT_CMD_AUDIO_STREAM_MODE_ON_OFF = 30U, // KISS audio Stream mode on/Off
+    DSHOT_CMD_SILENT_MODE_ON_OFF = 31U, // KISS silent Mode on/Off
+    DSHOT_CMD_MAX = 47U,
+    DSHOT_MIN_THROTTLE
 } dshot_special_commands_t;
 
 /**
  * @brief   telemetry packed as sent by some KISS ESC
  * @note    if other ESC use different binary representation in the future
  *          we'll have to add a little bit abstraction here
+ * @note    should be rewritten to avoid scalar_storage_order ("big-endian")
+ *          which is not c++ compliant : the endianness has to be changed
+ *          in software
  */
 typedef struct {
   union {
@@ -74,7 +84,12 @@ typedef struct {
       uint16_t current;
       uint16_t consumption;
       uint16_t rpm;
-    } __attribute__ ((__packed__, scalar_storage_order ("big-endian")));
+    }
+#ifdef __cplusplus
+      __attribute__ ((__packed__));
+#else
+      __attribute__ ((__packed__, scalar_storage_order ("big-endian")));
+#endif
     uint8_t rawData[9];
   };
   uint8_t  crc8;
@@ -121,7 +136,9 @@ typedef struct  {
    * @brief dshot dma buffer, sgould be defined in a non Dcached region
    */
   DshotDmaBuffer *dma_buf;
-
+#if DSHOT_SPEED_KHZ == 0
+  uint16_t speed_khz;
+#endif
 #if __DCACHE_PRESENT
   /**
    * @brief   DMA memory is in a cached section and need to be flushed
@@ -136,6 +153,7 @@ typedef struct  {
 
 
 void     dshotStart(DSHOTDriver *driver, const DSHOTConfig *config);
+void     dshotStop(DSHOTDriver *driver);
 void     dshotSetThrottle(DSHOTDriver *driver, const uint8_t index, const uint16_t throttle);
 void     dshotSendFrame(DSHOTDriver *driver);
 void     dshotSendThrottles(DSHOTDriver *driver, const uint16_t throttles[DSHOT_CHANNELS]);
@@ -211,8 +229,10 @@ struct  DSHOTDriver {
    * @brief number of crc errors
    */
   uint32_t crc_errors;
-
-
+#if DSHOT_SPEED_KHZ == 0
+  uint16_t bit0Duty;
+  uint16_t bit1Duty;
+#endif
   /**
    * @brief stack working area for dshot telemetry thread
    */
@@ -220,3 +240,7 @@ struct  DSHOTDriver {
 
   DshotPackets dshotMotors;
 };
+
+#ifdef __cplusplus
+ }
+#endif
