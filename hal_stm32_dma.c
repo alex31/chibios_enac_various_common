@@ -112,16 +112,15 @@ void dmaStop(DMADriver *dmap)
 {
   osalDbgCheck(dmap != NULL);
 
-  osalSysLock();
-
   osalDbgAssert((dmap->state == DMA_STOP) || (dmap->state == DMA_READY),
                 "invalid state");
 
   dma_lld_stop(dmap);
+
+  osalSysLock();
   dmap->config = NULL;
   dmap->state  = DMA_STOP;
   dmap->mem0p   = NULL;
-
   osalSysUnlock();
 }
 
