@@ -84,6 +84,7 @@ static size_t   getTimerWidth(const PWMDriver *pwmp);
  */
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
+  chDbgAssert(config->dma_buf != NULL, ".dma_buf must reference valid DshotDmaBuffer object");
   memset((void *) config->dma_buf, 0, sizeof(*(config->dma_buf)));
   const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
   /* DebugTrace("timerWidthInBytes = %u; mburst = %u", */
