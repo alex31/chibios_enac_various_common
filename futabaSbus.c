@@ -90,7 +90,7 @@ static void receivingLoopThread (void *arg)
   while (!chThdShouldTerminateX()) {
     do {
       rbyte = sdGetTimeout(cfg->sd, TIME_MS2I(100));
-      if (rbyte <= 0) {
+      if (rbyte < 0) {
 	invoqueError(cfg, SBUS_TIMOUT);
       }
     } while (rbyte != SBUS_START_BYTE);
@@ -128,10 +128,10 @@ static void receivingLoopThread (void *arg)
 
 void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame)
 {
-  uint8_t  sbusBuffer[SBUS_BUFFLEN];
+  uint8_t  sbusBuffer[SBUS_BUFFLEN+1];
   encodeSbusBuffer(frame, sbusBuffer);
   // we should verify timing here, is the UART able to send 11 bits frame ? 
-  sdWrite(sbusp->config->sd, sbusBuffer, SBUS_BUFFLEN);
+  sdWrite(sbusp->config->sd, sbusBuffer, SBUS_BUFFLEN+1);
 }
 
 
@@ -158,7 +158,7 @@ static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
   for (size_t i=0; i<SBUS_NUM_CHANNEL; i++) {
     dst[i] -= 1024;
   }
-  frm->flags = src[22];
+  frm->flags = src[SBUS_FLAGS_BYTE];
 }
 
 
