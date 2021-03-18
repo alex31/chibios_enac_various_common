@@ -123,10 +123,13 @@ thread_t *SystemDependant_chibios::thd = nullptr;
 #if HAL_USE_SERIAL  
 SerialDriver *SystemDependant_chibiosSerial::sd = nullptr;
 #endif
-
+#if HAL_USE_SERIAL_USB
+SerialUSBDriver *SystemDependant_chibiosUsbSerial::sdu = nullptr;
+#endif
 #if HAL_USE_UART 
 UARTDriver *SystemDependant_chibiosUART::ud = nullptr;
 #endif
+
 //uint8_t SystemDependant_chibiosUART::lostBuffer[pipeLen] = {0};
 // CircularBuffer SystemDependant_chibiosUART::lost = {
 //   .writePointer = 0,

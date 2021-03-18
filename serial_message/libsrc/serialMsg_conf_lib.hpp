@@ -329,6 +329,69 @@ void SystemDependant_chibiosSerial::read(std::array<uint8_t, N> &rbuffer, size_t
   }
 }
 #endif // HAL_USE_SERIAL
+
+#if HAL_USE_SERIAL_USB
+#include "usb_serial.h"
+class SystemDependant_chibiosUsbSerial {
+public:
+// static class; object cannot be instanced
+  SystemDependant_chibiosUsbSerial() = delete;
+
+  // just need to get the type of the fucntion return value
+  // in case of custom chekcsum function, just put the type
+  using Checksum_t = std::result_of<decltype(fletcher16<1>) &
+				    (std::array<uint8_t, 1>, size_t)>::type;
+
+  // member method
+  static void initClass(SerialUSBDriver *_sdu, USBDriver& usbd) {
+    sdu = _sdu;
+    usbSerialInit(sdu, &usbd);
+      while (not isUsbConnected()) {
+    chThdSleepMilliseconds(1);
+  }
+  };
+  
+  template <size_t N>
+  static void write(const std::array<uint8_t, N> &wbuffer, size_t len=0UL);
+  
+  template <size_t N>
+  static void read(std::array<uint8_t, N> &rbuffer, size_t len=0UL);
+
+  // we use an already defined checksum function, but feel free to implement yours instead of
+  // fletcher16
+  template <size_t N>
+  static Checksum_t checksum(const std::array<uint8_t, N> &buffer,  const size_t len=0UL) {
+    return fletcher16(buffer, len);
+  };
+  
+
+  // member variable
+  static  SerialUSBDriver *sdu;
+};
+
+template <size_t N>
+void SystemDependant_chibiosUsbSerial::write(const std::array<uint8_t, N> &wbuffer, size_t len)
+{
+  len = len ? std::min(len, N) : N;
+  //  std::cout << "really send " << len << " on interface\n";
+  const size_t retv = chnWrite(sdu, wbuffer.data(), len);
+  if (retv != len) {
+    chSysHalt("SystemDependant_chibiosUsbSerial::write error");
+  }
+}
+
+template <size_t N>
+void SystemDependant_chibiosUsbSerial::read(std::array<uint8_t, N> &rbuffer, size_t len)
+{
+  len = len ? std::min(len, N) : N;
+  //  std::cout << "really read " << len << " on interface\n";
+  const size_t retv = chnRead(sdu, rbuffer.data(), len);
+  if (retv != len) {
+    chSysHalt("SystemDependant_chibiosUsbSerial::read error");
+  }
+}
+#endif // HAL_USE_SERIAL
+
 /*
 #                 _    _                  _            
 #                | |  | |                | |           
