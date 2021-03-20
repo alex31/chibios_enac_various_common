@@ -5,7 +5,8 @@
 
 
 #define DCR_DBL (1U << 8U) // 2 transfert
-#define ICU_FREQUENCY  (STM32_SYSCLK / 4ULL) /* 42 Mhz ICU clock frequency.   */
+#define ICU_FREQUENCY_32B  (STM32_SYSCLK / 4ULL) /* 42 Mhz ICU clock frequency.   */
+#define ICU_FREQUENCY_16B  (3000000U)  /* 3 Mhz ICU clock frequency.   */
 
 typedef struct {
   uint32_t min;
@@ -80,13 +81,13 @@ static  void initDma(DecodeDSHOTDriver *driver)
    .end_cb = NULL,
    .error_cb = &error_cb,
    .direction = DMA_DIR_P2M,
-   .dma_priority = 3,
-   .irq_priority = 6,
-   .psize = driver->timer_width,
-   .msize = driver->timer_width,
+   .dma_priority = 3U,
+   .irq_priority = 6U,
+   .psize = 4U,
+   .msize = 4U,
    .pburst = 0,
    .mburst = 0,
-   .fifo = 2,
+   .fifo = 2U,
    .periph_inc_size_4 = false,
    .transfert_end_ctrl_by_periph = false
   };
@@ -115,7 +116,7 @@ static  void initIcu(DecodeDSHOTDriver *driver)
   
   driver->icu_conf = (ICUConfig) {
    .mode = ICU_INPUT_ACTIVE_HIGH,
-   .frequency = ICU_FREQUENCY,
+   .frequency = driver->timer_width == 4U ? ICU_FREQUENCY_32B : ICU_FREQUENCY_16B,
    .width_cb = NULL,
    .period_cb = NULL,
    .overflow_cb = NULL,
@@ -159,8 +160,8 @@ static EscCmdMode guessMode(DecodeDSHOTDriver *driver)
     return ESC_NONE;
   }
   
-  const uint32_t pMinUs = ((pmm.min+1U) * 1000000ULL) / ICU_FREQUENCY;
-  const uint32_t pMaxUs = ((pmm.max+1U) * 1000000ULL) / ICU_FREQUENCY;
+  const uint32_t pMinUs = ((pmm.min+1U) * 1000000ULL) / driver->config->icup->config->frequency;
+  const uint32_t pMaxUs = ((pmm.max+1U) * 1000000ULL) / driver->config->icup->config->frequency;
 
   if ((pMaxUs > 18000) && (status == MSG_TIMEOUT)) {
     return ESC_PWM50;
@@ -184,7 +185,7 @@ static EscCmdMode guessMode(DecodeDSHOTDriver *driver)
 static uint8_t guessPWM(DecodeDSHOTDriver *driver)
 {
   const MinMax wmm = getMinMaxWidth(driver);
-  return ((((wmm.max+1U) * 1000000ULL) / ICU_FREQUENCY) - 1000UL) / 10U;
+  return ((((wmm.max+1U) * 1000000ULL) / driver->config->icup->config->frequency) - 1000UL) / 10U;
 }
 
 static DshotPacket guessDshot(DecodeDSHOTDriver *driver)
