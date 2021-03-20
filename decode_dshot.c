@@ -20,6 +20,8 @@ static DecodePWMFrame guessPWM(DecodeDSHOTDriver *driver, EscCmdMode mode);
 static DshotPacket guessDshot(DecodeDSHOTDriver *driver);
 static MinMax getMinMaxPeriod(DecodeDSHOTDriver *driver);
 static MinMax getMinMaxWidth(DecodeDSHOTDriver *driver);
+static inline uint32_t getPeriod(DecodeDSHOTDriver *driver, size_t index);
+static inline uint32_t getWidth(DecodeDSHOTDriver *driver, size_t index);
 
 void             decodeDshotStart(DecodeDSHOTDriver *driver,
 				  const DecodeDSHOTConfig *config)
@@ -196,7 +198,7 @@ static DshotPacket guessDshot(DecodeDSHOTDriver *driver)
 
   uint32_t ci;
   for(ci = 0;
-      (ci <  (DMA_DATA_LEN / 2U)) && (driver->wp_buffer.wp[ci].p < 1000);
+      (ci <  (DMA_DATA_LEN / 2U)) && (getPeriod(driver, ci) < 1000);
       ci++);
 
   if (++ci >= (DMA_DATA_LEN / 2U)) {
@@ -204,11 +206,11 @@ static DshotPacket guessDshot(DecodeDSHOTDriver *driver)
     dp.rawFrame = 0xFFFF;
     return dp;
   }
-  const uint32_t wThreshold = driver->wp_buffer.wp[ci].p / 2U;
+  const uint32_t wThreshold = getPeriod(driver, ci) / 2U;
   uint32_t bitShift=0U;
 
   for(; ci <  (DMA_DATA_LEN / 2U); ci++) {
-    dp.rawFrame |= driver->wp_buffer.wp[ci].w < wThreshold ? 0U : (1U << (15-bitShift));
+    dp.rawFrame |= getWidth(driver, ci) < wThreshold ? 0U : (1U << (15-bitShift));
     if (++bitShift == 16)
       break;
   }
@@ -231,14 +233,33 @@ static DshotPacket guessDshot(DecodeDSHOTDriver *driver)
 
 
 
+static inline uint32_t getPeriod(DecodeDSHOTDriver *driver, size_t index)
+{
+  if ((driver->config->icu_channel) == ICU_CHANNEL_2) {
+    return driver->wp_buffer.wp[index].p;
+  } else {
+    return driver->wp_buffer.wp[index].w;
+  }
+}
+
+static inline uint32_t getWidth(DecodeDSHOTDriver *driver, size_t index)
+{
+  if ((driver->config->icu_channel) == ICU_CHANNEL_2) {
+    return driver->wp_buffer.wp[index].w;
+  } else {
+    return driver->wp_buffer.wp[index].p;
+  }
+}
+
+
 static MinMax getMinMaxPeriod(DecodeDSHOTDriver *driver)
 {
   MinMax mm = {.min=UINT32_MAX, .max=0U};
   for (size_t i=0; i< (DMA_DATA_LEN / 2U); i++) {
-    if (driver->wp_buffer.wp[i].p < mm.min)
-      mm.min = driver->wp_buffer.wp[i].p;
-    if (driver->wp_buffer.wp[i].p > mm.max)
-      mm.max = driver->wp_buffer.wp[i].p;
+    if (getPeriod(driver, i) < mm.min)
+      mm.min = getPeriod(driver, i);
+    if (getPeriod(driver, i) > mm.max)
+      mm.max = getPeriod(driver, i);
   }
   
   return mm;
@@ -248,10 +269,10 @@ static MinMax getMinMaxWidth(DecodeDSHOTDriver *driver)
 {
   MinMax mm = {.min=UINT32_MAX, .max=0U};
   for (size_t i=0; i< (DMA_DATA_LEN / 2U); i++) {
-    if (driver->wp_buffer.wp[i].w < mm.min)
-      mm.min = driver->wp_buffer.wp[i].w;
-    if (driver->wp_buffer.wp[i].w > mm.max)
-      mm.max = driver->wp_buffer.wp[i].w;
+    if (getWidth(driver, i) < mm.min)
+      mm.min = getWidth(driver, i);
+    if (getWidth(driver, i) > mm.max)
+      mm.max = getWidth(driver, i);
   }
   
   return mm;
