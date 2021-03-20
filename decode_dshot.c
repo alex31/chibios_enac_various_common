@@ -16,7 +16,7 @@ static void error_cb(DMADriver *dmap, dmaerrormask_t err);
 static void initIcu(DecodeDSHOTDriver *driver);
 static void initDma(DecodeDSHOTDriver *driver); // must be called after initIcu
 static EscCmdMode guessMode(DecodeDSHOTDriver *driver);
-static DecodePWMFrame guessPWM(DecodeDSHOTDriver *driver, EscCmdMode mode);
+static uint8_t guessPWM(DecodeDSHOTDriver *driver);
 static DshotPacket guessDshot(DecodeDSHOTDriver *driver);
 static MinMax getMinMaxPeriod(DecodeDSHOTDriver *driver);
 static MinMax getMinMaxWidth(DecodeDSHOTDriver *driver);
@@ -36,7 +36,7 @@ DecodeESCFrame decodeDshotCapture(DecodeDSHOTDriver *driver)
   DecodeESCFrame df;
   df.mode = guessMode(driver);
   if ((df.mode == ESC_PWM50) || (df.mode == ESC_PWM400)) {
-    df.pwmf = guessPWM(driver, df.mode);
+    df.percent = guessPWM(driver);
   } else {
     df.dshotp = guessDshot(driver);
   }
@@ -181,15 +181,10 @@ static EscCmdMode guessMode(DecodeDSHOTDriver *driver)
 
 }
 
-static DecodePWMFrame guessPWM(DecodeDSHOTDriver *driver, EscCmdMode mode)
+static uint8_t guessPWM(DecodeDSHOTDriver *driver)
 {
-  DecodePWMFrame pf;
-
-  pf.p = mode == ESC_PWM50 ? 20000 : 2500;
   const MinMax wmm = getMinMaxWidth(driver);
-  pf.w = ((wmm.max+1U) * 1000000ULL) / ICU_FREQUENCY;
-
-  return pf;
+  return ((((wmm.max+1U) * 1000000ULL) / ICU_FREQUENCY) - 1000UL) / 10U;
 }
 
 static DshotPacket guessDshot(DecodeDSHOTDriver *driver)

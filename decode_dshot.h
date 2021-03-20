@@ -28,12 +28,12 @@ typedef struct  {
    * @brief : dma stream associated with icu timer used to generate decode_dshot output
    */
   uint32_t	dma_stream;
-
+  
   /**
    * @brief : dma channel associated with icu timer used to generate decode_dshot output
    */
   uint8_t	dma_channel;
-
+  
   /**
    * @brief ICU driver that can listen on channel 1 ou channel 2
    */
@@ -41,32 +41,32 @@ typedef struct  {
   icuchannel_t  icu_channel;
 } DecodeDSHOTConfig;
 
-  typedef  enum  {ESC_NONE, ESC_PWM50, ESC_PWM400,
+typedef  enum  {ESC_NONE, ESC_PWM50, ESC_PWM400,
 		   ESC_DSHOT150, ESC_DSHOT300, ESC_DSHOT600} EscCmdMode;
   
-  typedef  struct  {
+typedef  struct  {
     uint32_t w;
     uint32_t p;
-  } DecodePWMFrame ;
+  } WidthPeriod ;
 
-  typedef union {
+typedef union {
   struct {
     uint16_t crc:4;
     uint16_t telemetryRequest:1;
     uint16_t throttle:11;
   };
   uint16_t rawFrame;
-}  DshotPacket;
+  }  DshotPacket;
 
 /*   typedef struct  { */
 /*     uint16_t    dshotFrequency; */
 /*     DshotPacket packet; */
 /* } DecodeDSHOTFrame; */
 
-  typedef struct  {
+typedef struct  {
     EscCmdMode mode;
     union{
-      DecodePWMFrame pwmf;
+      uint8_t     percent;
       DshotPacket dshotp;
     };
 } DecodeESCFrame;
@@ -90,7 +90,7 @@ void             decodeDshotStop(DecodeDSHOTDriver *driver);
 
 
   typedef union  {
-    DecodePWMFrame wp[DMA_DATA_LEN / 2];
+    WidthPeriod wp[DMA_DATA_LEN / 2];
     uint32_t    raw[DMA_DATA_LEN];
   } WidthPeriodBuffer;
 
