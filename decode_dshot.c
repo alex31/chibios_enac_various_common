@@ -15,14 +15,14 @@ typedef struct {
 
 static void error_cb(DMADriver *dmap, dmaerrormask_t err);
 static void initIcu(DecodeDSHOTDriver *driver);
-static void initDma(DecodeDSHOTDriver *driver); // must be called after initIcu
+static void initDma(DecodeDSHOTDriver *driver); 
 static EscCmdMode guessMode(DecodeDSHOTDriver *driver);
-static uint8_t guessPWM(DecodeDSHOTDriver *driver);
-static DshotPacket guessDshot(DecodeDSHOTDriver *driver);
-static MinMax getMinMaxPeriod(DecodeDSHOTDriver *driver);
-static MinMax getMinMaxWidth(DecodeDSHOTDriver *driver);
-static inline uint32_t getPeriod(DecodeDSHOTDriver *driver, size_t index);
-static inline uint32_t getWidth(DecodeDSHOTDriver *driver, size_t index);
+static uint8_t guessPWM(const DecodeDSHOTDriver *driver);
+static DshotPacket guessDshot(const DecodeDSHOTDriver *driver);
+static MinMax getMinMaxPeriod(const DecodeDSHOTDriver *driver);
+static MinMax getMinMaxWidth(const DecodeDSHOTDriver *driver);
+static inline uint32_t getPeriod(const DecodeDSHOTDriver *driver, size_t index);
+static inline uint32_t getWidth(const DecodeDSHOTDriver *driver, size_t index);
 
 void             decodeDshotStart(DecodeDSHOTDriver *driver,
 				  const DecodeDSHOTConfig *config)
@@ -182,13 +182,13 @@ static EscCmdMode guessMode(DecodeDSHOTDriver *driver)
 
 }
 
-static uint8_t guessPWM(DecodeDSHOTDriver *driver)
+static uint8_t guessPWM(const DecodeDSHOTDriver *driver)
 {
   const MinMax wmm = getMinMaxWidth(driver);
   return ((((wmm.max+1U) * 1000000ULL) / driver->config->icup->config->frequency) - 1000UL) / 10U;
 }
 
-static DshotPacket guessDshot(DecodeDSHOTDriver *driver)
+static DshotPacket guessDshot(const DecodeDSHOTDriver *driver)
 {
   DshotPacket dp = {.rawFrame = 0U};
 
@@ -229,7 +229,8 @@ static DshotPacket guessDshot(DecodeDSHOTDriver *driver)
 
 
 
-static inline uint32_t getPeriod(DecodeDSHOTDriver *driver, size_t index)
+static inline uint32_t getPeriod(const DecodeDSHOTDriver *driver,
+				 size_t index)
 {
   if ((driver->config->icu_channel) == ICU_CHANNEL_2) {
     return driver->wp_buffer.wp[index].p;
@@ -238,7 +239,8 @@ static inline uint32_t getPeriod(DecodeDSHOTDriver *driver, size_t index)
   }
 }
 
-static inline uint32_t getWidth(DecodeDSHOTDriver *driver, size_t index)
+static inline uint32_t getWidth(const DecodeDSHOTDriver *driver,
+				size_t index)
 {
   if ((driver->config->icu_channel) == ICU_CHANNEL_2) {
     return driver->wp_buffer.wp[index].w;
@@ -248,7 +250,7 @@ static inline uint32_t getWidth(DecodeDSHOTDriver *driver, size_t index)
 }
 
 
-static MinMax getMinMaxPeriod(DecodeDSHOTDriver *driver)
+static MinMax getMinMaxPeriod(const DecodeDSHOTDriver *driver)
 {
   MinMax mm = {.min=UINT32_MAX, .max=0U};
   for (size_t i=0; i< (DMA_DATA_LEN / 2U); i++) {
@@ -261,7 +263,7 @@ static MinMax getMinMaxPeriod(DecodeDSHOTDriver *driver)
   return mm;
 }
 
-static MinMax getMinMaxWidth(DecodeDSHOTDriver *driver)
+static MinMax getMinMaxWidth(const DecodeDSHOTDriver *driver)
 {
   MinMax mm = {.min=UINT32_MAX, .max=0U};
   for (size_t i=0; i< (DMA_DATA_LEN / 2U); i++) {
