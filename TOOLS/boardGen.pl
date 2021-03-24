@@ -1314,9 +1314,10 @@ sub getAF_byName ($$$) # line, pin, af signal (could be AFx or AF:name)
 	    my $altfunc = $1;
 
 
-	    die "$line\nfunction $altfunc cannot be associated with pin $pin\n" unless
+#	    warn "$line\nfunction $altfunc cannot be associated with pin $pin\n" unless
+#		exists $gpioAfInfo->{$altfunc}->{$pin};
+	    $af = $gpioAfInfo->{$altfunc}->{$pin} if
 		exists $gpioAfInfo->{$altfunc}->{$pin};
-	    $af = $gpioAfInfo->{$altfunc}->{$pin};
 	}
 
     }
@@ -1384,7 +1385,8 @@ sub fillPassiveFields ($$$$)
 #	    	    say "$ps is an AF = $af";
 	    generatePassiveMacro($pinName, $ps, $af);
 	} elsif (isNonAfAltfuncIsRoutableOnPin($pin, $ps)) {
-#	    	    say "$ps is a routable function";
+	    my $tryAf =  getAF_byName ($l, $pin, "AF:$ps");
+	    warn "probable missing AF on PASSIVE: on $ps term on line\n$l\n" if $tryAf >= 0;
 	    generatePassiveMacro($pinName, $ps);
 	} else {
 	    die "$l\nfunction $ps cannot be associated with pin $pin\n";
@@ -1397,7 +1399,7 @@ sub generatePassiveMacro($$$)
     my ($name, $fun, $af) = @_;
     $fun =~ s/AF://;
     my ($periphTyp, $periphNum, $periphFunction, $periphFunctionNum) =
-	$fun =~ /([A-Z]+\d?[A-Z]+)(\d+)_([A-Z]+)(\d*)/;
+	$fun =~ /([A-Z]+\d?[A-Z]+)(\d*)_([A-Z]+)(\d*)/;
     push (@passive,  "#define ${name}_${periphTyp}\t $periphNum\n");
     push (@passive,  "#define ${name}_${periphTyp}_FN\t $periphFunction\n");
     push (@passive,  "#define ${name}_${periphTyp}_$periphFunction\t " .
