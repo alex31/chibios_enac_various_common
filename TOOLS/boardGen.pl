@@ -8,6 +8,8 @@ use String::LCSS;
 use List::Util qw(min max);
 use XML::LibXML;
 use Data::Dumper;
+use File::Basename;
+
 
 #example of use of new symbol generation feature in C/C++ program
 #to avoid mismatch between code and board.cfg
@@ -44,9 +46,6 @@ use constant  BY_PIN => 1;
 use constant  ADC_BY_PIN => 2;
 use constant  AF => 0;
 use constant  PIN => 1;
-
-
-
 
 my %ospeedName = (
     'SPEED_VERYLOW' => '2M',
@@ -189,6 +188,7 @@ sub findAfByFunction ($);
 sub findDmaByFunction ($);
 sub fillGpioAlternateInfo ($$$);
 sub fillSignalByPin ($$$);
+sub generateHardwareTableByPin ($$);
 sub fillDmaByFun ($$);
 sub fillDmaV1ByFun ($$);
 sub fillDmaV2ByFun ($$);
@@ -225,11 +225,14 @@ my $family;
  # exit;
 
 
-GetOptions (\%options, 'no-pp-pin', 'no-pp-line', 'no-adcp-in', 'no-error', 'find=s', 'dma=s', 'help');
+GetOptions (\%options, 'no-pp-pin', 'no-pp-line', 'no-adcp-in', 'no-error', 'kikadsymb',
+	    'find=s', 'dma=s', 'help');
 usage() if exists  $options{help};
 
 
-usage()  unless scalar (@ARGV == 2) || ((exists  $options{find} || exists  $options{dma}) 
+usage()  unless scalar (@ARGV == 2) || ((exists  $options{find}
+					 || exists  $options{dma} 
+					 || exists  $options{kikadsymb}) 
 					&& scalar (@ARGV == 1));
 
 # all configs are supposed to be connected to 3.3V. otherwise, it should be notified in board.cfg
@@ -259,6 +262,7 @@ if ($boardFile ne '-') {
 
 unlink $boardFile;
 
+my $cfgFileRoot  = dirname($cfgFile);
 parseCfgFile ($cfgFile);
 
 if ($cfgParameters{CHIBIOS_VERSION} < 3) {
@@ -825,6 +829,8 @@ sub usage ()
         : $0 --no-pp-line : don't prepend line name with port letter and pin number
 	: $0 --no-adcp-in : do not permit to use non 5V tolerant pins for input or alternate
 	: $0 --no-error : do not abort when pin check is not OK
+	: $0 --kikadsymb : generate a pin affectation csv file for kikadsymb, with mcu reference as name
+                       in the same directory than the cfg file 
         : $0 cfgFile boardFile (if boardFile is '-', use stdout)
 	OR
 	: $0 --find=tok,tok,... cfgFile : display AF for each pins capable of function witch matches all tockens, 
@@ -1075,6 +1081,58 @@ sub fillSignalByPin ($$$)
     }
 }
 
+sub generateHardwareTableByPin ($$)
+{
+    my ($domRef, $mcuname)  = @_;
+    my @table = ();
+
+  
+    $mcuname =~ s/[\(\)-]//g;
+    open (FHD, ">", "$cfgFileRoot/$mcuname.csv") or die "cannot open $cfgFileRoot/$mcuname.csv for writing\n";
+
+    say FHD "$mcuname,,,";
+    say FHD "Pin,name,type,side";
+    
+    my @pins = $domRef->getElementsByTagName("Pin");
+    foreach my $pin (@pins) {
+	my $pinName = $pin->getAttribute ('Name');
+	my $pinPosition = $pin->getAttribute ('Position');
+	my $pinType = $pin->getAttribute ('Type');
+	my $side;
+	given ($pinName) {
+	    when (/^VSS/) {$side = 'bottom';}
+	    when (/^VDD/) {$side = 'top';}
+	    when (/^P[A-M]\d{1,2}/) {$side = 'right';}
+	    default: {$side = 'left';}
+	}
+	$table[$pinPosition] = [$pinName, $pinType, $side];
+    }
+
+    my @fileContent;
+    for (my $i=1; $i < scalar(@table); $i++) {
+	my ($n, $t, $s) = @{$table[$i]};
+	$t =~ s/Reset|Boot/in/;
+	$t =~ s/I\/O/bi/;
+	$t =~ s/MonoIO/un/;
+	$t =~ s/Power/pwr/;
+	push (@fileContent, "$i,$n,$t,$s");
+    }
+
+    my @sortedFileContent = sort {
+	my $an = (split(/,/, $a))[1];
+	my $bn = (split(/,/, $b))[1];
+	$an =~ s/P(.)(\d)$/P${1}0$2/;
+	$bn =~ s/P(.)(\d)$/P${1}0$2/;
+	return $an cmp $bn;
+    } @fileContent;
+
+    foreach my $l  (@sortedFileContent) {
+	say FHD $l;
+    }
+    close (FHD);
+}
+    
+
 
 # recuperation du request (channel) dans la balise DMA_Request 
 # deux cas de figure :
@@ -1275,10 +1333,12 @@ sub getdataFromCubeMx ($)
     die "incorrect mcu_name $mcu\n" . 
 	"all mcu are in directory $mcuDir\n"	unless -r $mcuPath;
     
-    
     my $dom = XML::LibXML->load_xml(location => $mcuPath);
     fillGpioAlternateInfo ($dom, \@ports, $gpioAfInfo);
     fillSignalByPin ($dom, $signalByPin, $pinsByNonAfSignal);
+    generateHardwareTableByPin($dom, $mcu) if exists $options{kikadsymb};
+
+    
     fillDmaByFun ($dom, $dmaByFun);
 
     # DEBUG
