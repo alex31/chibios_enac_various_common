@@ -205,24 +205,6 @@ my %options;
 my $family;
 
 
- # getdataFromCubeMx ('STM32F407V(E-G)Tx');
-
-
-
- #   for my $pinName (sort (keys %$signalByPin)) {
- #       print ">> $pinName : ";
- #       if (exists ($signalByPin->{$pinName})) {
- # 	  say join (' ', 
- # 		    map ((exists $gpioAfInfo->{$_} && exists $gpioAfInfo->{$_}->{$pinName}) ? 
- # 			   "$_:$gpioAfInfo->{$_}->{$pinName}" : 
- # 			   "$_", 
- # 			 @{$signalByPin->{$pinName}}));
- #       } else {
- # 	  warn "No signals list for $pinName";
- #       }
- #   }
-
- # exit;
 
 
 GetOptions (\%options, 'no-pp-pin', 'no-pp-line', 'no-adcp-in', 'no-error', 'kikadsymb',
@@ -249,6 +231,7 @@ if (exists $options{'no-adcp-in'}) {
 addPluginsRootDir();
 my ($CUBE_ROOT) = grep (-d $_, @CubeMXRootDir);
 die "unable to find STM32CubeMX root dir\n" unless defined $CUBE_ROOT;
+
 
 my ($cfgFile, $boardFile) = @ARGV;
 $boardFile //= '-';
@@ -288,6 +271,7 @@ if (exists  $options{dma}) {
     findDmaByFunction ($options{dma});
     exit (0);
 }
+
 
 genHeader ();
 genIOPins();
@@ -1088,7 +1072,8 @@ sub generateHardwareTableByPin ($$)
 
   
     $mcuname =~ s/[\(\)-]//g;
-    open (FHD, ">", "$cfgFileRoot/$mcuname.csv") or die "cannot open $cfgFileRoot/$mcuname.csv for writing\n";
+    open (FHD, ">", "$cfgFileRoot/$mcuname.csv") or
+	die "cannot open $cfgFileRoot/$mcuname.csv for writing\n";
 
     say FHD "$mcuname,,,";
     say FHD "Pin,name,type,side";
@@ -1129,6 +1114,26 @@ sub generateHardwareTableByPin ($$)
     foreach my $l  (@sortedFileContent) {
 	say FHD $l;
     }
+    close (FHD);
+
+    
+    open (FHD, ">", "$cfgFileRoot/${mcuname}_allFunctions.txt") or
+	die "cannot open $cfgFileRoot/${mcuname}_allFunctions.txt for writing\n";
+
+    for my $pinName (sort (keys %$signalByPin)) {
+	print FHD "$pinName : ";
+	if (exists ($signalByPin->{$pinName})) {
+	    say FHD join (' ', 
+		      map ((exists $gpioAfInfo->{$_} && exists $gpioAfInfo->{$_}->{$pinName}) ? 
+			   "$_:$gpioAfInfo->{$_}->{$pinName}" : 
+			   "$_", 
+			   @{$signalByPin->{$pinName}}));
+	} else {
+	    warn "No signals list for $pinName";
+	    say FHD "*** No signals list for $pinName ***";
+	}
+    }
+
     close (FHD);
 }
     
