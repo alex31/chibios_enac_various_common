@@ -269,6 +269,14 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
     case 0x1003 : mcu_revid_chr = 'Y'; break;
     }
     break;
+  case  0x450 : mcu_devid_str = "STM32H74x/75x";
+    switch (mcu_revid) {
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x1003 : mcu_revid_chr = 'Y'; break;
+    case 0x2001 : mcu_revid_chr = 'X'; break;
+    case 0x2003 : mcu_revid_chr = 'V'; break;
+    }
+    break;
   }
   
   chprintf(lchp, "Kernel:       %s\r\n", CH_KERNEL_VERSION);
@@ -303,6 +311,12 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
   chprintf(lchp, "Main STM32_SYSCLK frequency %.2f Mhz\r\n", STM32_SYSCLK/1e6f);
 #pragma GCC diagnostic pop
 #endif
+#ifdef STM32_SYS_CK
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+  chprintf(lchp, "Main STM32_SYS_CK frequency %.2f Mhz\r\n", STM32_SYS_CK/1e6f);
+#pragma GCC diagnostic pop
+#endif
 
 #ifdef CH_PORT_INFO
   chprintf(lchp, "Port Info:    %s\r\n", CH_PORT_INFO);
@@ -324,6 +338,13 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
 #if (!defined STM32_USE_REVISION_A_FIX) || (STM32_USE_REVISION_A_FIX == 0)
   if ((mcu_devid == 0x413) && (mcu_revid_chr == 'A')) {
     chprintf(lchp, "Chip Revision: %s REV '%c' PLEASE define STM32_USE_REVISION_A_FIX in mcuconf.h !!\r\n",
+	     mcu_devid_str, mcu_revid_chr);
+  }
+#endif
+
+#if (!defined STM32_ENFORCE_H7_REV_XY) || (STM32_ENFORCE_H7_REV_XY == 0)
+  if ((mcu_devid == 0x450) && (mcu_revid_chr > 'X')) {
+    chprintf(lchp, "Chip Revision: %s REV '%c' PLEASE define STM32_ENFORCE_H7_REV_XY in mcuconf.h !!\r\n",
 	     mcu_devid_str, mcu_revid_chr);
   }
 #endif

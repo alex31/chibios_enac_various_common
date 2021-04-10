@@ -41,12 +41,13 @@ use constant GDBINIT_PATH => "/tmp/__bmpflash.gdbinit";
 
 sub usage();
 my %options;
+my $useOpenOcd = 0;
 
 END {
     unlink GDBINIT_PATH if -e GDBINIT_PATH && not exists $options{keep};
 }
 
-GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s');
+GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s', 'o743');
 usage () if exists  $options{help};
 
 my $gdbPath = which('arm-none-eabi-gdb') // which('gdb-multiarch');
@@ -54,6 +55,8 @@ my $gdbPath = which('arm-none-eabi-gdb') // which('gdb-multiarch');
 die "please install arm-none-eabi-gdb or gdb-multiarch" unless defined $gdbPath;
 
 my $bmpdev;
+$options{device} = '| openocd -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_h743zi.cfg'
+    if exists  $options{o743};
 if (!exists  $options{device}) {
     if (-e BMPDEV) {
 	$bmpdev = BMPDEV;
@@ -77,9 +80,15 @@ if (!exists  $options{device}) {
     } 
 } else {
     $bmpdev = $options{device};
-    if (! -e $bmpdev) {
-	die sprintf ("device %s not found ".
-		     "black magic probe usb device not detected, aborting\n", $bmpdev);	
+    if ($bmpdev =~ /\/dev/) {
+	if (! -e $bmpdev) {
+	    die sprintf ("device %s not found ".
+			 "black magic probe usb device not detected, aborting\n", $bmpdev);	
+	}
+    } elsif (($bmpdev !~ /\w+:\d+/) and ($bmpdev !~ /openocd/)) {
+	die "not recognised device format $bmpdev\n";
+    } else {
+	$useOpenOcd = 1;
     }
 }
 
@@ -95,50 +104,89 @@ if (! exists  $options{erase}) {
     die "cannot read $elf file" unless -r $elf;
 }
 
-my $gdbAttachForDebug = <<EOL;
-target extended-remote $bmpdev
-monitor version
-monitor swdp_scan
-attach 1
-EOL
+my $gdbAttachForDebug;
+my $gdbEraseFlash;
+my $gdbInitDebug;
+my $gdbInitFlash;
+my $gdbInitRun;
 
-my $gdbEraseFlash = <<EOL;
-target extended-remote $bmpdev
-monitor version
-monitor swdp_scan
-attach 1
-monitor erase
+if (not $useOpenOcd) {
+    $gdbAttachForDebug = <<EOL;
+    target extended-remote $bmpdev
+    monitor version
+    monitor swdp_scan
+    attach 1
 EOL
-
-my $gdbInitDebug = <<EOL;
-target extended-remote $bmpdev
-set pagination off
-monitor version
-monitor swdp_scan
-attach 1
-set mem inaccessible-by-default off
-load
-run
-EOL
-
-my $gdbInitFlash = <<EOL;
-target extended-remote $bmpdev
-#monitor version
-monitor swdp_scan
-attach 1
-load
-kill
-EOL
-
-my $gdbInitRun = <<EOL;
-target extended-remote $bmpdev
-set mem inaccessible-by-default off
-#monitor version
+    
+    $gdbEraseFlash = <<EOL;
+    target extended-remote $bmpdev
+    monitor version
 #monitor swdp_scan
-attach 1
-start
-detach
+#attach 1
+    monitor erase
 EOL
+	
+	$gdbInitDebug = <<EOL;
+        target extended-remote $bmpdev
+	set pagination off
+	monitor version
+	monitor swdp_scan
+	attach 1
+	set mem inaccessible-by-default off
+	load
+	run
+EOL
+	
+	$gdbInitFlash = <<EOL;
+        target extended-remote $bmpdev
+	#monitor version
+	#monitor swdp_scan
+	attach 1
+	load
+	kill
+EOL
+
+    $gdbInitRun = <<EOL;
+    target extended-remote $bmpdev
+    set mem inaccessible-by-default off
+    disconnect
+    quit
+EOL
+} else {
+    $gdbAttachForDebug = <<EOL;
+    target extended-remote $bmpdev
+    monitor version
+EOL
+    
+    $gdbEraseFlash = <<EOL;
+    target extended-remote $bmpdev
+    monitor version
+    monitor erase
+EOL
+	
+	$gdbInitDebug = <<EOL;
+        target extended-remote $bmpdev
+	set pagination off
+	monitor version
+	set mem inaccessible-by-default off
+	load
+	run
+EOL
+	
+    $gdbInitFlash = <<EOL;
+        target extended-remote $bmpdev
+	load
+	kill
+EOL
+
+    $gdbInitRun = <<EOL;
+    target extended-remote $bmpdev
+    monitor reset
+    disconnect
+    quit
+EOL
+}
+
 
 my $fhd;
 

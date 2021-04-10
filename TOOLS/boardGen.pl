@@ -1161,18 +1161,18 @@ sub fillDmaByFun ($$)
     my @ips = $domRef->getElementsByTagName("IP");
     foreach my $ip (@ips) {
 	my $cf = $ip->getAttribute ('InstanceName');
-	next unless (defined $cf) and ($cf eq 'DMA');
+	next unless (defined $cf) and ($cf =~ /[BD]?DMA$/);
 	my $name = $ip->getAttribute ('Name');
 	$version =  $ip->getAttribute ('Version');
 	$dmaPath = $CUBE_ROOT . "/db/mcu/IP/$name-${version}_Modes.xml";
-#	say "DBG> dmaPath = $dmaPath version = $version cf=$cf";
-	last;
+	say "DBG> dmaPath = $dmaPath version = $version cf=$cf";
+#	last;
     }
 
     given ($version) {
 	when (/dma_v1/) {fillDmaV1ByFun($dmaPath, $fillDmaByFunRef);}
 	when (/dma_v2_0/) {fillDmaV2ByFun($dmaPath, $fillDmaByFunRef);}
-	default {die "dma version $version not (yet) handled\n"}
+	default {warn "dma version $version not (yet) handled\n"}
     }
 }
 
@@ -1191,7 +1191,7 @@ sub fillDmaV1ByFun ($$)
 	next unless $refp->getAttribute ('Name') eq 'Instance';
 	my @pv =  $refp->getElementsByTagName('PossibleValue');
 	@dmaChannels = map ($_->getAttribute ('Value'), @pv);
-	last;
+#	last;
     }
 
     #say join ("\n", @dmaChannels);

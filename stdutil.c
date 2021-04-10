@@ -206,10 +206,12 @@ void systemDeepSleep (void)
   PWR->__CR &= ~(__PWR_CR_PDDS | __PWR_CR_LPDS);
   /* set LPDS and clear  */
   PWR->__CR |= (__PWR_CR_LPDS | __PWR_CR_CSBF);
-#elif defined(STM32L4XX)
+#elif defined(STM32L4XX) 
   PWR->CR1 =  (PWR->CR1 & (~PWR_CR1_LPMS)) | PWR_CR1_LPMS_SHUTDOWN;
+#elif defined(STM32H7XX)
+  PWR->CPUCR |= PWR_CPUCR_PDDS_D1 | PWR_CPUCR_PDDS_D2 | PWR_CPUCR_PDDS_D3;
 #else
-#error neither STM32F3XX, STM32F4XX, TM32F7XX, STM32L4XX : should be implemented
+#error neither F3XX, F4XX, F7XX, H7XX, L4XX : should be implemented
 #endif
 
   /* Setup the deepsleep mask */
@@ -252,8 +254,10 @@ void systemDeepSleepFromISR (void)
   PWR->__CR |= (__PWR_CR_LPDS | __PWR_CR_CSBF);
 #elif defined(STM32L4XX)
   PWR->CR1 =  (PWR->CR1 & (~PWR_CR1_LPMS)) | PWR_CR1_LPMS_SHUTDOWN;
+#elif defined(STM32H7XX)
+  PWR->CPUCR |= PWR_CPUCR_PDDS_D1 | PWR_CPUCR_PDDS_D2 | PWR_CPUCR_PDDS_D3;
 #else
-#warning neither STM32F3XX,STM32F4XX,  STM32F7XX, STM32L4XX : should be implemented
+#error neither F3XX, F4XX, F7XX, H7XX, L4XX : should be implemented
 #endif
 
   /* Setup the deepsleep mask */
