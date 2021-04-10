@@ -284,8 +284,10 @@ typedef struct  {
    * @note    use STM32_DMA_STREAM_ID macro
    */
   uint32_t		stream;
-
-#if STM32_DMA_SUPPORTS_CSELR
+#if STM32_DMA_SUPPORTS_DMAMUX
+  uint8_t		dmamux1;
+#else
+#if    STM32_DMA_SUPPORTS_CSELR
   /**
    * @brief   DMA request or DMA channel
    * @note    terminology depend on DMA version
@@ -294,10 +296,10 @@ typedef struct  {
     uint8_t		request; // STM terminology for dmaV1
     uint8_t		channel; // ChibiOS terminology for both dmaV1 and dmaV2 (portability)
   };
-#elif STM32_DMA_ADVANCED
+#  else
   uint8_t		channel;
+#  endif
 #endif
-
   /**
    * @brief   Enable increment of peripheral address after each transfert
    */
@@ -499,7 +501,9 @@ struct DMADriver {
   /**
    * @brief	controller associated with stream
    */
+#if STM32_DMA_SUPPORTS_DMAMUX
   uint8_t		     controller;
+#endif
 };
 
 
