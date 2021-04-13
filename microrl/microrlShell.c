@@ -205,20 +205,6 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
   char mcu_revid_chr = '?';
 
   switch (mcu_devid) {
-  case  0x415 : mcu_devid_str = "STM32L475xx/476xx/486xx devices";
-    switch (mcu_revid) {
-    case 0x1000 : mcu_revid_chr = '1'; break;
-    case 0x1001 : mcu_revid_chr = '2'; break;
-    case 0x1003 : mcu_revid_chr = '3'; break;
-    case 0x1007 : mcu_revid_chr = '4'; break;
-    }
-    break;
-  case  0x461 : mcu_devid_str = "STM32L496xx/4A6xx devices";
-    switch (mcu_revid) {
-    case 0x1000 : mcu_revid_chr = 'A'; break;
-    case 0x2000 : mcu_revid_chr = 'B'; break;
-    }
-    break;
   case  0x411 : mcu_devid_str = "STM32F2xx and *EARLY* STM32F40x and 41x";
     switch (mcu_revid) {
     case 0x1000 : mcu_revid_chr = 'A'; break;
@@ -257,12 +243,6 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
     case 0x1001 : mcu_revid_chr = 'Z'; break;
     }
     break;
-  case  0x435 : mcu_devid_str = "STM32L43x";
-    switch (mcu_revid) {
-    case 0x1000 : mcu_revid_chr = 'A'; break;
-    case 0x1001 : mcu_revid_chr = 'Z'; break;
-    }
-    break;
   case  0x446 : mcu_devid_str = "STM32F303xD/E and STM32F398xE";
     switch (mcu_revid) {
     case 0x1001 : mcu_revid_chr = 'Z'; break;
@@ -275,6 +255,41 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
     case 0x1003 : mcu_revid_chr = 'Y'; break;
     case 0x2001 : mcu_revid_chr = 'X'; break;
     case 0x2003 : mcu_revid_chr = 'V'; break;
+    }
+    break;
+  case  0x464 : mcu_devid_str = "STM32L41x and STM32L42x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x2001 : mcu_revid_chr = 'Y'; break;
+    }
+   break;
+  case  0x435 : mcu_devid_str = "STM32L43x and STM32L44x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x2001 : mcu_revid_chr = 'Y'; break;
+    }
+    break;
+  case  0x462 : mcu_devid_str = "STM32L45x and STM32L46x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x2001 : mcu_revid_chr = 'Y'; break;
+    }
+    break;
+  case  0x415 : mcu_devid_str = "STM32L475xx/476xx/486xx devices";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = '1'; break;
+    case 0x1001 : mcu_revid_chr = '2'; break;
+    case 0x1003 : mcu_revid_chr = '3'; break;
+    case 0x1007 : mcu_revid_chr = '4'; break;
+    }
+    break;
+  case  0x461 : mcu_devid_str = "STM32L496xx/4A6xx devices";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x2000 : mcu_revid_chr = 'B'; break;
     }
     break;
   }
