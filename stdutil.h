@@ -132,14 +132,14 @@ static inline uint32_t RotRnbOfst(const uint32_t x, const uint32_t shift, const 
 }
 
 static inline __attribute__((always_inline))
-uint32_t arm_ror_imm(uint32_t v, uint32_t sh) {
+uint32_t arm_ror_imm(const uint32_t v, const uint32_t sh) {
   uint32_t d;
   asm ("ROR %[Rd], %[Rm], %[Is]" : [Rd] "=r" (d) : [Rm] "r" (v), [Is] "i" (sh));
   return d;
 }
 
 static inline __attribute__((always_inline))
-uint32_t arm_rol_imm(uint32_t v, const uint32_t sh) {
+uint32_t arm_rol_imm(const uint32_t v, const uint32_t sh) {
   return arm_ror_imm(v, 32U-sh);
 }
  
@@ -341,11 +341,13 @@ F7
 #define FAST_SECTION ".ram0" 
 #define DMA_SECTION ".ram3"    
 #define BCKP_SECTION ".ram5"
-#elif (defined (STM32L431xx) || defined (STM32L432xx) || defined (STM32L433xx) || defined (STM32L442xx) || defined (STM32L443xx))
+#elif (defined (STM32L422xx) || defined (STM32L431xx) || defined (STM32L432xx) || \
+       defined (STM32L433xx) || defined (STM32L442xx) || defined (STM32L443xx))
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram0" 
 #define DMA_SECTION ".ram0"    
-#elif  (defined (STM32L471xx) || defined (STM32L475xx) || defined (STM32L476xx) || defined (STM32L485xx) || defined (STM32L486xx))
+#elif  (defined (STM32L471xx) || defined (STM32L475xx) || defined (STM32L476xx) || \
+	defined (STM32L485xx) || defined (STM32L486xx))
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram4" 
 #define DMA_SECTION ".ram0"    

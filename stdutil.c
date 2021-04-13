@@ -449,7 +449,7 @@ const char* getGpioName (const ioportid_t p)
   _GPIOTEST(GPIOA);
   _GPIOTEST(GPIOB);
   _GPIOTEST(GPIOC);
-#ifndef STM32L432xx
+#if (!defined STM32L422xx) && (!defined STM32L432xx)
   _GPIOTEST(GPIOD);
   _GPIOTEST(GPIOE);
   _GPIOTEST(GPIOF);
