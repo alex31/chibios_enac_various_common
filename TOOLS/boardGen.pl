@@ -836,7 +836,7 @@ sub registerFamily ()
 	my @sigNames = @{$signalByPin->{$pinName}} ;
 	#say $pinName;
 	for my $sigName (@sigNames) {
-	    if ($sigName =~ /ADC(\d)_IN(\d+)/) {
+	    if ($sigName =~ /ADC(\d)_IN[PN]?(\d+)/) {
 		if (exists $family->[ADC_BY_PIN]->{$pinName}) {
 		    $family->[ADC_BY_PIN]->{$pinName}->{$1} = $2;
 		} else {
