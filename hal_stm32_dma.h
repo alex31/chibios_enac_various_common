@@ -501,7 +501,7 @@ struct DMADriver {
   /**
    * @brief	controller associated with stream
    */
-#if STM32_DMA_SUPPORTS_DMAMUX
+#if STM32_DMA_SUPPORTS_DMAMUX == 0
   uint8_t		     controller;
 #endif
 };
