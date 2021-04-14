@@ -183,6 +183,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 void     dshotStop(DSHOTDriver *driver)
 {
   pwmStop(driver->config->pwmp);
+  dmaStopTransfert(&driver->dmap);
   dmaStop(&driver->dmap);
 }
 
