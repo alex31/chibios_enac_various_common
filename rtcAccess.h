@@ -42,9 +42,10 @@ void     setTimeUnixSec(time_t tt);
 void	 registerRtcChanged (RtcChangedCB cb);
 
 
+#ifdef RTC_ISR_WUTWF // RTC V2
 bool rtcEnablePeriodicWakeup (RTCDriver *rtcp, uint32_t _second);
 bool rtcDisablePeriodicWakeup (RTCDriver *rtcp);
-
+#endif
 
   
 

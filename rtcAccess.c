@@ -430,7 +430,7 @@ void	 registerRtcChanged (RtcChangedCB cb)
   callback = cb;
 }
 
-
+#ifdef RTC_ISR_WUTWF // RTC V2
 bool rtcEnablePeriodicWakeup (RTCDriver *rtcp, uint32_t _second)
 {
   if (--_second > ((2 * (1<<16))-1))
@@ -472,4 +472,4 @@ bool rtcDisablePeriodicWakeup (RTCDriver *rtcp)
 
   return true;
 }
-
+#endif
