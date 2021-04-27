@@ -115,6 +115,7 @@ if (not $useOpenOcd) {
     target extended-remote $bmpdev
     monitor version
     monitor swdp_scan
+    set mem inaccessible-by-default off
     attach 1
 EOL
     
@@ -131,8 +132,8 @@ EOL
 	set pagination off
 	monitor version
 	monitor swdp_scan
-	attach 1
 	set mem inaccessible-by-default off
+	attach 1
 	load
 	run
 EOL
@@ -148,13 +149,13 @@ EOL
 
     $gdbInitRun = <<EOL;
     target extended-remote $bmpdev
-    set mem inaccessible-by-default off
     disconnect
     quit
 EOL
 } else {
     $gdbAttachForDebug = <<EOL;
     target extended-remote $bmpdev
+    set mem inaccessible-by-default off
     monitor version
 EOL
     
