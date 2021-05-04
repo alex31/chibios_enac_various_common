@@ -87,7 +87,7 @@ Thread * simpleMsgBind (SSM_STREAM_TYPE *channel,
 			void * const userData)
 {
   // will be freed when readAndProcessChannel thread will exit
-  MsgBindParams *mbp = malloc_m (sizeof (mbp)); 
+  MsgBindParams *mbp = malloc_m(sizeof (MsgBindParams)); 
   mbp->channel = channel;
   mbp->callback = callback;
   mbp->errCallback = errCallback;
@@ -95,10 +95,10 @@ Thread * simpleMsgBind (SSM_STREAM_TYPE *channel,
 
 #if (CH_KERNEL_MAJOR <= 3)
   Thread *tp = chThdCreateFromHeap(NULL,  THD_WA_SIZE(1024), NORMALPRIO, 
-  				   readAndProcessChannel, mbp);
+  				   &readAndProcessChannel, mbp);
 #else
   Thread *tp = chThdCreateFromHeap(NULL,  THD_WA_SIZE(1024), "readAndProcessChannel", NORMALPRIO, 
-  				   readAndProcessChannel, mbp);
+				   &readAndProcessChannel, mbp);
 #endif
 
 

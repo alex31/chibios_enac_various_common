@@ -67,6 +67,10 @@ extern "C" {
 #define STM32_DMA_SUPPORTS_CSELR   FALSE
 #endif
 
+#if !defined(STM32_DMA_SUPPORTS_DMAMUX) || defined(__DOXYGEN__)
+#define STM32_DMA_SUPPORTS_DMAMUX  FALSE
+#endif
+
 #if  !defined(STM32_DMA_DUMMY_MEMORY_AREA_ADDRESS) || defined(__DOXYGEN__)
 #define  STM32_DMA_DUMMY_MEMORY_AREA_ADDRESS 0x80000000
 #endif   
