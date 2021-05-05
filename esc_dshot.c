@@ -241,6 +241,8 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
       setDshotPacketThrottle(&driver->dshotMotors.dp[_index], specmd);
       setDshotPacketTlm(&driver->dshotMotors.dp[_index], driver->config->tlm_sd != NULL);
     }
+  } else {
+    chDbgAssert(false, "dshotSetThrottle index error");
   }
 
   uint8_t repeat;
@@ -335,6 +337,7 @@ uint32_t dshotGetCrcErrorsCount(DSHOTDriver *driver)
  */
 DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
 {
+  chDbgAssert(index <= DSHOT_CHANNELS, "dshot index error");
   chMtxLock(&driver->dshotMotors.tlmMtx[index]);
   const DshotTelemetry tlm = driver->dshotMotors.dt[index];
   chMtxUnlock(&driver->dshotMotors.tlmMtx[index]);
