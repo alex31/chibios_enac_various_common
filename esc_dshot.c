@@ -492,7 +492,14 @@ static noreturn void dshotTlmRec (void *arg)
       memset(tlm.rawData, 0U, sizeof(DshotTelemetry));
       // count errors
       driver->crc_errors++;
+    } else {
+      // big-endian to little-endian conversion
+      tlm.voltage = __builtin_bswap16(tlm.voltage);
+      tlm.current = __builtin_bswap16(tlm.current);
+      tlm.consumption = __builtin_bswap16(tlm.consumption);
+      tlm.rpm = __builtin_bswap16(tlm.rpm);
     }
+    
     chMtxLock(&driver->dshotMotors.tlmMtx[idx]);
     driver->dshotMotors.dt[idx] = tlm;
     chMtxUnlock(&driver->dshotMotors.tlmMtx[idx]);

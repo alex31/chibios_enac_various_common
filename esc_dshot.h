@@ -72,9 +72,6 @@ typedef enum {
  * @brief   telemetry packed as sent by some KISS ESC
  * @note    if other ESC use different binary representation in the future
  *          we'll have to add a little bit abstraction here
- * @note    should be rewritten to avoid scalar_storage_order ("big-endian")
- *          which is not c++ compliant : the endianness has to be changed
- *          in software
  */
 typedef struct {
   union {
@@ -85,11 +82,7 @@ typedef struct {
       uint16_t consumption;
       uint16_t rpm;
     }
-#ifdef __cplusplus
       __attribute__ ((__packed__));
-#else
-      __attribute__ ((__packed__, scalar_storage_order ("big-endian")));
-#endif
     uint8_t rawData[9];
   };
   uint8_t  crc8;
