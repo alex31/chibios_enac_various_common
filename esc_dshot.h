@@ -86,8 +86,18 @@ typedef struct {
     uint8_t rawData[9];
   };
   uint8_t  crc8;
-}  __attribute__ ((__packed__)) DshotTelemetry ;
+}  __attribute__ ((__packed__)) DshotTelemetryFrame ;
 
+
+  /**
+ * @brief   telemetry with timestamp
+ */
+typedef struct {
+  DshotTelemetryFrame frame;
+  systime_t	      ts; // timestamp of last succesfull received frame
+}  DshotTelemetry ;
+
+  
 typedef union {
 #if DSHOT_AT_LEAST_ONE_32B_TIMER
   uint32_t widths32[DSHOT_DMA_BUFFER_SIZE][DSHOT_CHANNELS];
@@ -152,7 +162,8 @@ void     dshotSendFrame(DSHOTDriver *driver);
 void     dshotSendThrottles(DSHOTDriver *driver, const uint16_t throttles[DSHOT_CHANNELS]);
 void     dshotSendSpecialCommand(DSHOTDriver *driver, const uint8_t index, const dshot_special_commands_t specmd);
 
-uint32_t dshotGetCrcErrorsCount(const DSHOTDriver *driver);
+uint32_t dshotGetCrcErrorCount(const DSHOTDriver *driver);
+uint32_t dshotGetTelemetryFrameCount(const DSHOTDriver *driver);
 DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index);
 
 
@@ -222,6 +233,12 @@ struct  DSHOTDriver {
    * @brief number of crc errors
    */
   uint32_t crc_errors;
+
+  /**
+   * @brief number of sucessful telemetry frame received
+   */
+  uint32_t tlm_frame_nb;
+  
 #if DSHOT_SPEED_KHZ == 0
   uint16_t bit0Duty;
   uint16_t bit1Duty;

@@ -141,6 +141,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   };
 
   driver->crc_errors = 0;
+  driver->tlm_frame_nb = 0;
 #if DSHOT_SPEED_KHZ == 0
   driver->bit0Duty = (DSHOT_PWM_PERIOD * 373U / 1000U);
   driver->bit1Duty = (driver->bit0Duty*2U)            ;
@@ -322,11 +323,24 @@ void dshotSendFrame(DSHOTDriver *driver)
  * @return    number of CRC errors
  * @api
  */
-uint32_t dshotGetCrcErrorsCount(const DSHOTDriver *driver)
+uint32_t dshotGetCrcErrorCount(const DSHOTDriver *driver)
 {
   return driver->crc_errors;
 }
 
+/**
+ * @brief   return number of telemetry succesfull frame since  dshotStart
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @return    number of frames
+ * @api
+ */
+uint32_t dshotGetTelemetryFrameCount(const DSHOTDriver *driver)
+{
+  return driver->tlm_frame_nb;
+}
+
+  
 /**
  * @brief   return last received telemetry data
  *
@@ -483,21 +497,23 @@ static noreturn void dshotTlmRec (void *arg)
     chMBFetchTimeout(&driver->mb,  &escIdx, TIME_INFINITE);
     const uint32_t idx = escIdx;
     const bool success =
-      (sdReadTimeout(driver->config->tlm_sd, tlm.rawData, sizeof(DshotTelemetry),
-                     TIME_MS2I(DSHOT_TELEMETRY_TIMEOUT_MS)) == sizeof(DshotTelemetry));
+      (sdReadTimeout(driver->config->tlm_sd, tlm.frame.rawData, sizeof(DshotTelemetryFrame),
+                     TIME_MS2I(DSHOT_TELEMETRY_TIMEOUT_MS)) == sizeof(DshotTelemetryFrame));
     if (!success ||
-        (calculateCrc8(tlm.rawData, sizeof(tlm.rawData)) != tlm.crc8)) {
+        (calculateCrc8(tlm.frame.rawData, sizeof(tlm.frame.rawData)) != tlm.frame.crc8)) {
       // empty buffer to resync
       while (sdGetTimeout(driver->config->tlm_sd, TIME_IMMEDIATE) >= 0) {};
-      memset(tlm.rawData, 0U, sizeof(DshotTelemetry));
+      memset(tlm.frame.rawData, 0U, sizeof(DshotTelemetry));
       // count errors
       driver->crc_errors++;
     } else {
       // big-endian to little-endian conversion
-      tlm.voltage = __builtin_bswap16(tlm.voltage);
-      tlm.current = __builtin_bswap16(tlm.current);
-      tlm.consumption = __builtin_bswap16(tlm.consumption);
-      tlm.rpm = __builtin_bswap16(tlm.rpm);
+      tlm.frame.voltage = __builtin_bswap16(tlm.frame.voltage);
+      tlm.frame.current = __builtin_bswap16(tlm.frame.current);
+      tlm.frame.consumption = __builtin_bswap16(tlm.frame.consumption);
+      tlm.frame.rpm = __builtin_bswap16(tlm.frame.rpm);
+      tlm.ts = chVTGetSystemTimeX();
+      driver->tlm_frame_nb++;
     }
     
     chMtxLock(&driver->dshotMotors.tlmMtx[idx]);
