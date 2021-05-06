@@ -498,14 +498,15 @@ static noreturn void dshotTlmRec (void *arg)
     const uint32_t idx = escIdx;
     const bool success =
       (sdReadTimeout(driver->config->tlm_sd, tlm.frame.rawData, sizeof(DshotTelemetryFrame),
-                     TIME_MS2I(DSHOT_TELEMETRY_TIMEOUT_MS)) == sizeof(DshotTelemetryFrame));
+                     TIME_MS2I(1000)) == sizeof(DshotTelemetryFrame));
     if (!success ||
         (calculateCrc8(tlm.frame.rawData, sizeof(tlm.frame.rawData)) != tlm.frame.crc8)) {
       // empty buffer to resync
       while (sdGetTimeout(driver->config->tlm_sd, TIME_IMMEDIATE) >= 0) {};
       memset(tlm.frame.rawData, 0U, sizeof(DshotTelemetry));
       // count errors
-      driver->crc_errors++;
+      if (success)
+	driver->crc_errors++;
     } else {
       // big-endian to little-endian conversion
       tlm.frame.voltage = __builtin_bswap16(tlm.frame.voltage);

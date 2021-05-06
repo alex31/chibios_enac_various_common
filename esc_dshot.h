@@ -15,6 +15,13 @@ extern "C" {
 #define DSHOT_CHANNEL_FIRST_INDEX 0U
 #endif
 
+#define DSHOT_BIT_WIDTHS		16U
+#define DSHOT_DMA_BUFFER_SIZE	        (DSHOT_BIT_WIDTHS + \
+					 DSHOT_PRE_FRAME_SILENT_SYNC_BITS + \
+					 DSHOT_POST_FRAME_SILENT_SYNC_BITS )
+#define DSHOT_PRE_FRAME_SILENT_SYNC_BITS  2U 
+#define DSHOT_POST_FRAME_SILENT_SYNC_BITS 2U
+
 /**
  * @brief   special value for index : send order to all channels
  * @note    could be used as index in dshotSetThrottle and
