@@ -322,7 +322,7 @@ void dshotSendFrame(DSHOTDriver *driver)
  * @return    number of CRC errors
  * @api
  */
-uint32_t dshotGetCrcErrorsCount(DSHOTDriver *driver)
+uint32_t dshotGetCrcErrorsCount(const DSHOTDriver *driver)
 {
   return driver->crc_errors;
 }

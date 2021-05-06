@@ -152,7 +152,7 @@ void     dshotSendFrame(DSHOTDriver *driver);
 void     dshotSendThrottles(DSHOTDriver *driver, const uint16_t throttles[DSHOT_CHANNELS]);
 void     dshotSendSpecialCommand(DSHOTDriver *driver, const uint8_t index, const dshot_special_commands_t specmd);
 
-uint32_t dshotGetCrcErrorsCount(DSHOTDriver *driver);
+uint32_t dshotGetCrcErrorsCount(const DSHOTDriver *driver);
 DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index);
 
 
