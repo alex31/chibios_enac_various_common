@@ -8,7 +8,6 @@
 /*
   TODO:
 
-  ° TEST telemetry driving more than one ESC
   ° TEST special code sending
 
 
@@ -29,17 +28,17 @@
 			                  // tick_per_period will be dynamically calculated
 
 			                  // after pwm init
-#if DSHOT_SPEED_KHZ != 0 // statically defined
-#   define DSHOT_SPEED (DSHOT_SPEED_KHZ*1000)
+#if DSHOT_SPEED != 0 // statically defined
+#   define DSHOT_FREQ (DSHOT_SPEED*1000)
 #   define DSHOT_BIT0_DUTY (DSHOT_PWM_PERIOD * 373 / 1000)
 #   define DSHOT_BIT1_DUTY (DSHOT_BIT0_DUTY*2)
 #else			 // dynamically defined
-#   define DSHOT_SPEED (driver->config->speed_khz*1000)
+#   define DSHOT_FREQ (driver->config->speed_khz*1000)
 #   define DSHOT_BIT0_DUTY (driver->bit0Duty)
 #   define DSHOT_BIT1_DUTY (driver->bit1Duty)
 #endif
 #define TICK_FREQ (PWM_FREQ * TICKS_PER_PERIOD)
-#define DSHOT_PWM_PERIOD (TICK_FREQ/DSHOT_SPEED)
+#define DSHOT_PWM_PERIOD (TICK_FREQ/DSHOT_FREQ)
 
 #define    DCR_DBL              ((DSHOT_CHANNELS-1) << 8) //  DSHOT_CHANNELS transfert(s)
 // first register to get is CCR1
@@ -142,7 +141,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 
   driver->crc_errors = 0;
   driver->tlm_frame_nb = 0;
-#if DSHOT_SPEED_KHZ == 0
+#if DSHOT_SPEED == 0
   driver->bit0Duty = (DSHOT_PWM_PERIOD * 373U / 1000U);
   driver->bit1Duty = (driver->bit0Duty*2U)            ;
 #endif

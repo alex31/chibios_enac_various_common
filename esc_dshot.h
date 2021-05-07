@@ -146,7 +146,7 @@ typedef struct  {
    * @brief dshot dma buffer, sgould be defined in a non Dcached region
    */
   DshotDmaBuffer *dma_buf;
-#if DSHOT_SPEED_KHZ == 0
+#if DSHOT_SPEED == 0
   uint16_t speed_khz;
 #endif
 #if __DCACHE_PRESENT
@@ -246,7 +246,7 @@ struct  DSHOTDriver {
    */
   uint32_t tlm_frame_nb;
   
-#if DSHOT_SPEED_KHZ == 0
+#if DSHOT_SPEED == 0
   uint16_t bit0Duty;
   uint16_t bit1Duty;
 #endif
