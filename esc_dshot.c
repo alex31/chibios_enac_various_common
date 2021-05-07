@@ -27,6 +27,13 @@
 			                  // does not care if linked to PCLK1 or PCLK2
 			                  // tick_per_period will be dynamically calculated
 
+/** Base freq of DSHOT signal (in kHz)
+ * Possible values are: 150, 300, 600
+ */
+#ifndef DSHOT_SPEED
+#define DSHOT_SPEED 300
+#endif
+
 			                  // after pwm init
 #if DSHOT_SPEED != 0 // statically defined
 #   define DSHOT_FREQ (DSHOT_SPEED*1000)
