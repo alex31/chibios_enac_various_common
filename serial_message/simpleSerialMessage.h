@@ -2,7 +2,6 @@
 
 #include "ch.h"
 #include "hal.h"
-#include "portage.h"
 
 #if (!defined SIMPLE_MESSAGE_API_STREAM) && \
     (!defined SIMPLE_MESSAGE_API_SERIAL) && \
@@ -83,7 +82,7 @@ extern "C" {
 		      const size_t len);
   
   // launch a thread which read and segment message then call callback when a message is complete
-  Thread * simpleMsgBind (SSM_STREAM_TYPE *channel,
+  thread_t * simpleMsgBind (SSM_STREAM_TYPE *channel,
 			  const MsgCallBack callback, const ChkErrCallBack errCallback,
 			  void * const userData);
 #ifdef __cplusplus

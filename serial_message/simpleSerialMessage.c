@@ -82,7 +82,7 @@ bool simpleMsgSend (SSM_STREAM_TYPE * const channel, const uint8_t *buffer,
   return false;
 }
 
-Thread * simpleMsgBind (SSM_STREAM_TYPE *channel,
+thread_t * simpleMsgBind (SSM_STREAM_TYPE *channel,
 			const MsgCallBack callback, const ChkErrCallBack errCallback,
 			void * const userData)
 {
@@ -94,15 +94,15 @@ Thread * simpleMsgBind (SSM_STREAM_TYPE *channel,
   mbp->userData = userData;
 
 #if (CH_KERNEL_MAJOR <= 3)
-  Thread *tp = chThdCreateFromHeap(NULL,  THD_WA_SIZE(1024), NORMALPRIO, 
+  Thread *tp = chThdCreateFromHeap(NULL, THD_WA_SIZE(1024), NORMALPRIO, 
   				   &readAndProcessChannel, mbp);
 #else
-  Thread *tp = chThdCreateFromHeap(NULL,  THD_WA_SIZE(1024), "readAndProcessChannel", NORMALPRIO, 
+  thread_t *tp = chThdCreateFromHeap(NULL, THD_WORKING_AREA_SIZE(1024), "readAndProcessChannel", NORMALPRIO, 
 				   &readAndProcessChannel, mbp);
 #endif
 
 
-  /* Thread *tp = chThdCreateStatic(waMsgBind, sizeof(waMsgBind), NORMALPRIO, */
+  /* thread_t *tp = chThdCreateStatic(waMsgBind, sizeof(waMsgBind), NORMALPRIO, */
   /* 				   readAndProcessChannel, &mbp); */
   if (tp == NULL) {
     //    chprintf(chp, "simpleMsgBind : out of memory\r\n");
@@ -157,7 +157,7 @@ static void readAndProcessChannel(void *arg)
 			    .state = WAIT_FOR_SYNC};
 
 
-  while (!chThdShouldTerminate()) {
+  while (!chThdShouldTerminateX()) {
     switch (messState.state) {
       
     case WAIT_FOR_SYNC :
