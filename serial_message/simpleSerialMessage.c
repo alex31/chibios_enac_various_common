@@ -15,15 +15,25 @@ static inline size_t uartReadWrapper(UARTDriver *uartp,	uint8_t *bp, const size_
 static inline size_t uartWriteWrapper(UARTDriver *uartp,	const uint8_t *bp, const size_t n);
 #endif
 
+#if SIMPLE_MESSAGE_PPRZ_STX
+#define SYNC_LEN 1
+#define SYNC_INIT {0x99}
+#define MSG_HEADER_SIZE 2U
+#else
+#define SYNC_LEN 2
+#define SYNC_INIT {0xED, 0xFE}
+#define MSG_HEADER_SIZE 3U
+#endif
+
 typedef enum  {WAIT_FOR_SYNC, WAIT_FOR_LEN, WAIT_FOR_PAYLOAD, WAIT_FOR_CHECKSUM} SerialCmdState ;
 
 
 typedef struct {
-  uint8_t sync[2];
+  uint8_t sync[SYNC_LEN];
   uint8_t len;
 } __attribute__ ((__packed__))  MsgHeader;
 
-_Static_assert(sizeof(MsgHeader) == 3, "MsgHeader struct is not packed");
+_Static_assert(sizeof(MsgHeader) == MSG_HEADER_SIZE, "MsgHeader struct is not packed");
 
 
 typedef struct {
@@ -60,7 +70,7 @@ bool simpleMsgSend (SSM_STREAM_TYPE * const channel, const uint8_t *buffer,
   if (len > 255) 
     return false;
   
-  const MsgHeader msgHeader = {.sync = {0xED, 0xFE},
+  const MsgHeader msgHeader = {.sync = SYNC_INIT,
 			       .len = len & 0xff};
   uint16_t crc =  fletcher16WithLen (buffer, len);
   //  DebugTrace ("len = %u, crc =0x%x", len, crc);
@@ -162,14 +172,23 @@ static void readAndProcessChannel(void *arg)
       
     case WAIT_FOR_SYNC :
       // DebugTrace ("WAIT_FOR_SYNC");
+#if (SIMPLE_MESSAGE_PPRZ_STX == 0)
       messState.payload[0] = messState.payload[1];
       messState.payload[1] = (uint8_t)  SSM_STREAM_GET (mbp->channel);
+#else
+      messState.payload[0] = (uint8_t)  SSM_STREAM_GET (mbp->channel);
+#endif
       /* if ( (*((uint16_t *) &messState.payload[0]) & 0xffff) == 0xFEED) { */
       /* 	messState.state = WAIT_FOR_LEN; */
       /* }  */
-      if ((messState.payload[0]  == 0xED) &&  (messState.payload[1]  == 0xFE)) {
-	messState.state = WAIT_FOR_LEN;
-      } 
+#if (SIMPLE_MESSAGE_PPRZ_STX == 0)
+      if ((messState.payload[0]  == 0xED) &&  (messState.payload[1]  == 0xFE)) 
+#else
+      if (messState.payload[0]  == 0x99) 
+#endif
+	{
+	  messState.state = WAIT_FOR_LEN;
+	} 
       break;
       
     case WAIT_FOR_LEN :

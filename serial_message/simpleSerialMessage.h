@@ -33,6 +33,10 @@
 #define SIMPLE_MESSAGE_API_UART 1
 #endif
 
+#ifndef SIMPLE_MESSAGE_PPRZ_STX
+#define  SIMPLE_MESSAGE_PPRZ_STX 0
+#endif
+
 
 
 
