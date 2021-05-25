@@ -230,7 +230,7 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 	     .channel = channel,
 	     .inc_peripheral_addr = false,
 	     .inc_memory_addr = true,
-	     .circular = false,
+	     .op_mode = DMA_ONESHOT,
 	     .end_cb = NULL,
 	     .error_cb = NULL,
 	     .direction = DMA_DIR_M2P,
@@ -238,8 +238,8 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 	     .irq_priority = 12,
 	     .psize = elemSize(),//sizeof(uint16_t),
 	     .msize = elemSize(),
-#ifdef STM32F7XX
-	     .dcache_memory_in_use = false,
+#ifdef __DCACHE_PRESENT
+	     .activate_dcache_sync = false,
 #endif
 	     .pburst = 0,
 	     .mburst = 0,
