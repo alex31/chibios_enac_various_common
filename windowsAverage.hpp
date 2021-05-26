@@ -19,15 +19,18 @@ template <typename T, size_t N, typename L=Lock::None>
 class WindowAverage
 {
 public:
+  using SAS = std::conditional<sizeof(T) <= 16, int32_t, int64_t>::type;
+  using UAS = std::conditional<sizeof(T) <= 16, uint32_t, uint64_t>::type;
+  using A = std::conditional<std::is_signed<T>::value, SAS, UAS>::type;
   WindowAverage (void);
   void push (const T i);
-  T getSum (void)  const {return accum;};
-  T getMean (void) const {return accum/N;};
+  A getSum (void)  const {return accum;};
+  A getMean (void) const {return accum/N;};
   const std::pair<const T, const T> getMinMax(void) const;
   const T& operator[] (const ssize_t i);
   static constexpr size_t size(void) {return N;};
 protected:
-  T accum;
+  A accum;
   std::array<T, N> ring;
 private:
   size_t index;
@@ -46,8 +49,6 @@ WindowAverage<T, N, L>::WindowAverage (void) :
 template <typename T, size_t N, typename L>
 void WindowAverage<T, N, L>::push (const T i)
 {
-  using Signed_T = typename std::make_signed<T>::type;
-
   // elegant but ineffective, see https://godbolt.org/g/XbNCPa
   // index = (index+1) % N;
   if (++index == N)
@@ -57,13 +58,18 @@ void WindowAverage<T, N, L>::push (const T i)
   // to be able to update accum in one atomic 
   // instruction.
   // diff sould be of a signed version of the T type if T is unsigned
-  const Signed_T diff = static_cast<Signed_T>(i) -
-                        static_cast<Signed_T>(ring[index]);
-
-  // atomic operation, avoid costly lock here
-  // https://godbolt.org/g/ffxjRM
-  accum += diff;
-  
+  if constexpr (std::is_signed<T>::value == true) {
+      const T diff = i - ring[index];
+      // atomic operation, avoid costly lock here
+      // https://godbolt.org/g/ffxjRM
+      accum += diff;
+    } else {
+    // if type is unsigned, must do the operation in two times
+    chSysLock();
+    accum += i;
+    accum -= ring[index];
+    chSysUnlock();
+  }
   ring[index] = i;
 }
 
