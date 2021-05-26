@@ -49,7 +49,7 @@ msg_t  lps33Fetch(LPS33HWDriver *lpsp, LPS33HWFetch fetch);
  *
  * @param[in] sdpp      pointer to the @p initialized LPS33HWDriver object
  *
- * @return              absolute pressure in pascal
+ * @return              absolute pressure in hectopascal
  *
  * @api
  */
