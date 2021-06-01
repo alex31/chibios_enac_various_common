@@ -479,7 +479,7 @@ msg_t i2cGetBaro_MPL3115A2_Val (I2CDriver *i2cd, int32_t  *rawBuf, float *pressu
   return  RDY_OK;
 }
 
-msg_t i2cGetBaro_MPL3115A2_DevId (I2CDriver *i2cd, uint8_t  *devid)
+msg_t i2cGetBaro_MPL3115A2_DevId (I2CDriver *i2cd, uint8_t devid[3])
 {
   const uint8_t txbuf[] = {0x0c};
   uint8_t rxbuf[4];

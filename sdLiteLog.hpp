@@ -88,6 +88,7 @@ private:
 
 
 class SdLiteLogBase {
+protected:
   struct SdChunk {
     SdChunk(FIL* const  _fil) : view(SdView()), fil(_fil) {};
       
