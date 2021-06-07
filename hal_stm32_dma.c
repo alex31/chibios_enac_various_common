@@ -182,7 +182,9 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
   if (size != dmap->size) {
     osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
-		 (size > 0U) && ((size == 1U) || ((size & 1U) == 0U)));
+		 (size > 0U) && ((size == 1U) ||
+				 ((dmap->config->op_mode != DMA_CONTINUOUS_HALF_BUFFER) ||
+				  (((size & 1U) == 0U)))));
 
     const DMAConfig	    *cfg = dmap->config;
     osalDbgAssert((dmap->state == DMA_READY) ||
