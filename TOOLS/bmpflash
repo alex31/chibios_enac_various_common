@@ -134,6 +134,7 @@ EOL
 	monitor swdp_scan
 	set mem inaccessible-by-default off
 	attach 1
+        monitor vector_catch disable hard
 	load
 	run
 EOL
@@ -143,6 +144,7 @@ EOL
 	monitor version
 	monitor swdp_scan
 	attach 1
+        monitor vector_catch disable hard
 	load
 	kill
 EOL
@@ -170,12 +172,14 @@ EOL
 	set pagination off
 	monitor version
 	set mem inaccessible-by-default off
+	monitor vector_catch disable hard
 	load
 	run
 EOL
 	
     $gdbInitFlash = <<EOL;
         target extended-remote $bmpdev
+	monitor vector_catch disable hard
 	load
 	kill
 EOL
