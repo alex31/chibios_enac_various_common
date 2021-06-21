@@ -363,10 +363,27 @@ uint16_t fletcher16 (uint8_t const *data, size_t bytes)
 }
 
 #if HAL_USE_PWM
+__attribute__((const))
+static size_t   getTimerWidth(const PWMDriver *pwmp)
+{
+  (void) pwmp;
+
+  return(0
+#if STM32_PWM_USE_TIM2
+          || (pwmp == &PWMD2)
+#endif
+#if STM32_PWM_USE_TIM5
+          || (pwmp == &PWMD5)
+#endif
+         ) ? 4 : 2;
+}
+
+
 pwmcnt_t pwmChangeFrequencyI (PWMDriver *pwmd, const uint32_t freq)
 {
   const pwmcnt_t newPeriod = pwmd->config->frequency / freq;
-  if (newPeriod && (newPeriod <= 65535)) {
+  if (newPeriod &&
+      ((getTimerWidth(pwmd) == 4) ||  newPeriod <= UINT16_MAX)) {
     pwmChangePeriodI(pwmd, newPeriod);
     return newPeriod;
   } else {

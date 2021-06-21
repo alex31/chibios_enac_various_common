@@ -95,9 +95,11 @@ static inline uint64_t SWAP_ENDIAN64(uint64_t x) {
 						    "sizeof (type) is too small");  \
 				       *((type *) (&val));}
 
+
+#if (CH_KERNEL_MAJOR < 7)
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
-
+#endif
   
 
 // optimised rotation routine

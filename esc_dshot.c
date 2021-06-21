@@ -464,20 +464,6 @@ static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen)
   return crc;
 }
 
-__attribute__((const))
-static size_t   getTimerWidth(const PWMDriver *pwmp)
-{
-  (void) pwmp;
-
-  return(0
-#if STM32_PWM_USE_TIM2
-          || (pwmp == &PWMD2)
-#endif
-#if STM32_PWM_USE_TIM5
-          || (pwmp == &PWMD5)
-#endif
-         ) ? 4 : 2;
-}
 
 
 
