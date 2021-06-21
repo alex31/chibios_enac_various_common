@@ -364,7 +364,7 @@ uint16_t fletcher16 (uint8_t const *data, size_t bytes)
 
 #if HAL_USE_PWM
 __attribute__((const))
-static size_t   getTimerWidth(const PWMDriver *pwmp)
+size_t   getTimerWidth(const PWMDriver *pwmp)
 {
   (void) pwmp;
 

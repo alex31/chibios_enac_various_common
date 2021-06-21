@@ -70,7 +70,6 @@ static void buildDshotDmaBuffer(DSHOTDriver *driver);
 static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed);
 static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen);
 static noreturn void dshotTlmRec (void *arg);
-static size_t   getTimerWidth(const PWMDriver *pwmp);
 //static void dmaErrCb(DMADriver *dmap, dmaerrormask_t err);
 /*
 #                         _ __    _
