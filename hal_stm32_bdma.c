@@ -428,12 +428,11 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
   // returned size is not 32 bytes aligned by a mask operation
   // because cache management does internal mask and this operation
   // would be useless
-  static const size_t dcacheLineSize = 32U;
 
-  const uint32_t endp = ((uint32_t) memp % dcacheLineSize +
-			 dsize % dcacheLineSize);
-  return endp < dcacheLineSize ? dsize + dcacheLineSize :
-    dsize + dcacheLineSize*2U;
+  const uint32_t endp = ((uint32_t) memp % CACHE_LINE_SIZE  +
+			 dsize % CACHE_LINE_SIZE );
+  return endp < CACHE_LINE_SIZE  ? dsize + CACHE_LINE_SIZE  :
+    dsize + CACHE_LINE_SIZE *2U;
 }
 
 /**
