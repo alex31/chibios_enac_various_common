@@ -2,7 +2,9 @@
 #include <string.h>
 
 /*
-  1/ test : size est un nombre de bytes ou un nombre de world de taille 1..8 ?
+  1/ champ specifique pour software_request
+
+  2/ test : size est un nombre de bytes ou un nombre de world de taille 1..8 ?
      ° si c'est un nombre de word, y faudra revoir le calcul du cache flush/invalidate
 
   
@@ -108,7 +110,7 @@ void mdmaStop(MDMADriver *mdmap)
  *
  * @api
  */
-bool mdmaStartTransfert(MDMADriver *mdmap, void *source, void *dest,
+bool mdmaStartTransfert(MDMADriver *mdmap, const void *source, void *dest,
 			const size_t size, void *user_data)
 {
   osalSysLock();
@@ -134,7 +136,7 @@ bool mdmaStartTransfert(MDMADriver *mdmap, void *source, void *dest,
  *
  * @api
  */
-bool  mdmaStartTransfertI(MDMADriver *mdmap, void *source, void *dest,
+bool  mdmaStartTransfertI(MDMADriver *mdmap, const void *source, void *dest,
 			  const size_t size, void *user_data)
 {
   osalDbgCheckClassI();
@@ -148,7 +150,7 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, void *source, void *dest,
     const size_t ssize = 1U << cfg->swidth;
     const size_t dsize = 1U << cfg->dwidth;
     const size_t sburst = 1U << cfg->sburst;
-    const size_t dburst = 1U << cfg->dwidth;
+    const size_t dburst = 1U << cfg->dburst;
     const size_t dincos = cfg->dest_incr > 0 ? cfg->dest_incr : -cfg->dest_incr;
     const size_t sincos = cfg->source_incr > 0 ? cfg->source_incr : -cfg->source_incr;
     osalDbgAssert((mdmap->state == MDMA_READY) ||
@@ -161,13 +163,13 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, void *source, void *dest,
     osalDbgAssert(size % dsize == 0, "size must me a multiple of destination data size");
     osalDbgAssert(cfg->transfert_len % ssize == 0, "transfert_len must me a multiple of source data size");
     osalDbgAssert(cfg->transfert_len % dsize == 0, "transfert_len must me a multiple of destination data size");
-    osalDbgAssert(sburst < cfg->transfert_len, "source burst must be less than transfert_len");
-    osalDbgAssert(dburst < cfg->transfert_len, "destination burst must be less than transfert_len");
-    if (cfg->bus_selection | MDMA_DESTBUS_TCM) {
+    osalDbgAssert(sburst <= cfg->transfert_len, "source burst must be less than transfert_len");
+    osalDbgAssert(dburst <= cfg->transfert_len, "destination burst must be less than transfert_len");
+    if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
       if ((dincos == 8) ||
 	  (dincos == 0) ||
 	  (dincos != dsize)) {
-	osalDbgAssert(dburst == MDMA_BURST_1, "several conditions implies destination "
+	osalDbgAssert(dburst == 1U, "several conditions implies destination "
 		      "burst must be single transfert");
       }
     } else { // destination bus is AXI
@@ -175,11 +177,11 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, void *source, void *dest,
 	osalDbgAssert(dburst <= 16, "several conditions implies destination burst must not exceed 16");
       }
     }
-    if (cfg->bus_selection | MDMA_SOURCEBUS_TCM) {
+    if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
       if ((sincos == 8) ||
 	  (sincos == 0) ||
 	  (sincos != ssize)) {
-	osalDbgAssert(sburst == MDMA_BURST_1, "several conditions implies source "
+	osalDbgAssert(sburst == 1U, "several conditions implies source "
 		      "burst must be single transfert");
       }
     } else { // source bus is AXI
@@ -190,7 +192,7 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, void *source, void *dest,
 
     if (dincos != 0) {
       osalDbgAssert(dincos >= dsize, "destination increment must be greater or equal to destination size");
-      if (cfg->bus_selection | MDMA_DESTBUS_TCM) {
+      if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
 	if (dburst != 1) {
 	  osalDbgAssert(((uint32_t) dest % dincos) == 0, "when dest is AHB and burst is enabled, "
 			"destination address must be aligned with destination increment");
@@ -200,7 +202,7 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, void *source, void *dest,
     
     if (sincos != 0) {
       osalDbgAssert(sincos >= ssize, "source increment must be greater or equal to source size");
-     if (cfg->bus_selection | MDMA_SOURCEBUS_TCM) {
+     if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
 	if (sburst != 1) {
 	  osalDbgAssert(((uint32_t) source % sincos) == 0, "when source is AHB and burst is enabled, "
 			"source address must be aligned with source increment");
@@ -208,11 +210,11 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, void *source, void *dest,
       }
     }
 
-    if (cfg->bus_selection | MDMA_SOURCEBUS_TCM) {
+    if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
       osalDbgAssert(ssize <= 4, "when source is TCM/AHB source, source width should be inferior or equal to 4");
       osalDbgAssert(sincos != 0, "when source is TCM/AHB source, fixed source address is forbidden");
     }
-   if (cfg->bus_selection | MDMA_DESTBUS_TCM) {
+   if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
       osalDbgAssert(dsize <= 4, "when destination is TCM/AHB, destination width should be inferior or equal to 4"); 
       osalDbgAssert(dincos != 0, "when destination is TCM/AHB destination, fixed destination address is forbidden");
     }
@@ -277,6 +279,87 @@ void mdmaStopTransfertI(MDMADriver *mdmap)
     _mdma_reset_i(mdmap);
   }
 }
+
+#if (STM32_MDMA_USE_WAIT == TRUE) || defined(__DOXYGEN__)
+
+/**
+ * @brief   Performs  a MDMA transaction.
+ * @details Performs one synchronous mdma transaction
+ * @note    The datas are sequentially written into the buffer
+ *          with no gaps.
+ *
+ * @param[in]      mdmap      pointer to the @p MDMADriver object
+ * @param[in,out]  source   pointer to a @p peripheral register address
+ * @param[in,out]  dest    pointer to the data buffer
+ * @param[in]      size     buffer size.
+ *                          
+ * @param[in]      user_data can be usefull for callback
+ *                          
+ * @param[in]      timeout  function will exit after timeout is transaction is not done
+ *                          can be TIME_INFINITE (but not TIME_IMMEDIATE)
+ * @return              The operation result.
+ * @retval MSG_OK       Transaction finished.
+ * @retval MSG_RESET    The transaction has been stopped using
+ *                      @p mdmaStopTransaction() or @p mdmaStopTransactionI(),
+ *                      the result buffer may contain incorrect data.
+ * @retval MSG_TIMEOUT  The transaction has been stopped because of hardware
+ *                      error or timeout limit reach
+ *
+ * @api
+ */
+ msg_t mdmaTransfertTimeout(MDMADriver *mdmap, const void *source, void * dest,
+			     const size_t size, void *user_data,
+			     sysinterval_t timeout)
+{
+  msg_t msg;
+
+  osalSysLock();
+  osalDbgAssert(mdmap->thread == NULL, "already waiting");
+  mdmaStartTransfertI(mdmap, source, dest, size, user_data);
+  msg = osalThreadSuspendTimeoutS(&mdmap->thread, timeout);
+  if (msg != MSG_OK) {
+    mdmaStopTransfertI(mdmap);
+  }
+  osalSysUnlock();
+  return msg;
+}
+#endif
+
+#if (STM32_MDMA_USE_MUTUAL_EXCLUSION == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   Gains exclusive access to the MDMA peripheral.
+ * @details This function tries to gain ownership to the MDMA bus, if the bus
+ *          is already being used then the invoking thread is queued.
+ * @pre     In order to use this function the option
+ *          @p MDMA_USE_MUTUAL_EXCLUSION must be enabled.
+ *
+ * @param[in] mdmap      pointer to the @p MDMADriver object
+ *
+ * @api
+ */
+void mdmaAcquireBus(MDMADriver *mdmap) {
+
+  osalDbgCheck(mdmap != NULL);
+
+  osalMutexLock(&mdmap->mutex);
+}
+
+/**
+ * @brief   Releases exclusive access to the MDMA peripheral.
+ * @pre     In order to use this function the option
+ *          @p MDMA_USE_MUTUAL_EXCLUSION must be enabled.
+ *
+ * @param[in] mdmap      pointer to the @p MDMADriver object
+ *
+ * @api
+ */
+void mdmaReleaseBus(MDMADriver *mdmap) {
+
+  osalDbgCheck(mdmap != NULL);
+
+  osalMutexUnlock(&mdmap->mutex);
+}
+#endif /* MDMA_USE_MUTUAL_EXCLUSION == TRUE */
 
 /*
   #                 _                                  _                              _
@@ -346,11 +429,11 @@ bool mdma_lld_start(MDMADriver *mdmap)
   
   mdmap->cache.ccr = STM32_MDMA_CCR_PL(cfg->mdma_priority) |
     STM32_MDMA_CCR_CTCIE |
-    (cfg->error_cb != NULL) ? STM32_MDMA_CCR_TEIE : 0 |
-    (cfg->buffer_transfert_cb != NULL) ? STM32_MDMA_CCR_TCIE : 0 |
-    (cfg->block_transfert_cb != NULL) ? STM32_MDMA_CCR_BTIE : 0 |
-    (cfg->block_transfert_repeat_cb != NULL) ? STM32_MDMA_CCR_BRTIE : 0 |
-    (cfg->endianness_swap == true) ? STM32_MDMA_CCR_WEX : 0;
+    ((cfg->error_cb != NULL) ? STM32_MDMA_CCR_TEIE : 0U) |
+    ((cfg->buffer_transfert_cb != NULL) ? STM32_MDMA_CCR_TCIE : 0U) |
+    ((cfg->block_transfert_cb != NULL) ? STM32_MDMA_CCR_BTIE : 0U) |
+    ((cfg->block_transfert_repeat_cb != NULL) ? STM32_MDMA_CCR_BRTIE : 0U) |
+    ((cfg->endianness_swap == true) ? STM32_MDMA_CCR_WEX : 0U);
 
   mdmap->cache.ctcr = STM32_MDMA_CTCR_BWM_NON_BUFF  |
     cfg->op_mode |
@@ -417,7 +500,7 @@ void mdma_lld_stop(MDMADriver *mdmap)
  *
  * @notapi
  */
-bool  mdma_lld_start_transfert(MDMADriver *mdmap, void *source, void *dest, const size_t size)
+bool  mdma_lld_start_transfert(MDMADriver *mdmap, const void *source, void *dest, const size_t size)
 {
 #if __DCACHE_PRESENT
   if (mdmap->config->activate_dcache_sync) {
@@ -449,7 +532,7 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap, void *source, void *dest, cons
 }
 
 
-void  mdma_lld_get_link_block(MDMADriver *mdmap, void *source, void *dest,
+void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source, void *dest,
 			      const size_t size, mdmalinkblock_t *link_block)
 {
   mdmaChannelSetSourceX(mdmap->mdma, source);
@@ -464,8 +547,22 @@ void  mdma_lld_get_link_block(MDMADriver *mdmap, void *source, void *dest,
   mdmaChannelSetCMDR(mdmap, mdmap->config->mask_data_register);
   mdmaChannelSetCMAR(mdmap, (uint32_t) mdmap->config->mask_address_register);
   memcpy(link_block, (void *)&mdmap->mdma->channel->CTCR, sizeof(mdmalinkblock_t));
-}				
+}
 
+bool mdma_software_request(MDMADriver *mdmap)
+{
+  MDMA_Channel_TypeDef  * const chn = mdmap->mdma->channel;
+  if (!(chn->CTCR & MDMA_CTCR_SWRM)) {
+    // software request not enabled
+    return false;
+  }
+  if ((chn->CISR &  MDMA_CISR_CRQA) != 0U) {
+    // busy
+    return false;
+  }
+  chn->CCR |= MDMA_CCR_SWRQ;
+  return true;
+}
 /**
  * @brief   Stops an ongoing transaction.
  *
@@ -499,6 +596,7 @@ static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
 
   /* DMA errors handling.*/
   if ((flags & STM32_MDMA_CISR_TEIF) != 0) {
+    
     if(mdmap->config->error_cb != NULL) {
       // TODO : different kind of errors ?
       _mdma_isr_error_code(mdmap, mdmaChannelGetErrorStatus(mdmap));
@@ -512,17 +610,20 @@ static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
   
   if ((flags & STM32_MDMA_CISR_TCIF) != 0) {
     /*Buffer complete processing.*/
-    mdmap->config->buffer_transfert_cb(mdmap);
+    if (mdmap->config->buffer_transfert_cb != NULL)
+      mdmap->config->buffer_transfert_cb(mdmap);
    }
   
   if ((flags & STM32_MDMA_CISR_BTIF) != 0) {
     /* Block complete processing.*/
+    if (mdmap->config->block_transfert_cb != NULL)
     mdmap->config->block_transfert_cb(mdmap);
    }
   
   if ((flags & STM32_MDMA_CISR_BRTIF) != 0) {
     /* Block Repeat complete processing.*/
-    mdmap->config->block_transfert_repeat_cb(mdmap);
+    if (mdmap->config->block_transfert_repeat_cb != NULL)
+      mdmap->config->block_transfert_repeat_cb(mdmap);
    }
 }
 
