@@ -183,6 +183,8 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, const void *source, void *dest,
     osalDbgAssert(cfg->transfert_len % dsize == 0, "transfert_len must me a multiple of destination data size");
     osalDbgAssert(sburst <= cfg->transfert_len, "source burst must be less than transfert_len");
     osalDbgAssert(dburst <= cfg->transfert_len, "destination burst must be less than transfert_len");
+    osalDbgAssert(__builtin_popcount(sincos) <= 1, "source incremment must be a power of 2");
+    osalDbgAssert(__builtin_popcount(dincos) <= 1, "destination incremment must be a power of 2");
     if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
       if ((dincos == 8) ||
 	  (dincos == 0) ||
@@ -443,20 +445,20 @@ bool mdma_lld_start(MDMADriver *mdmap)
   
   if (source_incr > 0) {
     sinc = STM32_MDMA_CTCR_SINC_INC;
-    sincval = source_incr;
+    sincval = __builtin_ffs(source_incr)-1U;
   } else if (source_incr < 0) {
     sinc = STM32_MDMA_CTCR_SINC_DEC;
-    sincval = -source_incr;
+    sincval = __builtin_ffs(-source_incr)-1U;
   } else {
     sinc = STM32_MDMA_CTCR_SINC_FIXED;
     sincval = 0;
   }
   if (dest_incr > 0) {
     dinc = STM32_MDMA_CTCR_DINC_INC;
-    dincval = dest_incr;
+    dincval = __builtin_ffs(dest_incr)-1U;
   } else if (dest_incr < 0) {
     dinc = STM32_MDMA_CTCR_DINC_DEC;
-    dincval = -dest_incr;
+    dincval = __builtin_ffs(-dest_incr)-1U;
   } else {
     dinc = STM32_MDMA_CTCR_DINC_FIXED;
     dincval = 0;
