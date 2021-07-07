@@ -551,6 +551,11 @@ void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source, void *dest,
 
 bool mdma_software_request(MDMADriver *mdmap)
 {
+  if (mdmap->state != MDMA_READY) {
+    // driver not ready
+    return false;
+  }
+    
   MDMA_Channel_TypeDef  * const chn = mdmap->mdma->channel;
   if ((chn->CTCR & MDMA_CTCR_SWRM) == 0) {
     // software request not enabled
