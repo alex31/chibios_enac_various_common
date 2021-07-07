@@ -11,7 +11,6 @@
  */
 static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags);
 
-static inline uint32_t mdmaChannelGetErrorStatus(MDMADriver *mdmap);
 static inline void mdmaChannelSetCBRUR(MDMADriver *mdmap, uint32_t cbrur);
 static inline void mdmaChannelSetCLAR(MDMADriver *mdmap, uint32_t clar);
 static inline void mdmaChannelSetCMAR(MDMADriver *mdmap, uint32_t cmar);
@@ -552,7 +551,7 @@ void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source, void *dest,
 bool mdma_software_request(MDMADriver *mdmap)
 {
   MDMA_Channel_TypeDef  * const chn = mdmap->mdma->channel;
-  if (!(chn->CTCR & MDMA_CTCR_SWRM)) {
+  if ((chn->CTCR & MDMA_CTCR_SWRM) == 0) {
     // software request not enabled
     return false;
   }
@@ -560,6 +559,11 @@ bool mdma_software_request(MDMADriver *mdmap)
     // busy
     return false;
   }
+  /* if ((chn->CCR &  STM32_MDMA_CCR_EN) == 0U) { */
+  /*   // channel not enabled */
+  /*   return false; */
+  /* } */
+  chn->CCR |= STM32_MDMA_CCR_EN;
   chn->CCR |= MDMA_CCR_SWRQ;
   return true;
 }
@@ -583,9 +587,6 @@ void mdma_lld_stop_transfert(MDMADriver *mdmap)
  * @param[in] flags     content of the CISR register
  */
 static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
-
-  (void)mdmap;
-  (void)flags;
 #if __DCACHE_PRESENT
   if (mdmap->config->activate_dcache_sync) {
     const size_t cacheSize =
@@ -599,7 +600,7 @@ static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
     
     if(mdmap->config->error_cb != NULL) {
       // TODO : different kind of errors ?
-      _mdma_isr_error_code(mdmap, mdmaChannelGetErrorStatus(mdmap));
+      _mdma_isr_error_code(mdmap, flags >> STM32_MDMA_FLAGS_CESR_Pos);
     }
   }
   
@@ -628,11 +629,6 @@ static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
 }
 
 
-
-static inline uint32_t mdmaChannelGetErrorStatus(MDMADriver *mdmap)
-{
-  return mdmap->mdma->channel->CESR;
-}
 
 static inline void mdmaChannelSetCBRUR(MDMADriver *mdmap, uint32_t cbrur)
 {

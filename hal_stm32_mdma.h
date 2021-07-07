@@ -78,12 +78,12 @@ extern "C" {
    *          upon.
    */
   typedef enum {
-    MDMA_ERR_TRANSFER_ADDR_MASK	  = MDMA_CESR_TEA_Msk,
-    MDMA_ERR_DIRECTION		  = MDMA_CESR_TED,
+    MDMA_ERR_TRANSFER_ADDR_MASK	    = MDMA_CESR_TEA,
+    MDMA_ERR_DIRECTION		    = MDMA_CESR_TED,
     MDMA_ERR_TRANSFERT_LINK_DATA    = MDMA_CESR_TELD,
-    MDMA_ERR_TRANSFERT_MASK	  = MDMA_CESR_TEMD,
-    MDMA_ERR_ADRESS_SIZE_MISMATCH   = MDMA_CESR_ASE,          
-    MDMA_ERR_BLOCK_SIZE		  = MDMA_CESR_BSE
+    MDMA_ERR_TRANSFERT_MASK	    = MDMA_CESR_TEMD,
+    MDMA_ERR_ADDRESS_SIZE_MISMATCH  = MDMA_CESR_ASE,          
+    MDMA_ERR_BLOCK_SIZE		    = MDMA_CESR_BSE
   } mdmaerrormask_t;
 
 
@@ -130,12 +130,12 @@ extern "C" {
   typedef struct {
     uint32_t ctcr;
     uint32_t cbndtr;
-    uint32_t csar;
-    uint32_t cdar;
-    uint32_t cbrur;
+    uint32_t csar; 
+    uint32_t cdar ;
+    uint32_t cbrur; 
+    uint32_t reserved0;
     uint32_t cmar;
     uint32_t cmdr;
-    uint32_t clar;
   } mdmalinkblock_t;
   
   /*===========================================================================*/
