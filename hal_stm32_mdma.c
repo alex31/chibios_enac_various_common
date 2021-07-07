@@ -3,9 +3,9 @@
 
 /*
   1/ champ specifique pour software_request
-
-  2/ test : size est un nombre de bytes ou un nombre de world de taille 1..8 ?
-     ° si c'est un nombre de word, y faudra revoir le calcul du cache flush/invalidate
+  2/ virer le champ bus_selection ?
+  3/ a quoi correcpond exactement le bit buffered ?
+  4/ compatible avec de la mémoire non cachée ?
 
   
  */
@@ -560,11 +560,11 @@ bool mdma_software_request(MDMADriver *mdmap)
     // busy
     return false;
   }
-  /* if ((chn->CCR &  STM32_MDMA_CCR_EN) == 0U) { */
-  /*   // channel not enabled */
-  /*   return false; */
-  /* } */
-  chn->CCR |= STM32_MDMA_CCR_EN;
+  if ((chn->CCR &  STM32_MDMA_CCR_EN) == 0U) {
+    // channel not enabled
+    return false;
+  }
+  /* chn->CCR |= STM32_MDMA_CCR_EN; */
   chn->CCR |= MDMA_CCR_SWRQ;
   return true;
 }
