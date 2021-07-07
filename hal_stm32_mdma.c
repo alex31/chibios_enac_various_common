@@ -146,31 +146,12 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, const void *source, void *dest,
 		 (size > 0U));
 
     const MDMAConfig	    *cfg = mdmap->config;
-    int8_t dest_incr, source_incr;
-    switch (cfg->op_mode) {
-    case MDMA_SINGLE_BLOCK:
-      dest_incr = cfg->block.dest_incr;
-      source_incr = cfg->block.source_incr;
-      break;
-    case MDMA_REPEATED_BLOCK:
-      dest_incr = cfg->repeat_block.dest_incr;
-      source_incr = cfg->repeat_block.source_incr;
-      break;
-    case MDMA_LINKED_LIST:
-      dest_incr = cfg->link.dest_incr;
-      source_incr = cfg->link.source_incr;
-      break;
-    default: // case MDMA_BUFFER
-      dest_incr = source_incr = 0U;
-      break;
-    }
-
     const size_t ssize = 1U << cfg->swidth;
     const size_t dsize = 1U << cfg->dwidth;
     const size_t sburst = 1U << cfg->sburst;
     const size_t dburst = 1U << cfg->dburst;
-    const size_t dincos = dest_incr > 0 ? dest_incr : -dest_incr;
-    const size_t sincos = source_incr > 0 ? source_incr : -source_incr;
+    const size_t dincos = cfg->dest_incr > 0 ? cfg->dest_incr : -cfg->dest_incr;
+    const size_t sincos = cfg->source_incr > 0 ? cfg->source_incr : -cfg->source_incr;
     osalDbgAssert((mdmap->state == MDMA_READY) ||
 		  (mdmap->state == MDMA_COMPLETE) ||
 		  (mdmap->state == MDMA_ERROR),
@@ -424,41 +405,23 @@ bool mdma_lld_start(MDMADriver *mdmap)
   uint32_t sinc, sincval, dinc, dincval;
   memset(&mdmap->cache, 0U, sizeof(mdmap->cache));
 
-  int8_t dest_incr, source_incr;
-  switch (cfg->op_mode) {
-  case MDMA_SINGLE_BLOCK:
-    dest_incr = cfg->block.dest_incr;
-    source_incr = cfg->block.source_incr;
-    break;
-  case MDMA_REPEATED_BLOCK:
-    dest_incr = cfg->repeat_block.dest_incr;
-    source_incr = cfg->repeat_block.source_incr;
-    break;
-  case MDMA_LINKED_LIST:
-    dest_incr = cfg->link.dest_incr;
-    source_incr = cfg->link.source_incr;
-    break;
-  default: //case MDMA_BUFFER
-    dest_incr = source_incr = 0U;
-    break;
-  }
   
-  if (source_incr > 0) {
+  if (cfg->source_incr > 0) {
     sinc = STM32_MDMA_CTCR_SINC_INC;
-    sincval = __builtin_ffs(source_incr)-1U;
-  } else if (source_incr < 0) {
+    sincval = __builtin_ffs(cfg->source_incr)-1U;
+  } else if (cfg->source_incr < 0) {
     sinc = STM32_MDMA_CTCR_SINC_DEC;
-    sincval = __builtin_ffs(-source_incr)-1U;
+    sincval = __builtin_ffs(-cfg->source_incr)-1U;
   } else {
     sinc = STM32_MDMA_CTCR_SINC_FIXED;
     sincval = 0;
   }
-  if (dest_incr > 0) {
+  if (cfg->dest_incr > 0) {
     dinc = STM32_MDMA_CTCR_DINC_INC;
-    dincval = __builtin_ffs(dest_incr)-1U;
-  } else if (dest_incr < 0) {
+    dincval = __builtin_ffs(cfg->dest_incr)-1U;
+  } else if (cfg->dest_incr < 0) {
     dinc = STM32_MDMA_CTCR_DINC_DEC;
-    dincval = __builtin_ffs(-dest_incr)-1U;
+    dincval = __builtin_ffs(-cfg->dest_incr)-1U;
   } else {
     dinc = STM32_MDMA_CTCR_DINC_FIXED;
     dincval = 0;

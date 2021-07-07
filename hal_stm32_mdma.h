@@ -263,18 +263,30 @@ extern "C" {
     */
     uint8_t		trigger_src:5;
 
- 
+    /**
+     * @brief   Enable and give increment (positive) or decrement (negative)
+     *          of source address after each transfert
+     */
+    int8_t              source_incr:4;
+
+
+    /**
+     * @brief   Enable and give increment (positive) or decrement (negative)
+     *          of memory address after each transfert
+     */
+    int8_t              dest_incr:4;
+
 
     /**
      * @brief   single, reperated or linked list
      */
-    mdmaopmode_t		op_mode;
+    mdmaopmode_t	op_mode;
 
- 
+
     /**
      * @brief   activate endianness swap during transaction
      */
-    bool			endianness_swap;
+    bool		endianness_swap;
 
 
     /**
@@ -351,28 +363,23 @@ extern "C" {
      * @brief   MDMA block repeat count (0 - 4095)
      */
     union {
-      struct {}
-	buffer;
+      struct {
+      }	buffer;
 
       struct {
-	int8_t	        source_incr:4;
-	int8_t		dest_incr:4;
       } block;
       
       struct {
 	int32_t		src_addr_update:17;
 	int32_t		dest_addr_update:17;
 	uint16_t	repeat:12; //  -> 4095
-	int8_t	        source_incr:4;
-	int8_t		dest_incr:4;
       } repeat_block;
+
       struct {
 	/**
 	 * @brief   MDMA link address register
 	 */
 	mdmalinkblock_t  *address;
-	int8_t	         source_incr:4;
-	int8_t		 dest_incr:4;
       } link;
     };
 
