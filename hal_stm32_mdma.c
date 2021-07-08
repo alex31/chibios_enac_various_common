@@ -2,11 +2,7 @@
 #include <string.h>
 
 /*
-  1/ champ specifique pour software_request
-  2/ virer le champ bus_selection ?
-  3/ a quoi correcpond exactement le bit buffered ?
-  4/ compatible avec de la mémoire non cachée ?
-
+ 
   
  */
 static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags);
@@ -435,8 +431,7 @@ bool mdma_lld_start(MDMADriver *mdmap)
     ((cfg->block_transfert_repeat_cb != NULL) ? STM32_MDMA_CCR_BRTIE : 0U) |
     ((cfg->endianness_swap == true) ? STM32_MDMA_CCR_WEX : 0U);
 
-  mdmap->cache.ctcr = STM32_MDMA_CTCR_BWM_NON_BUFF  |
-    cfg->op_mode |
+  mdmap->cache.ctcr = cfg->op_mode |
     STM32_MDMA_CTCR_TLEN(cfg->transfert_len - 1U) |
     STM32_MDMA_CTCR_SBURST(cfg->sburst) |
     STM32_MDMA_CTCR_DBURST(cfg->dburst) |
