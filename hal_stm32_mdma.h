@@ -91,11 +91,11 @@ extern "C" {
    * @brief   MDMA transfert memory mode
    */
   typedef enum {
-    MDMA_BUFFER = STM32_MDMA_CTCR_TRGM_BUFFER,            /**<buffer transert then stop  */
-    MDMA_SINGLE_BLOCK = STM32_MDMA_CTCR_TRGM_BLOCK,       /**< One block transert then stop  */
-    MDMA_REPEATED_BLOCK = STM32_MDMA_CTCR_TRGM_REP_BLOCK, /**< repeated (up to 4096) transferts */
-    MDMA_LINKED_LIST = STM32_MDMA_CTCR_TRGM_WHOLE	        /**< linked list transferts */
-  } mdmaopmode_t;
+    MDMA_BUFFER     = STM32_MDMA_CTCR_TRGM_BUFFER,      /**<trigger one buffer transfert   */
+    MDMA_ONE_BLOCK  = STM32_MDMA_CTCR_TRGM_BLOCK,       /**<trigger one block  transfert    */
+    MDMA_ALL_BLOCKS = STM32_MDMA_CTCR_TRGM_REP_BLOCK,   /**<trigger all blocks transferts */
+    MDMA_WHOLE      = STM32_MDMA_CTCR_TRGM_WHOLE	/**<trigger the whole transfert (linked blocks) */
+  } mdmatriggermode_t;
 
   /**
    * @brief   Type of a structure representing an MDMA driver.
@@ -133,6 +133,8 @@ extern "C" {
     uint32_t csar; 
     uint32_t cdar ;
     uint32_t cbrur; 
+    uint32_t clar; 
+    uint32_t ctbr; 
     uint32_t reserved0;
     uint32_t cmar;
     uint32_t cmdr;
@@ -279,12 +281,12 @@ extern "C" {
     uint32_t	        buffer_len:17; 
     int32_t		block_source_incr:17;
     int32_t		block_dest_incr:17;
-    uint16_t	        block_repeat:12; //  -> 4095
+    uint16_t	        block_repeat:13; //  1 -> 4096
     mdmalinkblock_t *	link_address;	
     /**
      * @brief   single, reperated or linked list
      */
-    mdmaopmode_t	op_mode;
+    mdmatriggermode_t	trig_mode;
 
 
     /**
@@ -479,6 +481,10 @@ extern "C" {
   static  inline void mdmaGetLinkBlock(MDMADriver *mdmap, const void *source,
 				       void *dest, 
 				       mdmalinkblock_t *link_blockp) {
+    osalDbgCheck(mdmap != NULL);
+    osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
+		  "invalid state");
+
     mdma_lld_get_link_block(mdmap, source, dest, link_blockp);
   }
 

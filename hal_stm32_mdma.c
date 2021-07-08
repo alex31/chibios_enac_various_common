@@ -51,8 +51,11 @@ bool mdmaStart(MDMADriver *mdmap, const MDMAConfig *cfg)
                 "invalid state");
   osalDbgAssert((cfg->transfert_len > 0U) && (cfg->transfert_len <= 128U),
 		"invalid transfert_len");
- osalDbgAssert((cfg->buffer_len > 1U) && (cfg->buffer_len <= 65536U),
-		"invalid transfert_len");
+  osalDbgAssert((cfg->buffer_len > 0U) && (cfg->buffer_len <= 65536U),
+		"invalid buffer_len");
+  osalDbgAssert((cfg->block_repeat > 0U) && (cfg->block_repeat <= 4096U),
+		"invalid block_repeat");
+  osalDbgAssert(((uint32_t)cfg->link_address & 0b111) == 0U,	"link address must be double word aligned");
   
   mdmap->config = cfg;
   const bool statusOk = mdma_lld_start(mdmap);
@@ -430,7 +433,7 @@ bool mdma_lld_start(MDMADriver *mdmap)
     ((cfg->block_transfert_repeat_cb != NULL) ? STM32_MDMA_CCR_BRTIE : 0U) |
     ((cfg->endianness_swap == true) ? STM32_MDMA_CCR_WEX : 0U);
 
-  mdmap->cache.ctcr = cfg->op_mode |
+  mdmap->cache.ctcr = cfg->trig_mode |
     STM32_MDMA_CTCR_TLEN(cfg->transfert_len - 1U) |
     STM32_MDMA_CTCR_SBURST(cfg->sburst) |
     STM32_MDMA_CTCR_DBURST(cfg->dburst) |
@@ -457,7 +460,7 @@ bool mdma_lld_start(MDMADriver *mdmap)
     dest_update = cfg->block_dest_incr;
   }
   mdmap->cache.cbrur = src_update | (dest_update << 16U);
-  mdmap->cache.brc =  mdmap->config->block_repeat;
+  mdmap->cache.brc =  mdmap->config->block_repeat - 1U;
   mdmap->cache.clar = (uint32_t) mdmap->config->link_address;
     
   
