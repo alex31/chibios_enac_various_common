@@ -276,7 +276,10 @@ extern "C" {
      */
     int8_t              dest_incr:4;
 
-
+    int32_t		block_source_incr:17;
+    int32_t		block_dest_incr:17;
+    uint16_t	        block_repeat:12; //  -> 4095
+    mdmalinkblock_t *	link_address;	
     /**
      * @brief   single, reperated or linked list
      */
@@ -362,26 +365,6 @@ extern "C" {
     /**
      * @brief   MDMA block repeat count (0 - 4095)
      */
-    union {
-      struct {
-      }	buffer;
-
-      struct {
-      } block;
-      
-      struct {
-	int32_t		src_addr_update:17;
-	int32_t		dest_addr_update:17;
-	uint16_t	repeat:12; //  -> 4095
-      } repeat_block;
-
-      struct {
-	/**
-	 * @brief   MDMA link address register
-	 */
-	mdmalinkblock_t  *address;
-      } link;
-    };
 
     uint32_t	mask_data_register;
     void*	mask_address_register;

@@ -443,26 +443,23 @@ bool mdma_lld_start(MDMADriver *mdmap)
     dinc |
     cfg->ctcr;
 
-  if (cfg->op_mode == MDMA_REPEATED_BLOCK) {
-    uint32_t src_update=0, dest_update=0;
-    if (cfg->repeat_block.src_addr_update < 0) {
-      mdmap->cache.opt = MDMA_CBNDTR_BRSUM;
-      src_update = -cfg->repeat_block.src_addr_update;
-    } else {
-      src_update = cfg->repeat_block.src_addr_update;
-    }
-    
-    if (cfg->repeat_block.dest_addr_update < 0) {
-      mdmap->cache.opt |= MDMA_CBNDTR_BRDUM;
-      dest_update = -cfg->repeat_block.dest_addr_update;
-    } else {
-      dest_update = cfg->repeat_block.dest_addr_update;
-    }
-    mdmap->cache.cbrur = src_update | (dest_update << 16U);
-    mdmap->cache.brc =  mdmap->config->repeat_block.repeat;
-  } else if (cfg->op_mode ==  MDMA_LINKED_LIST) {
-    mdmap->cache.clar = (uint32_t) mdmap->config->link.address;
+  uint32_t src_update=0, dest_update=0;
+  if (cfg->block_source_incr < 0) {
+    mdmap->cache.opt = MDMA_CBNDTR_BRSUM;
+    src_update = -cfg->block_source_incr;
+  } else {
+    src_update = cfg->block_source_incr;
   }
+  
+  if (cfg->block_dest_incr < 0) {
+    mdmap->cache.opt |= MDMA_CBNDTR_BRDUM;
+    dest_update = -cfg->block_dest_incr;
+  } else {
+    dest_update = cfg->block_dest_incr;
+  }
+  mdmap->cache.cbrur = src_update | (dest_update << 16U);
+  mdmap->cache.brc =  mdmap->config->block_repeat;
+  mdmap->cache.clar = (uint32_t) mdmap->config->link_address;
     
   
   mdmap->mdma = mdmaChannelAllocI(mdmap->config->channel,
@@ -546,7 +543,7 @@ void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source, void *dest,
 
 bool mdma_software_request(MDMADriver *mdmap)
 {
-  if (mdmap->state != MDMA_READY) {
+  if (mdmap->state != MDMA_ACTIVE) {
     // driver not ready
     return false;
   }
