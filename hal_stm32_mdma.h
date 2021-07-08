@@ -276,6 +276,7 @@ extern "C" {
      */
     int8_t              dest_incr:4;
 
+    uint32_t	        buffer_len:17; 
     int32_t		block_source_incr:17;
     int32_t		block_dest_incr:17;
     uint16_t	        block_repeat:12; //  -> 4095
@@ -429,12 +430,6 @@ extern "C" {
     } cache;
 
 
-    /**
-     * @brief	hold size of current transaction
-     */
-    size_t		     size;
-
-  
 #if CH_DBG_SYSTEM_STATE_CHECK
     volatile size_t		     nbTransferError;
     volatile mdmaerrormask_t	     lastError;
@@ -454,14 +449,13 @@ extern "C" {
 
 #if STM32_MDMA_USE_WAIT == TRUE
   msg_t mdmaTransfertTimeout(MDMADriver *mdmap, const void *source, void * dest,
-			     const size_t size, void *user_data,
-			     sysinterval_t timeout);
+			     void *user_data, sysinterval_t timeout);
   // helper
-  static inline msg_t mdmaTransfert(MDMADriver *mdmap, const void *source, void * dest,
-				    const size_t size, void *user_data)
+  static inline msg_t mdmaTransfert(MDMADriver *mdmap, const void *source,
+				    void * dest, void *user_data)
   {
     return mdmaTransfertTimeout(mdmap, source, dest,
-				size,  user_data, TIME_INFINITE);
+				user_data, TIME_INFINITE);
   }
 #endif
 #if STM32_MDMA_USE_MUTUAL_EXCLUSION == TRUE
@@ -469,10 +463,10 @@ extern "C" {
   void mdmaReleaseBus(MDMADriver *mdmap);
 #endif
   bool  mdmaStartTransfert(MDMADriver *mdmap, const void *source, void *dest,
-			   const size_t size, void *user_data);
+			   void *user_data);
   void  mdmaStopTransfert(MDMADriver *mdmap);
   bool  mdmaStartTransfertI(MDMADriver *mdmap, const void *source, void *dest,
-			    const size_t size, void *user_data);
+			    void *user_data);
   void  mdmaStopTransfertI(MDMADriver *mdmap);
   static inline bool mdmaSoftRequest(MDMADriver *mdmap) {
     return mdma_software_request(mdmap);
@@ -481,11 +475,11 @@ extern "C" {
 
   static  inline mdmastate_t mdmaGetState(MDMADriver *mdmap) {return mdmap->state;}
   void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source, void *dest,
-				const size_t size, mdmalinkblock_t *link_block);
+				mdmalinkblock_t *link_block);
   static  inline void mdmaGetLinkBlock(MDMADriver *mdmap, const void *source,
-				       void *dest, const size_t size,
+				       void *dest, 
 				       mdmalinkblock_t *link_blockp) {
-    mdma_lld_get_link_block(mdmap, source, dest, size, link_blockp);
+    mdma_lld_get_link_block(mdmap, source, dest, link_blockp);
   }
 
 
@@ -495,7 +489,7 @@ extern "C" {
   void  mdma_lld_stop(MDMADriver *mdmap);
 
 
-  bool  mdma_lld_start_transfert(MDMADriver *mdmap, const void *source, void *dest, const size_t size);
+  bool  mdma_lld_start_transfert(MDMADriver *mdmap, const void *source, void *dest);
 
 
   void  mdma_lld_stop_transfert(MDMADriver *mdmap);
