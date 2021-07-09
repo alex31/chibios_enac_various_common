@@ -55,7 +55,8 @@ bool mdmaStart(MDMADriver *mdmap, const MDMAConfig *cfg)
 		"invalid buffer_len");
   osalDbgAssert((cfg->block_repeat > 0U) && (cfg->block_repeat <= 4096U),
 		"invalid block_repeat");
-  osalDbgAssert(((uint32_t)cfg->link_address & 0b111) == 0U,	"link address must be double word aligned");
+  osalDbgAssert(((uint32_t)cfg->link_address & 0b111) == 0U,
+		"link address must be double word aligned");
   
   mdmap->config = cfg;
   const bool statusOk = mdma_lld_start(mdmap);

@@ -98,6 +98,40 @@ extern "C" {
   } mdmatriggermode_t;
 
   /**
+   * @brief   MDMA trigger source
+   */
+  typedef enum {
+    MDMA_TRIGGER_DMA1_STREAM0 = 0,
+    MDMA_TRIGGER_DMA1_STREAM1 = 1,
+    MDMA_TRIGGER_DMA1_STREAM2 = 2,
+    MDMA_TRIGGER_DMA1_STREAM3 = 3,
+    MDMA_TRIGGER_DMA1_STREAM4 = 4,
+    MDMA_TRIGGER_DMA1_STREAM5 = 5,
+    MDMA_TRIGGER_DMA1_STREAM6 = 7,
+    MDMA_TRIGGER_DMA1_STREAM7 = 7,
+    MDMA_TRIGGER_DMA2_STREAM0 = 8,
+    MDMA_TRIGGER_DMA2_STREAM1 = 9,
+    MDMA_TRIGGER_DMA2_STREAM2 = 10,
+    MDMA_TRIGGER_DMA2_STREAM3 = 11,
+    MDMA_TRIGGER_DMA2_STREAM4 = 12,
+    MDMA_TRIGGER_DMA2_STREAM5 = 13,
+    MDMA_TRIGGER_DMA2_STREAM6 = 14,
+    MDMA_TRIGGER_DMA2_STREAM7 = 15,
+    MDMA_TRIGGER_LTDC = 16,
+    MDMA_TRIGGER_JPEG_INPUT_FIFO_THR = 17,
+    MDMA_TRIGGER_JPEG_INPUT_FIFO_NOT_FULL = 18,
+    MDMA_TRIGGER_JPEG_OUTPUT_FIFO_THR = 19,
+    MDMA_TRIGGER_JPEG_OUTPUT_FIFO_NOT_EMPTY = 20,
+    MDMA_TRIGGER_JPEG_END_OF_CONV = 21,
+    MDMA_TRIGGER_QUADSPI_FIFO_THR = 22,
+    MDMA_TRIGGER_QUADSPI_XFER_COMPLETE = 23,
+    MDMA_TRIGGER_DMA2D_CLUT_XFER_COMPLETE = 24,
+    MDMA_TRIGGER_DMA2D_XFER_COMPLETE = 25,
+    MDMA_TRIGGER_DMA2D_XFER_WATERMARK = 26,
+    MDMA_TRIGGER_SDMMC1_END_OF_DATA = 29
+  } mdmatriggersource_t;
+
+  /**
    * @brief   Type of a structure representing an MDMA driver.
    */
   typedef struct MDMADriver MDMADriver;
@@ -263,7 +297,7 @@ extern "C" {
       26	       DMA2D transfert watermark
       29	       SDMMC1 end of data
     */
-    uint8_t		trigger_src:5;
+    mdmatriggersource_t	trigger_src;
 
     /**
      * @brief   Enable and give increment (positive) or decrement (negative)
