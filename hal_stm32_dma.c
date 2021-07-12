@@ -1,4 +1,5 @@
 #include "hal_stm32_dma.h"
+#include <string.h>
 
 /*
   TODO :
@@ -251,6 +252,75 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
 #endif
 
   return dma_lld_start_transfert(dmap, periphp, mem0p, size);
+}
+
+/**
+ * @brief   copy the dma register to memory.
+ * @details mainly used to preapare mdma linked list chained 
+ *          transferts
+ *
+ * @param[in]      dmap      pointer to the @p DMADriver object
+ * @param[in,out]  periphp   pointer to a @p peripheral register address
+ * @param[in,out]  mem0p     pointer to the data buffer
+ * @param[in]      size      buffer size. The buffer size
+ *                           must be one or an even number.
+ * @param[out]     registers pointer to structure representing 
+                             a DMA stream set of registers
+ *
+ * @iclass
+ */
+void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
+		      const size_t size,
+		      DMA_Stream_TypeDef *registers)
+{
+#if STM32_DMA_USE_DOUBLE_BUFFER
+  if (dmap->config->op_mode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
+    osalDbgAssert(mem0p == NULL,
+		  "in double buffer mode memory pointer is dynamically completed by next_cb callback");
+    mem0p = dmap->config->next_cb(dmap, size);    
+  }
+#endif
+  
+#if (CH_DBG_ENABLE_ASSERTS != FALSE)
+  osalDbgCheck((dmap != NULL) && (mem0p != NULL) && (periphp != NULL) &&
+	       (size > 0U) && ((size == 1U) ||
+			       ((dmap->config->op_mode != DMA_CONTINUOUS_HALF_BUFFER) ||
+				(((size & 1U) == 0U)))));
+  
+  const DMAConfig	    *cfg = dmap->config;
+  osalDbgAssert(dmap->state == DMA_READY,  "not ready");
+  osalDbgAssert((uint32_t) periphp % cfg->psize == 0,
+		"peripheral address not aligned");
+
+  osalDbgAssert((uint32_t) mem0p % cfg->msize == 0,
+		"memory address not aligned");
+
+# if  STM32_DMA_ADVANCED
+  if (cfg->mburst) {
+    osalDbgAssert((size % (cfg->mburst * cfg->msize / cfg->psize)) == 0,
+		  "mburst alignment rule not respected");
+    osalDbgAssert((size % (cfg->mburst * cfg->msize)) == 0,
+		  "mburst alignment rule not respected");
+    osalDbgAssert((((uint32_t) mem0p) % cfg->mburst) == 0,
+		  "memory address alignment rule not respected");
+  }
+  if (cfg->pburst) {
+    osalDbgAssert((size % (cfg->pburst * cfg->psize)) == 0,
+		  "pburst alignment rule not respected");
+    osalDbgAssert((((uint32_t) periphp) % cfg->pburst) == 0,
+		  "peripheral address alignment rule not respected");
+  }
+  if (cfg->periph_inc_size_4) {
+    osalDbgAssert(cfg->inc_peripheral_addr,
+		  "periph_inc_size_4 implies enabling inc_peripheral_addr");
+    osalDbgAssert(cfg->fifo,
+		  "periph_inc_size_4 implies enabling fifo");
+  }
+  
+# endif //  STM32_DMA_ADVANCED
+#endif // CH_DBG_ENABLE_ASSERTS != FALSE
+
+  dma_lld_get_registers(dmap, periphp, mem0p, size, registers);
 }
 
 
@@ -630,6 +700,37 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
  *
  * @param[in] dmap      pointer to the @p DMADriver object
  *
+ * @notapi
+ */
+void  dma_lld_get_registers(DMADriver *dmap, volatile void *periphp,
+			    void *mem0p, const size_t size,
+			    DMA_Stream_TypeDef *registers)
+{
+  dmaStreamSetPeripheral(dmap->dmastream, periphp);
+#if STM32_DMA_SUPPORTS_DMAMUX
+  dmaSetRequestSource(dmap->dmastream, dmap->config->dmamux1);
+#endif
+
+  dmaStreamSetMemory0(dmap->dmastream, mem0p);
+#if  STM32_DMA_USE_DOUBLE_BUFFER
+  if (dmap->config->op_mode == DMA_CONTINUOUS_DOUBLE_BUFFER) {
+    dmaStreamSetMemory1(dmap->dmastream, dmap->config->next_cb(dmap, size));
+  }
+#endif
+  dmaStreamSetTransactionSize(dmap->dmastream, size);
+  dmaStreamSetMode(dmap->dmastream, dmap->dmamode);
+#if STM32_DMA_ADVANCED
+  dmaStreamSetFIFO(dmap->dmastream, dmap->fifomode);
+#endif
+
+  memcpy(registers, dmap->dmastream->stream, sizeof(DMA_Stream_TypeDef));
+}
+
+/**
+ * @brief   Copy the register of a ready stream
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ * @note : main use is preparing link list of transactions for mdma use
  * @notapi
  */
 bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size)
