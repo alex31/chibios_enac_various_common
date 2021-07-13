@@ -434,7 +434,7 @@ bool mdma_lld_start(MDMADriver *mdmap)
     ((cfg->block_transfert_repeat_cb != NULL) ? STM32_MDMA_CCR_BRTIE : 0U) |
     ((cfg->endianness_swap == true) ? STM32_MDMA_CCR_WEX : 0U);
 
-  mdmap->cache.ctcr = cfg->trig_mode |
+  mdmap->cache.ctcr = cfg->trigger_mode |
     STM32_MDMA_CTCR_TLEN(cfg->transfert_len - 1U) |
     STM32_MDMA_CTCR_SBURST(cfg->sburst) |
     STM32_MDMA_CTCR_DBURST(cfg->dburst) |
@@ -444,6 +444,8 @@ bool mdma_lld_start(MDMADriver *mdmap)
     STM32_MDMA_CTCR_DSIZE(cfg->dwidth) |
     sinc |
     dinc |
+    ((cfg->trigger_src >= MDMA_TRIGGER_SOFTWARE_IMMEDIATE) ?
+     STM32_MDMA_CTCR_SWRM : 0) |
     cfg->ctcr;
 
   uint32_t src_update=0, dest_update=0;
@@ -514,7 +516,8 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
   mdmaChannelSetTransactionSizeX(mdmap->mdma, size, mdmap->cache.brc,
 				 mdmap->cache.opt);
   mdmaChannelSetModeX(mdmap->mdma, mdmap->cache.ctcr, mdmap->cache.ccr);
-  mdmaChannelSetTrigModeX(mdmap->mdma, mdmap->config->trigger_src);
+  if (mdmap->config->trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
+    mdmaChannelSetTrigModeX(mdmap->mdma, mdmap->config->trigger_src);
   mdmaChannelSelectBuses(mdmap, mdmap->config->bus_selection);
   mdmaChannelSetCBRUR(mdmap, mdmap->cache.cbrur);
   mdmaChannelSetCLAR(mdmap, mdmap->cache.clar);
@@ -523,7 +526,10 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
 
 
   mdmaChannelEnableX(mdmap->mdma);
-  
+
+  if (mdmap->config->trigger_src == MDMA_TRIGGER_SOFTWARE_IMMEDIATE) {
+    mdma_software_request(mdmap);
+  }
   return true;
 }
 

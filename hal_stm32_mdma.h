@@ -128,7 +128,9 @@ extern "C" {
     MDMA_TRIGGER_DMA2D_CLUT_XFER_COMPLETE = 24,
     MDMA_TRIGGER_DMA2D_XFER_COMPLETE = 25,
     MDMA_TRIGGER_DMA2D_XFER_WATERMARK = 26,
-    MDMA_TRIGGER_SDMMC1_END_OF_DATA = 29
+    MDMA_TRIGGER_SDMMC1_END_OF_DATA = 29,
+    MDMA_TRIGGER_SOFTWARE_IMMEDIATE = 64,
+    MDMA_TRIGGER_SOFTWARE_DEFERRED = 65,
   } mdmatriggersource_t;
 
   /**
@@ -320,7 +322,7 @@ extern "C" {
     /**
      * @brief   single, reperated or linked list
      */
-    mdmatriggermode_t	trig_mode;
+    mdmatriggermode_t	trigger_mode;
 
 
     /**
