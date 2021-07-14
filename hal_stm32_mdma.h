@@ -283,22 +283,6 @@ extern "C" {
    */
   typedef struct  {
     uint8_t channel:5; // channel 0 .. 15 ; 16 for ANY
-    /*
-      0..7  dma1 STREAM 0..7 transfert complete
-      8..15 dma2 STREAM 0..7 transfert complete
-      16	       LTDC line IT
-      17	       JPEG input FIFO threshold
-      18	       JPEG input FIFO not full
-      19	       JPEG output FIFO threshold
-      20	       JPEG output FIFO not empty
-      21	       JPEG end of conversion
-      22	       QUADSPI FIFO threshold
-      23	       QUADSPI transfert complete
-      24	       DMA2D CLUT transfert complete
-      25	       DMA2D transfert complete
-      26	       DMA2D transfert watermark
-      29	       SDMMC1 end of data
-    */
     mdmatriggersource_t	trigger_src;
 
     /**
