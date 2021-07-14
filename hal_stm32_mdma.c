@@ -49,10 +49,10 @@ bool mdmaStart(MDMADriver *mdmap, const MDMAConfig *cfg)
   osalSysLock();
   osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
                 "invalid state");
-  osalDbgAssert((cfg->transfert_len > 0U) && (cfg->transfert_len <= 128U),
-		"invalid transfert_len");
-  osalDbgAssert((cfg->buffer_len > 0U) && (cfg->buffer_len <= 65536U),
+  osalDbgAssert((cfg->buffer_len > 0U) && (cfg->buffer_len <= 128U),
 		"invalid buffer_len");
+  osalDbgAssert((cfg->block_len > 0U) && (cfg->block_len <= 65536U),
+		"invalid block_len");
   osalDbgAssert((cfg->block_repeat > 0U) && (cfg->block_repeat <= 4096U),
 		"invalid block_repeat");
   osalDbgAssert(((uint32_t)cfg->link_address & 0b111) == 0U,
@@ -146,7 +146,7 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, const void *source, void *dest,
   osalDbgCheck((mdmap != NULL) && (dest != NULL) && (source != NULL));
   
   const MDMAConfig	    *cfg = mdmap->config;
-  const size_t size = cfg->buffer_len;
+  const size_t size = cfg->block_len;
   const size_t ssize = 1U << cfg->swidth;
   const size_t dsize = 1U << cfg->dwidth;
   const size_t sburst = 1U << cfg->sburst;
@@ -161,10 +161,10 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, const void *source, void *dest,
   osalDbgAssert((uint32_t) source % ssize == 0, "source address not aligned");
   osalDbgAssert(size % ssize == 0, "size must me a multiple of source data size");
   osalDbgAssert(size % dsize == 0, "size must me a multiple of destination data size");
-  osalDbgAssert(cfg->transfert_len % ssize == 0, "transfert_len must me a multiple of source data size");
-  osalDbgAssert(cfg->transfert_len % dsize == 0, "transfert_len must me a multiple of destination data size");
-  osalDbgAssert(sburst <= cfg->transfert_len, "source burst must be less than transfert_len");
-  osalDbgAssert(dburst <= cfg->transfert_len, "destination burst must be less than transfert_len");
+  osalDbgAssert(cfg->buffer_len % ssize == 0, "buffer_len must me a multiple of source data size");
+  osalDbgAssert(cfg->buffer_len % dsize == 0, "buffer_len must me a multiple of destination data size");
+  osalDbgAssert(sburst <= cfg->buffer_len, "source burst must be less than buffer_len");
+  osalDbgAssert(dburst <= cfg->buffer_len, "destination burst must be less than buffer_len");
   osalDbgAssert(__builtin_popcount(sincos) <= 1, "source incremment must be a power of 2");
   osalDbgAssert(__builtin_popcount(dincos) <= 1, "destination incremment must be a power of 2");
   if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
@@ -435,7 +435,7 @@ bool mdma_lld_start(MDMADriver *mdmap)
     ((cfg->endianness_swap == true) ? STM32_MDMA_CCR_WEX : 0U);
 
   mdmap->cache.ctcr = cfg->trigger_mode |
-    STM32_MDMA_CTCR_TLEN(cfg->transfert_len - 1U) |
+    STM32_MDMA_CTCR_TLEN(cfg->buffer_len - 1U) |
     STM32_MDMA_CTCR_SBURST(cfg->sburst) |
     STM32_MDMA_CTCR_DBURST(cfg->dburst) |
     STM32_MDMA_CTCR_SINCOS(sincval) |
@@ -500,7 +500,7 @@ void mdma_lld_stop(MDMADriver *mdmap)
 bool  mdma_lld_start_transfert(MDMADriver *mdmap,
 			       const void *source, void *dest)
 {
-  const size_t size = mdmap->config->buffer_len;
+  const size_t size = mdmap->config->block_len;
 #if __DCACHE_PRESENT
   if (mdmap->config->activate_dcache_sync) {
     const size_t cacheSize = getCrossCacheBoundaryAwareSize(source, size);
@@ -539,7 +539,7 @@ void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source, void *dest,
 {
   mdmaChannelSetSourceX(mdmap->mdma, source);
   mdmaChannelSetDestinationX(mdmap->mdma, dest);
-  mdmaChannelSetTransactionSizeX(mdmap->mdma, mdmap->config->buffer_len,
+  mdmaChannelSetTransactionSizeX(mdmap->mdma, mdmap->config->block_len,
 				 mdmap->cache.brc, mdmap->cache.opt);
   mdmaChannelSetModeX(mdmap->mdma, mdmap->cache.ctcr, mdmap->cache.ccr);
   mdmaChannelSetTrigModeX(mdmap->mdma, mdmap->config->trigger_src);
@@ -599,7 +599,7 @@ static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
   if (mdmap->config->activate_dcache_sync) {
     const size_t cacheSize =
       getCrossCacheBoundaryAwareSize(mdmap->destination,
-				     mdmap->config->buffer_len);
+				     mdmap->config->block_len);
     cacheBufferInvalidate(mdmap->destination, cacheSize);
   }
 #endif

@@ -289,16 +289,21 @@ extern "C" {
      * @brief   Enable and give increment (positive) or decrement (negative)
      *          of source address after each transfert
      */
-    int8_t              source_incr:4;
+    int8_t              source_incr:5;
 
 
     /**
      * @brief   Enable and give increment (positive) or decrement (negative)
      *          of memory address after each transfert
      */
-    int8_t              dest_incr:4;
+    int8_t              dest_incr:5;
 
-    uint32_t	        buffer_len:17; 
+    /**
+     * @brief   MDMA memory buffer transfer len (up to 128 bytes)
+     */
+    uint8_t		buffer_len:7;
+
+    uint32_t	        block_len:17; 
     int32_t		block_source_incr:17;
     int32_t		block_dest_incr:17;
     uint16_t	        block_repeat:13; //  1 -> 4096
@@ -362,12 +367,7 @@ extern "C" {
      */
     mdmadwidth_t		dwidth:2;
 
-    /**
-     * @brief   MDMA memory transfert len (up to 128 bytes)
-     */
-    uint8_t		transfert_len:7;
-
-    /**
+     /**
      * @brief   MDMA source memory burst (up to 128 bytes)
      */
     mdmaburst_t		sburst:3; // 1->128 power of 2
