@@ -406,6 +406,18 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
   mdmap->next_link_array_index++;
 }
 
+void mdmaLinkLoop(MDMADriver *mdmap, const size_t index)
+{
+  osalDbgCheck(mdmap != NULL);
+  osalDbgCheck(mdmap->link_address != NULL);
+  osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
+                "invalid state");
+  osalDbgAssert(index < mdmap->link_array_size,
+		"MDMA loop index out of bounds");
+  
+  mdmap->link_address[mdmap->next_link_array_index - 1U].clar =
+    (uint32_t) &mdmap->link_address[index];
+}
 /*
   #                 _                                  _                              _
   #                | |                                | |                            | |

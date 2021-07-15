@@ -500,15 +500,15 @@ extern "C" {
 
   static  inline mdmastate_t mdmaGetState(MDMADriver *mdmap) {return mdmap->state;}
 
-    void mdmaSetLinkArray(MDMADriver *mdmap,
+  void mdmaSetLinkArray(MDMADriver *mdmap,
 			mdmalinkblock_t *  const linkArrayAddress,
 			const size_t linkArraySize);
 
- void mdmaAddLinkNode(MDMADriver *mdmap,
+  void mdmaAddLinkNode(MDMADriver *mdmap,
 		      const MDMAConfig *cfg,
 		      const void *source,
 		      void *dest);
-
+  void mdmaLinkLoop(MDMADriver *mdmap, const size_t index);
   // low level driver
   void mdma_lld_set_registers(MDMADriver *mdmap, const MDMAConfig *cfg);
   bool  mdma_lld_start(MDMADriver *mdmap);
