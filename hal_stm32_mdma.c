@@ -20,7 +20,9 @@ void mdmaObjectInit(MDMADriver *mdmap)
   mdmap->state    = MDMA_STOP;
   mdmap->config   = NULL;
   mdmap->source   = NULL;
-  mdmap->destination   = NULL;
+  mdmap->destination = NULL;
+  mdmap->link_address = NULL;
+  mdmap->link_array_size = 0;
 #if STM32_MDMA_USE_WAIT == TRUE
   mdmap->thread   = NULL;
 #endif
@@ -32,6 +34,23 @@ void mdmaObjectInit(MDMADriver *mdmap)
   mdmap->lastError = 0U;
 #endif
 }
+
+void mdmaSetLinkArray(MDMADriver *mdmap,
+		      mdmalinkblock_t *  const linkArrayAddress,
+		      const size_t linkArraySize)
+{
+  osalDbgCheck(mdmap != NULL);
+  osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
+                "invalid state");
+  osalDbgAssert((((uint32_t) linkArrayAddress) & 0b111) == 0U,
+		"link address must be double word aligned");
+  osalDbgAssert((linkArraySize > 0U), "invalid linkArraySize");
+  mdmap->link_address = linkArrayAddress;
+  mdmap->link_array_size = linkArraySize;
+  mdmap->next_link_array_index = 0;
+  memset(linkArrayAddress, 0, linkArraySize * sizeof(mdmalinkblock_t));
+}
+
 
 /**
  * @brief   Configures and activates the MDMA peripheral.
@@ -55,8 +74,6 @@ bool mdmaStart(MDMADriver *mdmap, const MDMAConfig *cfg)
 		"invalid block_len");
   osalDbgAssert((cfg->block_repeat > 0U) && (cfg->block_repeat <= 4096U),
 		"invalid block_repeat");
-  osalDbgAssert(((uint32_t)cfg->link_address & 0b111) == 0U,
-		"link address must be double word aligned");
   
   mdmap->config = cfg;
   const bool statusOk = mdma_lld_start(mdmap);
@@ -361,6 +378,34 @@ void mdmaReleaseBus(MDMADriver *mdmap) {
 }
 #endif /* MDMA_USE_MUTUAL_EXCLUSION == TRUE */
 
+void mdmaAddLinkNode(MDMADriver *mdmap,
+		     const MDMAConfig *cfg,
+		     const void *source,
+		     void *dest)
+{
+  osalDbgCheck((mdmap != NULL) && (cfg != NULL) &&
+	       (source != NULL) && (dest != NULL));
+  osalDbgCheck(mdmap->link_address != NULL);
+  osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
+                "invalid state");
+  osalDbgAssert(mdmap->next_link_array_index < mdmap->link_array_size,
+		"MDMA link array full");
+  // save config
+  const struct mdmacache_t savedCache = mdmap->cache;
+  mdma_lld_set_registers(mdmap, cfg);
+  mdma_lld_get_link_block(mdmap, source, dest,
+			  &mdmap->link_address[mdmap->next_link_array_index]);
+  mdmap->cache = savedCache;
+  
+  if (mdmap->next_link_array_index == 0) {
+    mdmap->cache.clar = (uint32_t) mdmap->link_address;
+  } else {
+    mdmap->link_address[mdmap->next_link_array_index - 1U].clar =
+      (uint32_t) &mdmap->link_address[mdmap->next_link_array_index];
+  }
+  mdmap->next_link_array_index++;
+}
+
 /*
   #                 _                                  _                              _
   #                | |                                | |                            | |
@@ -392,18 +437,17 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
 
 
 /**
- * @brief   Configures and activates the MDMA peripheral.
+ * @brief   Configures MDMA peripheral without activating.
  *
  * @param[in] mdmap      pointer to the @p MDMADriver object
+ * @param[in] mdmap      pointer to the @p MDMAConfig object
  *
  * @notapi
  */
-bool mdma_lld_start(MDMADriver *mdmap)
+void mdma_lld_set_registers(MDMADriver *mdmap, const MDMAConfig *cfg)
 {
-  const MDMAConfig *cfg = mdmap->config;
   uint32_t sinc, sincval, dinc, dincval;
   memset(&mdmap->cache, 0U, sizeof(mdmap->cache));
-
   
   if (cfg->source_incr > 0) {
     sinc = STM32_MDMA_CTCR_SINC_INC;
@@ -464,13 +508,24 @@ bool mdma_lld_start(MDMADriver *mdmap)
   }
   mdmap->cache.cbrur = src_update | (dest_update << 16U);
   mdmap->cache.brc =  mdmap->config->block_repeat - 1U;
-  mdmap->cache.clar = (uint32_t) mdmap->config->link_address;
-    
-  
-  mdmap->mdma = mdmaChannelAllocI(mdmap->config->channel,
+  mdmap->cache.clar = (uint32_t) NULL;
+ }
+
+/**
+ * @brief   Configures and activates the MDMA peripheral.
+ *
+ * @param[in] mdmap      pointer to the @p MDMADriver object
+ *
+ * @notapi
+ */
+bool mdma_lld_start(MDMADriver *mdmap)
+{
+  const MDMAConfig *cfg = mdmap->config;
+  mdma_lld_set_registers(mdmap, cfg);
+  mdmap->mdma = mdmaChannelAllocI(cfg->channel,
 				  (stm32_mdmaisr_t)mdma_lld_serve_interrupt,
 				  (void *)mdmap);
-
+  
   osalDbgAssert(mdmap->mdma != NULL, "unable to allocate MDMA channel");
   return mdmap->mdma != NULL;
 }
@@ -511,6 +566,7 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
   mdmap->source = source;
 
     /* MDMA initializations.*/
+  //  memset(mdmap->mdma->channel, 0, sizeof(*mdmap->mdma->channel));
   mdmaChannelSetSourceX(mdmap->mdma, source);
   mdmaChannelSetDestinationX(mdmap->mdma, dest);
   mdmaChannelSetTransactionSizeX(mdmap->mdma, size, mdmap->cache.brc,
@@ -524,7 +580,6 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
   mdmaChannelSetCMDR(mdmap, mdmap->config->mask_data_register);
   mdmaChannelSetCMAR(mdmap, (uint32_t) mdmap->config->mask_address_register);
 
-
   mdmaChannelEnableX(mdmap->mdma);
 
   if (mdmap->config->trigger_src == MDMA_TRIGGER_SOFTWARE_IMMEDIATE) {
@@ -537,18 +592,21 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
 void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source, void *dest,
 			      mdmalinkblock_t *link_block)
 {
+  //  memset(mdmap->mdma->channel, 0, sizeof(*mdmap->mdma->channel));
   mdmaChannelSetSourceX(mdmap->mdma, source);
   mdmaChannelSetDestinationX(mdmap->mdma, dest);
   mdmaChannelSetTransactionSizeX(mdmap->mdma, mdmap->config->block_len,
 				 mdmap->cache.brc, mdmap->cache.opt);
   mdmaChannelSetModeX(mdmap->mdma, mdmap->cache.ctcr, mdmap->cache.ccr);
-  mdmaChannelSetTrigModeX(mdmap->mdma, mdmap->config->trigger_src);
+  if (mdmap->config->trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
+    mdmaChannelSetTrigModeX(mdmap->mdma, mdmap->config->trigger_src);
   mdmaChannelSelectBuses(mdmap, mdmap->config->bus_selection);
   mdmaChannelSetCBRUR(mdmap, mdmap->cache.cbrur);
   mdmaChannelSetCLAR(mdmap, mdmap->cache.clar);
   mdmaChannelSetCMDR(mdmap, mdmap->config->mask_data_register);
   mdmaChannelSetCMAR(mdmap, (uint32_t) mdmap->config->mask_address_register);
-  memcpy(link_block, (void *)&mdmap->mdma->channel->CTCR, sizeof(mdmalinkblock_t));
+  memcpy(link_block, (void *)&mdmap->mdma->channel->CTCR,
+	 sizeof(mdmalinkblock_t));
 }
 
 bool mdma_software_request(MDMADriver *mdmap)
@@ -571,7 +629,6 @@ bool mdma_software_request(MDMADriver *mdmap)
     // channel not enabled
     return false;
   }
-  /* chn->CCR |= STM32_MDMA_CCR_EN; */
   chn->CCR |= MDMA_CCR_SWRQ;
   return true;
 }

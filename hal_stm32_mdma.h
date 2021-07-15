@@ -307,7 +307,7 @@ extern "C" {
     int32_t		block_source_incr:17;
     int32_t		block_dest_incr:17;
     uint16_t	        block_repeat:13; //  1 -> 4096
-    mdmalinkblock_t *	link_address;	
+    //mdmalinkblock_t *	link_address;	
     /**
      * @brief   single, reperated or linked list
      */
@@ -416,7 +416,10 @@ extern "C" {
      * @brief Current configuration data.
      */
     const MDMAConfig	    *config;
-
+    
+    mdmalinkblock_t *	link_address;
+    size_t		link_array_size;
+    size_t		next_link_array_index;
 #if STM32_MDMA_USE_WAIT || defined(__DOXYGEN__)
     /**
      * @brief Waiting thread.
@@ -442,7 +445,7 @@ extern "C" {
     /**
      * @brief	hold MDMA  register for the stream
      */
-    struct {
+    struct mdmacache_t {
       uint32_t brc;
       uint32_t ccr;
       uint32_t ctcr;
@@ -496,21 +499,18 @@ extern "C" {
 
 
   static  inline mdmastate_t mdmaGetState(MDMADriver *mdmap) {return mdmap->state;}
-  void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source, void *dest,
-				mdmalinkblock_t *link_block);
-  static  inline void mdmaGetLinkBlock(MDMADriver *mdmap, const void *source,
-				       void *dest, 
-				       mdmalinkblock_t *link_blockp) {
-    osalDbgCheck(mdmap != NULL);
-    osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
-		  "invalid state");
 
-    mdma_lld_get_link_block(mdmap, source, dest, link_blockp);
-  }
+    void mdmaSetLinkArray(MDMADriver *mdmap,
+			mdmalinkblock_t *  const linkArrayAddress,
+			const size_t linkArraySize);
 
+ void mdmaAddLinkNode(MDMADriver *mdmap,
+		      const MDMAConfig *cfg,
+		      const void *source,
+		      void *dest);
 
   // low level driver
-
+  void mdma_lld_set_registers(MDMADriver *mdmap, const MDMAConfig *cfg);
   bool  mdma_lld_start(MDMADriver *mdmap);
   void  mdma_lld_stop(MDMADriver *mdmap);
 
@@ -519,6 +519,10 @@ extern "C" {
 
 
   void  mdma_lld_stop_transfert(MDMADriver *mdmap);
+  void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source,
+				void *dest,
+				mdmalinkblock_t *link_block);
+  
 
   static inline void _mdma_isr_transaction_complete(MDMADriver *mdmap) {
     /* End transfert.*/
