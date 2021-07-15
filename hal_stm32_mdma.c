@@ -393,7 +393,7 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
   // save config
   const struct mdmacache_t savedCache = mdmap->cache;
   mdma_lld_set_registers(mdmap, cfg);
-  mdma_lld_get_link_block(mdmap, source, dest,
+  mdma_lld_get_link_block(mdmap, cfg, source, dest,
 			  &mdmap->link_address[mdmap->next_link_array_index]);
   mdmap->cache = savedCache;
   
@@ -589,22 +589,23 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
 }
 
 
-void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source, void *dest,
+void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
+			      const void *source, void *dest,
 			      mdmalinkblock_t *link_block)
 {
   //  memset(mdmap->mdma->channel, 0, sizeof(*mdmap->mdma->channel));
   mdmaChannelSetSourceX(mdmap->mdma, source);
   mdmaChannelSetDestinationX(mdmap->mdma, dest);
-  mdmaChannelSetTransactionSizeX(mdmap->mdma, mdmap->config->block_len,
+  mdmaChannelSetTransactionSizeX(mdmap->mdma, cfg->block_len,
 				 mdmap->cache.brc, mdmap->cache.opt);
   mdmaChannelSetModeX(mdmap->mdma, mdmap->cache.ctcr, mdmap->cache.ccr);
-  if (mdmap->config->trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
-    mdmaChannelSetTrigModeX(mdmap->mdma, mdmap->config->trigger_src);
-  mdmaChannelSelectBuses(mdmap, mdmap->config->bus_selection);
+  if (cfg->trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
+    mdmaChannelSetTrigModeX(mdmap->mdma, cfg->trigger_src);
+  mdmaChannelSelectBuses(mdmap, cfg->bus_selection);
   mdmaChannelSetCBRUR(mdmap, mdmap->cache.cbrur);
   mdmaChannelSetCLAR(mdmap, mdmap->cache.clar);
-  mdmaChannelSetCMDR(mdmap, mdmap->config->mask_data_register);
-  mdmaChannelSetCMAR(mdmap, (uint32_t) mdmap->config->mask_address_register);
+  mdmaChannelSetCMDR(mdmap, cfg->mask_data_register);
+  mdmaChannelSetCMAR(mdmap, (uint32_t) cfg->mask_address_register);
   memcpy(link_block, (void *)&mdmap->mdma->channel->CTCR,
 	 sizeof(mdmalinkblock_t));
 }

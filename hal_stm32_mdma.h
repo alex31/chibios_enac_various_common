@@ -515,12 +515,13 @@ extern "C" {
   void  mdma_lld_stop(MDMADriver *mdmap);
 
 
-  bool  mdma_lld_start_transfert(MDMADriver *mdmap, const void *source, void *dest);
+  bool  mdma_lld_start_transfert(MDMADriver *mdmap, const void *source,
+				 void *dest);
 
 
   void  mdma_lld_stop_transfert(MDMADriver *mdmap);
-  void  mdma_lld_get_link_block(MDMADriver *mdmap, const void *source,
-				void *dest,
+  void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
+				const void *source, void *dest,
 				mdmalinkblock_t *link_block);
   
 
