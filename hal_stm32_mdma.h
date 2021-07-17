@@ -13,6 +13,10 @@
 extern "C" {
 #endif
 
+
+#define MDMA_END_ADDR_OF(v) ((void *) ((uint32_t) (&(v)) + sizeof(typeof(v)) - 4))
+
+  
   /**
    * @brief   Enables synchronous APIs.
    * @note    Disabling this option saves both code and data space.
