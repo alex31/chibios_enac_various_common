@@ -400,7 +400,7 @@ pwmcnt_t pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq)
   return ret;
 }
 
-#if defined (STM32F7XX)
+#if defined (STM32F7XX) || defined (STM32H7XX)
 static  inline void  peri_set_bit (volatile uint32_t *addr, const uint32_t pos,
 				   const bool level)
 {

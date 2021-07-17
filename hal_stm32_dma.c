@@ -724,6 +724,7 @@ void  dma_lld_get_registers(DMADriver *dmap, volatile void *periphp,
 #endif
 
   memcpy(registers, dmap->dmastream->stream, sizeof(DMA_Stream_TypeDef));
+  registers->CR |= STM32_DMA_CR_EN;
 }
 
 /**

@@ -133,6 +133,13 @@ extern "C" {
     MDMA_TRIGGER_SOFTWARE_DEFERRED = 65,
   } mdmatriggersource_t;
 
+  typedef enum {
+    MDMA_TRIGGER_AUTO_NONE = 0,
+    MDMA_TRIGGER_AUTO_BUFFER = 1<<0, 
+    MDMA_TRIGGER_AUTO_ONE_BLOCK = 1<<1, 
+    MDMA_TRIGGER_AUTO_ALL_BLOCKS = 1<<2
+  }  mdmatriggerauto_t;
+
   /**
    * @brief   Type of a structure representing an MDMA driver.
    */
@@ -283,8 +290,8 @@ extern "C" {
    */
   typedef struct  {
     uint8_t channel:5; // channel 0 .. 15 ; 16 for ANY
-    mdmatriggersource_t	trigger_src;
-
+    mdmatriggersource_t		trigger_src;
+    mdmatriggerauto_t		trigger_auto;
     /**
      * @brief   Enable and give increment (positive) or decrement (negative)
      *          of source address after each transfert

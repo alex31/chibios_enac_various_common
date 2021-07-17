@@ -486,8 +486,11 @@ void mdma_lld_set_registers(MDMADriver *mdmap, const MDMAConfig *cfg)
     STM32_MDMA_CCR_CTCIE |
     ((cfg->error_cb != NULL) ? STM32_MDMA_CCR_TEIE : 0U) |
     ((cfg->buffer_transfert_cb != NULL) ? STM32_MDMA_CCR_TCIE : 0U) |
+    ((cfg->trigger_auto | MDMA_TRIGGER_AUTO_BUFFER) ? STM32_MDMA_CCR_TCIE : 0U) |
     ((cfg->block_transfert_cb != NULL) ? STM32_MDMA_CCR_BTIE : 0U) |
+    ((cfg->trigger_auto | MDMA_TRIGGER_AUTO_ONE_BLOCK) ? STM32_MDMA_CCR_BTIE : 0U) |
     ((cfg->block_transfert_repeat_cb != NULL) ? STM32_MDMA_CCR_BRTIE : 0U) |
+    ((cfg->trigger_auto | MDMA_TRIGGER_AUTO_ALL_BLOCKS) ? STM32_MDMA_CCR_BRTIE : 0U) |
     ((cfg->endianness_swap == true) ? STM32_MDMA_CCR_WEX : 0U);
 
   mdmap->cache.ctcr = cfg->trigger_mode |
@@ -686,25 +689,31 @@ static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
   if ((flags & STM32_MDMA_CISR_CTCIF) != 0) {
     /* Transfer complete processing.*/
     _mdma_isr_transaction_complete(mdmap);
-   }
+  }
   
   if ((flags & STM32_MDMA_CISR_TCIF) != 0) {
     /*Buffer complete processing.*/
     if (mdmap->config->buffer_transfert_cb != NULL)
       mdmap->config->buffer_transfert_cb(mdmap);
+    if (mdmap->config->trigger_auto | MDMA_TRIGGER_AUTO_BUFFER)
+      mdmaSoftRequest(mdmap);
    }
   
   if ((flags & STM32_MDMA_CISR_BTIF) != 0) {
     /* Block complete processing.*/
     if (mdmap->config->block_transfert_cb != NULL)
     mdmap->config->block_transfert_cb(mdmap);
+    if (mdmap->config->trigger_auto | MDMA_TRIGGER_AUTO_ONE_BLOCK)
+      mdmaSoftRequest(mdmap);
    }
   
   if ((flags & STM32_MDMA_CISR_BRTIF) != 0) {
     /* Block Repeat complete processing.*/
     if (mdmap->config->block_transfert_repeat_cb != NULL)
       mdmap->config->block_transfert_repeat_cb(mdmap);
-   }
+    if (mdmap->config->trigger_auto | MDMA_TRIGGER_AUTO_ALL_BLOCKS)
+      mdmaSoftRequest(mdmap);
+  }
 }
 
 
