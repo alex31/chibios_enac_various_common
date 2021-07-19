@@ -313,7 +313,7 @@ extern "C" {
      */
     uint8_t		buffer_len:7;
 
-    uint32_t	        block_len:17; 
+    //    uint32_t	        block_len:17; 
     int32_t		block_source_incr:17;
     int32_t		block_dest_incr:17;
     uint16_t	        block_repeat:13; //  1 -> 4096
@@ -484,14 +484,14 @@ extern "C" {
 
 #if STM32_MDMA_USE_WAIT == TRUE
   msg_t mdmaTransfertTimeout(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			     const void *source, void * dest,
+			     const void *source, void *dest, const size_t block_len,
 			     void *user_data, sysinterval_t timeout);
   // helper
   static inline msg_t mdmaTransfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-				    const void *source,
-				    void * dest, void *user_data)
+				    const void *source, void *dest, const size_t block_len,
+				    void *user_data)
   {
-    return mdmaTransfertTimeout(mdmap, trigger_src, source, dest,
+    return mdmaTransfertTimeout(mdmap, trigger_src, source, dest, block_len,
 				user_data, TIME_INFINITE);
   }
 #endif
@@ -500,11 +500,11 @@ extern "C" {
   void mdmaReleaseBus(MDMADriver *mdmap);
 #endif
   bool  mdmaStartTransfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			   const void *source, void *dest,
+			   const void *source, void *dest, const size_t block_len,
 			   void *user_data);
   void  mdmaStopTransfert(MDMADriver *mdmap);
   bool  mdmaStartTransfertI(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			    const void *source, void *dest,
+			    const void *source, void *dest, const size_t block_len,
 			    void *user_data);
   void  mdmaStopTransfertI(MDMADriver *mdmap);
   static inline bool mdmaSoftRequest(MDMADriver *mdmap) {
@@ -521,7 +521,7 @@ extern "C" {
   void mdmaAddLinkNode(MDMADriver *mdmap,
 		       const MDMAConfig *cfg,
 		       const mdmatriggersource_t trigger_src,
-		       const void *source, void *dest);
+		       const void *source, void *dest, const size_t block_len);
   void mdmaLinkLoop(MDMADriver *mdmap, const size_t index);
   // low level driver
   void mdma_lld_set_registers(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
@@ -531,13 +531,13 @@ extern "C" {
 
 
   bool  mdma_lld_start_transfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-				 const void *source, void *dest);
+				 const void *source, void *dest, const size_t block_len);
 
 
   void  mdma_lld_stop_transfert(MDMADriver *mdmap);
   void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
 				const mdmatriggersource_t trigger_src,
-				const void *source, void *dest,
+				const void *source, void *dest, const size_t block_len,
 				mdmalinkblock_t *link_block);
   
 

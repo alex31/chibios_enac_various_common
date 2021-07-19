@@ -70,8 +70,6 @@ bool mdmaStart(MDMADriver *mdmap, const MDMAConfig *cfg)
                 "invalid state");
   osalDbgAssert((cfg->buffer_len > 0U) && (cfg->buffer_len <= 128U),
 		"invalid buffer_len");
-  osalDbgAssert((cfg->block_len > 0U) && (cfg->block_len <= 65536U),
-		"invalid block_len");
   osalDbgAssert((cfg->block_repeat > 0U) && (cfg->block_repeat <= 4096U),
 		"invalid block_repeat");
   
@@ -129,12 +127,13 @@ void mdmaStop(MDMADriver *mdmap)
  * @api
  */
 bool mdmaStartTransfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			const void *source, void *dest,
+			const void *source, void *dest, const size_t block_len,
 			void *user_data)
 {
   osalSysLock();
   const bool statusOk = mdmaStartTransfertI(mdmap, trigger_src,
-					    source, dest, user_data);
+					    source, dest, block_len,
+					    user_data);
   osalSysUnlock();
   return statusOk;
 }
@@ -157,16 +156,18 @@ bool mdmaStartTransfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src
  * @api
  */
 bool  mdmaStartTransfertI(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			  const void *source, void *dest,
+			  const void *source, void *dest, const size_t block_len,
 			  void *user_data)
 {
   osalDbgCheckClassI();
   
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
   osalDbgCheck((mdmap != NULL) && (dest != NULL) && (source != NULL));
-  
+  osalDbgAssert((block_len > 0U) && (block_len <= 65536U),
+		"invalid block_len");
+
   const MDMAConfig	    *cfg = mdmap->config;
-  const size_t size = cfg->block_len;
+  const size_t size = block_len;
   const size_t ssize = 1U << cfg->swidth;
   const size_t dsize = 1U << cfg->dwidth;
   const size_t sburst = 1U << cfg->sburst;
@@ -244,7 +245,7 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, const mdmatriggersource_t trigger_s
 
   mdmap->state    = MDMA_ACTIVE;
   mdmap->user_data = user_data;
-  return mdma_lld_start_transfert(mdmap, trigger_src, source, dest);
+  return mdma_lld_start_transfert(mdmap, trigger_src, source, dest, block_len);
 }
 
 
@@ -330,14 +331,14 @@ void mdmaStopTransfertI(MDMADriver *mdmap)
  */
  msg_t mdmaTransfertTimeout(MDMADriver *mdmap,
 			    const mdmatriggersource_t trigger_src,
-			    const void *source, void * dest,
+			    const void *source, void *dest, const size_t block_len,
 			     void *user_data,  sysinterval_t timeout)
 {
   msg_t msg;
 
   osalSysLock();
   osalDbgAssert(mdmap->thread == NULL, "already waiting");
-  mdmaStartTransfertI(mdmap, trigger_src, source, dest, user_data);
+  mdmaStartTransfertI(mdmap, trigger_src, source, dest, block_len, user_data);
   msg = osalThreadSuspendTimeoutS(&mdmap->thread, timeout);
   if (msg != MSG_OK) {
     mdmaStopTransfertI(mdmap);
@@ -386,7 +387,7 @@ void mdmaReleaseBus(MDMADriver *mdmap) {
 void mdmaAddLinkNode(MDMADriver *mdmap,
 		     const MDMAConfig *cfg,
 		     const mdmatriggersource_t trigger_src,
-		     const void *source, void *dest)
+		     const void *source, void *dest, const size_t block_len)
 {
   osalDbgCheck((mdmap != NULL) && (cfg != NULL) &&
 	       (source != NULL) && (dest != NULL));
@@ -399,6 +400,7 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
   const struct mdmacache_t savedCache = mdmap->cache;
   mdma_lld_set_registers(mdmap, trigger_src, cfg);
   mdma_lld_get_link_block(mdmap, cfg, trigger_src, source, dest,
+			  block_len,
 			  &mdmap->link_address[mdmap->next_link_array_index]);
   mdmap->cache = savedCache;
   
@@ -575,12 +577,11 @@ void mdma_lld_stop(MDMADriver *mdmap)
  */
 bool  mdma_lld_start_transfert(MDMADriver *mdmap,
 			       const mdmatriggersource_t trigger_src,
-			       const void *source, void *dest)
+			       const void *source, void *dest, const size_t block_len)
 {
-  const size_t size = mdmap->config->block_len;
 #if __DCACHE_PRESENT
   if (mdmap->config->activate_dcache_sync) {
-    const size_t cacheSize = getCrossCacheBoundaryAwareSize(source, size);
+    const size_t cacheSize = getCrossCacheBoundaryAwareSize(source, block_len);
     cacheBufferFlush(source, cacheSize);
   }
 #endif
@@ -591,7 +592,7 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
   //  memset(mdmap->mdma->channel, 0, sizeof(*mdmap->mdma->channel));
   mdmaChannelSetSourceX(mdmap->mdma, source);
   mdmaChannelSetDestinationX(mdmap->mdma, dest);
-  mdmaChannelSetTransactionSizeX(mdmap->mdma, size, mdmap->cache.brc,
+  mdmaChannelSetTransactionSizeX(mdmap->mdma, block_len, mdmap->cache.brc,
 				 mdmap->cache.opt);
   mdmaChannelSetModeX(mdmap->mdma, mdmap->cache.ctcr, mdmap->cache.ccr);
   if (trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
@@ -614,12 +615,13 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
 void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
 			      const mdmatriggersource_t trigger_src,
 			      const void *source, void *dest,
+			      const size_t block_len,
 			      mdmalinkblock_t *link_block)
 {
   //  memset(mdmap->mdma->channel, 0, sizeof(*mdmap->mdma->channel));
   mdmaChannelSetSourceX(mdmap->mdma, source);
   mdmaChannelSetDestinationX(mdmap->mdma, dest);
-  mdmaChannelSetTransactionSizeX(mdmap->mdma, cfg->block_len,
+  mdmaChannelSetTransactionSizeX(mdmap->mdma, block_len,
 				 mdmap->cache.brc, mdmap->cache.opt);
   mdmaChannelSetModeX(mdmap->mdma, mdmap->cache.ctcr, mdmap->cache.ccr);
   if (trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
@@ -677,12 +679,16 @@ void mdma_lld_stop_transfert(MDMADriver *mdmap)
  */
 static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
 #if __DCACHE_PRESENT
-  if (mdmap->config->activate_dcache_sync) {
-    const size_t cacheSize =
-      getCrossCacheBoundaryAwareSize(mdmap->destination,
-				     mdmap->config->block_len);
-    cacheBufferInvalidate(mdmap->destination, cacheSize);
-  }
+  // TODO :
+  // make an invalidate function that that follow the linked list
+  // to invalidate all the cache, or leave that to the caller and
+  // remove all cache related field from API
+  /* if (mdmap->config->activate_dcache_sync) { */
+  /*   const size_t cacheSize = */
+  /*     getCrossCacheBoundaryAwareSize(mdmap->destination, */
+  /* 				     mdmap->config->block_len); */
+  /*   cacheBufferInvalidate(mdmap->destination, cacheSize); */
+  /* } */
 #endif
 
   /* DMA errors handling.*/
