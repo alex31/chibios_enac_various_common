@@ -21,8 +21,6 @@ void mdmaObjectInit(MDMADriver *mdmap)
   mdmap->config   = NULL;
   mdmap->source   = NULL;
   mdmap->destination = NULL;
-  mdmap->link_address = NULL;
-  mdmap->link_array_size = 0;
 #if STM32_MDMA_USE_WAIT == TRUE
   mdmap->thread   = NULL;
 #endif
@@ -33,22 +31,6 @@ void mdmaObjectInit(MDMADriver *mdmap)
   mdmap->nbTransferError = 0U;
   mdmap->lastError = 0U;
 #endif
-}
-
-void mdmaSetLinkArray(MDMADriver *mdmap,
-		      mdmalinkblock_t *  const linkArrayAddress,
-		      const size_t linkArraySize)
-{
-  osalDbgCheck(mdmap != NULL);
-  osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
-                "invalid state");
-  osalDbgAssert((((uint32_t) linkArrayAddress) & 0b111) == 0U,
-		"link address must be double word aligned");
-  osalDbgAssert((linkArraySize > 0U), "invalid linkArraySize");
-  mdmap->link_address = linkArrayAddress;
-  mdmap->link_array_size = linkArraySize;
-  mdmap->next_link_array_index = 0;
-  memset(linkArrayAddress, 0, linkArraySize * sizeof(mdmalinkblock_t));
 }
 
 
@@ -73,7 +55,10 @@ bool mdmaStart(MDMADriver *mdmap, const MDMAConfig *cfg)
   osalDbgAssert((cfg->block_repeat > 0U) && (cfg->block_repeat <= 4096U),
 		"invalid block_repeat");
   
-  mdmap->config = cfg;
+  osalDbgAssert((((uint32_t) cfg->link_array) & 0b111) == 0U,
+		"link address must be double word aligned");
+  osalDbgAssert((cfg->link_array_size > 0U), "invalid linkArraySize");
+ mdmap->config = cfg;
   const bool statusOk = mdma_lld_start(mdmap);
   mdmap->state = statusOk ? MDMA_READY : MDMA_ERROR;
   
@@ -391,24 +376,24 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
 {
   osalDbgCheck((mdmap != NULL) && (cfg != NULL) &&
 	       (source != NULL) && (dest != NULL));
-  osalDbgCheck(mdmap->link_address != NULL);
+  osalDbgCheck(cfg->link_array != NULL);
   osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
                 "invalid state");
-  osalDbgAssert(mdmap->next_link_array_index < mdmap->link_array_size,
+  osalDbgAssert(mdmap->next_link_array_index < cfg->link_array_size,
 		"MDMA link array full");
   // save config
   const struct mdmacache_t savedCache = mdmap->cache;
   mdma_lld_set_registers(mdmap, trigger_src, cfg);
   mdma_lld_get_link_block(mdmap, cfg, trigger_src, source, dest,
 			  block_len,
-			  &mdmap->link_address[mdmap->next_link_array_index]);
+			  &cfg->link_array[mdmap->next_link_array_index]);
   mdmap->cache = savedCache;
   
   if (mdmap->next_link_array_index == 0) {
-    mdmap->cache.clar = (uint32_t) mdmap->link_address;
+    mdmap->cache.clar = (uint32_t) cfg->link_array;
   } else {
-    mdmap->link_address[mdmap->next_link_array_index - 1U].clar =
-      (uint32_t) &mdmap->link_address[mdmap->next_link_array_index];
+    cfg->link_array[mdmap->next_link_array_index - 1U].clar =
+      (uint32_t) &cfg->link_array[mdmap->next_link_array_index];
   }
   mdmap->next_link_array_index++;
 }
@@ -416,14 +401,15 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
 void mdmaLinkLoop(MDMADriver *mdmap, const size_t index)
 {
   osalDbgCheck(mdmap != NULL);
-  osalDbgCheck(mdmap->link_address != NULL);
+  const MDMAConfig	    *cfg = mdmap->config;
+
+  osalDbgCheck(cfg->link_array != NULL);
   osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
                 "invalid state");
-  osalDbgAssert(index < mdmap->link_array_size,
+  osalDbgAssert(index <cfg->link_array_size,
 		"MDMA loop index out of bounds");
-  
-  mdmap->link_address[mdmap->next_link_array_index - 1U].clar =
-    (uint32_t) &mdmap->link_address[index];
+  cfg->link_array[mdmap->next_link_array_index - 1U].clar =
+    (uint32_t) &cfg->link_array[index];
 }
 /*
   #                 _                                  _                              _

@@ -293,6 +293,8 @@ extern "C" {
    *          reference manual for details.
    */
   typedef struct  {
+    mdmalinkblock_t *  link_array;
+    uint16_t	       link_array_size;
     uint8_t channel:5; // channel 0 .. 15 ; 16 for ANY
     mdmatriggerauto_t		trigger_auto;
     /**
@@ -317,7 +319,6 @@ extern "C" {
     int32_t		block_source_incr:17;
     int32_t		block_dest_incr:17;
     uint16_t	        block_repeat:13; //  1 -> 4096
-    //mdmalinkblock_t *	link_address;	
     /**
      * @brief   single, reperated or linked list
      */
@@ -427,8 +428,6 @@ extern "C" {
      */
     const MDMAConfig	    *config;
     
-    mdmalinkblock_t *	link_address;
-    size_t		link_array_size;
     size_t		next_link_array_index;
 #if STM32_MDMA_USE_WAIT || defined(__DOXYGEN__)
     /**
@@ -513,10 +512,6 @@ extern "C" {
 
 
   static  inline mdmastate_t mdmaGetState(MDMADriver *mdmap) {return mdmap->state;}
-
-  void mdmaSetLinkArray(MDMADriver *mdmap,
-			mdmalinkblock_t *  const linkArrayAddress,
-			const size_t linkArraySize);
 
   void mdmaAddLinkNode(MDMADriver *mdmap,
 		       const MDMAConfig *cfg,
