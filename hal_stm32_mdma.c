@@ -128,11 +128,13 @@ void mdmaStop(MDMADriver *mdmap)
  *
  * @api
  */
-bool mdmaStartTransfert(MDMADriver *mdmap, const void *source, void *dest,
+bool mdmaStartTransfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
+			const void *source, void *dest,
 			void *user_data)
 {
   osalSysLock();
-  const bool statusOk = mdmaStartTransfertI(mdmap, source, dest, user_data);
+  const bool statusOk = mdmaStartTransfertI(mdmap, trigger_src,
+					    source, dest, user_data);
   osalSysUnlock();
   return statusOk;
 }
@@ -154,7 +156,8 @@ bool mdmaStartTransfert(MDMADriver *mdmap, const void *source, void *dest,
  *
  * @api
  */
-bool  mdmaStartTransfertI(MDMADriver *mdmap, const void *source, void *dest,
+bool  mdmaStartTransfertI(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
+			  const void *source, void *dest,
 			  void *user_data)
 {
   osalDbgCheckClassI();
@@ -241,7 +244,7 @@ bool  mdmaStartTransfertI(MDMADriver *mdmap, const void *source, void *dest,
 
   mdmap->state    = MDMA_ACTIVE;
   mdmap->user_data = user_data;
-  return mdma_lld_start_transfert(mdmap, source, dest);
+  return mdma_lld_start_transfert(mdmap, trigger_src, source, dest);
 }
 
 
@@ -325,14 +328,16 @@ void mdmaStopTransfertI(MDMADriver *mdmap)
  *
  * @api
  */
- msg_t mdmaTransfertTimeout(MDMADriver *mdmap, const void *source, void * dest,
+ msg_t mdmaTransfertTimeout(MDMADriver *mdmap,
+			    const mdmatriggersource_t trigger_src,
+			    const void *source, void * dest,
 			     void *user_data,  sysinterval_t timeout)
 {
   msg_t msg;
 
   osalSysLock();
   osalDbgAssert(mdmap->thread == NULL, "already waiting");
-  mdmaStartTransfertI(mdmap, source, dest, user_data);
+  mdmaStartTransfertI(mdmap, trigger_src, source, dest, user_data);
   msg = osalThreadSuspendTimeoutS(&mdmap->thread, timeout);
   if (msg != MSG_OK) {
     mdmaStopTransfertI(mdmap);
@@ -380,8 +385,8 @@ void mdmaReleaseBus(MDMADriver *mdmap) {
 
 void mdmaAddLinkNode(MDMADriver *mdmap,
 		     const MDMAConfig *cfg,
-		     const void *source,
-		     void *dest)
+		     const mdmatriggersource_t trigger_src,
+		     const void *source, void *dest)
 {
   osalDbgCheck((mdmap != NULL) && (cfg != NULL) &&
 	       (source != NULL) && (dest != NULL));
@@ -392,8 +397,8 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
 		"MDMA link array full");
   // save config
   const struct mdmacache_t savedCache = mdmap->cache;
-  mdma_lld_set_registers(mdmap, cfg);
-  mdma_lld_get_link_block(mdmap, cfg, source, dest,
+  mdma_lld_set_registers(mdmap, trigger_src, cfg);
+  mdma_lld_get_link_block(mdmap, cfg, trigger_src, source, dest,
 			  &mdmap->link_address[mdmap->next_link_array_index]);
   mdmap->cache = savedCache;
   
@@ -456,7 +461,9 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
  *
  * @notapi
  */
-void mdma_lld_set_registers(MDMADriver *mdmap, const MDMAConfig *cfg)
+void mdma_lld_set_registers(MDMADriver *mdmap,
+			    const mdmatriggersource_t trigger_src,
+			    const MDMAConfig *cfg)
 {
   uint32_t sinc, sincval, dinc, dincval;
   memset(&mdmap->cache, 0U, sizeof(mdmap->cache));
@@ -503,7 +510,7 @@ void mdma_lld_set_registers(MDMADriver *mdmap, const MDMAConfig *cfg)
     STM32_MDMA_CTCR_DSIZE(cfg->dwidth) |
     sinc |
     dinc |
-    ((cfg->trigger_src >= MDMA_TRIGGER_SOFTWARE_IMMEDIATE) ?
+    ((trigger_src >= MDMA_TRIGGER_SOFTWARE_IMMEDIATE) ?
      STM32_MDMA_CTCR_SWRM : 0) |
     cfg->ctcr;
 
@@ -536,7 +543,6 @@ void mdma_lld_set_registers(MDMADriver *mdmap, const MDMAConfig *cfg)
 bool mdma_lld_start(MDMADriver *mdmap)
 {
   const MDMAConfig *cfg = mdmap->config;
-  mdma_lld_set_registers(mdmap, cfg);
   mdmap->mdma = mdmaChannelAllocI(cfg->channel,
 				  (stm32_mdmaisr_t)mdma_lld_serve_interrupt,
 				  (void *)mdmap);
@@ -568,6 +574,7 @@ void mdma_lld_stop(MDMADriver *mdmap)
  * @notapi
  */
 bool  mdma_lld_start_transfert(MDMADriver *mdmap,
+			       const mdmatriggersource_t trigger_src,
 			       const void *source, void *dest)
 {
   const size_t size = mdmap->config->block_len;
@@ -577,6 +584,7 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
     cacheBufferFlush(source, cacheSize);
   }
 #endif
+  mdma_lld_set_registers(mdmap, trigger_src, mdmap->config);
   mdmap->destination = dest;
   mdmap->source = source;
 
@@ -587,8 +595,8 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
   mdmaChannelSetTransactionSizeX(mdmap->mdma, size, mdmap->cache.brc,
 				 mdmap->cache.opt);
   mdmaChannelSetModeX(mdmap->mdma, mdmap->cache.ctcr, mdmap->cache.ccr);
-  if (mdmap->config->trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
-    mdmaChannelSetTrigModeX(mdmap->mdma, mdmap->config->trigger_src);
+  if (trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
+    mdmaChannelSetTrigModeX(mdmap->mdma, trigger_src);
   mdmaChannelSelectBuses(mdmap, mdmap->config->bus_selection);
   mdmaChannelSetCBRUR(mdmap, mdmap->cache.cbrur);
   mdmaChannelSetCLAR(mdmap, mdmap->cache.clar);
@@ -597,7 +605,7 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
 
   mdmaChannelEnableX(mdmap->mdma);
 
-  if (mdmap->config->trigger_src == MDMA_TRIGGER_SOFTWARE_IMMEDIATE) {
+  if (trigger_src == MDMA_TRIGGER_SOFTWARE_IMMEDIATE) {
     mdma_software_request(mdmap);
   }
   return true;
@@ -605,6 +613,7 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
 
 
 void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
+			      const mdmatriggersource_t trigger_src,
 			      const void *source, void *dest,
 			      mdmalinkblock_t *link_block)
 {
@@ -614,8 +623,8 @@ void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
   mdmaChannelSetTransactionSizeX(mdmap->mdma, cfg->block_len,
 				 mdmap->cache.brc, mdmap->cache.opt);
   mdmaChannelSetModeX(mdmap->mdma, mdmap->cache.ctcr, mdmap->cache.ccr);
-  if (cfg->trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
-    mdmaChannelSetTrigModeX(mdmap->mdma, cfg->trigger_src);
+  if (trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
+    mdmaChannelSetTrigModeX(mdmap->mdma, trigger_src);
   mdmaChannelSelectBuses(mdmap, cfg->bus_selection);
   mdmaChannelSetCBRUR(mdmap, mdmap->cache.cbrur);
   mdmaChannelSetCLAR(mdmap, mdmap->cache.clar);
