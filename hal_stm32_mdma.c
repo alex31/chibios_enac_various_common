@@ -530,7 +530,6 @@ void mdma_lld_set_registers(MDMADriver *mdmap,
   }
   mdmap->cache.cbrur = src_update | (dest_update << 16U);
   mdmap->cache.brc =  mdmap->config->block_repeat - 1U;
-  mdmap->cache.clar = (uint32_t) NULL;
  }
 
 /**
@@ -543,6 +542,7 @@ void mdma_lld_set_registers(MDMADriver *mdmap,
 bool mdma_lld_start(MDMADriver *mdmap)
 {
   const MDMAConfig *cfg = mdmap->config;
+  mdma_lld_set_registers(mdmap, MDMA_TRIGGER_SOFTWARE_DEFERRED, cfg);
   mdmap->mdma = mdmaChannelAllocI(cfg->channel,
 				  (stm32_mdmaisr_t)mdma_lld_serve_interrupt,
 				  (void *)mdmap);
@@ -584,7 +584,6 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap,
     cacheBufferFlush(source, cacheSize);
   }
 #endif
-  mdma_lld_set_registers(mdmap, trigger_src, mdmap->config);
   mdmap->destination = dest;
   mdmap->source = source;
 
