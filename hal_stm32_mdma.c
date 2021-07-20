@@ -443,12 +443,12 @@ void mdma_lld_set_common_registers(MDMADriver *mdmap)
     STM32_MDMA_CCR_CTCIE |
     ((cfg->error_cb != NULL) ? STM32_MDMA_CCR_TEIE : 0U) |
     ((cfg->buffer_transfert_cb != NULL) ? STM32_MDMA_CCR_TCIE : 0U) |
-    ((cfg->trigger_auto | MDMA_TRIGGER_AUTO_BUFFER) ? STM32_MDMA_CCR_TCIE : 0U) |
+    ((cfg->trigger_auto & MDMA_TRIGGER_AUTO_BUFFER) ? STM32_MDMA_CCR_TCIE : 0U) |
     ((cfg->block_transfert_cb != NULL) ? STM32_MDMA_CCR_BTIE : 0U) |
-    ((cfg->trigger_auto | MDMA_TRIGGER_AUTO_ONE_BLOCK) ? STM32_MDMA_CCR_BTIE : 0U) |
+    ((cfg->trigger_auto & MDMA_TRIGGER_AUTO_ONE_BLOCK) ? STM32_MDMA_CCR_BTIE : 0U) |
     ((cfg->block_transfert_repeat_cb != NULL) ? STM32_MDMA_CCR_BRTIE : 0U) |
-    ((cfg->trigger_auto | MDMA_TRIGGER_AUTO_ALL_BLOCKS) ? STM32_MDMA_CCR_BRTIE : 0U) |
-    ((cfg->endianness_swap == true) ? STM32_MDMA_CCR_WEX : 0U);
+    ((cfg->trigger_auto & MDMA_TRIGGER_AUTO_ALL_BLOCKS) ? STM32_MDMA_CCR_BRTIE : 0U) |
+    cfg->endianness_ex;
 }
 
 /**

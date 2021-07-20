@@ -144,6 +144,13 @@ extern "C" {
     MDMA_TRIGGER_AUTO_ALL_BLOCKS = 1<<2
   }  mdmatriggerauto_t;
 
+  typedef enum {
+    MDMA_NO_EXCHANGE = 0,
+    MDMA_WORD_EXCHANGE = STM32_MDMA_CCR_WEX, 
+    MDMA_HALFWORD_EXCHANGE = STM32_MDMA_CCR_HEX, 
+    MDMA_BYTE_EXCHANGE = STM32_MDMA_CCR_BEX
+  }  mdmaendianessexchange_t;
+
   /**
    * @brief   Type of a structure representing an MDMA driver.
    */
@@ -330,7 +337,7 @@ extern "C" {
     /**
      * @brief   activate endianness swap during transaction
      */
-    bool		endianness_swap;
+    mdmaendianessexchange_t    endianness_ex;
     
   } MDMAConfig;
 
