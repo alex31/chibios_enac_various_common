@@ -46,18 +46,14 @@ void mdmaObjectInit(MDMADriver *mdmap)
 bool mdmaStart(MDMADriver *mdmap, const MDMAConfig *cfg)
 {
   osalDbgCheck((mdmap != NULL) && (cfg != NULL));
-  osalSysLock();
+  osalDbgCheck(cfg->link_array != NULL); 
   osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
                 "invalid state");
-  osalDbgAssert((cfg->buffer_len > 0U) && (cfg->buffer_len <= 128U),
-		"invalid buffer_len");
-  osalDbgAssert((cfg->block_repeat > 0U) && (cfg->block_repeat <= 4096U),
-		"invalid block_repeat");
-  
   osalDbgAssert((((uint32_t) cfg->link_array) & 0b111) == 0U,
 		"link address must be double word aligned");
   osalDbgAssert((cfg->link_array_size > 0U), "invalid linkArraySize");
- mdmap->config = cfg;
+  osalSysLock();
+  mdmap->config = cfg;
   const bool statusOk = mdma_lld_start(mdmap);
   mdmap->state = statusOk ? MDMA_READY : MDMA_ERROR;
   
@@ -279,27 +275,32 @@ void mdmaReleaseBus(MDMADriver *mdmap) {
 #endif /* MDMA_USE_MUTUAL_EXCLUSION == TRUE */
 
 void mdmaAddLinkNode(MDMADriver *mdmap,
-		     const MDMAConfig *cfg,
+		     const MDMANodeConfig *nodeCfg,
 		     const mdmatriggersource_t trigger_src,
 		     const void *source, void *dest, const size_t block_len)
 {
-  osalDbgCheck((mdmap != NULL) && (cfg != NULL) &&
+  osalDbgCheck((mdmap != NULL) && (nodeCfg != NULL) &&
 	       (source != NULL) && (dest != NULL));
-  osalDbgCheck(cfg->link_array != NULL);
+
   osalDbgAssert((mdmap->state == MDMA_STOP) || (mdmap->state == MDMA_READY),
                 "invalid state");
-  osalDbgAssert(mdmap->next_link_array_index < cfg->link_array_size,
+  osalDbgAssert(mdmap->next_link_array_index < mdmap->config->link_array_size,
 		"MDMA link array full");
 
-
+  osalDbgAssert((nodeCfg->buffer_len > 0U) && (nodeCfg->buffer_len <= 128U),
+		"invalid buffer_len");
+  osalDbgAssert((nodeCfg->block_repeat > 0U) && (nodeCfg->block_repeat <= 4096U),
+		"invalid block_repeat");
+  
+  const MDMAConfig          *cfg = mdmap->config;
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
   const size_t size = block_len;
-  const size_t ssize = 1U << cfg->swidth;
-  const size_t dsize = 1U << cfg->dwidth;
-  const size_t sburst = 1U << cfg->sburst;
-  const size_t dburst = 1U << cfg->dburst;
-  const size_t dincos = cfg->dest_incr > 0 ? cfg->dest_incr : -cfg->dest_incr;
-  const size_t sincos = cfg->source_incr > 0 ? cfg->source_incr : -cfg->source_incr;
+  const size_t ssize = 1U << nodeCfg->swidth;
+  const size_t dsize = 1U << nodeCfg->dwidth;
+  const size_t sburst = 1U << nodeCfg->sburst;
+  const size_t dburst = 1U << nodeCfg->dburst;
+  const size_t dincos = nodeCfg->dest_incr > 0 ? nodeCfg->dest_incr : -nodeCfg->dest_incr;
+  const size_t sincos = nodeCfg->source_incr > 0 ? nodeCfg->source_incr : -nodeCfg->source_incr;
   osalDbgAssert((mdmap->state == MDMA_READY) ||
 		(mdmap->state == MDMA_COMPLETE) ||
 		(mdmap->state == MDMA_ERROR),
@@ -308,13 +309,13 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
   osalDbgAssert((uint32_t) source % ssize == 0, "source address not aligned");
   osalDbgAssert(size % ssize == 0, "size must me a multiple of source data size");
   osalDbgAssert(size % dsize == 0, "size must me a multiple of destination data size");
-  osalDbgAssert(cfg->buffer_len % ssize == 0, "buffer_len must me a multiple of source data size");
-  osalDbgAssert(cfg->buffer_len % dsize == 0, "buffer_len must me a multiple of destination data size");
-  osalDbgAssert(sburst <= cfg->buffer_len, "source burst must be less than buffer_len");
-  osalDbgAssert(dburst <= cfg->buffer_len, "destination burst must be less than buffer_len");
+  osalDbgAssert(nodeCfg->buffer_len % ssize == 0, "buffer_len must me a multiple of source data size");
+  osalDbgAssert(nodeCfg->buffer_len % dsize == 0, "buffer_len must me a multiple of destination data size");
+  osalDbgAssert(sburst <= nodeCfg->buffer_len, "source burst must be less than buffer_len");
+  osalDbgAssert(dburst <= nodeCfg->buffer_len, "destination burst must be less than buffer_len");
   osalDbgAssert(__builtin_popcount(sincos) <= 1, "source incremment must be a power of 2");
   osalDbgAssert(__builtin_popcount(dincos) <= 1, "destination incremment must be a power of 2");
-  if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
+  if (nodeCfg->bus_selection & MDMA_DESTBUS_TCM) {
     if ((dincos == 8) ||
 	(dincos == 0) ||
 	(dincos != dsize)) {
@@ -326,7 +327,7 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
       osalDbgAssert(dburst <= 16, "several conditions implies destination burst must not exceed 16");
     }
   }
-  if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
+  if (nodeCfg->bus_selection & MDMA_SOURCEBUS_TCM) {
     if ((sincos == 8) ||
 	(sincos == 0) ||
 	(sincos != ssize)) {
@@ -341,7 +342,7 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
   
   if (dincos != 0) {
     osalDbgAssert(dincos >= dsize, "destination increment must be greater or equal to destination size");
-    if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
+    if (nodeCfg->bus_selection & MDMA_DESTBUS_TCM) {
       if (dburst != 1) {
 	osalDbgAssert(((uint32_t) dest % dincos) == 0, "when dest is AHB and burst is enabled, "
 		      "destination address must be aligned with destination increment");
@@ -351,7 +352,7 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
   
   if (sincos != 0) {
     osalDbgAssert(sincos >= ssize, "source increment must be greater or equal to source size");
-    if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
+    if (nodeCfg->bus_selection & MDMA_SOURCEBUS_TCM) {
       if (sburst != 1) {
 	osalDbgAssert(((uint32_t) source % sincos) == 0, "when source is AHB and burst is enabled, "
 		      "source address must be aligned with source increment");
@@ -359,21 +360,18 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
     }
   }
   
-  if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
+  if (nodeCfg->bus_selection & MDMA_SOURCEBUS_TCM) {
     osalDbgAssert(ssize <= 4, "when source is TCM/AHB source, source width should be inferior or equal to 4");
     osalDbgAssert(sincos != 0, "when source is TCM/AHB source, fixed source address is forbidden");
   }
-  if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
+  if (nodeCfg->bus_selection & MDMA_DESTBUS_TCM) {
     osalDbgAssert(dsize <= 4, "when destination is TCM/AHB, destination width should be inferior or equal to 4"); 
     osalDbgAssert(dincos != 0, "when destination is TCM/AHB destination, fixed destination address is forbidden");
   }
 #endif
   
-  // save config
-  
-  const struct mdmacache_t savedCache = mdmap->cache;
-  mdma_lld_set_registers(mdmap, trigger_src, cfg);
-  mdma_lld_get_link_block(mdmap, cfg, trigger_src, source, dest,
+  mdma_lld_set_node_registers(mdmap, trigger_src, nodeCfg);
+  mdma_lld_get_link_block(mdmap, nodeCfg, trigger_src, source, dest,
 			  block_len,
 			  &cfg->link_array[mdmap->next_link_array_index]);
   
@@ -383,7 +381,6 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
   } else {
     cfg->link_array[mdmap->next_link_array_index - 1U].clar =
       (uint32_t) &cfg->link_array[mdmap->next_link_array_index];
-    mdmap->cache = savedCache;
   }
   mdmap->next_link_array_index++;
 }
@@ -435,38 +432,13 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
  * @brief   Configures MDMA peripheral without activating.
  *
  * @param[in] mdmap      pointer to the @p MDMADriver object
- * @param[in] mdmap      pointer to the @p MDMAConfig object
+ * @param[in] mdmap      pointer to the @p MDMANodeConfig object
  *
  * @notapi
  */
-void mdma_lld_set_registers(MDMADriver *mdmap,
-			    const mdmatriggersource_t trigger_src,
-			    const MDMAConfig *cfg)
+void mdma_lld_set_common_registers(MDMADriver *mdmap)
 {
-  uint32_t sinc, sincval, dinc, dincval;
-  memset(&mdmap->cache, 0U, sizeof(mdmap->cache));
-  
-  if (cfg->source_incr > 0) {
-    sinc = STM32_MDMA_CTCR_SINC_INC;
-    sincval = __builtin_ffs(cfg->source_incr)-1U;
-  } else if (cfg->source_incr < 0) {
-    sinc = STM32_MDMA_CTCR_SINC_DEC;
-    sincval = __builtin_ffs(-cfg->source_incr)-1U;
-  } else {
-    sinc = STM32_MDMA_CTCR_SINC_FIXED;
-    sincval = 0;
-  }
-  if (cfg->dest_incr > 0) {
-    dinc = STM32_MDMA_CTCR_DINC_INC;
-    dincval = __builtin_ffs(cfg->dest_incr)-1U;
-  } else if (cfg->dest_incr < 0) {
-    dinc = STM32_MDMA_CTCR_DINC_DEC;
-    dincval = __builtin_ffs(-cfg->dest_incr)-1U;
-  } else {
-    dinc = STM32_MDMA_CTCR_DINC_FIXED;
-    dincval = 0;
-  }
-  
+  const MDMAConfig          *cfg = mdmap->config;
   mdmap->cache.ccr = STM32_MDMA_CCR_PL(cfg->mdma_priority) |
     STM32_MDMA_CCR_CTCIE |
     ((cfg->error_cb != NULL) ? STM32_MDMA_CCR_TEIE : 0U) |
@@ -477,38 +449,75 @@ void mdma_lld_set_registers(MDMADriver *mdmap,
     ((cfg->block_transfert_repeat_cb != NULL) ? STM32_MDMA_CCR_BRTIE : 0U) |
     ((cfg->trigger_auto | MDMA_TRIGGER_AUTO_ALL_BLOCKS) ? STM32_MDMA_CCR_BRTIE : 0U) |
     ((cfg->endianness_swap == true) ? STM32_MDMA_CCR_WEX : 0U);
+}
 
-  mdmap->cache.ctcr = cfg->trigger_mode |
-    STM32_MDMA_CTCR_TLEN(cfg->buffer_len - 1U) |
-    STM32_MDMA_CTCR_SBURST(cfg->sburst) |
-    STM32_MDMA_CTCR_DBURST(cfg->dburst) |
+/**
+ * @brief   Configures MDMA peripheral without activating.
+ *
+ * @param[in] mdmap      pointer to the @p MDMADriver object
+ * @param[in] mdmap      pointer to the @p MDMANodeConfig object
+ *
+ * @notapi
+ */
+void mdma_lld_set_node_registers(MDMADriver *mdmap,
+				 const mdmatriggersource_t trigger_src,
+				 const MDMANodeConfig *nodeCfg)
+{
+  uint32_t sinc, sincval, dinc, dincval;
+  
+  if (nodeCfg->source_incr > 0) {
+    sinc = STM32_MDMA_CTCR_SINC_INC;
+    sincval = __builtin_ffs(nodeCfg->source_incr)-1U;
+  } else if (nodeCfg->source_incr < 0) {
+    sinc = STM32_MDMA_CTCR_SINC_DEC;
+    sincval = __builtin_ffs(-nodeCfg->source_incr)-1U;
+  } else {
+    sinc = STM32_MDMA_CTCR_SINC_FIXED;
+    sincval = 0;
+  }
+  if (nodeCfg->dest_incr > 0) {
+    dinc = STM32_MDMA_CTCR_DINC_INC;
+    dincval = __builtin_ffs(nodeCfg->dest_incr)-1U;
+  } else if (nodeCfg->dest_incr < 0) {
+    dinc = STM32_MDMA_CTCR_DINC_DEC;
+    dincval = __builtin_ffs(-nodeCfg->dest_incr)-1U;
+  } else {
+    dinc = STM32_MDMA_CTCR_DINC_FIXED;
+    dincval = 0;
+  }
+  
+  mdmap->cache.ctcr = nodeCfg->trigger_mode |
+    STM32_MDMA_CTCR_TLEN(nodeCfg->buffer_len - 1U) |
+    STM32_MDMA_CTCR_SBURST(nodeCfg->sburst) |
+    STM32_MDMA_CTCR_DBURST(nodeCfg->dburst) |
     STM32_MDMA_CTCR_SINCOS(sincval) |
     STM32_MDMA_CTCR_DINCOS(dincval) |
-    STM32_MDMA_CTCR_SSIZE(cfg->swidth) |
-    STM32_MDMA_CTCR_DSIZE(cfg->dwidth) |
+    STM32_MDMA_CTCR_SSIZE(nodeCfg->swidth) |
+    STM32_MDMA_CTCR_DSIZE(nodeCfg->dwidth) |
     sinc |
     dinc |
     ((trigger_src >= MDMA_TRIGGER_SOFTWARE_IMMEDIATE) ?
      STM32_MDMA_CTCR_SWRM : 0) |
-    cfg->ctcr;
-
+    nodeCfg->ctcr;
+  
   uint32_t src_update=0, dest_update=0;
-  if (cfg->block_source_incr < 0) {
+  if (nodeCfg->block_source_incr < 0) {
     mdmap->cache.opt = MDMA_CBNDTR_BRSUM;
-    src_update = -cfg->block_source_incr;
+    src_update = -nodeCfg->block_source_incr;
   } else {
-    src_update = cfg->block_source_incr;
+    src_update = nodeCfg->block_source_incr;
   }
   
-  if (cfg->block_dest_incr < 0) {
+  if (nodeCfg->block_dest_incr < 0) {
     mdmap->cache.opt |= MDMA_CBNDTR_BRDUM;
-    dest_update = -cfg->block_dest_incr;
+    dest_update = -nodeCfg->block_dest_incr;
   } else {
-    dest_update = cfg->block_dest_incr;
+    dest_update = nodeCfg->block_dest_incr;
   }
   mdmap->cache.cbrur = src_update | (dest_update << 16U);
-  mdmap->cache.brc =  mdmap->config->block_repeat - 1U;
- }
+  mdmap->cache.brc =  nodeCfg->block_repeat - 1U;
+}
+
 
 /**
  * @brief   Configures and activates the MDMA peripheral.
@@ -520,7 +529,7 @@ void mdma_lld_set_registers(MDMADriver *mdmap,
 bool mdma_lld_start(MDMADriver *mdmap)
 {
   const MDMAConfig *cfg = mdmap->config;
-  mdma_lld_set_registers(mdmap, MDMA_TRIGGER_SOFTWARE_DEFERRED, cfg);
+  mdma_lld_set_common_registers(mdmap);
   mdmap->mdma = mdmaChannelAllocI(cfg->channel,
 				  (stm32_mdmaisr_t)mdma_lld_serve_interrupt,
 				  (void *)mdmap);
@@ -565,7 +574,7 @@ bool  mdma_lld_start_transfert(MDMADriver *mdmap)
 }
 
 
-void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
+void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMANodeConfig *cfg,
 			      const mdmatriggersource_t trigger_src,
 			      const void *source, void *dest,
 			      const size_t block_len,

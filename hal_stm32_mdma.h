@@ -284,54 +284,13 @@ extern "C" {
 
 
 
-  /**
-   * @brief   MDMA stream configuration structure.
-   * @details This implementation-dependent structure describes a MDMA
-   *          operation.
-   * @note    The use of this configuration structure requires knowledge of
-   *          STM32 MDMA registers interface, please refer to the STM32
-   *          reference manual for details.
-   */
-  typedef struct  {
+
+  typedef struct {
     mdmalinkblock_t *  link_array;
     uint16_t	       link_array_size;
     uint8_t channel:5; // channel 0 .. 15 ; 16 for ANY
-    mdmatriggerauto_t		trigger_auto;
-    /**
-     * @brief   Enable and give increment (positive) or decrement (negative)
-     *          of source address after each transfert
-     */
-    int8_t              source_incr:5;
-
-
-    /**
-     * @brief   Enable and give increment (positive) or decrement (negative)
-     *          of memory address after each transfert
-     */
-    int8_t              dest_incr:5;
-
-    /**
-     * @brief   MDMA memory buffer transfer len (up to 128 bytes)
-     */
-    uint8_t		buffer_len:7;
-
-    //    uint32_t	        block_len:17; 
-    int32_t		block_source_incr:17;
-    int32_t		block_dest_incr:17;
-    uint16_t	        block_repeat:13; //  1 -> 4096
-    /**
-     * @brief   single, reperated or linked list
-     */
-    mdmatriggermode_t	trigger_mode;
-
-
-    /**
-     * @brief   activate endianness swap during transaction
-     */
-    bool		endianness_swap;
-
-
-    /**
+    mdmatriggerauto_t	trigger_auto;
+        /**
      * @brief   Callback function associated to the stream 
      *          for transaction completion or @p NULL.
      */
@@ -369,6 +328,53 @@ extern "C" {
     uint8_t		mdma_priority:2;
 
     /**
+     * @brief   activate endianness swap during transaction
+     */
+    bool		endianness_swap;
+    
+  } MDMAConfig;
+
+
+  /**
+   * @brief   MDMA stream configuration structure.
+   * @details This implementation-dependent structure describes a MDMA
+   *          operation.
+   * @note    The use of this configuration structure requires knowledge of
+   *          STM32 MDMA registers interface, please refer to the STM32
+   *          reference manual for details.
+   */
+  typedef struct  {
+   /**
+     * @brief   Enable and give increment (positive) or decrement (negative)
+     *          of source address after each transfert
+     */
+    int8_t              source_incr:5;
+
+
+    /**
+     * @brief   Enable and give increment (positive) or decrement (negative)
+     *          of memory address after each transfert
+     */
+    int8_t              dest_incr:5;
+
+    /**
+     * @brief   MDMA memory buffer transfer len (up to 128 bytes)
+     */
+    uint8_t		buffer_len:7;
+
+    //    uint32_t	        block_len:17; 
+    int32_t		block_source_incr:17;
+    int32_t		block_dest_incr:17;
+    uint16_t	        block_repeat:13; //  1 -> 4096
+    /**
+     * @brief   single, reperated or linked list
+     */
+    mdmatriggermode_t	trigger_mode;
+
+
+  
+
+    /**
      * @brief   MDMA peripheral data granurality in bytes (1,2,4,8)
      */
     mdmadwidth_t		swidth:2; 
@@ -404,12 +410,12 @@ extern "C" {
     void*	mask_address_register;
 
     
-    /**
+    /** 
      * @brief   to specify more flags that are in CTCR register
      * @note	this value is ored with calculated value
      */
     uint32_t	ctcr;
-  }  MDMAConfig;
+  }  MDMANodeConfig;
 
 
   /**
@@ -494,13 +500,14 @@ extern "C" {
   static  inline mdmastate_t mdmaGetState(MDMADriver *mdmap) {return mdmap->state;}
 
   void mdmaAddLinkNode(MDMADriver *mdmap,
-		       const MDMAConfig *cfg,
+		       const MDMANodeConfig *cfg,
 		       const mdmatriggersource_t trigger_src,
 		       const void *source, void *dest, const size_t block_len);
   void mdmaLinkLoop(MDMADriver *mdmap, const size_t index);
   // low level driver
-  void mdma_lld_set_registers(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			      const MDMAConfig *cfg);
+  void mdma_lld_set_common_registers(MDMADriver *mdmap);
+  void mdma_lld_set_node_registers(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
+			      const MDMANodeConfig *cfg);
   bool  mdma_lld_start(MDMADriver *mdmap);
   void  mdma_lld_stop(MDMADriver *mdmap);
 
@@ -509,7 +516,7 @@ extern "C" {
 
 
   void  mdma_lld_stop_transfert(MDMADriver *mdmap);
-  void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
+  void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMANodeConfig *cfg,
 				const mdmatriggersource_t trigger_src,
 				const void *source, void *dest, const size_t block_len,
 				mdmalinkblock_t *link_block);
