@@ -19,8 +19,7 @@ void mdmaObjectInit(MDMADriver *mdmap)
 
   mdmap->state    = MDMA_STOP;
   mdmap->config   = NULL;
-  mdmap->source   = NULL;
-  mdmap->destination = NULL;
+  mdmap->first_trigger_src = MDMA_TRIGGER_SOFTWARE_DEFERRED;
 #if STM32_MDMA_USE_WAIT == TRUE
   mdmap->thread   = NULL;
 #endif
@@ -85,8 +84,6 @@ void mdmaStop(MDMADriver *mdmap)
   osalSysLock();
   mdmap->config = NULL;
   mdmap->state  = MDMA_STOP;
-  mdmap->source = NULL;
-  mdmap->destination = NULL;
   osalSysUnlock();
 }
 
@@ -111,14 +108,10 @@ void mdmaStop(MDMADriver *mdmap)
  *
  * @api
  */
-bool mdmaStartTransfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			const void *source, void *dest, const size_t block_len,
-			void *user_data)
+bool mdmaStartTransfert(MDMADriver *mdmap, void *user_data)
 {
   osalSysLock();
-  const bool statusOk = mdmaStartTransfertI(mdmap, trigger_src,
-					    source, dest, block_len,
-					    user_data);
+  const bool statusOk = mdmaStartTransfertI(mdmap, user_data);
   osalSysUnlock();
   return statusOk;
 }
@@ -140,97 +133,15 @@ bool mdmaStartTransfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src
  *
  * @api
  */
-bool  mdmaStartTransfertI(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			  const void *source, void *dest, const size_t block_len,
-			  void *user_data)
+bool  mdmaStartTransfertI(MDMADriver *mdmap, void *user_data)
 {
   osalDbgCheckClassI();
   
-#if (CH_DBG_ENABLE_ASSERTS != FALSE)
-  osalDbgCheck((mdmap != NULL) && (dest != NULL) && (source != NULL));
-  osalDbgAssert((block_len > 0U) && (block_len <= 65536U),
-		"invalid block_len");
-
-  const MDMAConfig	    *cfg = mdmap->config;
-  const size_t size = block_len;
-  const size_t ssize = 1U << cfg->swidth;
-  const size_t dsize = 1U << cfg->dwidth;
-  const size_t sburst = 1U << cfg->sburst;
-  const size_t dburst = 1U << cfg->dburst;
-  const size_t dincos = cfg->dest_incr > 0 ? cfg->dest_incr : -cfg->dest_incr;
-  const size_t sincos = cfg->source_incr > 0 ? cfg->source_incr : -cfg->source_incr;
-  osalDbgAssert((mdmap->state == MDMA_READY) ||
-		(mdmap->state == MDMA_COMPLETE) ||
-		(mdmap->state == MDMA_ERROR),
-		"not ready");
-  
-  osalDbgAssert((uint32_t) source % ssize == 0, "source address not aligned");
-  osalDbgAssert(size % ssize == 0, "size must me a multiple of source data size");
-  osalDbgAssert(size % dsize == 0, "size must me a multiple of destination data size");
-  osalDbgAssert(cfg->buffer_len % ssize == 0, "buffer_len must me a multiple of source data size");
-  osalDbgAssert(cfg->buffer_len % dsize == 0, "buffer_len must me a multiple of destination data size");
-  osalDbgAssert(sburst <= cfg->buffer_len, "source burst must be less than buffer_len");
-  osalDbgAssert(dburst <= cfg->buffer_len, "destination burst must be less than buffer_len");
-  osalDbgAssert(__builtin_popcount(sincos) <= 1, "source incremment must be a power of 2");
-  osalDbgAssert(__builtin_popcount(dincos) <= 1, "destination incremment must be a power of 2");
-  if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
-    if ((dincos == 8) ||
-	(dincos == 0) ||
-	(dincos != dsize)) {
-      osalDbgAssert(dburst == 1U, "several conditions implies destination "
-		    "burst must be single transfert");
-    }
-  } else { // destination bus is AXI
-    if (dincos == 0) {
-      osalDbgAssert(dburst <= 16, "several conditions implies destination burst must not exceed 16");
-    }
-  }
-  if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
-    if ((sincos == 8) ||
-	(sincos == 0) ||
-	(sincos != ssize)) {
-      osalDbgAssert(sburst == 1U, "several conditions implies source "
-		    "burst must be single transfert");
-    }
-  } else { // source bus is AXI
-    if (sincos == 0) {
-      osalDbgAssert(sburst <= 16, "several conditions implies source burst must not exceed 16");
-    }
-  }
-  
-  if (dincos != 0) {
-    osalDbgAssert(dincos >= dsize, "destination increment must be greater or equal to destination size");
-    if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
-      if (dburst != 1) {
-	osalDbgAssert(((uint32_t) dest % dincos) == 0, "when dest is AHB and burst is enabled, "
-		      "destination address must be aligned with destination increment");
-      }
-    }
-  }
-  
-  if (sincos != 0) {
-    osalDbgAssert(sincos >= ssize, "source increment must be greater or equal to source size");
-    if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
-      if (sburst != 1) {
-	osalDbgAssert(((uint32_t) source % sincos) == 0, "when source is AHB and burst is enabled, "
-		      "source address must be aligned with source increment");
-      }
-    }
-  }
-  
-  if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
-    osalDbgAssert(ssize <= 4, "when source is TCM/AHB source, source width should be inferior or equal to 4");
-    osalDbgAssert(sincos != 0, "when source is TCM/AHB source, fixed source address is forbidden");
-  }
-  if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
-    osalDbgAssert(dsize <= 4, "when destination is TCM/AHB, destination width should be inferior or equal to 4"); 
-    osalDbgAssert(dincos != 0, "when destination is TCM/AHB destination, fixed destination address is forbidden");
-  }
-#endif // CH_DBG_ENABLE_ASSERTS != FALSE
+  osalDbgCheck(mdmap != NULL);
 
   mdmap->state    = MDMA_ACTIVE;
   mdmap->user_data = user_data;
-  return mdma_lld_start_transfert(mdmap, trigger_src, source, dest, block_len);
+  return mdma_lld_start_transfert(mdmap);
 }
 
 
@@ -315,15 +226,13 @@ void mdmaStopTransfertI(MDMADriver *mdmap)
  * @api
  */
  msg_t mdmaTransfertTimeout(MDMADriver *mdmap,
-			    const mdmatriggersource_t trigger_src,
-			    const void *source, void *dest, const size_t block_len,
 			     void *user_data,  sysinterval_t timeout)
 {
   msg_t msg;
 
   osalSysLock();
   osalDbgAssert(mdmap->thread == NULL, "already waiting");
-  mdmaStartTransfertI(mdmap, trigger_src, source, dest, block_len, user_data);
+  mdmaStartTransfertI(mdmap, user_data);
   msg = osalThreadSuspendTimeoutS(&mdmap->thread, timeout);
   if (msg != MSG_OK) {
     mdmaStopTransfertI(mdmap);
@@ -381,19 +290,100 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
                 "invalid state");
   osalDbgAssert(mdmap->next_link_array_index < cfg->link_array_size,
 		"MDMA link array full");
+
+
+#if (CH_DBG_ENABLE_ASSERTS != FALSE)
+  const size_t size = block_len;
+  const size_t ssize = 1U << cfg->swidth;
+  const size_t dsize = 1U << cfg->dwidth;
+  const size_t sburst = 1U << cfg->sburst;
+  const size_t dburst = 1U << cfg->dburst;
+  const size_t dincos = cfg->dest_incr > 0 ? cfg->dest_incr : -cfg->dest_incr;
+  const size_t sincos = cfg->source_incr > 0 ? cfg->source_incr : -cfg->source_incr;
+  osalDbgAssert((mdmap->state == MDMA_READY) ||
+		(mdmap->state == MDMA_COMPLETE) ||
+		(mdmap->state == MDMA_ERROR),
+		"not ready");
+  
+  osalDbgAssert((uint32_t) source % ssize == 0, "source address not aligned");
+  osalDbgAssert(size % ssize == 0, "size must me a multiple of source data size");
+  osalDbgAssert(size % dsize == 0, "size must me a multiple of destination data size");
+  osalDbgAssert(cfg->buffer_len % ssize == 0, "buffer_len must me a multiple of source data size");
+  osalDbgAssert(cfg->buffer_len % dsize == 0, "buffer_len must me a multiple of destination data size");
+  osalDbgAssert(sburst <= cfg->buffer_len, "source burst must be less than buffer_len");
+  osalDbgAssert(dburst <= cfg->buffer_len, "destination burst must be less than buffer_len");
+  osalDbgAssert(__builtin_popcount(sincos) <= 1, "source incremment must be a power of 2");
+  osalDbgAssert(__builtin_popcount(dincos) <= 1, "destination incremment must be a power of 2");
+  if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
+    if ((dincos == 8) ||
+	(dincos == 0) ||
+	(dincos != dsize)) {
+      osalDbgAssert(dburst == 1U, "several conditions implies destination "
+		    "burst must be single transfert");
+    }
+  } else { // destination bus is AXI
+    if (dincos == 0) {
+      osalDbgAssert(dburst <= 16, "several conditions implies destination burst must not exceed 16");
+    }
+  }
+  if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
+    if ((sincos == 8) ||
+	(sincos == 0) ||
+	(sincos != ssize)) {
+      osalDbgAssert(sburst == 1U, "several conditions implies source "
+		    "burst must be single transfert");
+    }
+  } else { // source bus is AXI
+    if (sincos == 0) {
+      osalDbgAssert(sburst <= 16, "several conditions implies source burst must not exceed 16");
+    }
+  }
+  
+  if (dincos != 0) {
+    osalDbgAssert(dincos >= dsize, "destination increment must be greater or equal to destination size");
+    if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
+      if (dburst != 1) {
+	osalDbgAssert(((uint32_t) dest % dincos) == 0, "when dest is AHB and burst is enabled, "
+		      "destination address must be aligned with destination increment");
+      }
+    }
+  }
+  
+  if (sincos != 0) {
+    osalDbgAssert(sincos >= ssize, "source increment must be greater or equal to source size");
+    if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
+      if (sburst != 1) {
+	osalDbgAssert(((uint32_t) source % sincos) == 0, "when source is AHB and burst is enabled, "
+		      "source address must be aligned with source increment");
+      }
+    }
+  }
+  
+  if (cfg->bus_selection & MDMA_SOURCEBUS_TCM) {
+    osalDbgAssert(ssize <= 4, "when source is TCM/AHB source, source width should be inferior or equal to 4");
+    osalDbgAssert(sincos != 0, "when source is TCM/AHB source, fixed source address is forbidden");
+  }
+  if (cfg->bus_selection & MDMA_DESTBUS_TCM) {
+    osalDbgAssert(dsize <= 4, "when destination is TCM/AHB, destination width should be inferior or equal to 4"); 
+    osalDbgAssert(dincos != 0, "when destination is TCM/AHB destination, fixed destination address is forbidden");
+  }
+#endif
+  
   // save config
+  
   const struct mdmacache_t savedCache = mdmap->cache;
   mdma_lld_set_registers(mdmap, trigger_src, cfg);
   mdma_lld_get_link_block(mdmap, cfg, trigger_src, source, dest,
 			  block_len,
 			  &cfg->link_array[mdmap->next_link_array_index]);
-  mdmap->cache = savedCache;
   
   if (mdmap->next_link_array_index == 0) {
-    mdmap->cache.clar = (uint32_t) cfg->link_array;
+    cfg->link_array[0].clar = (uint32_t) NULL;
+    mdmap->first_trigger_src = trigger_src;
   } else {
     cfg->link_array[mdmap->next_link_array_index - 1U].clar =
       (uint32_t) &cfg->link_array[mdmap->next_link_array_index];
+    mdmap->cache = savedCache;
   }
   mdmap->next_link_array_index++;
 }
@@ -561,37 +551,14 @@ void mdma_lld_stop(MDMADriver *mdmap)
  *
  * @notapi
  */
-bool  mdma_lld_start_transfert(MDMADriver *mdmap,
-			       const mdmatriggersource_t trigger_src,
-			       const void *source, void *dest, const size_t block_len)
+bool  mdma_lld_start_transfert(MDMADriver *mdmap)
 {
-#if __DCACHE_PRESENT
-  if (mdmap->config->activate_dcache_sync) {
-    const size_t cacheSize = getCrossCacheBoundaryAwareSize(source, block_len);
-    cacheBufferFlush(source, cacheSize);
-  }
-#endif
-  mdmap->destination = dest;
-  mdmap->source = source;
-
-    /* MDMA initializations.*/
-  //  memset(mdmap->mdma->channel, 0, sizeof(*mdmap->mdma->channel));
-  mdmaChannelSetSourceX(mdmap->mdma, source);
-  mdmaChannelSetDestinationX(mdmap->mdma, dest);
-  mdmaChannelSetTransactionSizeX(mdmap->mdma, block_len, mdmap->cache.brc,
-				 mdmap->cache.opt);
-  mdmaChannelSetModeX(mdmap->mdma, mdmap->cache.ctcr, mdmap->cache.ccr);
-  if (trigger_src < MDMA_TRIGGER_SOFTWARE_IMMEDIATE)
-    mdmaChannelSetTrigModeX(mdmap->mdma, trigger_src);
-  mdmaChannelSelectBuses(mdmap, mdmap->config->bus_selection);
-  mdmaChannelSetCBRUR(mdmap, mdmap->cache.cbrur);
-  mdmaChannelSetCLAR(mdmap, mdmap->cache.clar);
-  mdmaChannelSetCMDR(mdmap, mdmap->config->mask_data_register);
-  mdmaChannelSetCMAR(mdmap, (uint32_t) mdmap->config->mask_address_register);
-
+  memcpy((void *) &mdmap->mdma->channel->CTCR, mdmap->config->link_array, 
+	 sizeof(mdmalinkblock_t));
+  mdmap->mdma->channel->CCR =  mdmap->cache.ccr;
   mdmaChannelEnableX(mdmap->mdma);
 
-  if (trigger_src == MDMA_TRIGGER_SOFTWARE_IMMEDIATE) {
+  if (mdmap->first_trigger_src == MDMA_TRIGGER_SOFTWARE_IMMEDIATE) {
     mdma_software_request(mdmap);
   }
   return true;
@@ -604,7 +571,7 @@ void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
 			      const size_t block_len,
 			      mdmalinkblock_t *link_block)
 {
-  //  memset(mdmap->mdma->channel, 0, sizeof(*mdmap->mdma->channel));
+  memset(mdmap->mdma->channel, 0, sizeof(*mdmap->mdma->channel));
   mdmaChannelSetSourceX(mdmap->mdma, source);
   mdmaChannelSetDestinationX(mdmap->mdma, dest);
   mdmaChannelSetTransactionSizeX(mdmap->mdma, block_len,
@@ -614,7 +581,6 @@ void  mdma_lld_get_link_block(MDMADriver *mdmap, const MDMAConfig *cfg,
     mdmaChannelSetTrigModeX(mdmap->mdma, trigger_src);
   mdmaChannelSelectBuses(mdmap, cfg->bus_selection);
   mdmaChannelSetCBRUR(mdmap, mdmap->cache.cbrur);
-  mdmaChannelSetCLAR(mdmap, mdmap->cache.clar);
   mdmaChannelSetCMDR(mdmap, cfg->mask_data_register);
   mdmaChannelSetCMAR(mdmap, (uint32_t) cfg->mask_address_register);
   memcpy(link_block, (void *)&mdmap->mdma->channel->CTCR,
@@ -664,19 +630,6 @@ void mdma_lld_stop_transfert(MDMADriver *mdmap)
  * @param[in] flags     content of the CISR register
  */
 static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
-#if __DCACHE_PRESENT
-  // TODO :
-  // make an invalidate function that that follow the linked list
-  // to invalidate all the cache, or leave that to the caller and
-  // remove all cache related field from API
-  /* if (mdmap->config->activate_dcache_sync) { */
-  /*   const size_t cacheSize = */
-  /*     getCrossCacheBoundaryAwareSize(mdmap->destination, */
-  /* 				     mdmap->config->block_len); */
-  /*   cacheBufferInvalidate(mdmap->destination, cacheSize); */
-  /* } */
-#endif
-
   /* DMA errors handling.*/
   if ((flags & STM32_MDMA_CISR_TEIF) != 0) {
     
@@ -695,24 +648,25 @@ static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
     /*Buffer complete processing.*/
     if (mdmap->config->buffer_transfert_cb != NULL)
       mdmap->config->buffer_transfert_cb(mdmap);
-    if (mdmap->config->trigger_auto | MDMA_TRIGGER_AUTO_BUFFER)
-      mdmaSoftRequest(mdmap);
+    if (mdmap->config->trigger_auto & MDMA_TRIGGER_AUTO_BUFFER)
+       mdmap->mdma->channel->CCR |= MDMA_CCR_SWRQ;
    }
   
   if ((flags & STM32_MDMA_CISR_BTIF) != 0) {
     /* Block complete processing.*/
     if (mdmap->config->block_transfert_cb != NULL)
     mdmap->config->block_transfert_cb(mdmap);
-    if (mdmap->config->trigger_auto | MDMA_TRIGGER_AUTO_ONE_BLOCK)
-      mdmaSoftRequest(mdmap);
+    if (mdmap->config->trigger_auto & MDMA_TRIGGER_AUTO_ONE_BLOCK)
+       mdmap->mdma->channel->CCR |= MDMA_CCR_SWRQ;
    }
   
   if ((flags & STM32_MDMA_CISR_BRTIF) != 0) {
     /* Block Repeat complete processing.*/
     if (mdmap->config->block_transfert_repeat_cb != NULL)
       mdmap->config->block_transfert_repeat_cb(mdmap);
-    if (mdmap->config->trigger_auto | MDMA_TRIGGER_AUTO_ALL_BLOCKS)
-      mdmaSoftRequest(mdmap);
+    if (mdmap->config->trigger_auto & MDMA_TRIGGER_AUTO_ALL_BLOCKS) {
+      mdmap->mdma->channel->CCR |= MDMA_CCR_SWRQ;
+    }
   }
 }
 

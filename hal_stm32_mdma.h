@@ -409,8 +409,6 @@ extern "C" {
      * @note	this value is ored with calculated value
      */
     uint32_t	ctcr;
-    
-    bool	activate_dcache_sync;
   }  MDMAConfig;
 
 
@@ -441,15 +439,6 @@ extern "C" {
      */
     mutex_t                   mutex;
 #endif /* STM32_MDMA_USE_MUTUAL_EXCLUSION */
-    /**
-     * @brief	source memory address
-     */
-    const void			     *source;
-
-    /**
-     * @brief	destination memory address
-     */
-    void			     *destination;
 
     /**
      * @brief	hold MDMA  register for the stream
@@ -460,7 +449,6 @@ extern "C" {
       uint32_t ctcr;
       uint32_t opt;
       uint32_t cbrur;
-      uint32_t clar;
     } cache;
 
 
@@ -472,6 +460,7 @@ extern "C" {
      * @brief	Driver state
      */
     volatile mdmastate_t		     state;
+    mdmatriggersource_t			     first_trigger_src;
     void *user_data;
   };
 
@@ -482,29 +471,20 @@ extern "C" {
   void  mdmaStop(MDMADriver *mdmap);
 
 #if STM32_MDMA_USE_WAIT == TRUE
-  msg_t mdmaTransfertTimeout(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			     const void *source, void *dest, const size_t block_len,
-			     void *user_data, sysinterval_t timeout);
+  msg_t mdmaTransfertTimeout(MDMADriver *mdmap, void *user_data, sysinterval_t timeout);
   // helper
-  static inline msg_t mdmaTransfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-				    const void *source, void *dest, const size_t block_len,
-				    void *user_data)
+  static inline msg_t mdmaTransfert(MDMADriver *mdmap, void *user_data)
   {
-    return mdmaTransfertTimeout(mdmap, trigger_src, source, dest, block_len,
-				user_data, TIME_INFINITE);
+    return mdmaTransfertTimeout(mdmap, user_data, TIME_INFINITE);
   }
 #endif
 #if STM32_MDMA_USE_MUTUAL_EXCLUSION == TRUE
   void mdmaAcquireBus(MDMADriver *mdmap);
   void mdmaReleaseBus(MDMADriver *mdmap);
 #endif
-  bool  mdmaStartTransfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			   const void *source, void *dest, const size_t block_len,
-			   void *user_data);
+  bool  mdmaStartTransfert(MDMADriver *mdmap, void *user_data);
   void  mdmaStopTransfert(MDMADriver *mdmap);
-  bool  mdmaStartTransfertI(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-			    const void *source, void *dest, const size_t block_len,
-			    void *user_data);
+  bool  mdmaStartTransfertI(MDMADriver *mdmap, void *user_data);
   void  mdmaStopTransfertI(MDMADriver *mdmap);
   static inline bool mdmaSoftRequest(MDMADriver *mdmap) {
     return mdma_software_request(mdmap);
@@ -525,8 +505,7 @@ extern "C" {
   void  mdma_lld_stop(MDMADriver *mdmap);
 
 
-  bool  mdma_lld_start_transfert(MDMADriver *mdmap, const mdmatriggersource_t trigger_src,
-				 const void *source, void *dest, const size_t block_len);
+  bool  mdma_lld_start_transfert(MDMADriver *mdmap);
 
 
   void  mdma_lld_stop_transfert(MDMADriver *mdmap);
