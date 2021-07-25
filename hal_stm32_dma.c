@@ -662,7 +662,7 @@ bool dma_lld_start(DMADriver *dmap)
 				    cfg->irq_priority,
 				    (stm32_dmaisr_t) &dma_lld_serve_interrupt,
 				    (void *) dmap );
-  bool error = dmap->dmastream == NULL;
+  const bool error = dmap->dmastream == NULL;
 #endif
   if (error) {
     osalDbgAssert(false, "stream already allocated");
