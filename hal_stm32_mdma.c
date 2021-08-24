@@ -5,6 +5,7 @@
  
   
  */
+
 static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags);
 
 static inline void mdmaChannelSetCBRUR(MDMADriver *mdmap, uint32_t cbrur);
@@ -12,6 +13,16 @@ static inline void mdmaChannelSetCLAR(MDMADriver *mdmap, uint32_t clar);
 static inline void mdmaChannelSetCMAR(MDMADriver *mdmap, uint32_t cmar);
 static inline void mdmaChannelSetCMDR(MDMADriver *mdmap, uint32_t cmdr);
 static inline void mdmaChannelSelectBuses(MDMADriver *mdmap, uint32_t sourceDestBuses);
+
+#ifdef MDMA_STATISTICS
+static volatile uint32_t isr_call_nb;
+
+void resetIsrCallNb(void) {isr_call_nb = 0;}
+uint32_t getIsrCallNb(void) {return isr_call_nb;}
+#endif
+
+
+
 
 void mdmaObjectInit(MDMADriver *mdmap)
 {
@@ -562,6 +573,9 @@ void mdma_lld_stop(MDMADriver *mdmap)
  */
 bool  mdma_lld_start_transfert(MDMADriver *mdmap)
 {
+#ifdef MDMA_STATISTICS
+  resetIsrCallNb();
+#endif
   memcpy((void *) &mdmap->mdma->channel->CTCR, mdmap->config->link_array, 
 	 sizeof(mdmalinkblock_t));
   mdmap->mdma->channel->CCR =  mdmap->cache.ccr;
@@ -640,6 +654,9 @@ void mdma_lld_stop_transfert(MDMADriver *mdmap)
  */
 static void mdma_lld_serve_interrupt(MDMADriver *mdmap, uint32_t flags) {
   /* DMA errors handling.*/
+#ifdef MDMA_STATISTICS
+  isr_call_nb++;
+#endif
   if ((flags & STM32_MDMA_CISR_TEIF) != 0) {
     
     if(mdmap->config->error_cb != NULL) {
