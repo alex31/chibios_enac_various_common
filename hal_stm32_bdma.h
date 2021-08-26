@@ -257,7 +257,7 @@ typedef struct  {
    * @note    use STM32_BDMA_STREAM_ID macro
    */
   uint32_t		stream;
-  uint8_t		dmamux2;
+  uint32_t		dmamux2; // 4 bytes wide for mdma use
 
   /**
    * @brief   Enable increment of peripheral address after each transfert

@@ -92,8 +92,39 @@ bool dmaStart(DMADriver *dmap, const DMAConfig *cfg)
   osalDbgAssert((dmap->state == DMA_STOP) || (dmap->state == DMA_READY),
                 "invalid state");
   dmap->config = cfg;
-  const bool statusOk = dma_lld_start(dmap);
+  const bool statusOk = dma_lld_start(dmap, true);
   dmap->state = DMA_READY;
+#if  STM32_DMA_USE_DOUBLE_BUFFER
+  dmap->next_cb_errors = 0U;
+#endif  
+  osalSysUnlock();
+  return statusOk;
+}
+
+/**
+ * @brief   Configures and activates the DMA peripheral.
+ *
+ * @param[in] dmap      pointer to the @p DMADriver object
+ * @param[in] config    pointer to the @p DMAConfig object.
+ * @return              The operation result.
+ * @retval true         dma driver is OK
+ * @retval false        incoherencies has been found in config
+ * @api
+ */
+bool dmaReloadConf(DMADriver *dmap, const DMAConfig *cfg)
+{
+  osalDbgCheck((dmap != NULL) && (cfg != NULL));
+#if STM32_DMA_USE_DOUBLE_BUFFER
+  osalDbgAssert((cfg->op_mode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (!STM32_DMA_USE_ASYNC_TIMOUT),
+                "STM32_DMA_USE_ASYNC_TIMOUT not yet implemented in DMA_CONTINUOUS_DOUBLE_BUFFER mode");
+
+  osalDbgAssert((cfg->op_mode != DMA_CONTINUOUS_DOUBLE_BUFFER) || (cfg->next_cb != NULL),
+                "DMA_CONTINUOUS_DOUBLE_BUFFER mode implies next_cb not NULL");
+#endif
+  osalSysLock();
+  osalDbgAssert(dmap->state == DMA_READY, "invalid state");
+  dmap->config = cfg;
+  const bool statusOk = dma_lld_start(dmap, false);
 #if  STM32_DMA_USE_DOUBLE_BUFFER
   dmap->next_cb_errors = 0U;
 #endif  
@@ -484,7 +515,7 @@ void dmaReleaseBus(DMADriver *dmap) {
  *
  * @notapi
  */
-bool dma_lld_start(DMADriver *dmap)
+bool dma_lld_start(DMADriver *dmap, bool allocate_stream)
 {
   uint32_t psize_msk, msize_msk;
 
@@ -652,23 +683,24 @@ bool dma_lld_start(DMADriver *dmap)
   }
 #endif
 
+  if (allocate_stream == true) {
 #if CH_KERNEL_MAJOR < 6
-  const bool error = dmaStreamAllocate( dmap->dmastream,
-					cfg->irq_priority,
-					(stm32_dmaisr_t) &dma_lld_serve_interrupt,
-					(void *) dmap );
+    const bool error = dmaStreamAllocate( dmap->dmastream,
+					  cfg->irq_priority,
+					  (stm32_dmaisr_t) &dma_lld_serve_interrupt,
+					  (void *) dmap );
 #else
-  dmap->dmastream = dmaStreamAllocI(dmap->config->stream,
-				    cfg->irq_priority,
-				    (stm32_dmaisr_t) &dma_lld_serve_interrupt,
-				    (void *) dmap );
-  const bool error = dmap->dmastream == NULL;
+    dmap->dmastream = dmaStreamAllocI(dmap->config->stream,
+				      cfg->irq_priority,
+				      (stm32_dmaisr_t) &dma_lld_serve_interrupt,
+				      (void *) dmap );
+    const bool error = dmap->dmastream == NULL;
 #endif
-  if (error) {
-    osalDbgAssert(false, "stream already allocated");
-    return false;
+    if (error) {
+      osalDbgAssert(false, "stream already allocated");
+      return false;
+    }
   }
-
   return true;
 
 #if (CH_DBG_ENABLE_ASSERTS != FALSE)
@@ -713,7 +745,7 @@ void  dma_lld_get_registers(DMADriver *dmap, volatile void *periphp,
 {
   dmaStreamSetPeripheral(dmap->dmastream, periphp);
 #if STM32_DMA_SUPPORTS_DMAMUX
-  dmaSetRequestSource(dmap->dmastream, dmap->config->dmamux1);
+    dmaSetRequestSource(dmap->dmastream, dmap->config->dmamux1);
 #endif
 
   dmaStreamSetMemory0(dmap->dmastream, mem0p);

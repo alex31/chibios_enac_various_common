@@ -289,7 +289,7 @@ typedef struct  {
    */
   uint32_t		stream;
 #if STM32_DMA_SUPPORTS_DMAMUX
-  uint8_t		dmamux1;
+  uint32_t		dmamux1; // 4 bytes wide for mdma use
 #else
 #if    STM32_DMA_SUPPORTS_CSELR
   /**
@@ -514,6 +514,7 @@ struct DMADriver {
 
 void  dmaObjectInit(DMADriver *dmap);
 bool  dmaStart(DMADriver *dmap, const DMAConfig *cfg);
+bool  dmaReloadConf(DMADriver *dmap, const DMAConfig *cfg);
 void  dmaStop(DMADriver *dmap);
 
 #if STM32_DMA_USE_WAIT == TRUE
@@ -564,7 +565,7 @@ static  inline void dmaClearNextErrors(DMADriver *dmap) {dmap->next_cb_errors = 
 
 // low level driver
 
-bool  dma_lld_start(DMADriver *dmap);
+bool  dma_lld_start(DMADriver *dmap, bool allocate_stream);
 void  dma_lld_stop(DMADriver *dmap);
 
 
