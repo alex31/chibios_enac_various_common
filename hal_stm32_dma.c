@@ -689,10 +689,15 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
   // because cache management does internal mask and this operation
   // would be useless
 
+#if CACHE_LINE_SIZE != 0
   const uint32_t endp = ((uint32_t) memp % CACHE_LINE_SIZE  +
 			 dsize % CACHE_LINE_SIZE );
   return endp < CACHE_LINE_SIZE  ? dsize + CACHE_LINE_SIZE  :
     dsize + CACHE_LINE_SIZE *2U;
+#else
+  (void) memp;
+  return dsize;
+#endif
 }
 
 /**
