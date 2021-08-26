@@ -20,7 +20,7 @@ extern "C" {
   uint32_t getIsrCallNb(void);
 #endif
 
-#define MDMA_END_ADDR_OF(v) ((void *) ((uint32_t) (&(v)) + sizeof(typeof(v)) - 4))
+#define MDMA_END_ADDR_OF(v) ((void *) ((uint8_t *) (&(v)) + sizeof(typeof(v)) - 4U))
 
   
   /**
