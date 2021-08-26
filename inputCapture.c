@@ -1,6 +1,5 @@
 #include "inputCapture.h"
 
-
 static void rccEnable(const stm32_tim_t * const timer);
 static void rccDisable(const stm32_tim_t * const timer);
 
@@ -21,10 +20,19 @@ void timIcStart(TimICDriver *pwmInp, const TimICConfig *configp)
   chMtxObjectInit(&pwmInp->mut);
   rccEnable(timer);
 
-  timer->PSC = configp->prescaler - 1U;	 // prescaler
   timer->CR1 = 0;	    // disable timer
-  timer->CNT = 0;
+
+  // hack in case of timer with more fields
+#if defined (STM32G0XX)  || defined (STM32G4XX)|| defined (STM32H7XX)
+
+  TIM_TypeDef *cmsisTimer = (TIM_TypeDef *) timer;
+  cmsisTimer->CCMR3 = cmsisTimer->AF1 = cmsisTimer->AF2 =
+    cmsisTimer->TISEL = 0;
+#endif
   
+  timer->PSC = configp->prescaler - 1U;	 // prescaler
+  timer->CNT = 0;
+
   if (pwmInp->config->mode == TIMIC_PWM_IN) {
   chDbgAssert(__builtin_popcount(channel) == 1, "In pwm mode, only one channel must be set");
   switch (channel) {
