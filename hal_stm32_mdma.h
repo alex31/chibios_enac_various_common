@@ -21,6 +21,7 @@ extern "C" {
 #endif
 
 #define MDMA_END_ADDR_OF(v) ((void *) ((uint8_t *) (&(v)) + sizeof(typeof(v)) - 4U))
+#define MDMA_START_ADDR_OF(v) ((void *) &v)
 
   
   /**
