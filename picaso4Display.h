@@ -20,10 +20,10 @@ typedef enum {OLED_OK,
 #define COLOR_TABLE_SIZE 11
 
 // enforce the use of oledStart over oledInit
-void __attribute__((deprecated)) oledInit (OledConfig *oledConfig,  struct SerialDriver *oled,
+void __attribute__((deprecated)) oledInit (OledConfig *oledConfig,  SerialDriver *oled,
 					   const uint32_t baud,     ioportid_t rstGpio, uint32_t rstPin,
 					   enum OledConfig_Device dev);
-static inline void oledStart (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
+static inline void oledStart (OledConfig *oledConfig,  SerialDriver *oled, const uint32_t baud,
 	        ioline_t reset, enum OledConfig_Device dev)
 {
 #pragma GCC diagnostic push

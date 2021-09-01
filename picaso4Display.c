@@ -75,7 +75,7 @@ static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
   oledConfig->serialConfig.cr3 =0;
 }
 
-void oledInit (OledConfig *oledConfig,  struct SerialDriver *oled, const uint32_t baud,
+void oledInit (OledConfig *oledConfig,  SerialDriver *oled, const uint32_t baud,
 	      ioportid_t rstGpio, uint32_t rstPin, enum OledConfig_Device dev)
 {
   oledConfig->rstGpio = rstGpio;
@@ -211,7 +211,7 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
 {
   uint32_t actualbaudRate; 
 
-  struct SerialDriver *sd = (struct SerialDriver *) oledConfig->serial;
+  SerialDriver *sd = (SerialDriver *) oledConfig->serial;
 
   RET_UNLESS_INIT(oledConfig);
 
