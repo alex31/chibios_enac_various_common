@@ -469,8 +469,8 @@ __attribute__((const))
 size_t   getTimerWidth(const PWMDriver *pwmp);
 pwmcnt_t  pwmChangeFrequency (PWMDriver *pwmd, const uint32_t freq);
 pwmcnt_t  pwmChangeFrequencyI (PWMDriver *pwmd, const uint32_t freq);
-void	   pwmEnableChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
-				const bool enabled);
+void	  pwmEnableChannelOutput(PWMDriver *pwmd, const  pwmchannel_t channel,
+				 const bool enabled);
 void	   pwmMaskChannelSide(PWMDriver *pwmd, const  pwmchannel_t channel,
 			      const PwmOutputSide side, const bool masked);
 #endif
