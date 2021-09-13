@@ -88,7 +88,7 @@ void oledInit (OledConfig *oledConfig,  SerialDriver *oled, const uint32_t baud,
   oledPreInit (oledConfig,
 	       oledConfig->deviceType == TERM_VT100 ? baud : 9600);
   oledConfig->serial = (BaseSequentialStream *) oled;
-  chMtxInit(&(oledConfig->omutex));
+  chMtxObjectInit(&(oledConfig->omutex));
   sdStart(oled, &(oledConfig->serialConfig));
   chThdSleepMilliseconds(10);
 

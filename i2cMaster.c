@@ -62,31 +62,31 @@ chMtxInit(&i2cd->mutex);		\
 
 
 #define STATUS_TEST_WRITE(i2cd,array)  { \
-    if (status != RDY_OK) {						\
+    if (status != MSG_OK) {						\
       DebugTrace ("I2C error write " #array                             \
 		  " on " #i2cd                                          \
-		  " status =%s", status == RDY_RESET ?			\
-		  "RDY_RESET" : "RDY_TIMEOUT");				\
+		  " status =%s", status == MSG_RESET ?			\
+		  "MSG_RESET" : "MSG_TIMEOUT");				\
       i2cReleaseBus (i2cd);						\
       chkErrorI2cMaster (i2cd);						\
       return status; }							\
   }
 
 #define STATUS_TEST_READ(i2cd,array)  { \
-    if (status != RDY_OK) {						\
+    if (status != MSG_OK) {						\
       DebugTrace ("I2C error read " #array                             \
 		  " on " #i2cd                                          \
-		  " status =%s", status == RDY_RESET ?			\
-		  "RDY_RESET" : "RDY_TIMEOUT");				\
+		  " status =%s", status == MSG_RESET ?			\
+		  "MSG_RESET" : "MSG_TIMEOUT");				\
       i2cReleaseBus (i2cd);						\
       chkErrorI2cMaster (i2cd);						\
       return status; }							\
   }
 
 #define STATUS_TEST_READ_WRITE(i2cd,r_array,w_array)  { \
-    if (status != RDY_OK) {						\
+    if (status != MSG_OK) {						\
       DebugTrace ("I2C error read  " #r_array  " write " #w_array " status =%s", \
-		  status == RDY_RESET ? "RDY_RESET" : "RDY_TIMEOUT");	\
+		  status == MSG_RESET ? "MSG_RESET" : "MSG_TIMEOUT");	\
       i2cReleaseBus (i2cd);						\
       chkErrorI2cMaster (i2cd);						\
       return status; }							\
@@ -476,7 +476,7 @@ msg_t i2cGetBaro_MPL3115A2_Val (I2CDriver *i2cd, int32_t  *rawBuf, float *pressu
   const uint32_t swapVal = (SWAP_ENDIAN32(*rawB<<8)) ;
   *pressure = (float) swapVal / 6400.0f;
 
-  return  RDY_OK;
+  return  MSG_OK;
 }
 
 msg_t i2cGetBaro_MPL3115A2_DevId (I2CDriver *i2cd, uint8_t devid[3])
@@ -526,7 +526,7 @@ msg_t i2cGetIMU_MPU6050_Val (I2CDriver *i2cd,  int8_t  *rawBuf, float *temp,
 {
   const uint8_t getVal[] = {0x3b};
   uint8_t i;
-  msg_t status = RDY_OK;
+  msg_t status = MSG_OK;
   uint8_t  *rawB = rawBuf != NULL ? rawBuf : alloca(sizeof(int8_t)*23);
 
   //  DebugTrace ("In GetIMU_MPU6050");
@@ -562,7 +562,7 @@ msg_t i2cGetIMU_MPU6050_Val (I2CDriver *i2cd,  int8_t  *rawBuf, float *temp,
 
 msg_t i2cInitIMU_MPU6050 (I2CDriver *i2cd, MPU6050_Mode mode)
 {
-  msg_t status = RDY_OK;
+  msg_t status = MSG_OK;
   i2cAcquireBus(i2cd);
   // 0x6b, 0x1 : sortir du mode sleep
   // 0x19, 0x7  : diviseur par 8 sur la frequence d'echantillonage : 8khz/8 = 1khz
@@ -599,7 +599,7 @@ msg_t i2cInitIMU_MPU6050 (I2CDriver *i2cd, MPU6050_Mode mode)
 
   }
 
-  //  if (status == RDY_OK) 
+  //  if (status == MSG_OK) 
   i2cReleaseBus(i2cd);
   
   return status;
@@ -609,7 +609,7 @@ msg_t i2cInitIMU_MPU6050 (I2CDriver *i2cd, MPU6050_Mode mode)
 #ifdef I2C_USE_HMC5883L
 static msg_t   i2cMasterControlForHMC5883L_SLV2 (I2CDriver *i2cd)
 {
-  msg_t status = RDY_OK;
+  msg_t status = MSG_OK;
 
   // adresse du registre I2C_SLV2_ADDR 0x2b, 
   // (1<<7)  : lecture de l'esclave
@@ -632,7 +632,7 @@ static msg_t   i2cMasterControlForHMC5883L_SLV2 (I2CDriver *i2cd)
 #if I2C_USE_MPL3115A2
 static msg_t   i2cMasterControlForMPL3115A2_SLV_RW_01 (I2CDriver *i2cd)
 {
-  msg_t status = RDY_OK;
+  msg_t status = MSG_OK;
 
 
   // adresse du registre I2C_SLV0_ADDR 0x25, 
@@ -755,7 +755,7 @@ msg_t i2cGetADC_ADS7828_Val (I2CDriver *i2cd, const uint8_t adrOffset,
 			     const uint8_t bitmask, const bool useExt_VRef, 
 			     float *percent)
 {
-  msg_t status = RDY_OK;
+  msg_t status = MSG_OK;
   uint8_t rawVal[2];
   //  uint8_t zeroSizeArray[0];
   uint8_t fcount=0;
@@ -792,7 +792,7 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
 msg_t i2cRead24AA02 (I2CDriver *i2cd, const uint8_t chipAddr,
 		     const uint8_t _eepromAddr, uint8_t *buffer, const size_t len)
 {
-  msg_t status = RDY_OK;
+  msg_t status = MSG_OK;
   const uint8_t eepromAddr[1] = {_eepromAddr};
 
   i2cAcquireBus(i2cd);
@@ -805,13 +805,13 @@ msg_t i2cRead24AA02 (I2CDriver *i2cd, const uint8_t chipAddr,
 msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, const uint8_t _eepromAddr, 
 		      const uint8_t *_buffer, const size_t _len)
 {
-  msg_t status = RDY_OK;
+  msg_t status = MSG_OK;
 
   struct PtrLen {uint16_t eepromAddr; const uint8_t *buffer; size_t len;} ;
   struct PtrLen pl = {.eepromAddr = _eepromAddr, .buffer = _buffer, .len = _len};
 
   msg_t writePage (struct PtrLen *ptrLen) {
-    msg_t status = RDY_OK;
+    msg_t status = MSG_OK;
     const size_t maxLen = eepromPageSize - (ptrLen->eepromAddr % eepromPageSize);
     if (ptrLen->len <= maxLen) {
       status = i2cWriteInPage24AA02 (i2cd, chipAddr, ptrLen->eepromAddr, ptrLen->buffer, ptrLen->len);
@@ -830,7 +830,7 @@ msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, const uint8_t _ee
     return status;
   };
 
-  while ((pl.len != 0) && (status ==  RDY_OK)) {
+  while ((pl.len != 0) && (status ==  MSG_OK)) {
     status = writePage (&pl);
   }
   
@@ -841,12 +841,12 @@ msg_t i2cWrite24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, const uint8_t _ee
 static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, const uint8_t eepromAddr, 
 				  const uint8_t *buffer, const size_t len)
 {
-  msg_t status = RDY_OK;
+  msg_t status = MSG_OK;
   uint8_t chunk[9] = {[0]=eepromAddr};
   if (((eepromAddr % eepromPageSize) + len) > eepromPageSize) {
     DebugTrace ("i2cWriteInPage24AA02 ERROR writing %d byte @ 0x%x will cross page boundary",
 		len, eepromAddr);
-    return RDY_RESET;
+    return MSG_RESET;
   }
 
   memcpy (&chunk[1], buffer, len);
@@ -854,7 +854,7 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
   I2C_WRITELEN(i2cd, eepromI2cAddr|chipAddr, chunk, len+1);
   
   // WAIT for internal write cycle is finished
-  while (i2cMasterReceiveTimeout (i2cd, eepromI2cAddr|chipAddr, chunk, 1, 1) != RDY_OK) {
+  while (i2cMasterReceiveTimeout (i2cd, eepromI2cAddr|chipAddr, chunk, 1, 1) != MSG_OK) {
     chThdSleepMilliseconds(1);
   }
   
@@ -901,28 +901,28 @@ static bool chkErrorI2cMaster (I2CDriver *i2cd)
   uint8_t retry=3;
 
   do {
-    if (errors & I2CD_BUS_ERROR) {
-      DebugTrace ("I2CD_BUS_ERROR");
+    if (errors & I2C_BUS_ERROR) {
+      DebugTrace ("I2C_BUS_ERROR");
     }
     
-    if (errors & I2CD_ARBITRATION_LOST) {
-      DebugTrace ("I2CD_ARBITRATION_LOST");
+    if (errors & I2C_ARBITRATION_LOST) {
+      DebugTrace ("I2C_ARBITRATION_LOST");
     }
     
-    if (errors & I2CD_ACK_FAILURE) {
-      DebugTrace ("I2CD_ACK_FAILURE");
+    if (errors & I2C_ACK_FAILURE) {
+      DebugTrace ("I2C_ACK_FAILURE");
     }
-    if (errors & I2CD_OVERRUN) {
-      DebugTrace ("I2CD_OVERRUN");
+    if (errors & I2C_OVERRUN) {
+      DebugTrace ("I2C_OVERRUN");
     }
-    if (errors & I2CD_PEC_ERROR) {
-      DebugTrace ("I2CD_PEC_ERROR");
+    if (errors & I2C_PEC_ERROR) {
+      DebugTrace ("I2C_PEC_ERROR");
     }
-    if (errors & I2CD_TIMEOUT) {
-      DebugTrace ("I2CD_TIMEOUT");
+    if (errors & I2C_TIMEOUT) {
+      DebugTrace ("I2C_TIMEOUT");
     }
-    if (errors & I2CD_SMB_ALERT) {
-      DebugTrace ("I2CD_SMB_ALERT");
+    if (errors & I2C_SMB_ALERT) {
+      DebugTrace ("I2C_SMB_ALERT");
     }
     
     i2cMasterResetBus (i2cd);
@@ -980,11 +980,11 @@ static bool i2cMasterUnhangBus (I2CDriver *i2cd)
 
   
   for (uint8_t i=0; i<=8; i++) {
-    halPolledDelay (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
+    chSysPolledDelayX (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
     palToggleLine (i2cMcfg->scl);
-    halPolledDelay (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
+    chSysPolledDelayX (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
     palToggleLine (i2cMcfg->scl);
-    halPolledDelay (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
+    chSysPolledDelayX (US2RTC(STM32_SYSCLK, 10)) ; // 10µs : 100 khz
     
     sdaReleased = palReadLine (i2cMcfg->sda) == PAL_HIGH;
     if (sdaReleased) 
@@ -1003,11 +1003,11 @@ static void i2cMasterSetModePeriphI2c (I2CDriver *i2cd)
   
   palSetLineMode (i2cMcfg->scl, 
 		 PAL_MODE_ALTERNATE(i2cMcfg->alternateFunction) | PAL_STM32_OTYPE_OPENDRAIN |
-		 PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUDR_PULLUP);
+		 PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLUP);
   
   palSetLineMode (i2cMcfg->sda, 
   		 PAL_MODE_ALTERNATE(i2cMcfg->alternateFunction) | PAL_STM32_OTYPE_OPENDRAIN |
-		 PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUDR_PULLUP);
+		 PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLUP);
   
 }
 
@@ -1028,7 +1028,7 @@ msg_t i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  const uint8_t
 
   I2C_WRITE(i2cd, slaveAdr, recBuf);
   
-  return RDY_OK;
+  return MSG_OK;
 }
 
 

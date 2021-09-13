@@ -2,7 +2,6 @@
 #define __PICASO4_DISPLAY_H__
 #include <ch.h>
 #include <hal.h>
-#include "portage.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -119,7 +118,7 @@ static inline Color24 mkColor24 (uint8_t r, uint8_t g, uint8_t b) {
 
 struct OledConfig {
   SerialConfig serialConfig;
-  Mutex omutex ;
+  mutex_t omutex ;
   BaseSequentialStream *serial;
   ioportid_t rstGpio;
   uint32_t rstPin;

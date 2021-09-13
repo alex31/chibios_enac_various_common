@@ -34,7 +34,7 @@
 
 #include "ch.h"
 #include "printf.h"
-#include "portage.h"
+//#include "portage.h"
 #include <stdnoreturn.h>
 #include <ctype.h>
 
@@ -72,10 +72,10 @@ typedef struct {
   va_list *ap;
 } synchronous_print_arg_t;
 
-static Thread *printThreadPtr = NULL;
+static thread_t *printThreadPtr = NULL;
 MUTEX_DECL(printThreadMutex);
 
-static WORKING_AREA(waSerialPrint, CHPRINTF_USE_STDLIB ? 2048 : 512);
+static THD_WORKING_AREA(waSerialPrint, CHPRINTF_USE_STDLIB ? 2048 : 512);
 
 #if (CH_KERNEL_MAJOR != 2)
 static noreturn void serialPrint (void *arg)
@@ -88,7 +88,7 @@ static msg_t serialPrint (void *arg)
   chRegSetThreadName("serialPrint");
   
   while (TRUE) { 
-    Thread *sender = chMsgWait();
+    thread_t *sender = chMsgWait();
     synchronous_print_arg_t *spat = (synchronous_print_arg_t *) chMsgGet (sender);
     va_list ap;
     va_copy(ap, *spat->ap);
@@ -99,7 +99,7 @@ static msg_t serialPrint (void *arg)
       chvsnprintf(spat->destBuf, spat->size, spat->fmt, ap);
     }
     va_end(ap);
-    chMsgRelease(sender, RDY_OK);
+    chMsgRelease(sender, MSG_OK);
   }
 #if (CH_KERNEL_MAJOR == 2)
   return RDY_OK;

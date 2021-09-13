@@ -50,7 +50,7 @@ msg_t mpu9250_init( Mpu9250Data *imu, const Mpu9250Config* initParam)
   
   imu->slaveAddr = initParam->useAd0 ? MPU9250_ADDRESS1 :  MPU9250_ADDRESS0;
   imu->registerSegmentLen = MPU9250_JUSTIMU_LAST -  MPU9250_REGISTER_BASE +1;
-  imu->cacheTimestamp = halGetCounterValue();
+  imu->cacheTimestamp = chSysGetRealtimeCounterX();
   memset (&(imu->mc), 0, sizeof(imu->mc));
   imu->nextSlvFreeSlot = 0;
   imu->accOnly = false;
@@ -137,7 +137,7 @@ msg_t mpu9250_setSampleRate( Mpu9250Data *imu, const uint32_t rate)
     return I2C_EINVAL;
   }
   imu->sampleRate = rate;
-  imu->sampleInterval = halGetCounterFrequency() / imu->sampleRate;
+  imu->sampleInterval =  STM32_SYSCLK / imu->sampleRate;
   if (imu->sampleInterval == 0)
     imu->sampleInterval = 1;
   return setSampleRate (imu);
@@ -248,9 +248,10 @@ msg_t mpu9250_getVal ( Mpu9250Data *imu, float *temp,
   // alias 
   const uint8_t  *rawB =  imu->rawCache;
 
-  if (!halIsCounterWithin(imu->cacheTimestamp, 
-			  imu->cacheTimestamp + imu->sampleInterval)) {
-    imu->cacheTimestamp = halGetCounterValue();
+  if (!chSysIsCounterWithinX(chSysGetRealtimeCounterX(),
+			     imu->cacheTimestamp, 
+			     imu->cacheTimestamp + imu->sampleInterval)) {
+    imu->cacheTimestamp = chSysGetRealtimeCounterX();
     status =  mpu9250_cacheVal (imu);
   }
 
@@ -569,7 +570,7 @@ msg_t ak8963_init (Ak8963Data *compass,  I2CDriver *i2cd)
 {
   msg_t status = MSG_OK;
   static uint8_t IN_DMA_SECTION (asa[3]);
-  compass->cacheTimestamp = halGetCounterValue();
+  compass->cacheTimestamp = chSysGetRealtimeCounterX();
   compass->i2cd = i2cd;
   compass->mstConfig = NULL;
 
@@ -614,10 +615,10 @@ msg_t ak8963_setCompassCntl (Ak8963Data *compass, const uint8_t cntl)
   case AK8963_POWERDOWN : break;      
   case AK8963_SINGLE_MESURE  :break;    
   case AK8963_CONTINUOUS_8HZ :  
-    compass->sampleInterval = halGetCounterFrequency() / 8;
+    compass->sampleInterval =  STM32_SYSCLK / 8;
     break;    
   case AK8963_CONTINUOUS_100HZ :
-    compass->sampleInterval = halGetCounterFrequency() / 100;
+    compass->sampleInterval =  STM32_SYSCLK / 100;
     break ;
   default :
     return I2C_EINVAL;
@@ -651,9 +652,10 @@ msg_t ak8963_getVal  (Ak8963Data *compass, Ak8963Value *val)
 {
   msg_t status = MSG_OK;
 
-  if (!halIsCounterWithin(compass->cacheTimestamp, 
-			  compass->cacheTimestamp + compass->sampleInterval)) {
-    compass->cacheTimestamp = halGetCounterValue();
+  if (! chSysIsCounterWithinX(chSysGetRealtimeCounterX(),
+			      compass->cacheTimestamp, 
+			      compass->cacheTimestamp + compass->sampleInterval)) {
+    compass->cacheTimestamp = chSysGetRealtimeCounterX();
     status =  ak8963_cacheVal (compass);
     if (status != MSG_OK) {
       return status;

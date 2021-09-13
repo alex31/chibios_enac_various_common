@@ -30,7 +30,6 @@
 #include "hal_serial_usb.h"
 #endif
 #include "usb_serial.h"
-#include "portage.h"
 
 #if HAL_USE_SERIAL_USB
 #define USBD1_DATA_REQUEST_EP           1
@@ -301,7 +300,7 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
   case USB_EVENT_ADDRESS:
     return;
   case USB_EVENT_CONFIGURED:
-    chSysLockFromIsr();
+    chSysLockFromISR();
 
     /* Enables the endpoints specified into the configuration.
        Note, this callback is invoked from an ISR so I-Class functions
@@ -312,12 +311,12 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
     /* Resetting the state of the CDC subsystem.*/
     sduConfigureHookI(SDU);
 
-    chSysUnlockFromIsr();
+    chSysUnlockFromISR();
     return;
   case USB_EVENT_UNCONFIGURED:
     return;
   case USB_EVENT_SUSPEND:
-    chSysLockFromIsr();
+    chSysLockFromISR();
     
     /* Disconnection event on suspend.*/
 #if (CH_KERNEL_MAJOR == 3)
@@ -326,7 +325,7 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
     sduSuspendHookI(&SDU1);
 #endif
     
-    chSysUnlockFromIsr();
+    chSysUnlockFromISR();
     return;
  case USB_EVENT_WAKEUP:
     return;
@@ -343,12 +342,12 @@ static void sof_handler(USBDriver *usbp)
 {
   (void)usbp;
 
-  chSysLockFromIsr();
+  chSysLockFromISR();
 #if (CH_KERNEL_MAJOR > 2)
   extern SerialUSBDriver SDU1;
   sduSOFHookI(&SDU1);
 #endif
-  chSysUnlockFromIsr();
+  chSysUnlockFromISR();
 }
 
 /*

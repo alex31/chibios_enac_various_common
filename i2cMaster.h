@@ -2,7 +2,6 @@
 #include "ch.h"
 #include "hal.h"
 #include <math.h>
-#include "portage.h"
 
 #ifdef __cplusplus
 extern "C" {
