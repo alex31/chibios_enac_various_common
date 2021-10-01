@@ -196,6 +196,8 @@ sub getdataFromCubeMx ($);
 sub fillPinField ($$); # $pinRef, $param return 0 if unable to find param
 sub fillPassiveFields ($$$$);
 sub generatePassiveAfMacro($$$); #pin, function, af
+sub getMcus($);
+sub demangleMcuName($);
 sub usage();
 
 my @headerFromCfg;
@@ -208,14 +210,22 @@ my $family;
 
 
 GetOptions (\%options, 'no-pp-pin', 'no-pp-line', 'no-adcp-in', 'no-error', 'kikadsymb',
-	    'find=s', 'dma=s', 'help');
+	    'find=s', 'dma=s', 'mcu=s', 'help');
 usage() if exists  $options{help};
 
 
-usage()  unless scalar (@ARGV == 2) || ((exists  $options{find}
-					 || exists  $options{dma} 
-					 || exists  $options{kikadsymb}) 
-					&& scalar (@ARGV == 1));
+usage()  unless
+    scalar (@ARGV == 2) ||
+    
+    ((exists  $options{find}
+      || exists  $options{dma} 
+      || exists  $options{kikadsymb}) 
+     && scalar (@ARGV == 1)) ||
+
+    (exists  $options{mcu}
+     && scalar (@ARGV == 0));
+
+    
 
 # all configs are supposed to be connected to 3.3V. otherwise, it should be notified in board.cfg
 if (exists $options{'no-adcp-in'}) {
@@ -231,29 +241,58 @@ if (exists $options{'no-adcp-in'}) {
 addPluginsRootDir();
 my ($CUBE_ROOT) = grep (-d $_, @CubeMXRootDir);
 die "unable to find STM32CubeMX root dir\n" unless defined $CUBE_ROOT;
+my $boardFile;
+my $cfgFileRoot;
 
-
-my ($cfgFile, $boardFile) = @ARGV;
-$boardFile //= '-';
-
-if ($boardFile ne '-') {
-    die "cannot read $cfgFile\n" unless -r $cfgFile;
-    if (-e $boardFile) {
-	die "cannot write $boardFile\n" unless -w $boardFile;
+if (exists $options{'mcu'}) {
+    my $mc = $options{'mcu'};
+    my @matchingMcus = getMcus($mc);
+    my $nbMatch = scalar(@matchingMcus);
+    given ($nbMatch) {
+	when (0) {
+	    say ("$mc does not match any mcu");
+	    die "exiting\n";
+	}
+	when ($nbMatch > 1) {
+	    say ("$mc does match more than one mcu, please be more specific\n");
+	    foreach my $m (@matchingMcus) {
+		print "$m : ";
+		demangleMcuName($m);
+	    }
+	    die "exiting\n";
+	}
+	when (1) {
+	    say ("$mc match $matchingMcus[0]");
+	    $cfgParameters{MCU_MODEL} = $matchingMcus[0];
+	    demangleMcuName($cfgParameters{MCU_MODEL});
+	    getdataFromCubeMx ($cfgParameters{MCU_MODEL});
+	    $family = registerFamily();
+	}
     }
-}
+} else {
+    my $cfgFile;
+    ($cfgFile, $boardFile) = @ARGV;
+    $boardFile //= '-';
+    
+    if ($boardFile ne '-') {
+	die "cannot read $cfgFile\n" unless -r $cfgFile;
+	if (-e $boardFile) {
+	    die "cannot write $boardFile\n" unless -w $boardFile;
+	}
+    }
+    
+    unlink $boardFile;
+    
+    $cfgFileRoot  = dirname($cfgFile);
+    parseCfgFile ($cfgFile);
 
-unlink $boardFile;
-
-my $cfgFileRoot  = dirname($cfgFile);
-parseCfgFile ($cfgFile);
-
-if ($cfgParameters{CHIBIOS_VERSION} < 3) {
-    $config{'DEFAULT'}->{A_SPEED} =  $ospeedName{$config{'DEFAULT'}->{A_SPEED}} ;
-    die "port not complete : CHIBIOS_VERSION} < 3 not yet implemented\n";
-    # foreach my $aref (values %configByFunction) {
-    # 	$aref->[2] =  $ospeedName{$aref->[2]};
-    # }
+    if ($cfgParameters{CHIBIOS_VERSION} < 3) {
+	$config{'DEFAULT'}->{A_SPEED} =  $ospeedName{$config{'DEFAULT'}->{A_SPEED}} ;
+	die "port not complete : CHIBIOS_VERSION} < 3 not yet implemented\n";
+	# foreach my $aref (values %configByFunction) {
+	# 	$aref->[2] =  $ospeedName{$aref->[2]};
+	# }
+    }
 }
 
 die "\$cfgParameters{MCU_MODEL} is mandatory\n" unless exists $cfgParameters{MCU_MODEL} && $cfgParameters{MCU_MODEL};
@@ -272,6 +311,7 @@ if (exists  $options{dma}) {
     exit (0);
 }
 
+exit(0) if defined $options{mcu};
 
 genHeader ();
 genIOPins();
@@ -1165,7 +1205,7 @@ sub fillDmaByFun ($$)
 	my $name = $ip->getAttribute ('Name');
 	$version =  $ip->getAttribute ('Version');
 	$dmaPath = $CUBE_ROOT . "/db/mcu/IP/$name-${version}_Modes.xml";
-	say "DBG> dmaPath = $dmaPath version = $version cf=$cf";
+#	say "DBG> dmaPath = $dmaPath version = $version cf=$cf";
 #	last;
     }
 
@@ -1323,7 +1363,28 @@ sub fillDmaV2ByFun ($$)
 
 }
 
+sub getMcus($)
+{
+    my $filter = shift;
+    $filter =~ s/.*M32//;
+    my $mcuDir = $CUBE_ROOT . "/db/mcu";
+    my @mcus;
 
+    opendir (my $dh, $mcuDir) || return;
+    while (my $xmlf = readdir($dh)) {
+	if ($xmlf =~ /STM32.*xml$/ && $xmlf =~ $filter && $xmlf !~ /STM32MP/ ) {
+	    $xmlf =~ s/\.xml//;
+	    push @mcus, $xmlf ;
+	}
+    }
+    close $dh;
+
+    if (length($filter) >= 5) {
+	return @mcus[0..0];
+    } else {
+	return @mcus;
+    }
+}
 
 
 sub getdataFromCubeMx ($)
@@ -1485,4 +1546,93 @@ sub addPluginsRootDir()
 	push @CubeMXRootDir, "$pluginDir/$candidates[-1]" if @candidates;
 #	say "DBG>  $pluginDir/$candidates[-1]" if @candidates;
     }
+}
+
+# Famille : STM32 = famille de microcontrôleur basé sur les processeurs ARM Cortex-M 32-bit
+# Type : F = Mainstream ou High performance | L = Low Power | H = High performance | WB/WL = Wireless
+# Modèle du processeur : 0 = M0 | 1/2 = M3 | 3/4 = M4 | 7 = M7
+# Performance : Cette caractéristique représente la vitesse d'horloge (Mhz), la RAM et les entrées et sorties. Elle est codée sur 2 chiffres.
+# Nombre de pins : F = 20 | G = 28 | K = 32 | T = 36 | S = 44 | S = 44 | C = 48 | R = 64-66 | V = 100 | Z = 144 | I = 176
+# Taille mémoire flash (en KByte) : 4 = 16 | 6 = 32 | 8 = 64 | B = 128 | C = 256 | D = 384 | E = 512 | F = 768 | G = 1024 | H = 1536 | I = 2048
+# Package : P = TSSOP | H = BGA | U = VFQFPN = T = LQFP | Y = WLCSP
+# Gamme de température : 6 = -40°C à 85°C | 7 = -40°C à 105°C
+sub demangleMcuName($)
+{
+    my $mcu = shift;
+
+    my ($model, $_nbPin, $_flashSize, $_flashSizeMax, $_package);
+    if ($mcu =~ /\(.*\)/) {
+	($model, $_nbPin, $_flashSize, $_flashSizeMax, $_package) =
+	    $mcu =~ /(STM32....)(.)\((.).*(.)\)(.)/;
+    } else {
+	($model, $_nbPin, $_flashSize, $_package) =
+	    $mcu =~ /(STM32....)(.)(.)(.)/;
+    }
+
+    if  (not defined $_nbPin) {
+	say "DBG> ********** mcu = $mcu _nbPin undefined";
+	return;
+    }
+
+    
+    if  (not defined $_flashSize) {
+	say "DBG> ********** mcu = $mcu _flashSize undefined";
+	return;
+    }
+
+    my %nbPins = (
+	'D' => 14, 'Y' => 18, 'F' => 20,
+	'E' => 25,
+	'G' => 28,
+	'K' => 32, 'T' => 36,
+	'S' => 44, 'C' => 48,
+	'U' => 63, 'R' => 64, 'J' => 73,
+	'M' => 80,
+	'O' => 90, 'V' => 100, 'W' => 115,
+	'P' => 121,
+	'Q' => 132,'Z' => 144,
+	'A' => 169, 'I' => 176,
+	'B' => 208, 'N' => 216, 'L' => 225,
+	'X' => 240);
+
+    my %flash = ('A' => 0, '3' => 8,
+		 '4' => 16,   '6' => 32,'8' => 64,
+		 'B' => 128,  'Z' => 192, 'C' => 256,
+		 'D' => 384,
+		 'E' => 512,  'Y' => 640, 'F' => 768,
+		 'G' => 1024,
+		 'H' => 1536, 'I' => 2048);
+
+    my %packages = (
+	'P' => 'TSSOP', 'H' => 'BGA', 'U' => 'VFQFPN', 'T' => 'LQFP', 'Y' => 'WLCLP',
+	'I' => 'UFBGA', 'J' => 'UFBGA', 'K' => 'UFBGA176', 'Q' => 'UFBGA129', 'E' => 'EWLCSP',
+	'V' => 'VFQFPN', 'F' => 'WLCSP', 'S' => 'LQFP', 'M' => 'SO8N'
+    );
+
+    warn "------------ unknow nb pin code $_nbPin on mcu $mcu\n" unless exists $nbPins{$_nbPin};
+    my $nbPin = $nbPins{$_nbPin};
+    my $flashSize;
+    warn "------------ unknow flash size code $_flashSize on mcu $mcu\n" unless exists $flash{$_flashSize};
+    if (defined($_flashSizeMax)) {
+	warn "------------ unknow flash size code $_flashSizeMax on mcu $mcu\n" unless exists $flash{$_flashSizeMax};
+	$flashSize = "$flash{$_flashSize} - $flash{$_flashSizeMax}";
+    } else {
+	$flashSize = "$flash{$_flashSize}";
+    }
+    if (not defined $_package) {
+	say "DBG>  mcu = $mcu _package undefined";
+	return;
+    }
+
+    warn "------------ unknow package $_package on mcu $mcu\n" || return unless exists $packages{$_package};
+    my $package = $packages{$_package};
+    if (not defined $package) {
+	return;
+    }
+
+    if  (not defined $nbPin) {
+	return;
+    }
+    $nbPin = 8 if $package eq 'SO8N';
+    say ("model=$model, pin=$nbPin, flash=$flashSize Ko, package=$package");
 }
