@@ -21,7 +21,7 @@ extern "C" {
 #endif
 
 #define MDMA_END_ADDR_OF(v) ((void *) ((uint8_t *) (&(v)) + sizeof(typeof(v)) - 4U))
-#define MDMA_START_ADDR_OF(v) ((void *) &v)
+#define MDMA_START_ADDR_OF(v) ((void *) &(v))
 
   
   /**
@@ -517,6 +517,13 @@ extern "C" {
 		       const MDMANodeConfig *cfg,
 		       const mdmatriggersource_t trigger_src,
 		       const void *source, void *dest, const size_t block_len);
+ void mdmaAddLinkNodeMask(MDMADriver *mdmap,
+			  const MDMANodeConfig *cfg,
+			  const mdmatriggersource_t trigger_src,
+			  const void *source, void *dest, const size_t block_len,
+			  void *mask_data_register,
+			  const uint32_t mask_address_register
+			  );
   void mdmaLinkLoop(MDMADriver *mdmap, const size_t index);
   // low level driver
   void mdma_lld_set_common_registers(MDMADriver *mdmap);

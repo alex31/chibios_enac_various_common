@@ -396,6 +396,22 @@ void mdmaAddLinkNode(MDMADriver *mdmap,
   mdmap->next_link_array_index++;
 }
 
+
+void mdmaAddLinkNodeMask(MDMADriver *mdmap,
+			 const MDMANodeConfig *cfg,
+			 const mdmatriggersource_t trigger_src,
+			 const void *source, void *dest, const size_t block_len,
+			 void *mask_address_register,
+			 const uint32_t mask_data_register
+			 )
+{
+  MDMANodeConfig ncfg = *cfg;
+  ncfg.mask_data_register = mask_data_register;
+  ncfg.mask_address_register = mask_address_register;
+  mdmaAddLinkNode(mdmap, &ncfg, trigger_src, source, dest, block_len);
+}
+
+
 void mdmaLinkLoop(MDMADriver *mdmap, const size_t index)
 {
   osalDbgCheck(mdmap != NULL);
@@ -478,20 +494,20 @@ void mdma_lld_set_node_registers(MDMADriver *mdmap,
   
   if (nodeCfg->source_incr > 0) {
     sinc = STM32_MDMA_CTCR_SINC_INC;
-    sincval = __builtin_ffs(nodeCfg->source_incr)-1U;
+    sincval = __builtin_ffs(nodeCfg->source_incr) - 1U;
   } else if (nodeCfg->source_incr < 0) {
     sinc = STM32_MDMA_CTCR_SINC_DEC;
-    sincval = __builtin_ffs(-nodeCfg->source_incr)-1U;
+    sincval = __builtin_ffs(-nodeCfg->source_incr) - 1U;
   } else {
     sinc = STM32_MDMA_CTCR_SINC_FIXED;
     sincval = 0;
   }
   if (nodeCfg->dest_incr > 0) {
     dinc = STM32_MDMA_CTCR_DINC_INC;
-    dincval = __builtin_ffs(nodeCfg->dest_incr)-1U;
+    dincval = __builtin_ffs(nodeCfg->dest_incr) - 1U;
   } else if (nodeCfg->dest_incr < 0) {
     dinc = STM32_MDMA_CTCR_DINC_DEC;
-    dincval = __builtin_ffs(-nodeCfg->dest_incr)-1U;
+    dincval = __builtin_ffs(-nodeCfg->dest_incr) - 1U;
   } else {
     dinc = STM32_MDMA_CTCR_DINC_FIXED;
     dincval = 0;
