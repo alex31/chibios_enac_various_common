@@ -55,7 +55,7 @@ my $gdbPath = which('arm-none-eabi-gdb') // which('gdb-multiarch');
 die "please install arm-none-eabi-gdb or gdb-multiarch" unless defined $gdbPath;
 
 my $bmpdev;
-$options{device} = '| openocd -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_h743zi.cfg'
+$options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_h743zi.cfg'
     if exists  $options{o743};
 if (!exists  $options{device}) {
     if (-e BMPDEV) {
