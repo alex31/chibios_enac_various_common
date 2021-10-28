@@ -402,10 +402,10 @@ unsigned_common:
       width--;
     }
   }
- endFun:
-  const int retLen = buffer-bufferStart;
   _putChar(0) ;
-  return retLen;
+ endFun:
+  const int retLen = buffer - bufferStart;
+  return retLen - ((buffer != NULL) ? 1 : 0);
 }
 #endif
 
