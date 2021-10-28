@@ -8,15 +8,14 @@ extern "C" {
 #endif
 
 
-#if !defined(LINK_DRIVER_UART)  && !defined(LINK_DRIVER_SD) 
-#define LINK_DRIVER_SD
+#if !defined(PICASO_DISPLAY_USE_UART)
+#define PICASO_DISPLAY_USE_UART FALSE
 #endif
 
-#if defined(LINK_DRIVER_UART)  && defined(LINK_DRIVER_SD) 
-#error LINK_DRIVER_UART and LINK_DRIVER_SD cannot be both defined
-#endif
 
-#ifdef  LINK_DRIVER_SD
+#define PICASO_DISPLAY_USE_SD   (!PICASO_DISPLAY_USE_UART)
+
+#if  PICASO_DISPLAY_USE_SD
 #define LINK_DRIVER SerialDriver
 #else
 #define LINK_DRIVER UARTDriver
@@ -131,7 +130,7 @@ static inline Color24 mkColor24 (uint8_t r, uint8_t g, uint8_t b) {
 
 
 struct OledConfig {
-#ifdef LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_SD
   SerialConfig serialConfig;
   BaseSequentialStream *serial;
 #else
@@ -151,7 +150,7 @@ struct OledConfig {
   uint8_t curXpos; 
   uint8_t curYpos;   
   uint8_t response[16];
-#ifndef LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_UART
  char sendBuffer[80];
 #endif
 };

@@ -33,7 +33,7 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
 
 static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
 				   const char* fct, const uint32_t line);
-#ifdef  LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_SD
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 #else
 static void sendVt100Seq (UARTDriver *serial, const char *fmt, ...);
@@ -59,7 +59,7 @@ static bool oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const 
 static uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t colorIndex);
 static uint16_t oledTouchGet (OledConfig *oledConfig, uint16_t mode);
 static uint16_t getResponseAsUint16 (OledConfig *oledConfig);
-#ifndef LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_UART
 static size_t uartReadTimeout (UARTDriver *serial, uint8_t *response, 
 			       size_t size, sysinterval_t rTimout);
 #endif
@@ -95,7 +95,7 @@ void oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
   oledPreInit(oledConfig,
 	       oledConfig->deviceType == TERM_VT100 ? baud : 9600);
   chMtxObjectInit(&(oledConfig->omutex));
-#ifdef  LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_SD
   oledConfig->serial = (BaseSequentialStream *) oled;
   sdStart(oled, &(oledConfig->serialConfig));
 #else
@@ -298,8 +298,8 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
     break;
   }
 
-  chThdSleepMilliseconds(10);
-#ifdef  LINK_DRIVER_SD
+  chThdSleepMilliseconds(20);
+#if PICASO_DISPLAY_USE_SD
   sdStop(sd);
   sdStart(sd, &(oledConfig->serialConfig));
 #else
@@ -307,7 +307,7 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
   uartStart(sd, &(oledConfig->serialConfig));
 #endif
   // wait 150ms, and wait for response at new speed
-  chThdSleepMilliseconds(150);
+  //  chThdSleepMilliseconds(100);
   RET_UNLESS_4DSYS(oledConfig);
   oledReceiveAnswer(oledConfig, 1, __FUNCTION__, __LINE__);
 }
@@ -393,7 +393,7 @@ void oledPrintBuffer (OledConfig *oledConfig, const char *buffer)
   break;
   case TERM_VT100 : 
     sendVt100Seq(oledConfig->serial, "%d;%dH",  oledConfig->curYpos+1, oledConfig->curXpos+1);
-#ifdef  LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_SD
     directchprintf(oledConfig->serial, buffer);
 #else
     size_t length = strnlen(buffer, sizeof(buffer));
@@ -967,7 +967,7 @@ static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
   (void) fct;
   (void) line;
 
-#ifdef  LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_SD
   BaseChannel *serial =  (BaseChannel *)  oc->serial;
 #else
   UARTDriver *serial = oc->serial;
@@ -981,7 +981,7 @@ static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
   }
   
 
-#ifdef  LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_SD
   const uint32_t ret = chnReadTimeout(serial, response, size, readTimout);
 #else
   const uint32_t ret = uartReadTimeout(serial, response, size, readTimout);
@@ -1021,7 +1021,7 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
   
   // purge read buffer
   const  size_t respBufferSize = sizeof (oc->response);
-#ifdef  LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_SD
   BaseChannel * serial =  (BaseChannel *)  oc->serial;
   chnReadTimeout (serial, response, respBufferSize, TIME_IMMEDIATE);
 #else
@@ -1031,7 +1031,7 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
   
   // send command
   va_start(ap, fmt);
-#ifdef  LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_SD
   directchvprintf(oc->serial, fmt, ap);
 #else
   size_t length = chvsnprintf(oc->sendBuffer, sizeof(oc->sendBuffer), fmt, ap);
@@ -1062,7 +1062,7 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
       
       //DebugTrace ("receiveLen=%d constrainedSize=%d", len, size);
       if (size) {
-#ifdef  LINK_DRIVER_SD	
+#if PICASO_DISPLAY_USE_SD	
 	ret = chnReadTimeout(serial, response, size, readTimout);
 #else
 	ret = uartReadTimeout(serial, response, size, readTimout);
@@ -1087,7 +1087,7 @@ OledStatus oledGetStatus(void)
   return oledStatus;
 }
 
-#ifdef  LINK_DRIVER_SD
+#if PICASO_DISPLAY_USE_SD
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...)
 {
   char buffer[80] = {0x1b, '['};
