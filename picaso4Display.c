@@ -226,9 +226,6 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
   LINK_DRIVER *sd = (LINK_DRIVER *) oledConfig->serial;
 
   RET_UNLESS_INIT(oledConfig);
-
-  
-
   
   switch (oledConfig->deviceType) {
   case PICASO: {
@@ -1026,7 +1023,6 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
   chnReadTimeout (serial, response, respBufferSize, TIME_IMMEDIATE);
 #else
   UARTDriver * serial = oc->serial;
-  //  uartReadTimeout(oc->serial, response, respBufferSize, TIME_MS2I(1));
 #endif
   
   // send command
