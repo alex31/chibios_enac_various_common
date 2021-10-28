@@ -8,6 +8,20 @@ extern "C" {
 #endif
 
 
+#if !defined(LINK_DRIVER_UART)  && !defined(LINK_DRIVER_SD) 
+#define LINK_DRIVER_SD
+#endif
+
+#if defined(LINK_DRIVER_UART)  && defined(LINK_DRIVER_SD) 
+#error LINK_DRIVER_UART and LINK_DRIVER_SD cannot be both defined
+#endif
+
+#ifdef  LINK_DRIVER_SD
+#define LINK_DRIVER SerialDriver
+#else
+#define LINK_DRIVER UARTDriver
+#endif
+
 typedef struct OledConfig  OledConfig;
 enum OledConfig_Device {PICASO, GOLDELOX, TERM_VT100}; // will have to implement DIABLO
 enum OledTextAttribute {OLED_RESET_ATTRIB=0,
@@ -19,10 +33,10 @@ typedef enum {OLED_OK,
 #define COLOR_TABLE_SIZE 11
 
 // enforce the use of oledStart over oledInit
-void __attribute__((deprecated)) oledInit (OledConfig *oledConfig,  SerialDriver *oled,
+void __attribute__((deprecated)) oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled,
 					   const uint32_t baud,     ioportid_t rstGpio, uint32_t rstPin,
 					   enum OledConfig_Device dev);
-static inline void oledStart (OledConfig *oledConfig,  SerialDriver *oled, const uint32_t baud,
+static inline void oledStart (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
 	        ioline_t reset, enum OledConfig_Device dev)
 {
 #pragma GCC diagnostic push
@@ -117,9 +131,14 @@ static inline Color24 mkColor24 (uint8_t r, uint8_t g, uint8_t b) {
 
 
 struct OledConfig {
+#ifdef LINK_DRIVER_SD
   SerialConfig serialConfig;
-  mutex_t omutex ;
   BaseSequentialStream *serial;
+#else
+  UARTConfig serialConfig;
+  UARTDriver *serial;
+#endif
+  mutex_t omutex ;
   ioportid_t rstGpio;
   uint32_t rstPin;
   enum OledConfig_Device deviceType;
@@ -132,6 +151,9 @@ struct OledConfig {
   uint8_t curXpos; 
   uint8_t curYpos;   
   uint8_t response[16];
+#ifndef LINK_DRIVER_SD
+ char sendBuffer[80];
+#endif
 };
 
 

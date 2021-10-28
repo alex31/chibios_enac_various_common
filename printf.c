@@ -197,7 +197,7 @@ static char *ftoa(char *p, double num, uint32_t precision) {
 
 
 #if !CHPRINTF_USE_STDLIB
-static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, const char *fmt, va_list ap) {
+static int _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, const char *fmt, va_list ap) {
   char *p, *s, c, filler;
   int i, precision, width;
   bool is_long, left_align, plus_on_float;
@@ -241,10 +241,10 @@ static void _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, c
       // only add end of string marker when filling buffer, not when outputing on I/O channel
       if (buffer != NULL)
 	_putChar (0);
-      return;
+      goto endFun;
     }
     if (c != '%') {
-      if (_putChar (c)) return;
+      if (_putChar (c)) goto endFun;
       continue;
     }
     p = tmpbuf;
@@ -387,22 +387,25 @@ unsigned_common:
       width = -width;
     if (width < 0) {
       if (*s == '-' && filler == '0') {
-	if (_putChar ( (uint8_t)*s++)) return;
+	if (_putChar ( (uint8_t)*s++)) goto endFun;
         i--;
       }
       do
-        if (_putChar (  (uint8_t)filler)) return;
+        if (_putChar (  (uint8_t)filler)) goto endFun;
       while (++width != 0);
     }
     while (--i >= 0)
-      if (_putChar ( (uint8_t)*s++)) return;
+      if (_putChar ( (uint8_t)*s++)) goto endFun;
 
     while (width) {
-      if (_putChar (  (uint8_t)filler)) return;
+      if (_putChar (  (uint8_t)filler)) goto endFun;
       width--;
     }
   }
+ endFun:
+  const int retLen = buffer-bufferStart;
   _putChar(0) ;
+  return retLen;
 }
 #endif
 
@@ -417,11 +420,11 @@ void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
 #endif
 }
 
-void chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
+int chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
 #if CHPRINTF_USE_STDLIB
-  _vsnprintf_r(&reent, buffer, size, fmt, ap);
+  return _vsnprintf_r(&reent, buffer, size, fmt, ap);
 #else
-  _chvsnprintf(buffer, NULL, size, fmt, ap);
+  return _chvsnprintf(buffer, NULL, size, fmt, ap);
 #endif
 }
 
