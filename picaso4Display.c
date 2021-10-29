@@ -31,13 +31,16 @@ static void oledTrace (OledConfig *oledConfig, const char* err);
 static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof, 
 				 const char* fct, const uint32_t line, const char *fmt, ...);
 
-static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
+static uint32_t oledReceiveAnswer (OledConfig *oc, const size_t size,
 				   const char* fct, const uint32_t line);
 #if PICASO_DISPLAY_USE_SD
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 #else
 static void sendVt100Seq (UARTDriver *serial, const char *fmt, ...);
-
+static void    oledStartReceiveAnswer (OledConfig *oc, size_t *size,
+				       const char* fct, const uint32_t line);
+static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
+				       const char* fct, const uint32_t line);
 #endif
 
 #define OLED(...) (oledSendCommand (oledConfig, KOF_ACK, __FUNCTION__, __LINE__, __VA_ARGS__))
@@ -62,6 +65,9 @@ static uint16_t getResponseAsUint16 (OledConfig *oledConfig);
 #if PICASO_DISPLAY_USE_UART
 static size_t uartReadTimeout (UARTDriver *serial, uint8_t *response, 
 			       size_t size, sysinterval_t rTimout);
+static void uartStartRead (UARTDriver *serial, uint8_t *response, 
+			   size_t *size);
+static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t  rTimout);
 #endif
 static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
 {
@@ -299,14 +305,14 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
 #if PICASO_DISPLAY_USE_SD
   sdStop(sd);
   sdStart(sd, &(oledConfig->serialConfig));
+  chThdSleepMilliseconds(100);
 #else
   uartStop(sd);
   uartStart(sd, &(oledConfig->serialConfig));
 #endif
-  // wait 150ms, and wait for response at new speed
-  //  chThdSleepMilliseconds(100);
+  // wait for response at new speed
   RET_UNLESS_4DSYS(oledConfig);
-  oledReceiveAnswer(oledConfig, 1, __FUNCTION__, __LINE__);
+  oledReceiveAnswer(oledConfig, 1U, __FUNCTION__, __LINE__);
 }
 
 
@@ -958,7 +964,7 @@ static bool oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const 
   return oledConfig->response[2] == 1;
 }
 
-static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
+static uint32_t oledReceiveAnswer (OledConfig *oc, const size_t size,
 				   const char* fct, const uint32_t line)
 {
   (void) fct;
@@ -987,7 +993,7 @@ static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
 #if defined LCD_240_320 || defined LCD_240_400
     hardwareSetState (HW_uart1, FALSE);
 #endif
-    DebugTrace ("oledReceiveAnswer ret[%lu] != expectedSize[%lu] @%s : line %lu", ret, size, fct, line);
+    DebugTrace ("oledReceiveAnswer ret[%lu] != expectedSize[%u] @%s : line %lu", ret, size, fct, line);
     oledTrace (oc, "LCD Protocol error");
     oledStatus = OLED_ERROR;
   } else if (response[0] != 0x6) {
@@ -1007,7 +1013,65 @@ static uint32_t oledReceiveAnswer (OledConfig *oc, const uint32_t size,
   return ret;
 }
 
+#if PICASO_DISPLAY_USE_UART
+static void oledStartReceiveAnswer (OledConfig *oc, size_t *size,
+				    const char* fct, const uint32_t line)
+{
+  (void) fct;
+  (void) line;
 
+  UARTDriver *serial = oc->serial;
+  uint8_t *response = oc->response;
+  response[0] = 0;
+
+  if (*size > sizeof (oc->response)) {
+    oledTrace (oc, "oledConfig->response buffer too small");
+    return;
+  }
+
+  uartStartRead(serial, response, size);
+}
+
+static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
+				       const char* fct, const uint32_t line)
+
+{
+  (void) fct;
+  (void) line;
+
+  UARTDriver *serial = oc->serial;
+  uint8_t *response = oc->response;
+
+
+  size_t ask = *size;
+  msg_t status = uartWaitReadTimeout(serial, size, readTimout);
+  size_t ret = *size;
+
+  if (status != MSG_OK) {
+#if defined LCD_240_320 || defined LCD_240_400
+    hardwareSetState (HW_uart1, FALSE);
+#endif
+    DebugTrace ("oledReceiveWaitAnswer ask[%u] != expectedSize[%u] @%s : line %lu", ret,
+		ask, fct, line);
+    oledTrace (oc, "LCD Protocol error");
+    oledStatus = OLED_ERROR;
+  } else if (response[0] != 0x6) {
+#if defined LCD_240_320 || defined LCD_240_400
+    hardwareSetState (HW_uart1, FALSE);
+#endif
+    DebugTrace("oledReceiveWaitAnswer get NACK [%d] @%s : line %lu XY=[%d,%d]", response[0],
+	       fct, line, oc->curXpos, oc->curYpos);
+    oledTrace(oc, "NACK");
+    oledStatus = OLED_ERROR;
+  } else {
+#if defined LCD_240_320 || defined LCD_240_400
+    hardwareSetState(HW_uart1, TRUE);
+#endif
+    oledStatus = OLED_OK;
+  }
+  return ret;
+}
+#endif
 static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof, 
 				 const char* fct, const uint32_t line, const char *fmt, ...)
 {
@@ -1022,6 +1086,7 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
   BaseChannel * serial =  (BaseChannel *)  oc->serial;
   chnReadTimeout (serial, response, respBufferSize, TIME_IMMEDIATE);
 #else
+  size_t size=0;
   UARTDriver * serial = oc->serial;
 #endif
   
@@ -1030,6 +1095,26 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
 #if PICASO_DISPLAY_USE_SD
   directchvprintf(oc->serial, fmt, ap);
 #else
+  switch (kof) {
+  case KOF_NONE :
+    break;
+    
+  case  KOF_ACK:
+    size = 1U;
+    oledStartReceiveAnswer(oc, &size, fct, line);
+    break;
+    
+  case  KOF_INT16:
+    size = 3U;
+    oledStartReceiveAnswer(oc, &size, fct, line);
+    break;
+    
+  case KOF_INT16LENGTH_THEN_DATA:
+    size = 3U;
+    oledStartReceiveAnswer(oc, &size, fct, line);
+    break;
+  }
+
   size_t length = chvsnprintf(oc->sendBuffer, sizeof(oc->sendBuffer), fmt, ap);
   uartSendTimeout(oc->serial, &length, oc->sendBuffer, TIME_INFINITE);
 #endif
@@ -1042,28 +1127,40 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
     break;
     
   case  KOF_ACK:
+#if PICASO_DISPLAY_USE_SD
     ret = oledReceiveAnswer(oc, 1, fct, line);
+#else
+    ret = oledWaitReceiveAnswer(oc, &size, fct, line);
+#endif
     break;
     
   case  KOF_INT16:
+#if PICASO_DISPLAY_USE_SD
     ret = oledReceiveAnswer(oc, 3, fct, line);
+#else
+    ret = oledWaitReceiveAnswer(oc, &size, fct, line);
+#endif
     break;
     
   case KOF_INT16LENGTH_THEN_DATA:
+#if PICASO_DISPLAY_USE_SD
     ret = oledReceiveAnswer(oc, 3, fct, line);
-    if (ret == 3) {
+#else
+    ret = oledWaitReceiveAnswer(oc, &size, fct, line);
+#endif
+   if (ret == 3) {
       // little endianness
       const uint32_t len = getResponseAsUint16(oc);
-      const uint32_t size = MIN(len, respBufferSize-1);
+      const uint32_t bsize = MIN(len, respBufferSize-1);
       
       //DebugTrace ("receiveLen=%d constrainedSize=%d", len, size);
-      if (size) {
+      if (bsize) {
 #if PICASO_DISPLAY_USE_SD	
-	ret = chnReadTimeout(serial, response, size, readTimout);
+	ret = chnReadTimeout(serial, response, bsize, readTimout);
 #else
-	ret = uartReadTimeout(serial, response, size, readTimout);
+	ret = uartReadTimeout(serial, response, bsize, readTimout);
 #endif
-	if (ret != size) 
+	if (ret != bsize) 
 	  oledTrace (oc, "KOF_INT16LENGTH_THEN_DATA: OLED Protocol error");
 	else 
 	  response[ret] = 0; // NULL string termination 
@@ -1110,10 +1207,42 @@ static void sendVt100Seq (UARTDriver *serial, const char *fmt, ...)
 
 
 
-size_t uartReadTimeout (UARTDriver *serial, uint8_t *response, 
+static size_t uartReadTimeout (UARTDriver *serial, uint8_t *response, 
 			     size_t size, sysinterval_t  rTimout)
 {
   uartReceiveTimeout(serial, &size, response, rTimout);
   return size;
+}
+
+static void uartStartRead (UARTDriver *serial, uint8_t *response, 
+		    size_t *size)
+{
+  osalDbgCheck((serial != NULL) && (*size > 0U) && (response != NULL));
+  
+  osalSysLock();
+  osalDbgAssert(serial->state == UART_READY, "is active");
+  osalDbgAssert(serial->rxstate != UART_RX_ACTIVE, "rx active");
+  
+  /* Receive start.*/
+  uart_lld_start_receive(serial, *size, response);
+  serial->rxstate = UART_RX_ACTIVE;
+  osalSysUnlock();
+}
+
+
+static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t  rTimout)
+{
+  msg_t msg;
+
+  osalDbgCheck(serial != NULL);
+  osalSysLock();
+  
+  msg = osalThreadSuspendTimeoutS(&serial->threadrx, rTimout);
+  if (msg != MSG_OK) {
+    *size -= uartStopReceiveI(serial);
+  }
+  osalSysUnlock();
+  
+  return msg;
 }
 #endif
