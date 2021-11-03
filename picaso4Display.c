@@ -707,29 +707,25 @@ void oledDrawPolyLine (OledConfig *oledConfig,
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_4DSYS(oledConfig);
 
-  typedef struct {
+  struct {
     uint16_t cmd;
     uint16_t len;
     uint16_t vx[len];
     uint16_t vy[len];
     uint16_t color;
-  } Command;
+  } command;
 
-  Command *command = (Command *) oledConfig->sendBuffer;
 
-  chDbgAssert(sizeof(Command) <= sizeof(oledConfig->sendBuffer),
-	      "buffer too small for oledDrawPolyLine");
-
-  command->cmd = __builtin_bswap16(ISPIC(oledConfig) ? 0x0015 : 0x0005); 
-  command->len = __builtin_bswap16(len);
+  command.cmd = __builtin_bswap16(ISPIC(oledConfig) ? 0x0015 : 0x0005); 
+  command.len = __builtin_bswap16(len);
   for (size_t i=0; i<len; i++) {
-    command->vx[i] = __builtin_bswap16(pp[i].x);
-    command->vy[i] = __builtin_bswap16(pp[i].y);
+    command.vx[i] = __builtin_bswap16(pp[i].x);
+    command.vy[i] = __builtin_bswap16(pp[i].y);
   }
-  command->color =  __builtin_bswap16(fgColorIndexTo16b(oledConfig, (uint8_t) (colorIndex+1)));
+  command.color =  __builtin_bswap16(fgColorIndexTo16b(oledConfig, (uint8_t) (colorIndex+1)));
 
   oledSendBuffer(oledConfig, KOF_ACK, __FUNCTION__, __LINE__,
-		 (uint8_t *) command, sizeof(Command));
+		 (uint8_t *) &command, sizeof(command));
 }
 
 /*
@@ -1232,7 +1228,7 @@ static uint32_t oledSendBuffer (OledConfig *oc, KindOfCommand kof,
   
   // send command
 #if PICASO_DISPLAY_USE_SD
-  streamWrite(oc->serial buffer, bs);
+  streamWrite(oc->serial, buffer, bs);
 #else
   switch (kof) {
   case KOF_NONE :
