@@ -30,6 +30,9 @@ static OledStatus oledStatus = OLED_OK;
 static void oledTrace (OledConfig *oledConfig, const char* err);
 static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof, 
 				 const char* fct, const uint32_t line, const char *fmt, ...);
+static uint32_t oledSendBuffer (OledConfig *oc, KindOfCommand kof, 
+				const char* fct, const uint32_t line,
+				const uint8_t *buffer, const size_t size);
 
 static uint32_t oledReceiveAnswer (OledConfig *oc, const size_t size,
 				   const char* fct, const uint32_t line);
@@ -695,6 +698,40 @@ void oledDrawRect (OledConfig *oledConfig,
 	twoBytesFromWord(fg));
 }
 
+void oledDrawPolyLine (OledConfig *oledConfig, 
+		       const uint16_t len,
+		       const PolyPoint * const pp,
+		       const uint8_t colorIndex)
+  
+{
+  RET_UNLESS_INIT(oledConfig);
+  RET_UNLESS_4DSYS(oledConfig);
+
+  typedef struct {
+    uint16_t cmd;
+    uint16_t len;
+    uint16_t vx[len];
+    uint16_t vy[len];
+    uint16_t color;
+  } Command;
+
+  Command *command = (Command *) oledConfig->sendBuffer;
+
+  chDbgAssert(sizeof(Command) <= sizeof(oledConfig->sendBuffer),
+	      "buffer too small for oledDrawPolyLine");
+
+  command->cmd = __builtin_bswap16(ISPIC(oledConfig) ? 0x0015 : 0x0005); 
+  command->len = __builtin_bswap16(len);
+  for (size_t i=0; i<len; i++) {
+    command->vx[i] = __builtin_bswap16(pp[i].x);
+    command->vy[i] = __builtin_bswap16(pp[i].y);
+  }
+  command->color =  __builtin_bswap16(fgColorIndexTo16b(oledConfig, (uint8_t) (colorIndex+1)));
+
+  oledSendBuffer(oledConfig, KOF_ACK, __FUNCTION__, __LINE__,
+		 (uint8_t *) command, sizeof(Command));
+}
+
 /*
   API available for PICASO and DIABLO, not for GOLDELOX 
 
@@ -1072,6 +1109,7 @@ static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
   return ret;
 }
 #endif
+
 static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof, 
 				 const char* fct, const uint32_t line, const char *fmt, ...)
 {
@@ -1119,6 +1157,106 @@ static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof,
   uartSendTimeout(oc->serial, &length, oc->sendBuffer, TIME_INFINITE);
 #endif
   va_end(ap);
+  
+  // get response
+  switch (kof) {
+  case KOF_NONE :
+    return 0;
+    break;
+    
+  case  KOF_ACK:
+#if PICASO_DISPLAY_USE_SD
+    ret = oledReceiveAnswer(oc, 1, fct, line);
+#else
+    ret = oledWaitReceiveAnswer(oc, &size, fct, line);
+#endif
+    break;
+    
+  case  KOF_INT16:
+#if PICASO_DISPLAY_USE_SD
+    ret = oledReceiveAnswer(oc, 3, fct, line);
+#else
+    ret = oledWaitReceiveAnswer(oc, &size, fct, line);
+#endif
+    break;
+    
+  case KOF_INT16LENGTH_THEN_DATA:
+#if PICASO_DISPLAY_USE_SD
+    ret = oledReceiveAnswer(oc, 3, fct, line);
+#else
+    ret = oledWaitReceiveAnswer(oc, &size, fct, line);
+#endif
+   if (ret == 3) {
+      // little endianness
+      const uint32_t len = getResponseAsUint16(oc);
+      const uint32_t bsize = MIN(len, respBufferSize-1);
+      
+      //DebugTrace ("receiveLen=%d constrainedSize=%d", len, size);
+      if (bsize) {
+#if PICASO_DISPLAY_USE_SD	
+	ret = chnReadTimeout(serial, response, bsize, readTimout);
+#else
+	ret = uartReadTimeout(serial, response, bsize, readTimout);
+#endif
+	if (ret != bsize) 
+	  oledTrace (oc, "KOF_INT16LENGTH_THEN_DATA: OLED Protocol error");
+	else 
+	  response[ret] = 0; // NULL string termination 
+      } else {
+	ret = 0;
+      }
+    }
+    break;
+  }
+  
+  
+  return ret;
+}
+
+static uint32_t oledSendBuffer (OledConfig *oc, KindOfCommand kof, 
+				const char* fct, const uint32_t line,
+				const uint8_t *buffer, const size_t bs)
+{
+  uint32_t ret=0;
+  uint8_t *response = oc->response;
+  
+  // purge read buffer
+  const  size_t respBufferSize = sizeof (oc->response);
+#if PICASO_DISPLAY_USE_SD
+  BaseChannel * serial =  (BaseChannel *)  oc->serial;
+  chnReadTimeout (serial, response, respBufferSize, TIME_IMMEDIATE);
+#else
+  size_t size=0;
+  UARTDriver * serial = oc->serial;
+#endif
+  
+  // send command
+#if PICASO_DISPLAY_USE_SD
+  streamWrite(oc->serial buffer, bs);
+#else
+  switch (kof) {
+  case KOF_NONE :
+    break;
+    
+  case  KOF_ACK:
+    size = 1U;
+    oledStartReceiveAnswer(oc, &size, fct, line);
+    break;
+    
+  case  KOF_INT16:
+    size = 3U;
+    oledStartReceiveAnswer(oc, &size, fct, line);
+    break;
+    
+  case KOF_INT16LENGTH_THEN_DATA:
+    size = 3U;
+    oledStartReceiveAnswer(oc, &size, fct, line);
+    break;
+  }
+
+  size_t length = bs;
+  uartSendTimeout(oc->serial, &length, buffer, TIME_INFINITE);
+#endif
   
   // get response
   switch (kof) {

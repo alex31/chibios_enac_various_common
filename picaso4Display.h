@@ -31,6 +31,12 @@ typedef enum {OLED_OK,
 	      OLED_ERROR} OledStatus;
 #define COLOR_TABLE_SIZE 11
 
+typedef struct {
+    uint16_t x;
+    uint16_t y;
+} PolyPoint;
+
+
 // enforce the use of oledStart over oledInit
 void __attribute__((deprecated)) oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled,
 					   const uint32_t baud,     ioportid_t rstGpio, uint32_t rstPin,
@@ -87,6 +93,10 @@ void oledDrawRect (OledConfig *oledConfig,
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
 		   const bool filled, const uint8_t colorIndex);
+void oledDrawPolyLine (OledConfig *oledConfig, 
+		       const uint16_t len,
+		       const PolyPoint * const pp,
+		       const uint8_t colorIndex);
 void oledScreenCopyPaste (OledConfig *oledConfig, 
 			  const uint16_t xs, const uint16_t ys, 
 			  const uint16_t xd, const uint16_t yd,
@@ -104,6 +114,7 @@ void oledCloseFile (OledConfig *oledConfig, const uint16_t handle);
 void oledDisplayGci  (OledConfig *oledConfig, const uint16_t handle, uint32_t offset);
 void oledSetBaud (OledConfig *oledConfig, uint32_t baud);
 OledStatus oledGetStatus(void);
+
 typedef union  {
   struct {
     uint8_t r;
@@ -113,6 +124,7 @@ typedef union  {
   uint32_t rgb:24;
 } Color24;
 
+  
 static inline Color24 mkColor24 (uint8_t r, uint8_t g, uint8_t b) {
   Color24 ret = {{.r=r, .g=g, .b=b}};
   return ret;
