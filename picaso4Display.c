@@ -21,11 +21,6 @@ typedef enum {KOF_NONE, KOF_ACK, KOF_INT16,
 const uint32_t readTimout = TIME_MS2I(500);
 static OledStatus oledStatus = OLED_OK;
 
-/* #define OLED(n, ...) (\ */
-/* 		      chnReadTimeout (((BaseChannel *) oled), response, sizeof (response), 10), \ */
-/* 		      chprintf (oled, __VA_ARGS__),			\ */
-/* 		      n == 0 ? 0 : chnReadTimeout (((BaseChannel *) oled), response, MIN(sizeof (response), n), 100)\ */
-/* ) */
 
 static void oledTrace (OledConfig *oledConfig, const char* err);
 static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof, 
@@ -142,8 +137,9 @@ void oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
 static void oledReInit (OledConfig *oledConfig)
 {
   switch(oledConfig->deviceType) {
-  case PICASO : 
   case GOLDELOX : 
+  case PICASO : 
+  case DIABLO16 : 
     oledHardReset(oledConfig);
     const uint32_t baud = oledConfig->serialConfig.speed;
     
@@ -237,6 +233,37 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
   RET_UNLESS_INIT(oledConfig);
   
   switch (oledConfig->deviceType) {
+  case DIABLO16: {
+    uint8_t baudCode ;
+    switch(baud) {
+    case 110    : baudCode = 0x0;  actualbaudRate = 110; break;
+    case 300    : baudCode = 0x1;  actualbaudRate = 300; break;
+    case 600    : baudCode = 0x2;  actualbaudRate = 600; break;
+    case 1200   : baudCode = 0x3;  actualbaudRate = 1200; break;
+    case 2400   : baudCode = 0x4;  actualbaudRate = 2401; break;
+    case 4800   : baudCode = 0x5;  actualbaudRate = 4802; break;
+    case 9600   : baudCode = 0x6;  actualbaudRate = 9615; break;
+    case 14400  : baudCode = 0x7;  actualbaudRate = 14439; break;
+    case 19200  : baudCode = 0x8;  actualbaudRate = 19273; break;
+    case 31250  : baudCode = 0x9;  actualbaudRate = 31250; break;
+    case 38400  : baudCode = 0xa;  actualbaudRate = 38717; break;
+    case 56000  : baudCode = 0xb;  actualbaudRate = 56090; break;
+    case 57600  : baudCode = 0xc;  actualbaudRate = 58333; break;
+    case 115200 : baudCode = 0xd;  actualbaudRate = 118243; break;
+    case 128000 : baudCode = 0xe;  actualbaudRate = 128676; break;
+    case 256000 : baudCode = 0xf;  actualbaudRate = 257353; break;
+    case 300000 : baudCode = 0x10; actualbaudRate = 312500; break;
+    case 375000 : baudCode = 0x11; actualbaudRate = 397727; break;
+    case 500000 : baudCode = 0x12; actualbaudRate = 546875; break;
+    case 600000 : baudCode = 0x13; actualbaudRate = 625000; break;
+    default : return;
+    }
+    oledConfig->serialConfig.speed = actualbaudRate; 
+    // send command, do not wait response
+    OLED_KOF(KOF_NONE, "%c%c%c%c", 0x0, 0x26, 0x0, baudCode);
+  }
+    break;
+
   case PICASO: {
     uint8_t baudCode ;
     switch(baud) {
@@ -267,7 +294,6 @@ void oledSetBaud (OledConfig *oledConfig, uint32_t baud)
     OLED_KOF(KOF_NONE, "%c%c%c%c", 0x0, 0x26, 0x0, baudCode);
   }
     break;
-
   case GOLDELOX: {
     uint16_t baudCode ;
     switch(baud) {
@@ -389,6 +415,10 @@ void oledPrintBuffer (OledConfig *oledConfig, const char *buffer)
 {
   RET_UNLESS_INIT(oledConfig);
   switch(oledConfig->deviceType) {
+  case DIABLO16 : 
+    OLED("%c%c%c%c%c%c", 0xff, 0xf0, 0x00, oledConfig->curYpos, 0x00, oledConfig->curXpos);
+    OLED_KOF(KOF_INT16, "%c%c%s%c", 0x0, 0x18, buffer, 0x0);
+  break;
   case PICASO : 
     OLED("%c%c%c%c%c%c", 0xff, 0xe9, 0x00, oledConfig->curYpos, 0x00, oledConfig->curXpos);
     OLED_KOF(KOF_INT16, "%c%c%s%c", 0x0, 0x18, buffer, 0x0);
@@ -430,6 +460,8 @@ void oledSetTextBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
   const KindOfCommand kof =  ISPIC(oledConfig) ? KOF_INT16 : KOF_ACK;
 
   switch(oledConfig->deviceType) {
+  case DIABLO16 :
+    chSysHalt("not handled yet"); break;
   case PICASO : 
   case GOLDELOX : 
     oledConfig->tbg[0] = mkColor24(r,g,b);
@@ -449,6 +481,8 @@ void oledSetTextFgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
   const KindOfCommand kof =  ISPIC(oledConfig) ? KOF_INT16 : KOF_ACK;
 
   switch(oledConfig->deviceType) {
+  case DIABLO16 :
+    chSysHalt("not handled yet"); break;
   case PICASO : 
   case GOLDELOX : 
     oledConfig->fg[0] = mkColor24(r,g,b);
