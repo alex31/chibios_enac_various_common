@@ -403,9 +403,10 @@ unsigned_common:
     }
   }
   _putChar(0) ;
- endFun:
+ endFun: {
   const int retLen = buffer - bufferStart;
   return retLen - ((buffer != NULL) ? 1 : 0);
+  }
 }
 #endif
 
