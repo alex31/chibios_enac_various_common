@@ -5,6 +5,7 @@
 #include "stdutil.h"
 #include "printf.h"
 #include "picaso4Display.h"
+#include "picaso4Display_ll.h"
 
 #if defined LCD_240_320 || defined LCD_240_400
 #include "hardwareTest.h"
@@ -743,14 +744,12 @@ void oledDrawRect (OledConfig *oledConfig,
 	twoBytesFromWord(fg));
 }
 
-static const uint16_t testArr[2][1] = {{__builtin_bswap16(0xffee)}, {__builtin_bswap16(0xffaa)}};
 void oledDrawPolyLine (OledConfig *oledConfig, 
 		       const uint16_t len,
 		       const PolyPoint * const pp,
 		       const uint8_t colorIndex)
   
 {
-  (void) testArr;
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_4DSYS(oledConfig);
   struct {
@@ -1476,14 +1475,14 @@ static uint32_t oledTransmitBuffer (OledConfig *oc, const char* fct, const uint3
 #if PICASO_DISPLAY_USE_SD
   streamWrite(oc->serial, outBuffer, outSize);
 #else
-  if (inSizeRw != 0)
+  if (inSize != 0)
     oledStartReceiveAnswer2(oc, inBuffer, &inSizeRw, fct, line);
   size_t length = outSize;
   uartSendTimeout(oc->serial, &length, outBuffer, TIME_INFINITE);
 #endif
   
   // get response
-  if (inSizeRw == 0)
+  if (inSize == 0)
     return 0;
 
   if (variableLen == false) {
@@ -1595,3 +1594,5 @@ static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t
   return msg;
 }
 #endif
+
+#include "picaso4Display_ll.c"
