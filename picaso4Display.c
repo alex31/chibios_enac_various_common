@@ -30,6 +30,9 @@ static uint32_t oledReceiveAnswer (OledConfig *oc, const size_t size,
 				   const char* fct, const uint32_t line);
 static uint32_t oledReceiveAnswer2 (OledConfig *oc, uint8_t *response, const size_t size,
 				   const char* fct, const uint32_t line);
+static bool oledGetDynamicString(OledConfig *oc, const char* fct, const uint32_t line,
+				 uint16_t dynSize,
+				 uint8_t *inBuffer, const size_t inSize);
 #if PICASO_DISPLAY_USE_SD
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 #else
@@ -1353,5 +1356,26 @@ static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t
   return msg;
 }
 #endif
+
+
+static bool oledGetDynamicString(OledConfig *oc, const char* fct, const uint32_t line,
+				 uint16_t dynSize,
+				 uint8_t *inBuffer, const size_t inSize)
+{
+  dynSize =  MIN(dynSize, inSize - 1);
+  uint16_t ret = oledTransmitBuffer(oc, fct, line,
+				    NULL, 0,
+				    (uint8_t *) inBuffer, dynSize);
+  if (ret != dynSize) {
+    DebugTrace("%s error ret=%u instead of %u", fct, ret, dynSize);
+    inBuffer[0] = 0;
+    return false;
+  } else {
+    inBuffer[dynSize] = 0;
+    return true;  
+  }
+}
+
+
 
 #include "picaso4Display_ll.c"

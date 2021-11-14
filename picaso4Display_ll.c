@@ -2602,27 +2602,23 @@ bool sys_memHeap(OledConfig *oledConfig, uint16_t *avail)
  } __attribute__ ((__packed__)) command = {
    .cmd = cmdCodeByType[api_sys_getModel][oledConfig->deviceType]
  };	
+
+ struct {
+   uint8_t ack;
+   uint16_t n;
+ } __attribute__ ((__packed__)) response;
  
  size_t ret = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-				      (uint8_t *) &command, sizeof(command),
-				      (uint8_t *) str, 3);
- if (ret != 3U) {
-   DebugTrace("sys_getModel error ret=%u instead of 3", ret);
+				 (uint8_t *) &command, sizeof(command),
+				 (uint8_t *) &response, sizeof(response));
+ if (ret != sizeof(response)) {
+   DebugTrace("sys_getModel error ret=%u instead of %u", ret, sizeof(response));
    str[0] = 0;
    return false;
  }
- const size_t dynSize =  MIN(getResponseAsUint16_2((uint8_t *) str), n-1);
- ret = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-			       NULL, 0,
-			       (uint8_t *) str, dynSize);
- if (ret != dynSize) {
-   DebugTrace("sys_getModel error ret=%u instead of %u", ret, dynSize);
-   str[0] = 0;
-   return false;
- } else {
-   str[dynSize] = 0;
-   return true;  
- }
+ return oledGetDynamicString(oledConfig, __FUNCTION__, __LINE__,
+			     __builtin_bswap16(response.n),
+			     (uint8_t *) str, n);
 }
 
 bool sys_getVersion(OledConfig *oledConfig, uint16_t *version)
