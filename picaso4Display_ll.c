@@ -4,7 +4,39 @@
     This code has been generated from API description
     All hand modifications will be lost at next generation 
 */
-    
+static bool gfx_polyxxx(OledConfig *oledConfig, uint16_t cmd, uint16_t n, uint16_t vx[], uint16_t vy[], uint16_t color)
+{
+ struct {
+  uint16_t cmd;
+   uint16_t n;
+} command = {
+   .cmd = cmd,
+  .n = __builtin_bswap16(n)
+};	
+
+  struct {
+  uint8_t ack;
+  } response;
+  
+  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+		     (uint8_t *) &command, sizeof(command),
+		     NULL, 0);
+
+  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+		     (uint8_t *) vx, sizeof(vx[0]) * n,
+		     NULL, 0);
+
+  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+		     (uint8_t *) vy, sizeof(vy[0]) * n,
+		     NULL, 0);
+
+  color = __builtin_bswap16(color);
+  return oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+		     (uint8_t *) &color, sizeof(color),
+		     (uint8_t *) &response, sizeof(response)) != 0;
+}
+
+   
 enum apiEntries_t {
 api_txt_moveCursor,
 api_txt_putCh,
@@ -201,546 +233,643 @@ static  const uint16_t cmdCodeByType[93][3] = {
 {__builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF37),  __builtin_bswap16(0xFE68)},
 };
 
-void txt_moveCursor(OledConfig *oledConfig, uint16_t line, uint16_t column)
+bool txt_moveCursor(OledConfig *oledConfig, uint16_t line, uint16_t column)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t line;
   uint16_t column;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_moveCursor][oledConfig->deviceType],
-  .line = line,
-  .column = column
+  .line = __builtin_bswap16(line) ,
+  .column = __builtin_bswap16(column) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_putCh(OledConfig *oledConfig, uint16_t car)
+bool txt_putCh(OledConfig *oledConfig, uint16_t car)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t car;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_putCh][oledConfig->deviceType],
-  .car = car
+  .car = __builtin_bswap16(car) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_putStr(OledConfig *oledConfig, char* str0)
+bool txt_putStr(OledConfig *oledConfig, const char* str0)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-
- struct {
-  uint16_t cmd;
-  char* str0;
-} command = {
-  .cmd = cmdCodeByType[api_txt_putStr][oledConfig->deviceType],
-  .str0 = str0
-};	
-
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
+  
   struct {
-  uint8_t ack;
-  } response;
+    uint16_t cmd;
+  } __attribute__ ((__packed__)) command = {
+    .cmd = cmdCodeByType[api_txt_putStr][oledConfig->deviceType],
+  };	
+  
+  struct {
+    uint8_t ack;
+  } __attribute__ ((__packed__)) response;
   
   oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
 		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-
-
+		     NULL, 0) ;
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+			     (uint8_t *) str0, strlen(str0) + 1,
+			     (uint8_t *) &response, sizeof(response)) != 0;
+  
+  return stus;
 }
-
-void txt_charWidth(OledConfig *oledConfig, char car, int16_t *width)
+bool txt_charWidth(OledConfig *oledConfig, char car, uint16_t *width)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   char car;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_charWidth][oledConfig->deviceType],
-  .car = car
+  .car = car 
 };	
 
   struct {
   uint8_t ack;
-  int16_t width;
-  } response;
+  uint16_t width;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *width = response.width;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (width != NULL) 
+       *width = __builtin_bswap16(response.width);
+  return stus;
 }
 
-void txt_charHeight(OledConfig *oledConfig, char car, int16_t *height)
+bool txt_charHeight(OledConfig *oledConfig, char car, uint16_t *height)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   char car;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_charHeight][oledConfig->deviceType],
-  .car = car
+  .car = car 
 };	
 
   struct {
   uint8_t ack;
-  int16_t height;
-  } response;
+  uint16_t height;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *height = response.height;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (height != NULL) 
+       *height = __builtin_bswap16(response.height);
+  return stus;
 }
 
-void txt_Fgcolour(OledConfig *oledConfig, uint16_t color)
+bool txt_Fgcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_Fgcolour][oledConfig->deviceType],
-  .color = color
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldCol;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldCol)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_Bgcolour(OledConfig *oledConfig, uint16_t color)
+bool txt_Bgcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_Bgcolour][oledConfig->deviceType],
-  .color = color
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldCol;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldCol)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_fontID(OledConfig *oledConfig, uint16_t id)
+bool txt_fontID(OledConfig *oledConfig, uint16_t id)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t id;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_fontID][oledConfig->deviceType],
-  .id = id
+  .id = __builtin_bswap16(id) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_widthMult(OledConfig *oledConfig, uint16_t wMultiplier)
+bool txt_widthMult(OledConfig *oledConfig, uint16_t wMultiplier, uint16_t *oldMul)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t wMultiplier;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_widthMult][oledConfig->deviceType],
-  .wMultiplier = wMultiplier
+  .wMultiplier = __builtin_bswap16(wMultiplier) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldMul;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldMul)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_heightMult(OledConfig *oledConfig, uint16_t hMultiplier)
+bool txt_heightMult(OledConfig *oledConfig, uint16_t hMultiplier, uint16_t *oldMul)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t hMultiplier;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_heightMult][oledConfig->deviceType],
-  .hMultiplier = hMultiplier
+  .hMultiplier = __builtin_bswap16(hMultiplier) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldMul;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldMul)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_xgap(OledConfig *oledConfig, uint16_t xGap)
+bool txt_xgap(OledConfig *oledConfig, uint16_t xGap, uint16_t *oldGap)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t xGap;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_xgap][oledConfig->deviceType],
-  .xGap = xGap
+  .xGap = __builtin_bswap16(xGap) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldGap;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldGap)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_ygap(OledConfig *oledConfig, uint16_t yGap)
+bool txt_ygap(OledConfig *oledConfig, uint16_t yGap, uint16_t *oldGap)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t yGap;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_ygap][oledConfig->deviceType],
-  .yGap = yGap
+  .yGap = __builtin_bswap16(yGap) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldGap;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldGap)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_bold(OledConfig *oledConfig, uint16_t mode)
+bool txt_bold(OledConfig *oledConfig, uint16_t mode, uint16_t *oldBold)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_bold][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldBold;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldBold)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_inverse(OledConfig *oledConfig, uint16_t mode)
+bool txt_inverse(OledConfig *oledConfig, uint16_t mode, uint16_t *oldInv)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_inverse][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldInv;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldInv)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_italic(OledConfig *oledConfig, uint16_t mode)
+bool txt_italic(OledConfig *oledConfig, uint16_t mode, uint16_t *oldItal)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_italic][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldItal;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldItal)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_opacity(OledConfig *oledConfig, uint16_t mode)
+bool txt_opacity(OledConfig *oledConfig, uint16_t mode, uint16_t *oldOpa)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_opacity][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldOpa;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldOpa)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_underline(OledConfig *oledConfig, uint16_t mode)
+bool txt_underline(OledConfig *oledConfig, uint16_t mode, uint16_t *oldUnder)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_underline][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldUnder;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldUnder)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_attributes(OledConfig *oledConfig, uint16_t bitfield)
+bool txt_attributes(OledConfig *oledConfig, uint16_t bitfield, uint16_t *oldAttr)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t bitfield;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_attributes][oledConfig->deviceType],
-  .bitfield = bitfield
+  .bitfield = __builtin_bswap16(bitfield) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldAttr;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldAttr)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_set(OledConfig *oledConfig, uint16_t function, uint16_t value)
+bool txt_set(OledConfig *oledConfig, uint16_t function, uint16_t value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t function;
   uint16_t value;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_set][oledConfig->deviceType],
-  .function = function,
-  .value = value
+  .function = __builtin_bswap16(function) ,
+  .value = __builtin_bswap16(value) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function txt_set unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void txt_wrap(OledConfig *oledConfig, uint16_t xpos)
+bool txt_wrap(OledConfig *oledConfig, uint16_t xpos)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t xpos;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_txt_wrap][oledConfig->deviceType],
-  .xpos = xpos
+  .xpos = __builtin_bswap16(xpos) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function txt_wrap unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_cls(OledConfig *oledConfig)
+bool gfx_cls(OledConfig *oledConfig)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_cls][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_changeColour(OledConfig *oledConfig, uint16_t oldColor, uint16_t newColor)
+bool gfx_changeColour(OledConfig *oledConfig, uint16_t oldColor, uint16_t newColor)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t oldColor;
   uint16_t newColor;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_changeColour][oledConfig->deviceType],
-  .oldColor = oldColor,
-  .newColor = newColor
+  .oldColor = __builtin_bswap16(oldColor) ,
+  .newColor = __builtin_bswap16(newColor) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_circle(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t radius, uint16_t color)
+bool gfx_circle(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t radius, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -748,29 +877,30 @@ void gfx_circle(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t radius,
   uint16_t y;
   uint16_t radius;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_circle][oledConfig->deviceType],
-  .x = x,
-  .y = y,
-  .radius = radius,
-  .color = color
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) ,
+  .radius = __builtin_bswap16(radius) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_circleFilled(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t radius, uint16_t color)
+bool gfx_circleFilled(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t radius, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -778,29 +908,30 @@ void gfx_circleFilled(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t r
   uint16_t y;
   uint16_t radius;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_circleFilled][oledConfig->deviceType],
-  .x = x,
-  .y = y,
-  .radius = radius,
-  .color = color
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) ,
+  .radius = __builtin_bswap16(radius) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_line(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+bool gfx_line(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -809,30 +940,31 @@ void gfx_line(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2, uin
   uint16_t x2;
   uint16_t y2;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_line][oledConfig->deviceType],
-  .x1 = x1,
-  .y1 = y1,
-  .x2 = x2,
-  .y2 = y2,
-  .color = color
+  .x1 = __builtin_bswap16(x1) ,
+  .y1 = __builtin_bswap16(y1) ,
+  .x2 = __builtin_bswap16(x2) ,
+  .y2 = __builtin_bswap16(y2) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_rectangle(OledConfig *oledConfig, uint16_t tlx, uint16_t tly, uint16_t brx, uint16_t bry, uint16_t color)
+bool gfx_rectangle(OledConfig *oledConfig, uint16_t tlx, uint16_t tly, uint16_t brx, uint16_t bry, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -841,30 +973,31 @@ void gfx_rectangle(OledConfig *oledConfig, uint16_t tlx, uint16_t tly, uint16_t 
   uint16_t brx;
   uint16_t bry;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_rectangle][oledConfig->deviceType],
-  .tlx = tlx,
-  .tly = tly,
-  .brx = brx,
-  .bry = bry,
-  .color = color
+  .tlx = __builtin_bswap16(tlx) ,
+  .tly = __builtin_bswap16(tly) ,
+  .brx = __builtin_bswap16(brx) ,
+  .bry = __builtin_bswap16(bry) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_rectangleFilled(OledConfig *oledConfig, uint16_t tlx, uint16_t tly, uint16_t brx, uint16_t bry, uint16_t color)
+bool gfx_rectangleFilled(OledConfig *oledConfig, uint16_t tlx, uint16_t tly, uint16_t brx, uint16_t bry, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -873,120 +1006,61 @@ void gfx_rectangleFilled(OledConfig *oledConfig, uint16_t tlx, uint16_t tly, uin
   uint16_t brx;
   uint16_t bry;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_rectangleFilled][oledConfig->deviceType],
-  .tlx = tlx,
-  .tly = tly,
-  .brx = brx,
-  .bry = bry,
-  .color = color
+  .tlx = __builtin_bswap16(tlx) ,
+  .tly = __builtin_bswap16(tly) ,
+  .brx = __builtin_bswap16(brx) ,
+  .bry = __builtin_bswap16(bry) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_polyline(OledConfig *oledConfig, uint16_t n, uint16_t vx, uint16_t vy, uint16_t color)
+bool gfx_polyline(OledConfig *oledConfig, uint16_t n, uint16_t vx[], uint16_t vy[], uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-
- struct {
-  uint16_t cmd;
-  uint16_t n;
-  uint16_t vx;
-  uint16_t vy;
-  uint16_t color;
-} command = {
-  .cmd = cmdCodeByType[api_gfx_polyline][oledConfig->deviceType],
-  .n = n,
-  .vx = vx,
-  .vy = vy,
-  .color = color
-};	
-
-  struct {
-  uint8_t ack;
-  } response;
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-
+  return gfx_polyxxx(oledConfig,
+	      cmdCodeByType[api_gfx_polyline][oledConfig->deviceType],
+	      n, vx, vy, color);
 
 }
-
-void gfx_polygon(OledConfig *oledConfig, uint16_t n, uint16_t vx, uint16_t vy, uint16_t color)
+bool gfx_polygon(OledConfig *oledConfig, uint16_t n, uint16_t vx[], uint16_t vy[], uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-
- struct {
-  uint16_t cmd;
-  uint16_t n;
-  uint16_t vx;
-  uint16_t vy;
-  uint16_t color;
-} command = {
-  .cmd = cmdCodeByType[api_gfx_polygon][oledConfig->deviceType],
-  .n = n,
-  .vx = vx,
-  .vy = vy,
-  .color = color
-};	
-
-  struct {
-  uint8_t ack;
-  } response;
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-
-
-}
-
-void gfx_polygonFilled(OledConfig *oledConfig, uint16_t n, uint16_t vx, uint16_t vy, uint16_t color)
-{
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-
- struct {
-  uint16_t cmd;
-  uint16_t n;
-  uint16_t vx;
-  uint16_t vy;
-  uint16_t color;
-} command = {
-  .cmd = cmdCodeByType[api_gfx_polygonFilled][oledConfig->deviceType],
-  .n = n,
-  .vx = vx,
-  .vy = vy,
-  .color = color
-};	
-
-  struct {
-  uint8_t ack;
-  } response;
-  osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_polygonFilled unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-
+  return gfx_polyxxx(oledConfig,
+	      cmdCodeByType[api_gfx_polyline][oledConfig->deviceType],
+	      n, vx, vy, color);
 
 }
-
-void gfx_triangle(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color)
+bool gfx_polygonFilled(OledConfig *oledConfig, uint16_t n, uint16_t vx[], uint16_t vy[], uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  osalDbgAssert(cmdCodeByType[api_gfx_polyline][oledConfig->deviceType] != CMD_NOT_IMPL, "function gfx_polygonFilled unimplemented for this screen");
+  return gfx_polyxxx(oledConfig,
+	      cmdCodeByType[api_gfx_polyline][oledConfig->deviceType],
+	      n, vx, vy, color);
+
+}
+bool gfx_triangle(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color)
+{
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -997,32 +1071,33 @@ void gfx_triangle(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2,
   uint16_t x3;
   uint16_t y3;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_triangle][oledConfig->deviceType],
-  .x1 = x1,
-  .y1 = y1,
-  .x2 = x2,
-  .y2 = y2,
-  .x3 = x3,
-  .y3 = y3,
-  .color = color
+  .x1 = __builtin_bswap16(x1) ,
+  .y1 = __builtin_bswap16(y1) ,
+  .x2 = __builtin_bswap16(x2) ,
+  .y2 = __builtin_bswap16(y2) ,
+  .x3 = __builtin_bswap16(x3) ,
+  .y3 = __builtin_bswap16(y3) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_triangleFilled(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color)
+bool gfx_triangleFilled(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -1033,192 +1108,202 @@ void gfx_triangleFilled(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16
   uint16_t x3;
   uint16_t y3;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_triangleFilled][oledConfig->deviceType],
-  .x1 = x1,
-  .y1 = y1,
-  .x2 = x2,
-  .y2 = y2,
-  .x3 = x3,
-  .y3 = y3,
-  .color = color
+  .x1 = __builtin_bswap16(x1) ,
+  .y1 = __builtin_bswap16(y1) ,
+  .x2 = __builtin_bswap16(x2) ,
+  .y2 = __builtin_bswap16(y2) ,
+  .x3 = __builtin_bswap16(x3) ,
+  .y3 = __builtin_bswap16(y3) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_triangleFilled unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_orbit(OledConfig *oledConfig, uint16_t angle, uint16_t distance, int16_t *Xdist, int16_t *Ydist)
+bool gfx_orbit(OledConfig *oledConfig, uint16_t angle, uint16_t distance, uint16_t *Xdist, uint16_t *Ydist)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t angle;
   uint16_t distance;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_orbit][oledConfig->deviceType],
-  .angle = angle,
-  .distance = distance
+  .angle = __builtin_bswap16(angle) ,
+  .distance = __builtin_bswap16(distance) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t Xdist;
-  int16_t Ydist;
-  } response;
+  uint16_t Xdist;
+  uint16_t Ydist;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *Xdist = response.Xdist;;
-    *Ydist = response.Ydist;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (Xdist != NULL) 
+       *Xdist = __builtin_bswap16(response.Xdist);;
+    if (Ydist != NULL) 
+       *Ydist = __builtin_bswap16(response.Ydist);
+  return stus;
 }
 
-void gfx_putPixel(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t color)
+bool gfx_putPixel(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t x;
   uint16_t y;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_putPixel][oledConfig->deviceType],
-  .x = x,
-  .y = y,
-  .color = color
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_getPixel(OledConfig *oledConfig, uint16_t x, uint16_t y, int16_t *color)
+bool gfx_getPixel(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t *color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t x;
   uint16_t y;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_getPixel][oledConfig->deviceType],
-  .x = x,
-  .y = y
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t color;
-  } response;
+  uint16_t color;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *color = response.color;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (color != NULL) 
+       *color = __builtin_bswap16(response.color);
+  return stus;
 }
 
-void gfx_moveTo(OledConfig *oledConfig, uint16_t x, uint16_t y)
+bool gfx_moveTo(OledConfig *oledConfig, uint16_t x, uint16_t y)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t x;
   uint16_t y;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_moveTo][oledConfig->deviceType],
-  .x = x,
-  .y = y
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_lineTo(OledConfig *oledConfig, uint16_t x, uint16_t y)
+bool gfx_lineTo(OledConfig *oledConfig, uint16_t x, uint16_t y)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t x;
   uint16_t y;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_lineTo][oledConfig->deviceType],
-  .x = x,
-  .y = y
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_clipping(OledConfig *oledConfig, uint16_t mode)
+bool gfx_clipping(OledConfig *oledConfig, uint16_t mode)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_clipping][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_clipWindow(OledConfig *oledConfig, uint16_t tlx, uint16_t tly, uint16_t brx, uint16_t bry)
+bool gfx_clipWindow(OledConfig *oledConfig, uint16_t tlx, uint16_t tly, uint16_t brx, uint16_t bry)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -1226,53 +1311,55 @@ void gfx_clipWindow(OledConfig *oledConfig, uint16_t tlx, uint16_t tly, uint16_t
   uint16_t tly;
   uint16_t brx;
   uint16_t bry;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_clipWindow][oledConfig->deviceType],
-  .tlx = tlx,
-  .tly = tly,
-  .brx = brx,
-  .bry = bry
+  .tlx = __builtin_bswap16(tlx) ,
+  .tly = __builtin_bswap16(tly) ,
+  .brx = __builtin_bswap16(brx) ,
+  .bry = __builtin_bswap16(bry) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_setClipRegion(OledConfig *oledConfig)
+bool gfx_setClipRegion(OledConfig *oledConfig)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_setClipRegion][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_ellipse(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t xrad, uint16_t yrad, uint16_t color)
+bool gfx_ellipse(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t xrad, uint16_t yrad, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -1281,30 +1368,31 @@ void gfx_ellipse(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t xrad, 
   uint16_t xrad;
   uint16_t yrad;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_ellipse][oledConfig->deviceType],
-  .x = x,
-  .y = y,
-  .xrad = xrad,
-  .yrad = yrad,
-  .color = color
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) ,
+  .xrad = __builtin_bswap16(xrad) ,
+  .yrad = __builtin_bswap16(yrad) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_ellipse unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_ellipseFilled(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t xrad, uint16_t yrad, uint16_t color)
+bool gfx_ellipseFilled(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t xrad, uint16_t yrad, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -1313,30 +1401,33 @@ void gfx_ellipseFilled(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t 
   uint16_t xrad;
   uint16_t yrad;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_ellipseFilled][oledConfig->deviceType],
-  .x = x,
-  .y = y,
-  .xrad = xrad,
-  .yrad = yrad,
-  .color = color
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) ,
+  .xrad = __builtin_bswap16(xrad) ,
+  .yrad = __builtin_bswap16(yrad) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_ellipseFilled unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_button(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y, uint16_t buttoncolor, uint16_t txtcolor, uint16_t font, uint16_t twtWidth, uint16_t twtHeight, char* str0)
+bool gfx_button(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y,
+		uint16_t buttoncolor, uint16_t txtcolor, uint16_t font,
+		uint16_t twtWidth, uint16_t twtHeight, char* cstr)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -1348,35 +1439,36 @@ void gfx_button(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y, 
   uint16_t font;
   uint16_t twtWidth;
   uint16_t twtHeight;
-  char* str0;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_button][oledConfig->deviceType],
-  .state = state,
-  .x = x,
-  .y = y,
-  .buttoncolor = buttoncolor,
-  .txtcolor = txtcolor,
-  .font = font,
-  .twtWidth = twtWidth,
-  .twtHeight = twtHeight,
-  .str0 = str0
+  .state = __builtin_bswap16(state) ,
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) ,
+  .buttoncolor = __builtin_bswap16(buttoncolor) ,
+  .txtcolor = __builtin_bswap16(txtcolor) ,
+  .font = __builtin_bswap16(font) ,
+  .twtWidth = __builtin_bswap16(twtWidth) ,
+  .twtHeight = __builtin_bswap16(twtHeight)
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_button unimplemented for this screen");
   oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
 		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-
-
+		     NULL, 0) ;
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+			     (uint8_t *) cstr, strlen(cstr) + 1,
+			     (uint8_t *) &response, sizeof(response)) != 0;
+ 
+  return stus;
 }
-
-void gfx_panel(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color)
+bool gfx_panel(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -1386,31 +1478,32 @@ void gfx_panel(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y, u
   uint16_t width;
   uint16_t height;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_panel][oledConfig->deviceType],
-  .state = state,
-  .x = x,
-  .y = y,
-  .width = width,
-  .height = height,
-  .color = color
+  .state = __builtin_bswap16(state) ,
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) ,
+  .width = __builtin_bswap16(width) ,
+  .height = __builtin_bswap16(height) ,
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_panel unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_slider(OledConfig *oledConfig, uint16_t mode, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color, uint16_t scale, uint16_t value)
+bool gfx_slider(OledConfig *oledConfig, uint16_t mode, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color, uint16_t scale, uint16_t value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -1422,33 +1515,34 @@ void gfx_slider(OledConfig *oledConfig, uint16_t mode, uint16_t x1, uint16_t y1,
   uint16_t color;
   uint16_t scale;
   uint16_t value;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_slider][oledConfig->deviceType],
-  .mode = mode,
-  .x1 = x1,
-  .y1 = y1,
-  .x2 = x2,
-  .y2 = y2,
-  .color = color,
-  .scale = scale,
-  .value = value
+  .mode = __builtin_bswap16(mode) ,
+  .x1 = __builtin_bswap16(x1) ,
+  .y1 = __builtin_bswap16(y1) ,
+  .x2 = __builtin_bswap16(x2) ,
+  .y2 = __builtin_bswap16(y2) ,
+  .color = __builtin_bswap16(color) ,
+  .scale = __builtin_bswap16(scale) ,
+  .value = __builtin_bswap16(value) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_slider unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_screenCopyPaste(OledConfig *oledConfig, uint16_t xs, uint16_t ys, uint16_t xd, uint16_t yd, uint16_t width, uint16_t height)
+bool gfx_screenCopyPaste(OledConfig *oledConfig, uint16_t xs, uint16_t ys, uint16_t xd, uint16_t yd, uint16_t width, uint16_t height)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -1458,408 +1552,436 @@ void gfx_screenCopyPaste(OledConfig *oledConfig, uint16_t xs, uint16_t ys, uint1
   uint16_t yd;
   uint16_t width;
   uint16_t height;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_screenCopyPaste][oledConfig->deviceType],
-  .xs = xs,
-  .ys = ys,
-  .xd = xd,
-  .yd = yd,
-  .width = width,
-  .height = height
+  .xs = __builtin_bswap16(xs) ,
+  .ys = __builtin_bswap16(ys) ,
+  .xd = __builtin_bswap16(xd) ,
+  .yd = __builtin_bswap16(yd) ,
+  .width = __builtin_bswap16(width) ,
+  .height = __builtin_bswap16(height) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_screenCopyPaste unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_bevelShadow(OledConfig *oledConfig, uint16_t value, int16_t *status)
+bool gfx_bevelShadow(OledConfig *oledConfig, uint16_t value, uint16_t *status)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t value;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_bevelShadow][oledConfig->deviceType],
-  .value = value
+  .value = __builtin_bswap16(value) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t status;
-  } response;
+  uint16_t status;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_bevelShadow unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *status = response.status;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (status != NULL) 
+       *status = __builtin_bswap16(response.status);
+  return stus;
 }
 
-void gfx_bevelWidth(OledConfig *oledConfig, uint16_t value, int16_t *status)
+bool gfx_bevelWidth(OledConfig *oledConfig, uint16_t value, uint16_t *status)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t value;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_bevelWidth][oledConfig->deviceType],
-  .value = value
+  .value = __builtin_bswap16(value) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t status;
-  } response;
+  uint16_t status;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_bevelWidth unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *status = response.status;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (status != NULL) 
+       *status = __builtin_bswap16(response.status);
+  return stus;
 }
 
-void gfx_bGcolour(OledConfig *oledConfig, uint16_t color)
+bool gfx_bGcolour(OledConfig *oledConfig, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_bGcolour][oledConfig->deviceType],
-  .color = color
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_outlineColour(OledConfig *oledConfig, uint16_t color)
+bool gfx_outlineColour(OledConfig *oledConfig, uint16_t color)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_outlineColour][oledConfig->deviceType],
-  .color = color
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_contrast(OledConfig *oledConfig, uint16_t contrast)
+bool gfx_contrast(OledConfig *oledConfig, uint16_t contrast)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t contrast;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_contrast][oledConfig->deviceType],
-  .contrast = contrast
+  .contrast = __builtin_bswap16(contrast) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_frameDelay(OledConfig *oledConfig, uint16_t delayMsec)
+bool gfx_frameDelay(OledConfig *oledConfig, uint16_t delayMsec)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t delayMsec;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_frameDelay][oledConfig->deviceType],
-  .delayMsec = delayMsec
+  .delayMsec = __builtin_bswap16(delayMsec) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_linePattern(OledConfig *oledConfig, uint16_t pattern)
+bool gfx_linePattern(OledConfig *oledConfig, uint16_t pattern)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t pattern;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_linePattern][oledConfig->deviceType],
-  .pattern = pattern
+  .pattern = __builtin_bswap16(pattern) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_screenMode(OledConfig *oledConfig, uint16_t mode)
+bool gfx_screenMode(OledConfig *oledConfig, uint16_t mode, uint16_t *oldMode)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_screenMode][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  uint16_t oldMode;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+   if (oledConfig->deviceType == GOLDELOX)
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response) - sizeof(*oldMode)) != 0;
+   else
+    stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_transparency(OledConfig *oledConfig, uint16_t mode, int16_t *previous)
+bool gfx_transparency(OledConfig *oledConfig, uint16_t mode, uint16_t *previous)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_transparency][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t previous;
-  } response;
+  uint16_t previous;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_transparency unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *previous = response.previous;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (previous != NULL) 
+       *previous = __builtin_bswap16(response.previous);
+  return stus;
 }
 
-void gfx_transparentColour(OledConfig *oledConfig, uint16_t color, int16_t *previous)
+bool gfx_transparentColour(OledConfig *oledConfig, uint16_t color, uint16_t *previous)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t color;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_transparentColour][oledConfig->deviceType],
-  .color = color
+  .color = __builtin_bswap16(color) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t previous;
-  } response;
+  uint16_t previous;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_transparentColour unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *previous = response.previous;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (previous != NULL) 
+       *previous = __builtin_bswap16(response.previous);
+  return stus;
 }
 
-void gfx_set(OledConfig *oledConfig, uint16_t function, uint16_t mode)
+bool gfx_set(OledConfig *oledConfig, uint16_t function, uint16_t mode)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t function;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_set][oledConfig->deviceType],
-  .function = function,
-  .mode = mode
+  .function = __builtin_bswap16(function) ,
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void gfx_get(OledConfig *oledConfig, uint16_t mode, int16_t *value)
+bool gfx_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_gfx_get][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function gfx_get unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 
-void media_init(OledConfig *oledConfig, int16_t *value)
+bool media_init(OledConfig *oledConfig, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_init][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 
-void media_setAdd(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr)
+bool media_setAdd(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t hiAddr;
   uint16_t loAddr;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_setAdd][oledConfig->deviceType],
-  .hiAddr = hiAddr,
-  .loAddr = loAddr
+  .hiAddr = __builtin_bswap16(hiAddr) ,
+  .loAddr = __builtin_bswap16(loAddr) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void media_setSector(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr)
+bool media_setSector(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t hiAddr;
   uint16_t loAddr;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_setSector][oledConfig->deviceType],
-  .hiAddr = hiAddr,
-  .loAddr = loAddr
+  .hiAddr = __builtin_bswap16(hiAddr) ,
+  .loAddr = __builtin_bswap16(loAddr) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void media_readSector(OledConfig *oledConfig, uint8_t *sector)
+bool media_readSector(OledConfig *oledConfig, uint8_t *sector)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_readSector][oledConfig->deviceType]
   
 };	
@@ -1867,470 +1989,499 @@ void media_readSector(OledConfig *oledConfig, uint8_t *sector)
   struct {
   uint8_t ack;
   uint8_t sector;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function media_readSector unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *sector = response.sector;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (sector != NULL) 
+       *sector = __builtin_bswap16(response.sector);
+  return stus;
 }
 
-void media_writeSector(OledConfig *oledConfig, uint8_t sector)
+bool media_writeSector(OledConfig *oledConfig, uint8_t sector)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint8_t sector;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_writeSector][oledConfig->deviceType],
-  .sector = sector
+  .sector = sector 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function media_writeSector unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void media_readByte(OledConfig *oledConfig, int16_t *value)
+bool media_readByte(OledConfig *oledConfig, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_readByte][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 
-void media_readWord(OledConfig *oledConfig, int16_t *value)
+bool media_readWord(OledConfig *oledConfig, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_readWord][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 
-void media_writeByte(OledConfig *oledConfig, uint16_t value, int16_t *status)
+bool media_writeByte(OledConfig *oledConfig, uint16_t value, uint16_t *status)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t value;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_writeByte][oledConfig->deviceType],
-  .value = value
+  .value = __builtin_bswap16(value) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t status;
-  } response;
+  uint16_t status;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *status = response.status;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (status != NULL) 
+       *status = __builtin_bswap16(response.status);
+  return stus;
 }
 
-void media_writeWord(OledConfig *oledConfig, uint16_t value, int16_t *status)
+bool media_writeWord(OledConfig *oledConfig, uint16_t value, uint16_t *status)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t value;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_writeWord][oledConfig->deviceType],
-  .value = value
+  .value = __builtin_bswap16(value) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t status;
-  } response;
+  uint16_t status;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *status = response.status;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (status != NULL) 
+       *status = __builtin_bswap16(response.status);
+  return stus;
 }
 
-void media_flush(OledConfig *oledConfig, int16_t *status)
+bool media_flush(OledConfig *oledConfig, uint16_t *status)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_flush][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  int16_t status;
-  } response;
+  uint16_t status;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *status = response.status;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (status != NULL) 
+       *status = __builtin_bswap16(response.status);
+  return stus;
 }
 
-void media_image(OledConfig *oledConfig, uint16_t x, uint16_t y)
+bool media_image(OledConfig *oledConfig, uint16_t x, uint16_t y)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t x;
   uint16_t y;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_image][oledConfig->deviceType],
-  .x = x,
-  .y = y
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void media_video(OledConfig *oledConfig, uint16_t x, uint16_t y)
+bool media_video(OledConfig *oledConfig, uint16_t x, uint16_t y)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t x;
   uint16_t y;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_video][oledConfig->deviceType],
-  .x = x,
-  .y = y
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void media_videoFrame(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t frameNumber)
+bool media_videoFrame(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t frameNumber)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t x;
   uint16_t y;
   uint16_t frameNumber;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_media_videoFrame][oledConfig->deviceType],
-  .x = x,
-  .y = y,
-  .frameNumber = frameNumber
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) ,
+  .frameNumber = __builtin_bswap16(frameNumber) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void misc_peekB(OledConfig *oledConfig, uint16_t eveRegIndex, int16_t *value)
+bool misc_peekB(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t eveRegIndex;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_peekB][oledConfig->deviceType],
-  .eveRegIndex = eveRegIndex
+  .eveRegIndex = __builtin_bswap16(eveRegIndex) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_peekB unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 
-void misc_pokeB(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t value)
+bool misc_pokeB(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t eveRegIndex;
   uint16_t value;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_pokeB][oledConfig->deviceType],
-  .eveRegIndex = eveRegIndex,
-  .value = value
+  .eveRegIndex = __builtin_bswap16(eveRegIndex) ,
+  .value = __builtin_bswap16(value) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_pokeB unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void misc_peekW(OledConfig *oledConfig, uint16_t eveRegIndex, int16_t *value)
+bool misc_peekW(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t eveRegIndex;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_peekW][oledConfig->deviceType],
-  .eveRegIndex = eveRegIndex
+  .eveRegIndex = __builtin_bswap16(eveRegIndex) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_peekW unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 
-void misc_pokeW(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t value)
+bool misc_pokeW(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t eveRegIndex;
   uint16_t value;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_pokeW][oledConfig->deviceType],
-  .eveRegIndex = eveRegIndex,
-  .value = value
+  .eveRegIndex = __builtin_bswap16(eveRegIndex) ,
+  .value = __builtin_bswap16(value) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_pokeW unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void misc_peekM(OledConfig *oledConfig, uint16_t address, int16_t *value)
+bool misc_peekM(OledConfig *oledConfig, uint16_t address, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t address;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_peekM][oledConfig->deviceType],
-  .address = address
+  .address = __builtin_bswap16(address) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_peekM unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 
-void misc_pokeM(OledConfig *oledConfig, uint16_t address, uint16_t value)
+bool misc_pokeM(OledConfig *oledConfig, uint16_t address, uint16_t value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t address;
   uint16_t value;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_pokeM][oledConfig->deviceType],
-  .address = address,
-  .value = value
+  .address = __builtin_bswap16(address) ,
+  .value = __builtin_bswap16(value) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_pokeM unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void misc_joystick(OledConfig *oledConfig, int16_t *value)
+bool misc_joystick(OledConfig *oledConfig, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_joystick][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_joystick unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 
-void misc_beep(OledConfig *oledConfig, uint16_t note, uint16_t duration_ms)
+bool misc_beep(OledConfig *oledConfig, uint16_t note, uint16_t duration_ms)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t note;
   uint16_t duration_ms;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_beep][oledConfig->deviceType],
-  .note = note,
-  .duration_ms = duration_ms
+  .note = __builtin_bswap16(note) ,
+  .duration_ms = __builtin_bswap16(duration_ms) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_beep unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void misc_setbaudWait(OledConfig *oledConfig, uint16_t index)
+bool misc_setbaudWait(OledConfig *oledConfig, uint16_t index)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t index;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_setbaudWait][oledConfig->deviceType],
-  .index = index
+  .index = __builtin_bswap16(index) 
 };	
-oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
 		     (uint8_t *) &command, sizeof(command),
-		     NULL, 0, false); 
-
+		     NULL, 0) == 0; 
+  return stus;
 }
 
-void misc_blitComtoDisplay(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t data)
+bool misc_blitComtoDisplay(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t data)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -2339,254 +2490,275 @@ void misc_blitComtoDisplay(OledConfig *oledConfig, uint16_t x, uint16_t y, uint1
   uint16_t width;
   uint16_t height;
   uint16_t data;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_blitComtoDisplay][oledConfig->deviceType],
-  .x = x,
-  .y = y,
-  .width = width,
-  .height = height,
-  .data = data
+  .x = __builtin_bswap16(x) ,
+  .y = __builtin_bswap16(y) ,
+  .width = __builtin_bswap16(width) ,
+  .height = __builtin_bswap16(height) ,
+  .data = __builtin_bswap16(data) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_blitComtoDisplay unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void sys_sleep(OledConfig *oledConfig, uint16_t duration_s, int16_t *duration)
+bool sys_sleep(OledConfig *oledConfig, uint16_t duration_s, uint16_t *duration)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t duration_s;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_sys_sleep][oledConfig->deviceType],
-  .duration_s = duration_s
+  .duration_s = __builtin_bswap16(duration_s) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t duration;
-  } response;
+  uint16_t duration;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function sys_sleep unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *duration = response.duration;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (duration != NULL) 
+       *duration = __builtin_bswap16(response.duration);
+  return stus;
 }
 
-void sys_memFree(OledConfig *oledConfig, uint16_t handle, int16_t *value)
+bool sys_memFree(OledConfig *oledConfig, uint16_t handle, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t handle;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_sys_memFree][oledConfig->deviceType],
-  .handle = handle
+  .handle = __builtin_bswap16(handle) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function sys_memFree unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 
-void sys_memHeap(OledConfig *oledConfig, int16_t *avail)
+bool sys_memHeap(OledConfig *oledConfig, uint16_t *avail)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_sys_memHeap][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  int16_t avail;
-  } response;
+  uint16_t avail;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function sys_memHeap unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *avail = response.avail;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (avail != NULL) 
+       *avail = __builtin_bswap16(response.avail);
+  return stus;
 }
 
-void sys_getModel(OledConfig *oledConfig, int16_t *count, int16_t *str)
+    bool sys_getModel(OledConfig *oledConfig, uint16_t n, char *str)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
 
  struct {
   uint16_t cmd;
   
-} command = {
-  .cmd = cmdCodeByType[api_sys_getModel][oledConfig->deviceType]
-  
-};	
-
-  struct {
-  uint8_t ack;
-  int16_t count;
-  int16_t str;
-  } response;
-  
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *count = response.count;;
-    *str = response.str;
-
+ } __attribute__ ((__packed__)) command = {
+   .cmd = cmdCodeByType[api_sys_getModel][oledConfig->deviceType]
+ };	
+ 
+ size_t ret = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+				      (uint8_t *) &command, sizeof(command),
+				      (uint8_t *) str, 3);
+ if (ret != 3U) {
+   DebugTrace("sys_getModel error ret=%u instead of 3", ret);
+   str[0] = 0;
+   return false;
+ }
+ const size_t dynSize =  MIN(getResponseAsUint16_2((uint8_t *) str), n-1);
+ ret = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+			       NULL, 0,
+			       (uint8_t *) str, dynSize);
+ if (ret != dynSize) {
+   DebugTrace("sys_getModel error ret=%u instead of %u", ret, dynSize);
+   str[0] = 0;
+   return false;
+ } else {
+   str[dynSize] = 0;
+   return true;  
+ }
 }
 
-void sys_getVersion(OledConfig *oledConfig, int16_t *version)
+bool sys_getVersion(OledConfig *oledConfig, uint16_t *version)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_sys_getVersion][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  int16_t version;
-  } response;
+  uint16_t version;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *version = response.version;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (version != NULL) 
+       *version = __builtin_bswap16(response.version);
+  return stus;
 }
 
-void sys_getPmmC(OledConfig *oledConfig, int16_t *version)
+bool sys_getPmmC(OledConfig *oledConfig, uint16_t *version)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_sys_getPmmC][oledConfig->deviceType]
   
 };	
 
   struct {
   uint8_t ack;
-  int16_t version;
-  } response;
+  uint16_t version;
+  } __attribute__ ((__packed__)) response;
   
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *version = response.version;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (version != NULL) 
+       *version = __builtin_bswap16(response.version);
+  return stus;
 }
 
-void misc_screenSaverTimeout(OledConfig *oledConfig, uint16_t timout_ms)
+bool misc_screenSaverTimeout(OledConfig *oledConfig, uint16_t timout_ms)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t timout_ms;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_screenSaverTimeout][oledConfig->deviceType],
-  .timout_ms = timout_ms
+  .timout_ms = __builtin_bswap16(timout_ms) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_screenSaverTimeout unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void misc_screenSaverSpeed(OledConfig *oledConfig, uint16_t speed_index)
+bool misc_screenSaverSpeed(OledConfig *oledConfig, uint16_t speed_index)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t speed_index;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_screenSaverSpeed][oledConfig->deviceType],
-  .speed_index = speed_index
+  .speed_index = __builtin_bswap16(speed_index) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_screenSaverSpeed unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void misc_screenSaverMode(OledConfig *oledConfig, uint16_t mode)
+bool misc_screenSaverMode(OledConfig *oledConfig, uint16_t mode)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_misc_screenSaverMode][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function misc_screenSaverMode unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void touch_detectRegion(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+bool touch_detectRegion(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
@@ -2594,71 +2766,74 @@ void touch_detectRegion(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16
   uint16_t y1;
   uint16_t x2;
   uint16_t y2;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_touch_detectRegion][oledConfig->deviceType],
-  .x1 = x1,
-  .y1 = y1,
-  .x2 = x2,
-  .y2 = y2
+  .x1 = __builtin_bswap16(x1) ,
+  .y1 = __builtin_bswap16(y1) ,
+  .x2 = __builtin_bswap16(x2) ,
+  .y2 = __builtin_bswap16(y2) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function touch_detectRegion unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void touch_set(OledConfig *oledConfig, uint16_t mode)
+bool touch_set(OledConfig *oledConfig, uint16_t mode)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_touch_set][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  } response;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function touch_set unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
 
-
+  return stus;
 }
 
-void touch_get(OledConfig *oledConfig, uint16_t mode, int16_t *value)
+bool touch_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
+  RET_UNLESS_INIT_BOOL(oledConfig);
+  RET_UNLESS_4DSYS_BOOL(oledConfig);
+  bool stus = false;
 
  struct {
   uint16_t cmd;
   uint16_t mode;
-} command = {
+} __attribute__ ((__packed__)) command = {
   .cmd = cmdCodeByType[api_touch_get][oledConfig->deviceType],
-  .mode = mode
+  .mode = __builtin_bswap16(mode) 
 };	
 
   struct {
   uint8_t ack;
-  int16_t value;
-  } response;
+  uint16_t value;
+  } __attribute__ ((__packed__)) response;
   osalDbgAssert(command.cmd != CMD_NOT_IMPL, "function touch_get unimplemented for this screen");
-  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-		     (uint8_t *) &command, sizeof(command),
-		     (uint8_t *) &response, sizeof(response), false);
-  *value = response.value;
-
+  stus =  oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+  		      (uint8_t *) &command, sizeof(command),
+		      (uint8_t *) &response, sizeof(response)) != 0;
+  if (value != NULL) 
+       *value = __builtin_bswap16(response.value);
+  return stus;
 }
 

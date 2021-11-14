@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 typedef struct OledConfig  OledConfig;
-  enum OledConfig_Device {PICASO=0, GOLDELOX, DIABLO16, TERM_VT100}; 
+  enum OledConfig_Device {GOLDELOX, PICASO, DIABLO16, AUTO_4DS, TERM_VT100}; 
   enum OledTextAttribute {OLED_RESET_ATTRIB=0,
     OLED_BOLD=16, OLED_ITALIC=32, OLED_INVERSE=64, OLED_UNDERLINE=128};
   enum OledScreenOrientation {OLED_LANDSCAPE=0, OLED_LANDSCAPE_REVERSE,
@@ -38,15 +38,15 @@ typedef struct {
 
 
 // enforce the use of oledStart over oledInit
-void __attribute__((deprecated)) oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled,
+bool __attribute__((deprecated)) oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled,
 					   const uint32_t baud,     ioportid_t rstGpio, uint32_t rstPin,
 					   enum OledConfig_Device dev);
-static inline void oledStart (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
+static inline bool oledStart (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
 	        ioline_t reset, enum OledConfig_Device dev)
 {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  oledInit (oledConfig, oled, baud, PAL_PORT(reset), PAL_PAD(reset), dev);
+  return oledInit (oledConfig, oled, baud, PAL_PORT(reset), PAL_PAD(reset), dev);
 #pragma GCC diagnostic pop  
 }
   
@@ -58,10 +58,10 @@ void oledReleaseLock (OledConfig *oledConfig);
 // replace escape color sequence by color command for respective backend
 // ESC c 0 à 9 : couleur index of background and foreground
 // replace escape n by carriage return, line feed
-void oledPrintFmt (OledConfig *oledConfig, const char *txt, ...)
+bool oledPrintFmt (OledConfig *oledConfig, const char *txt, ...)
   __attribute__ ((format (printf, 2, 3)));
 ;
-void oledPrintBuffer (OledConfig *oledConfig, const char *buffer);
+bool oledPrintBuffer (OledConfig *oledConfig, const char *buffer);
 void oledGetVersion (OledConfig *oledConfig, char *buffer, const size_t buflen);
 void oledChangeBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
 void oledSetTextFgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b);
@@ -112,7 +112,7 @@ void oledPlayWav (OledConfig *oledConfig, const char* fileName);
 uint32_t oledOpenFile  (OledConfig *oledConfig, const char* fileName, uint16_t *handle);
 void oledCloseFile (OledConfig *oledConfig, const uint16_t handle);
 void oledDisplayGci  (OledConfig *oledConfig, const uint16_t handle, uint32_t offset);
-void oledSetBaud (OledConfig *oledConfig, uint32_t baud);
+bool oledSetBaud (OledConfig *oledConfig, uint32_t baud);
 OledStatus oledGetStatus(void);
 
 typedef union  {
