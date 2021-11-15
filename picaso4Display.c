@@ -52,12 +52,12 @@ static bool findDeviceType (OledConfig *oledConfig);
 #define OLED_KOF(k, ...) (oledSendCommand (oledConfig, k,__FUNCTION__, __LINE__,  __VA_ARGS__))
 
 
-#define RET_UNLESS_INIT(oledCfg)    {if (oledIsInitialised(oledCfg) == FALSE) return ;}
+#define RET_UNLESS_INIT(oledCfg)    {if (oledIsInitialised(oledCfg) == false) return ;}
 #define RET_UNLESS_4DSYS(oledCfg)  {if (oledCfg->deviceType == TERM_VT100) return ;}
 #define RET_UNLESS_PICASO(oledCfg)  {if (oledCfg->deviceType != PICASO) return ;}
 #define RET_UNLESS_GOLDELOX(oledCfg)  {if (oledCfg->deviceType != GOLDELOX) return ;}
 
-#define RET_UNLESS_INIT_BOOL(oledCfg)    {if (oledIsInitialised(oledCfg) == FALSE) return false;}
+#define RET_UNLESS_INIT_BOOL(oledCfg)    {if (oledIsInitialised(oledCfg) == false) return false;}
 #define RET_UNLESS_4DSYS_BOOL(oledCfg)  {if (oledCfg->deviceType == TERM_VT100) return false;}
 #define RET_UNLESS_PICASO_BOOL(oledCfg)  {if (oledCfg->deviceType != PICASO) return false;}
 #define RET_UNLESS_GOLDELOX_BOOL(oledCfg)  {if (oledCfg->deviceType != GOLDELOX) return false;}
@@ -356,8 +356,8 @@ bool oledPrintFmt (OledConfig *oledConfig, const char *fmt, ...)
 {
   char buffer[120];
   char *token, *curBuf;
-  bool lastLoop = FALSE;
-  bool ret = FALSE;
+  bool lastLoop = false;
+  bool ret = false;
 
   va_list ap;
   RET_UNLESS_INIT_BOOL(oledConfig);
@@ -378,11 +378,11 @@ bool oledPrintFmt (OledConfig *oledConfig, const char *fmt, ...)
   // ESC c 0 à 9 : couleur index of background and foreground
   // replace escape n by carriage return, line feed
   // replace escape t by horizontal tabulation
-  for (curBuf=buffer;(curBuf<endPtr) && (lastLoop == FALSE);) {
+  for (curBuf=buffer;(curBuf<endPtr) && (lastLoop == false);) {
     token = index(curBuf, 033);
     if (token == NULL) {
       // on peut imprimer les derniers caractères et terminer
-      lastLoop = TRUE;
+      lastLoop = true;
     } else {
       // token pointe sur le char d'echappement ESC
       // on met un caractère de fin de chaine à la place
@@ -394,7 +394,7 @@ bool oledPrintFmt (OledConfig *oledConfig, const char *fmt, ...)
       oledConfig->curXpos =  (uint8_t) (oledConfig->curXpos + strnlen(curBuf, sizeof(buffer)));
     }
     
-    if (lastLoop == FALSE) {
+    if (lastLoop == false) {
       // next two char a color coding scheme
       if (tolower((uint32_t) (*token)) == 'c') { 
 	const int32_t colorIndex = *++token - '0';
@@ -422,7 +422,7 @@ bool oledPrintFmt (OledConfig *oledConfig, const char *fmt, ...)
 bool oledPrintBuffer (OledConfig *oledConfig, const char *buffer)
 {
   RET_UNLESS_INIT_BOOL(oledConfig);
-  bool ret = FALSE;
+  bool ret = false;
   switch(oledConfig->deviceType) {
   case GOLDELOX :
   case PICASO :
@@ -602,7 +602,7 @@ void oledGotoX (OledConfig *oledConfig, uint8_t x)
 
 uint8_t oledGetX  (const OledConfig *oledConfig)
 {  
-  if (oledIsInitialised(oledConfig) == FALSE)
+  if (oledIsInitialised(oledConfig) == false)
     return 0;
   
   return oledConfig->curXpos;
@@ -610,7 +610,7 @@ uint8_t oledGetX  (const OledConfig *oledConfig)
 
 uint8_t oledGetY  (const OledConfig *oledConfig)
 {  
-  if (oledIsInitialised(oledConfig) == FALSE)
+  if (oledIsInitialised(oledConfig) == false)
     return 0;
   
   return oledConfig->curYpos;
@@ -631,7 +631,7 @@ void oledGotoNextLine (OledConfig *oledConfig)
 
 bool oledIsCorrectDevice (OledConfig *oledConfig)
 {
-  if (oledIsInitialised(oledConfig) == FALSE) 
+  if (oledIsInitialised(oledConfig) == false) 
     return false;
 
   if (oledConfig->deviceType == TERM_VT100) 
@@ -645,7 +645,7 @@ bool oledIsCorrectDevice (OledConfig *oledConfig)
 
 static bool findDeviceType (OledConfig *oledConfig)
 {
-  if (oledIsInitialised(oledConfig) == FALSE) 
+  if (oledIsInitialised(oledConfig) == false) 
     return false;
 
   if (oledConfig->deviceType == TERM_VT100) 
@@ -756,7 +756,7 @@ void oledEnableTouch (OledConfig *oledConfig, bool enable)
 
 static uint16_t oledTouchGet (OledConfig *oledConfig, uint16_t mode)
 {
-  if (oledIsInitialised(oledConfig) == FALSE) 
+  if (oledIsInitialised(oledConfig) == false) 
     return 0xff;
   uint16_t value;
   
@@ -785,8 +785,8 @@ uint16_t oledTouchGetYcoord (OledConfig *oledConfig)
 
 bool oledInitSdCard (OledConfig *oledConfig)
 { 
-  if (oledIsInitialised(oledConfig) == FALSE) return FALSE;
-  if (oledConfig->deviceType != PICASO) return FALSE;
+  if (oledIsInitialised(oledConfig) == false) return false;
+  if (oledConfig->deviceType != PICASO) return false;
 
   OLED_KOF(KOF_INT16, "%c%c", 0xff, 0x89);
   if (oledConfig->response[2] != 0) {
@@ -801,8 +801,8 @@ bool oledInitSdCard (OledConfig *oledConfig)
 
 void oledListSdCardDirectory (OledConfig *oledConfig)
 {
-  bool remainFile=TRUE;
-  uint32_t fileNo=0;
+  bool remainFile = true;
+  uint32_t fileNo = 0;
 
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_PICASO(oledConfig);
@@ -849,7 +849,7 @@ void oledPlayWav (OledConfig *oledConfig, const char* fileName)
 
 uint32_t oledOpenFile (OledConfig *oledConfig, const char* fileName, uint16_t *handle)
 {
-  if (oledIsInitialised(oledConfig) == FALSE) return 0;
+  if (oledIsInitialised(oledConfig) == false) return 0;
   if (oledConfig->deviceType != PICASO) return 0;
 
   OLED_KOF (KOF_INT16, "%c%c%s%c%c", 0x0, 0x0a, fileName, 0x0, 'r' /* READ */);
@@ -952,7 +952,7 @@ static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout)
 
 static uint32_t oledGetFileError  (OledConfig *oledConfig)
 {
-  if (oledIsInitialised(oledConfig) == FALSE) return 0;
+  if (oledIsInitialised(oledConfig) == false) return 0;
   if (oledConfig->deviceType != PICASO) return 0;
 
   OLED_KOF (KOF_INT16, "%c%c", 0xff, 0x1f);
@@ -966,8 +966,8 @@ static uint32_t oledGetFileError  (OledConfig *oledConfig)
 
 static bool oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const uint32_t offset)
 {
-  if (oledIsInitialised(oledConfig) == FALSE) return FALSE;
-  if (oledConfig->deviceType != PICASO) return FALSE;
+  if (oledIsInitialised(oledConfig) == false) return false;
+  if (oledConfig->deviceType != PICASO) return false;
 
   const union {
     uint32_t val;
