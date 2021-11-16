@@ -12,7 +12,7 @@ bool txt_putCh(OledConfig *oledConfig, uint16_t car);
 
 // gold : strlen <= 255, picaso+diablo : strlen <= 511
 
-bool txt_putStr(OledConfig *oledConfig, const char *cstr);
+bool txt_putStr(OledConfig *oledConfig, const char *cstr, uint16_t *length);
 
 //
 

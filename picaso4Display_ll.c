@@ -534,7 +534,7 @@ bool txt_putCh(OledConfig *oledConfig, uint16_t car) {
   return stus;
 }
 
-bool txt_putStr(OledConfig *oledConfig, const char *cstr) {
+bool txt_putStr(OledConfig *oledConfig, const char *cstr, uint16_t *length) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   bool stus = false;
@@ -546,14 +546,22 @@ bool txt_putStr(OledConfig *oledConfig, const char *cstr) {
 
   struct {
     uint8_t ack;
+    uint16_t length;
   } __attribute__((__packed__)) response;
 
   stus =
       oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
                          (uint8_t *)&command1, sizeof(command1), NULL, 0) != 0;
-  stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__, (uint8_t *)cstr,
-                            strlen(cstr) + 1, (uint8_t *)&response,
-                            sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)cstr, strlen(cstr) + 1,
+          (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*length) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (length != NULL) *length = __builtin_bswap16(response.length);
+  }
 
   return stus;
 }
@@ -578,8 +586,10 @@ bool txt_charWidth(OledConfig *oledConfig, char car, uint16_t *width) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (width != NULL)
-    *width = __builtin_bswap16(response.width);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (width != NULL) *width = __builtin_bswap16(response.width);
+  }
+
   return stus;
 }
 
@@ -603,8 +613,10 @@ bool txt_charHeight(OledConfig *oledConfig, char car, uint16_t *height) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (height != NULL)
-    *height = __builtin_bswap16(response.height);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (height != NULL) *height = __builtin_bswap16(response.height);
+  }
+
   return stus;
 }
 
@@ -624,15 +636,16 @@ bool txt_Fgcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol) {
     uint16_t oldCol;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldCol)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldCol) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldCol != NULL) *oldCol = __builtin_bswap16(response.oldCol);
+  }
 
   return stus;
 }
@@ -653,15 +666,16 @@ bool txt_Bgcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol) {
     uint16_t oldCol;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldCol)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldCol) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldCol != NULL) *oldCol = __builtin_bswap16(response.oldCol);
+  }
 
   return stus;
 }
@@ -705,15 +719,16 @@ bool txt_widthMult(OledConfig *oledConfig, uint16_t wMultiplier,
     uint16_t oldMul;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldMul)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldMul) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldMul != NULL) *oldMul = __builtin_bswap16(response.oldMul);
+  }
 
   return stus;
 }
@@ -735,15 +750,16 @@ bool txt_heightMult(OledConfig *oledConfig, uint16_t hMultiplier,
     uint16_t oldMul;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldMul)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldMul) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldMul != NULL) *oldMul = __builtin_bswap16(response.oldMul);
+  }
 
   return stus;
 }
@@ -764,15 +780,16 @@ bool txt_xgap(OledConfig *oledConfig, uint16_t xGap, uint16_t *oldGap) {
     uint16_t oldGap;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldGap)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldGap) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldGap != NULL) *oldGap = __builtin_bswap16(response.oldGap);
+  }
 
   return stus;
 }
@@ -793,15 +810,16 @@ bool txt_ygap(OledConfig *oledConfig, uint16_t yGap, uint16_t *oldGap) {
     uint16_t oldGap;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldGap)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldGap) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldGap != NULL) *oldGap = __builtin_bswap16(response.oldGap);
+  }
 
   return stus;
 }
@@ -822,15 +840,16 @@ bool txt_bold(OledConfig *oledConfig, uint16_t mode, uint16_t *oldBold) {
     uint16_t oldBold;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldBold)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldBold) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldBold != NULL) *oldBold = __builtin_bswap16(response.oldBold);
+  }
 
   return stus;
 }
@@ -851,15 +870,16 @@ bool txt_inverse(OledConfig *oledConfig, uint16_t mode, uint16_t *oldInv) {
     uint16_t oldInv;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldInv)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldInv) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldInv != NULL) *oldInv = __builtin_bswap16(response.oldInv);
+  }
 
   return stus;
 }
@@ -880,15 +900,16 @@ bool txt_italic(OledConfig *oledConfig, uint16_t mode, uint16_t *oldItal) {
     uint16_t oldItal;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldItal)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldItal) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldItal != NULL) *oldItal = __builtin_bswap16(response.oldItal);
+  }
 
   return stus;
 }
@@ -909,15 +930,16 @@ bool txt_opacity(OledConfig *oledConfig, uint16_t mode, uint16_t *oldOpa) {
     uint16_t oldOpa;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldOpa)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldOpa) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldOpa != NULL) *oldOpa = __builtin_bswap16(response.oldOpa);
+  }
 
   return stus;
 }
@@ -938,15 +960,16 @@ bool txt_underline(OledConfig *oledConfig, uint16_t mode, uint16_t *oldUnder) {
     uint16_t oldUnder;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldUnder)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus = oledTransmitBuffer(
+             oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+             sizeof(command1), (uint8_t *)&response,
+             sizeof(response) - (oledConfig->deviceType == GOLDELOX
+                                     ? sizeof(*oldUnder)
+                                     : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldUnder != NULL) *oldUnder = __builtin_bswap16(response.oldUnder);
+  }
 
   return stus;
 }
@@ -968,15 +991,16 @@ bool txt_attributes(OledConfig *oledConfig, uint16_t bitfield,
     uint16_t oldAttr;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldAttr)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldAttr) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldAttr != NULL) *oldAttr = __builtin_bswap16(response.oldAttr);
+  }
 
   return stus;
 }
@@ -1248,9 +1272,9 @@ bool gfx_polygonFilled(OledConfig *oledConfig, uint16_t n, uint16_t vx[],
                        uint16_t vy[], uint16_t color) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
-  osalDbgAssert(cmdCodeByType[api_gfx_polyline][oledConfig->deviceType] !=
-                    CMD_NOT_IMPL,
-                "function gfx_polygonFilled unimplemented for this screen");
+  osalDbgAssert(
+      cmdCodeByType[api_gfx_polyline][oledConfig->deviceType] != CMD_NOT_IMPL,
+      "function gfx_polygonFilled unimplemented for this screen");
   return gfx_polyxxx(oledConfig,
                      cmdCodeByType[api_gfx_polyline][oledConfig->deviceType], n,
                      vx, vy, color);
@@ -1351,11 +1375,12 @@ bool gfx_orbit(OledConfig *oledConfig, uint16_t angle, uint16_t distance,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (Xdist != NULL)
-    *Xdist = __builtin_bswap16(response.Xdist);
-  ;
-  if (Ydist != NULL)
-    *Ydist = __builtin_bswap16(response.Ydist);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (Xdist != NULL) *Xdist = __builtin_bswap16(response.Xdist);
+    ;
+    if (Ydist != NULL) *Ydist = __builtin_bswap16(response.Ydist);
+  }
+
   return stus;
 }
 
@@ -1409,8 +1434,10 @@ bool gfx_getPixel(OledConfig *oledConfig, uint16_t x, uint16_t y,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (color != NULL)
-    *color = __builtin_bswap16(response.color);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (color != NULL) *color = __builtin_bswap16(response.color);
+  }
+
   return stus;
 }
 
@@ -1769,8 +1796,10 @@ bool gfx_bevelShadow(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -1795,8 +1824,10 @@ bool gfx_bevelWidth(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -1926,15 +1957,16 @@ bool gfx_screenMode(OledConfig *oledConfig, uint16_t mode, uint16_t *oldMode) {
     uint16_t oldMode;
   } __attribute__((__packed__)) response;
 
-  if (oledConfig->deviceType == GOLDELOX)
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response,
-                              sizeof(response) - sizeof(*oldMode)) != 0;
-  else
-    stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                              (uint8_t *)&command1, sizeof(command1),
-                              (uint8_t *)&response, sizeof(response)) != 0;
+  stus =
+      oledTransmitBuffer(
+          oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+          sizeof(command1), (uint8_t *)&response,
+          sizeof(response) -
+              (oledConfig->deviceType == GOLDELOX ? sizeof(*oldMode) : 0)) != 0;
+
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldMode != NULL) *oldMode = __builtin_bswap16(response.oldMode);
+  }
 
   return stus;
 }
@@ -1961,8 +1993,10 @@ bool gfx_transparency(OledConfig *oledConfig, uint16_t mode,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (previous != NULL)
-    *previous = __builtin_bswap16(response.previous);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (previous != NULL) *previous = __builtin_bswap16(response.previous);
+  }
+
   return stus;
 }
 
@@ -1988,8 +2022,10 @@ bool gfx_transparentColour(OledConfig *oledConfig, uint16_t color,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (previous != NULL)
-    *previous = __builtin_bswap16(response.previous);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (previous != NULL) *previous = __builtin_bswap16(response.previous);
+  }
+
   return stus;
 }
 
@@ -2038,8 +2074,10 @@ bool gfx_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2062,8 +2100,10 @@ bool media_init(OledConfig *oledConfig, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2134,8 +2174,10 @@ bool media_readByte(OledConfig *oledConfig, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2158,8 +2200,10 @@ bool media_readWord(OledConfig *oledConfig, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2183,8 +2227,10 @@ bool media_writeByte(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -2208,8 +2254,10 @@ bool media_writeWord(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -2232,8 +2280,10 @@ bool media_flush(OledConfig *oledConfig, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -2333,8 +2383,10 @@ bool misc_peekB(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2384,8 +2436,10 @@ bool misc_peekW(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2435,8 +2489,10 @@ bool misc_peekM(OledConfig *oledConfig, uint16_t address, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2485,8 +2541,10 @@ bool misc_joystick(OledConfig *oledConfig, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2554,8 +2612,10 @@ bool sys_sleep(OledConfig *oledConfig, uint16_t duration_s,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (duration != NULL)
-    *duration = __builtin_bswap16(response.duration);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (duration != NULL) *duration = __builtin_bswap16(response.duration);
+  }
+
   return stus;
 }
 
@@ -2580,8 +2640,10 @@ bool sys_memFree(OledConfig *oledConfig, uint16_t handle, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2605,8 +2667,10 @@ bool sys_memHeap(OledConfig *oledConfig, uint16_t *avail) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (avail != NULL)
-    *avail = __builtin_bswap16(response.avail);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (avail != NULL) *avail = __builtin_bswap16(response.avail);
+  }
+
   return stus;
 }
 
@@ -2661,8 +2725,10 @@ bool sys_getVersion(OledConfig *oledConfig, uint16_t *version) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (version != NULL)
-    *version = __builtin_bswap16(response.version);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (version != NULL) *version = __builtin_bswap16(response.version);
+  }
+
   return stus;
 }
 
@@ -2685,8 +2751,10 @@ bool sys_getPmmC(OledConfig *oledConfig, uint16_t *version) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (version != NULL)
-    *version = __builtin_bswap16(response.version);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (version != NULL) *version = __builtin_bswap16(response.version);
+  }
+
   return stus;
 }
 
@@ -2834,8 +2902,10 @@ bool touch_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -2859,8 +2929,10 @@ bool file_error(OledConfig *oledConfig, uint16_t *errno) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (errno != NULL)
-    *errno = __builtin_bswap16(response.errno);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (errno != NULL) *errno = __builtin_bswap16(response.errno);
+  }
+
   return stus;
 }
 
@@ -2887,8 +2959,10 @@ bool file_count(OledConfig *oledConfig, const char *filename, uint16_t *count) {
                             (uint8_t *)filename, strlen(filename) + 1,
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (count != NULL)
-    *count = __builtin_bswap16(response.count);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (count != NULL) *count = __builtin_bswap16(response.count);
+  }
+
   return stus;
 }
 
@@ -2915,8 +2989,10 @@ bool file_dir(OledConfig *oledConfig, const char *filename, uint16_t *count) {
                             (uint8_t *)filename, strlen(filename) + 1,
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (count != NULL)
-    *count = __builtin_bswap16(response.count);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (count != NULL) *count = __builtin_bswap16(response.count);
+  }
+
   return stus;
 }
 
@@ -2944,8 +3020,10 @@ bool file_findFirst(OledConfig *oledConfig, const char *filename,
                             (uint8_t *)filename, strlen(filename) + 1,
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3005,8 +3083,10 @@ bool file_findNext(OledConfig *oledConfig, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3066,8 +3146,10 @@ bool file_exists(OledConfig *oledConfig, const char *filename,
                             (uint8_t *)filename, strlen(filename) + 1,
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3101,8 +3183,10 @@ bool file_open(OledConfig *oledConfig, const char *filename, char mode,
                             (uint8_t *)&command2, sizeof(command2),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (handle != NULL)
-    *handle = __builtin_bswap16(response.handle);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (handle != NULL) *handle = __builtin_bswap16(response.handle);
+  }
+
   return stus;
 }
 
@@ -3127,8 +3211,10 @@ bool file_close(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3194,8 +3280,10 @@ bool file_seek(OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3227,8 +3315,10 @@ bool file_index(OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3256,14 +3346,14 @@ bool file_tell(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
-  ;
-  if (hiWord != NULL)
-    *hiWord = __builtin_bswap16(response.hiWord);
-  ;
-  if (loWord != NULL)
-    *loWord = __builtin_bswap16(response.loWord);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+    ;
+    if (hiWord != NULL) *hiWord = __builtin_bswap16(response.hiWord);
+    ;
+    if (loWord != NULL) *loWord = __builtin_bswap16(response.loWord);
+  }
+
   return stus;
 }
 
@@ -3293,8 +3383,10 @@ bool file_write(OledConfig *oledConfig, uint16_t size, uint16_t source,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (count != NULL)
-    *count = __builtin_bswap16(response.count);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (count != NULL) *count = __builtin_bswap16(response.count);
+  }
+
   return stus;
 }
 
@@ -3322,14 +3414,14 @@ bool file_size(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
-  ;
-  if (hiWord != NULL)
-    *hiWord = __builtin_bswap16(response.hiWord);
-  ;
-  if (loWord != NULL)
-    *loWord = __builtin_bswap16(response.loWord);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+    ;
+    if (hiWord != NULL) *hiWord = __builtin_bswap16(response.hiWord);
+    ;
+    if (loWord != NULL) *loWord = __builtin_bswap16(response.loWord);
+  }
+
   return stus;
 }
 
@@ -3359,8 +3451,10 @@ bool file_image(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t handle,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (errno != NULL)
-    *errno = __builtin_bswap16(response.errno);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (errno != NULL) *errno = __builtin_bswap16(response.errno);
+  }
+
   return stus;
 }
 
@@ -3395,8 +3489,10 @@ bool file_screenCapture(OledConfig *oledConfig, uint16_t x, uint16_t y,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3424,8 +3520,10 @@ bool file_putC(OledConfig *oledConfig, uint16_t car, uint16_t handle,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3450,8 +3548,10 @@ bool file_getC(OledConfig *oledConfig, uint16_t handle, uint16_t *car) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (car != NULL)
-    *car = __builtin_bswap16(response.car);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (car != NULL) *car = __builtin_bswap16(response.car);
+  }
+
   return stus;
 }
 
@@ -3479,8 +3579,10 @@ bool file_putW(OledConfig *oledConfig, uint16_t word, uint16_t handle,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3505,8 +3607,10 @@ bool file_getW(OledConfig *oledConfig, uint16_t handle, uint16_t *word) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (word != NULL)
-    *word = __builtin_bswap16(response.word);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (word != NULL) *word = __builtin_bswap16(response.word);
+  }
+
   return stus;
 }
 
@@ -3533,8 +3637,10 @@ bool file_putS(OledConfig *oledConfig, const char *cstr, uint16_t *count) {
                             strlen(cstr) + 1, (uint8_t *)&response,
                             sizeof(response)) != 0;
 
-  if (count != NULL)
-    *count = __builtin_bswap16(response.count);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (count != NULL) *count = __builtin_bswap16(response.count);
+  }
+
   return stus;
 }
 
@@ -3598,8 +3704,10 @@ bool file_erase(OledConfig *oledConfig, const char *filename,
                             (uint8_t *)filename, strlen(filename) + 1,
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3624,8 +3732,10 @@ bool file_rewind(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3653,8 +3763,10 @@ bool file_loadFunction(OledConfig *oledConfig, const char *fnname,
                             (uint8_t *)fnname, strlen(fnname) + 1,
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (pointer != NULL)
-    *pointer = __builtin_bswap16(response.pointer);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (pointer != NULL) *pointer = __builtin_bswap16(response.pointer);
+  }
+
   return stus;
 }
 
@@ -3692,8 +3804,10 @@ bool file_loadImageControl(OledConfig *oledConfig, const char *filename1,
                             (uint8_t *)&command2, sizeof(command2),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (handle != NULL)
-    *handle = __builtin_bswap16(response.handle);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (handle != NULL) *handle = __builtin_bswap16(response.handle);
+  }
+
   return stus;
 }
 
@@ -3717,8 +3831,10 @@ bool file_mount(OledConfig *oledConfig, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3768,8 +3884,10 @@ bool file_playWAV(OledConfig *oledConfig, const char *wavname,
                             (uint8_t *)wavname, strlen(wavname) + 1,
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -3798,8 +3916,10 @@ bool file_writeString(OledConfig *oledConfig, uint16_t handle, const char *cstr,
                             strlen(cstr) + 1, (uint8_t *)&response,
                             sizeof(response)) != 0;
 
-  if (pointer != NULL)
-    *pointer = __builtin_bswap16(response.pointer);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (pointer != NULL) *pointer = __builtin_bswap16(response.pointer);
+  }
+
   return stus;
 }
 
@@ -3847,8 +3967,10 @@ bool snd_pitch(OledConfig *oledConfig, uint16_t rate, uint16_t *oldRate) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (oldRate != NULL)
-    *oldRate = __builtin_bswap16(response.oldRate);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldRate != NULL) *oldRate = __builtin_bswap16(response.oldRate);
+  }
+
   return stus;
 }
 
@@ -3961,8 +4083,10 @@ bool snd_playing(OledConfig *oledConfig, uint16_t *togo) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (togo != NULL)
-    *togo = __builtin_bswap16(response.togo);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (togo != NULL) *togo = __builtin_bswap16(response.togo);
+  }
+
   return stus;
 }
 
@@ -3994,8 +4118,10 @@ bool img_setPosition(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4023,8 +4149,10 @@ bool img_enable(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4052,8 +4180,10 @@ bool img_disable(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4081,8 +4211,10 @@ bool img_darken(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4110,8 +4242,10 @@ bool img_lighten(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4143,8 +4277,10 @@ bool img_setWord(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4174,8 +4310,10 @@ bool img_getWord(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (value != NULL)
-    *value = __builtin_bswap16(response.value);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (value != NULL) *value = __builtin_bswap16(response.value);
+  }
+
   return stus;
 }
 
@@ -4203,8 +4341,10 @@ bool img_show(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4234,8 +4374,10 @@ bool img_setAttributes(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4265,8 +4407,10 @@ bool img_clearAttributes(OledConfig *oledConfig, uint16_t handle,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4294,8 +4438,10 @@ bool img_touched(OledConfig *oledConfig, uint16_t handle, uint16_t index,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4353,8 +4499,10 @@ bool bus_in(OledConfig *oledConfig, uint16_t *busState) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (busState != NULL)
-    *busState = __builtin_bswap16(response.busState);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (busState != NULL) *busState = __builtin_bswap16(response.busState);
+  }
+
   return stus;
 }
 
@@ -4401,8 +4549,10 @@ bool bus_read(OledConfig *oledConfig, uint16_t *busState) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (busState != NULL)
-    *busState = __builtin_bswap16(response.busState);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (busState != NULL) *busState = __builtin_bswap16(response.busState);
+  }
+
   return stus;
 }
 
@@ -4473,8 +4623,10 @@ bool pin_hi(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4499,8 +4651,10 @@ bool pin_lo(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4525,8 +4679,10 @@ bool pin_read(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
 
@@ -4554,7 +4710,9 @@ bool pin_set(OledConfig *oledConfig, uint16_t mode, uint16_t pin,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (status != NULL)
-    *status = __builtin_bswap16(response.status);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (status != NULL) *status = __builtin_bswap16(response.status);
+  }
+
   return stus;
 }
