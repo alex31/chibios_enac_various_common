@@ -191,7 +191,7 @@ void oledGetVersion (OledConfig *oledConfig, char *buffer, const size_t buflen)
 bool oledSetBaud (OledConfig *oledConfig, uint32_t baud)
 {
   uint32_t actualbaudRate; 
-  uint16_t baudCode ;
+  uint16_t baudCode = 0;
 
   LINK_DRIVER *sd = (LINK_DRIVER *) oledConfig->serial;
 
