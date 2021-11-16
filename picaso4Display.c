@@ -287,11 +287,10 @@ bool oledSetBaud (OledConfig *oledConfig, uint32_t baud)
   }
 
   misc_setbaudWait(oledConfig, baudCode);
-  chThdSleepMilliseconds(20);
+  chThdSleepMilliseconds(10);
 #if PICASO_DISPLAY_USE_SD
   sdStop(sd);
   sdStart(sd, &(oledConfig->serialConfig));
-  chThdSleepMilliseconds(100);
 #else
   uartStop(sd);
   uartStart(sd, &(oledConfig->serialConfig));
