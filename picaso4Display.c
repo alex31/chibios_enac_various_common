@@ -10,76 +10,53 @@
 
 #define clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
 #define colorDecTo16b(r,v,b) (clampColor((r*31/100), (v*63/100), (b*31/100)))
-#define twoBytesFromWord(x) ((uint8_t)((x & 0xff00) >> 8)), ((uint8_t)(x & 0xff))
 #define QDS_ACK 0x6
 
 typedef enum {KOF_NONE, KOF_ACK, KOF_INT16, 
 	      KOF_INT16LENGTH_THEN_DATA} KindOfCommand;
 
-const uint32_t readTimout = TIME_MS2I(500);
+const uint32_t readTimout = TIME_MS2I(100);
 static OledStatus oledStatus = OLED_OK;
 
 
-static void oledTrace (OledConfig *oledConfig, const char* err);
-static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof, 
-				 const char* fct, const uint32_t line, const char *fmt, ...);
 static uint32_t oledTransmitBuffer (OledConfig *oc, const char* fct, const uint32_t line,
 					 const uint8_t *outBuffer, const size_t outSize,
 					 uint8_t *inBuffer, const size_t inSize);
-static uint32_t oledReceiveAnswer (OledConfig *oc, const size_t size,
-				   const char* fct, const uint32_t line);
-static uint32_t oledReceiveAnswer2 (OledConfig *oc, uint8_t *response, const size_t size,
-				   const char* fct, const uint32_t line);
-static bool oledGetDynamicString(OledConfig *oc, const char* fct, const uint32_t line,
-				 uint16_t dynSize,
-				 uint8_t *inBuffer, const size_t inSize);
 #if PICASO_DISPLAY_USE_SD
+static uint32_t oledReceiveAnswer (OledConfig *oc, uint8_t *response, const size_t size,
+				   const char* fct, const uint32_t line);
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 #else
 static void sendVt100Seq (UARTDriver *serial, const char *fmt, ...);
-static void    oledStartReceiveAnswer (OledConfig *oc, size_t *size,
-				       const char* fct, const uint32_t line);
-static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
-				       const char* fct, const uint32_t line);
-static void oledStartReceiveAnswer2 (OledConfig *oc, uint8_t *response, size_t *size,
+static void oledStartReceiveAnswer (OledConfig *oc, uint8_t *response, size_t *size,
 				     const char* fct, const uint32_t line);
-static uint32_t oledWaitReceiveAnswer2 (OledConfig *oc, size_t *size,
+static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
 					const char* fct, const uint32_t line);
 #endif
 static bool findDeviceType (OledConfig *oledConfig);
 
-#define OLED(...) (oledSendCommand (oledConfig, KOF_ACK, __FUNCTION__, __LINE__, __VA_ARGS__))
-#define OLED_KOF(k, ...) (oledSendCommand (oledConfig, k,__FUNCTION__, __LINE__,  __VA_ARGS__))
-
-
 #define RET_UNLESS_INIT(oledCfg)    {if (oledIsInitialised(oledCfg) == false) return ;}
 #define RET_UNLESS_4DSYS(oledCfg)  {if (oledCfg->deviceType == TERM_VT100) return ;}
-#define RET_UNLESS_PICASO(oledCfg)  {if (oledCfg->deviceType != PICASO) return ;}
 #define RET_UNLESS_GOLDELOX(oledCfg)  {if (oledCfg->deviceType != GOLDELOX) return ;}
 
 #define RET_UNLESS_INIT_BOOL(oledCfg)    {if (oledIsInitialised(oledCfg) == false) return false;}
 #define RET_UNLESS_4DSYS_BOOL(oledCfg)  {if (oledCfg->deviceType == TERM_VT100) return false;}
-#define RET_UNLESS_PICASO_BOOL(oledCfg)  {if (oledCfg->deviceType != PICASO) return false;}
 #define RET_UNLESS_GOLDELOX_BOOL(oledCfg)  {if (oledCfg->deviceType != GOLDELOX) return false;}
-#define ISPIC(oledCfg)  (oledCfg->deviceType == PICASO) 
 
 static bool oledIsInitialised (const OledConfig *oledConfig) ;
 static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout);
 static void oledPreInit (OledConfig *oledConfig, uint32_t baud);
-static void oledReInit (OledConfig *oledConfig);
 static uint32_t oledGetFileError  (OledConfig *oledConfig);
 static bool oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const uint32_t offset);
 static uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t colorIndex);
 static uint16_t oledTouchGet (OledConfig *oledConfig, uint16_t mode);
-static uint16_t getResponseAsUint16 (OledConfig *oledConfig);
-static uint16_t getResponseAsUint16_2 (const uint8_t *buff);
+static uint16_t getResponseAsUint16 (const uint8_t *buff);
 #if PICASO_DISPLAY_USE_UART
-static size_t uartReadTimeout (UARTDriver *serial, uint8_t *response, 
-			       size_t size, sysinterval_t rTimout);
 static void uartStartRead (UARTDriver *serial, uint8_t *response, 
 			   size_t *size);
 static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t  rTimout);
 #endif
+
 static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
 {
   oledConfig->bg = colorDecTo16b(0,0,0);
@@ -124,6 +101,7 @@ bool oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
 
   // test is no error on kind of device : picaso, goldelox, diablo ...
   if (!oledIsCorrectDevice(oledConfig)) {
+    DebugTrace("Error incorrect device type @ %s:%d", __FUNCTION__, __LINE__);
     return false;
   }
 
@@ -140,31 +118,6 @@ bool oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
   if ((oledConfig->deviceType != TERM_VT100) && (baud != 9600))
     return oledSetBaud(oledConfig, baud);
   return true;
-}
-
-static void oledReInit (OledConfig *oledConfig)
-{
-  switch(oledConfig->deviceType) {
-  case GOLDELOX : 
-  case PICASO : 
-  case DIABLO16 : 
-    oledHardReset(oledConfig);
-    const uint32_t baud = oledConfig->serialConfig.speed;
-    
-    oledSetBaud(oledConfig, 9600);
-
-    // opaque background
-    oledSetTextOpacity(oledConfig, true);
-    oledClearScreen(oledConfig);
-    
-    // use greater speed
-    if (baud != 9600) 
-      oledSetBaud(oledConfig, baud);
-    
-    break;
-    
-  default : break;
-  } 
 }
 
 
@@ -208,7 +161,13 @@ void oledGetVersion (OledConfig *oledConfig, char *buffer, const size_t buflen)
   RET_UNLESS_4DSYS(oledConfig);
 
    // get display model
-  sys_getModel(oledConfig, buflen, buffer);
+  uint16_t modelLen = buflen;
+  sys_getModel(oledConfig, &modelLen, buffer);
+
+  if (modelLen > buflen) {
+    DebugTrace("warning %s need bigger buffer [%u instead %u] to store returned string",
+	       __FUNCTION__, modelLen, buflen);
+  }
 
   // get Pmmc version
   uint16_t pmmc=0;
@@ -232,6 +191,7 @@ void oledGetVersion (OledConfig *oledConfig, char *buffer, const size_t buflen)
 bool oledSetBaud (OledConfig *oledConfig, uint32_t baud)
 {
   uint32_t actualbaudRate; 
+  uint16_t baudCode ;
 
   LINK_DRIVER *sd = (LINK_DRIVER *) oledConfig->serial;
 
@@ -239,7 +199,6 @@ bool oledSetBaud (OledConfig *oledConfig, uint32_t baud)
   
   switch (oledConfig->deviceType) {
   case DIABLO16: {
-    uint8_t baudCode ;
     switch(baud) {
     case 110    : baudCode = 0x0;  actualbaudRate = 110; break;
     case 300    : baudCode = 0x1;  actualbaudRate = 300; break;
@@ -264,13 +223,10 @@ bool oledSetBaud (OledConfig *oledConfig, uint32_t baud)
     default : return false;
     }
     oledConfig->serialConfig.speed = actualbaudRate; 
-    // send command, do not wait response
-    OLED_KOF(KOF_NONE, "%c%c%c%c", 0x0, 0x26, 0x0, baudCode);
   }
     break;
 
   case PICASO: {
-    uint8_t baudCode ;
     switch(baud) {
     case 110    : baudCode = 0x0;  actualbaudRate = 110; break;
     case 300    : baudCode = 0x1;  actualbaudRate = 300; break;
@@ -295,12 +251,9 @@ bool oledSetBaud (OledConfig *oledConfig, uint32_t baud)
     default : return false;
     }
     oledConfig->serialConfig.speed = actualbaudRate; 
-    // send command, do not wait response
-    OLED_KOF(KOF_NONE, "%c%c%c%c", 0x0, 0x26, 0x0, baudCode);
   }
     break;
   case GOLDELOX: {
-    uint16_t baudCode ;
     switch(baud) {
     case 110    : baudCode =  27271;  	actualbaudRate = 110; break;
     case 300    : baudCode =  9999;  	actualbaudRate = 300; break;
@@ -325,8 +278,6 @@ bool oledSetBaud (OledConfig *oledConfig, uint32_t baud)
     default : return false;
     }
     oledConfig->serialConfig.speed = actualbaudRate; 
-    // send command, do not wait response
-    OLED_KOF(KOF_NONE, "%c%c%c%c", 0x0, 0x0b, twoBytesFromWord(baudCode));
   }
     break;
 
@@ -335,6 +286,7 @@ bool oledSetBaud (OledConfig *oledConfig, uint32_t baud)
     break;
   }
 
+  misc_setbaudWait(oledConfig, baudCode);
   chThdSleepMilliseconds(20);
 #if PICASO_DISPLAY_USE_SD
   sdStop(sd);
@@ -346,9 +298,13 @@ bool oledSetBaud (OledConfig *oledConfig, uint32_t baud)
 #endif
   // wait for response at new speed
   RET_UNLESS_4DSYS_BOOL(oledConfig);
-  oledReceiveAnswer(oledConfig, 1U, __FUNCTION__, __LINE__);
 
-  return true;
+  struct {
+   uint8_t ack;
+ } response;
+ return oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+			   NULL, 0,
+			   (uint8_t *) &response, sizeof(response)) == 1; 
 }
 
 
@@ -536,44 +492,29 @@ void oledUseColorIndex (OledConfig *oledConfig, uint8_t colorIndex)
 
 void oledSetTextOpacity (OledConfig *oledConfig, bool opaque)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-
   txt_opacity(oledConfig, opaque, NULL);
 }
 
 
 void oledSetTextAttributeMask (OledConfig *oledConfig, enum OledTextAttribute attrib)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-
   txt_attributes(oledConfig, attrib, NULL);
 }
 
 void oledSetTextGap (OledConfig *oledConfig, uint8_t xgap, uint8_t ygap)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-  
   txt_xgap(oledConfig, xgap, NULL);
   txt_ygap(oledConfig, ygap, NULL);
 }
 
 void oledSetTextSizeMultiplier (OledConfig *oledConfig, uint8_t xmul, uint8_t ymul)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-
   txt_widthMult(oledConfig, xmul, NULL);
   txt_heightMult(oledConfig, ymul, NULL);
 }
 
 void oledSetScreenOrientation (OledConfig *oledConfig, enum OledScreenOrientation orientation)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
-
   gfx_screenMode(oledConfig, orientation, NULL);
 }
 
@@ -675,7 +616,6 @@ void oledDrawPoint (OledConfig *oledConfig, const uint16_t x, const uint16_t y,
 		    const uint8_t colorIndex)
 {
   RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
 
   const uint16_t fg = fgColorIndexTo16b(oledConfig, (uint8_t) (colorIndex+1));
   gfx_putPixel(oledConfig, x, y, fg);
@@ -688,7 +628,6 @@ void oledDrawLine (OledConfig *oledConfig,
 		   const uint8_t colorIndex)
 {
   RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
 
   const uint16_t fg = fgColorIndexTo16b(oledConfig, (uint8_t) (colorIndex+1));
   gfx_line(oledConfig, x1, y1, x2, y2, fg);
@@ -701,7 +640,6 @@ void oledDrawRect (OledConfig *oledConfig,
 		   const uint8_t colorIndex)
 {
   RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
 
   const uint16_t fg = fgColorIndexTo16b(oledConfig, (uint8_t) (colorIndex+1));
   if (filled) 
@@ -717,7 +655,6 @@ void oledDrawPolyLine (OledConfig *oledConfig,
   
 {
   RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
   struct {
     uint16_t vx[len];
     uint16_t vy[len];
@@ -743,14 +680,12 @@ void oledScreenCopyPaste (OledConfig *oledConfig,
 			  const uint16_t width, const uint16_t height)
 {
   RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_4DSYS(oledConfig);
   gfx_screenCopyPaste(oledConfig, xs, ys, xd, yd, width, height);
 }
 
 
 void oledEnableTouch (OledConfig *oledConfig, bool enable)
 {
-   RET_UNLESS_INIT(oledConfig);
    touch_set(oledConfig, enable ? 0x00 : 0x01);
 }
 
@@ -786,37 +721,39 @@ uint16_t oledTouchGetYcoord (OledConfig *oledConfig)
 bool oledInitSdCard (OledConfig *oledConfig)
 { 
   if (oledIsInitialised(oledConfig) == false) return false;
-  if (oledConfig->deviceType != PICASO) return false;
 
-  OLED_KOF(KOF_INT16, "%c%c", 0xff, 0x89);
-  if (oledConfig->response[2] != 0) {
+  uint16_t status;
+  media_init(oledConfig, &status);
+
+  if (status != 0) {
     // card is present, mount fat16 fs
-    DebugTrace ("oledInitSdCard sd presence=%d", oledConfig->response[2]);
-    OLED_KOF(KOF_INT16, "%c%c", 0xff, 0x03);
-    DebugTrace("oledInitSdCard fat16 mount=%d", oledConfig->response[2]);
+    DebugTrace ("oledInitSdCard sd presence=%d", status);
+    file_mount(oledConfig, &status);
+    DebugTrace("oledInitSdCard fat16 mount=%d", status);
   }
   
-  return (oledConfig->response[2] != 0);
+  return (status != 0);
 }
 
 void oledListSdCardDirectory (OledConfig *oledConfig)
 {
+  RET_UNLESS_INIT(oledConfig);
   bool remainFile = true;
   uint32_t fileNo = 0;
-
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_PICASO(oledConfig);
-
+  char fileName[24];
+  uint16_t strLen = sizeof(fileName);
+  
   while (remainFile) {
+    strLen = sizeof(fileName);
     if (fileNo++ == 0) 
       // find first file and report
-      remainFile = OLED_KOF (KOF_INT16LENGTH_THEN_DATA, "%c%c*.*%c", 0x00, 0x24, 0x0);
+      file_findFirstRet(oledConfig, "*.*", &strLen, fileName);
     else
       // find next file and report
-      remainFile = OLED_KOF (KOF_INT16LENGTH_THEN_DATA, "%c%c", 0x00, 0x25);
+      file_findNextRet(oledConfig, &strLen, fileName);
     
-    if (remainFile) {
-      DebugTrace ("File [%lu] = %s", fileNo, oledConfig->response);
+    if (strLen) {
+      DebugTrace ("File [%lu] = %s", fileNo, fileName);
     }
   }
 }
@@ -824,18 +761,14 @@ void oledListSdCardDirectory (OledConfig *oledConfig)
 
 void oledSetSoundVolume (OledConfig *oledConfig, uint8_t percent)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_PICASO(oledConfig);
   percent = MIN (100, percent);
   percent = (uint8_t) (percent + 27);
-  OLED ("%c%c%c%c", 0xff, 0x00, 0x00, percent);
+  snd_volume(oledConfig, percent);
 }
 
 void oledPlayWav (OledConfig *oledConfig, const char* fileName)
 {  
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_PICASO(oledConfig);
-  OLED_KOF (KOF_INT16, "%c%c%s%c", 0x0, 0x0b, fileName, 0x0);
+  file_playWAV(oledConfig, fileName, NULL);
 }
 
 // No buzzer on our OLED-96-G2
@@ -843,58 +776,38 @@ void oledPlayWav (OledConfig *oledConfig, const char* fileName)
 /* {   */
 /*   RET_UNLESS_INIT(oledConfig); */
 /*   RET_UNLESS_GOLDELOX(oledConfig); */
-/*   OLED ("%c%c%c%c%c%c", 0xff, 0xda,  */
+/*   OLED("%c%c%c%c%c%c", 0xff, 0xda,  */
 /* 	0, note, twoBytesFromWord(duration)); */
 /* } */
 
 uint32_t oledOpenFile (OledConfig *oledConfig, const char* fileName, uint16_t *handle)
 {
   if (oledIsInitialised(oledConfig) == false) return 0;
-  if (oledConfig->deviceType != PICASO) return 0;
 
-  OLED_KOF (KOF_INT16, "%c%c%s%c%c", 0x0, 0x0a, fileName, 0x0, 'r' /* READ */);
-  *handle = getResponseAsUint16 (oledConfig);
-  return oledGetFileError (oledConfig);
+  file_open(oledConfig, fileName, 'r', handle);
+  return oledGetFileError(oledConfig);
 }
 
 
 void oledCloseFile (OledConfig *oledConfig, const uint16_t handle)
 {
-  RET_UNLESS_INIT(oledConfig);
-  RET_UNLESS_PICASO(oledConfig);
-   const union {
-     uint16_t val;
-     uint8_t  buf [sizeof(uint16_t)] ;
-   } hndl = {.val = handle};
-
-   OLED_KOF (KOF_INT16, "%c%c%c%c", 0xff, 0x18,  hndl.buf[1], hndl.buf[0]);
+  file_close(oledConfig, handle, NULL);
 }
 
 
 
 void oledDisplayGci (OledConfig *oledConfig, const uint16_t handle, uint32_t offset)
 {
-   RET_UNLESS_INIT(oledConfig);
-   RET_UNLESS_PICASO(oledConfig);
-
-   const union {
-     uint16_t val;
-     uint8_t  buf [sizeof(uint16_t)] ;
-   }  hndl = {.val = handle};
-
-   if (oledFileSeek (oledConfig, handle, offset)) {
-     OLED_KOF (KOF_INT16, "%c%c%c%c%c%c%c%c", 0xff, 0x11, 0x0, 0x0, 0x0, 0x0, hndl.buf[1], hndl.buf[0]);
-
-     if (oledConfig->response[2]) {
-       DebugTrace ("oledDisplayGci error %d", oledConfig->response[2]);
+  uint16_t errno;
+  if (oledFileSeek (oledConfig, handle, offset)) {
+    file_image(oledConfig, 0, 0, handle, &errno);
+     if (errno) {
+       DebugTrace ("oledDisplayGci error %u", errno);
      }
-   } else {
-     DebugTrace ("oledDisplayGci oledFileSeek error");
-   }
+  } else {
+    DebugTrace ("oledDisplayGci oledFileSeek error");
+  }
 }
-
-
-
 
 
 /*
@@ -913,12 +826,7 @@ void oledDisplayGci (OledConfig *oledConfig, const uint16_t handle, uint32_t off
 /*   va_end(ap); */
 /* } */
 
-static uint16_t getResponseAsUint16 (OledConfig *oledConfig)
-{
-  return (uint16_t) ((oledConfig->response[1] << 8) | oledConfig->response[2]);
-}
-
-static uint16_t getResponseAsUint16_2 (const uint8_t *buffer)
+static uint16_t getResponseAsUint16 (const uint8_t *buffer)
 {
   return __builtin_bswap16(*(uint16_t *) (buffer+1));
 }
@@ -929,145 +837,72 @@ static  uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t 
   return (colorDecTo16b(fg.r, fg.g, fg.b));
 }
 
-static void oledTrace (OledConfig *oledConfig, const char* err)
-{
-  static uint32_t errCount=0;
-
-  //  DebugTrace (err);
-  if (strcmp (err, "NACK") != 0) {
-    if (errCount++ == 5) {
-      errCount = 0;
-      oledReInit (oledConfig);
-    }
-  }
-}
-
 static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout)
 {
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_GOLDELOX(oledConfig);
 
-  OLED ("%c%c%c%c", 0x00, 0x0c, twoBytesFromWord(timout));
+  misc_screenSaverTimeout(oledConfig, timout);
 }
 
 static uint32_t oledGetFileError  (OledConfig *oledConfig)
 {
   if (oledIsInitialised(oledConfig) == false) return 0;
-  if (oledConfig->deviceType != PICASO) return 0;
+  uint16_t errno;
 
-  OLED_KOF (KOF_INT16, "%c%c", 0xff, 0x1f);
-
-  if (oledConfig->response[2]) {
-    DebugTrace ("oledGetFileError error %d", oledConfig->response[2]);
-  }
-
-  return oledConfig->response[2];
+  file_error(oledConfig, &errno);
+  return errno;
 }
 
 static bool oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const uint32_t offset)
 {
   if (oledIsInitialised(oledConfig) == false) return false;
-  if (oledConfig->deviceType != PICASO) return false;
 
   const union {
     uint32_t val;
-    uint8_t  buf [sizeof(uint32_t)] ;
+    struct {
+      uint16_t lo;
+      uint16_t hi;
+    };
   } ofst = {.val = offset};
-
-  const union {
-    uint16_t val;
-    uint8_t  buf [sizeof(uint16_t)] ;
-  } hndl  = {.val = handle};
-
-  OLED_KOF (KOF_INT16, "%c%c%c%c%c%c%c%c", 0xff, 0x16, hndl.buf[1], hndl.buf[0],
-	    ofst.buf[3], ofst.buf[2], ofst.buf[1], ofst.buf[0]);
+  uint16_t status;
+  file_seek(oledConfig, handle, ofst.hi, ofst.lo, &status);
   
-  return oledConfig->response[2] == 1;
+  return status == 1;
 }
 
-static uint32_t oledReceiveAnswer (OledConfig *oc, const size_t size,
+#if PICASO_DISPLAY_USE_SD
+static uint32_t oledReceiveAnswer (OledConfig *oc, uint8_t *response, const size_t size,
 				   const char* fct, const uint32_t line)
 {
   (void) fct;
   (void) line;
 
-#if PICASO_DISPLAY_USE_SD
   BaseChannel *serial =  (BaseChannel *)  oc->serial;
-#else
-  UARTDriver *serial = oc->serial;
-#endif
-  uint8_t *response = oc->response;
-  response[0] = 0;
-
-  if (size > sizeof (oc->response)) {
-    oledTrace (oc, "oledConfig->response buffer too small");
-    return 0;
-  }
   
 
-#if PICASO_DISPLAY_USE_SD
   const uint32_t ret = chnReadTimeout(serial, response, size, readTimout);
-#else
-  const uint32_t ret = uartReadTimeout(serial, response, size, readTimout);
-#endif
+
   if (ret != size) {
     DebugTrace ("oledReceiveAnswer ret[%lu] != expectedSize[%u] @%s : line %lu", ret, size, fct, line);
-    oledTrace (oc, "LCD Protocol error");
-    oledStatus = OLED_ERROR;
-  } else if (response[0] != QDS_ACK) {
-    DebugTrace("oledReceiveAnswer get NACK [%d] @%s : line %lu XY=[%d,%d]", response[0], fct, line,
-		oc->curXpos, oc->curYpos);
-    oledTrace(oc, "NACK");
     oledStatus = OLED_ERROR;
   } else {
     oledStatus = OLED_OK;
   }
   return ret;
 }
-
-static uint32_t oledReceiveAnswer2 (OledConfig *oc, uint8_t *response, const size_t size,
-				   const char* fct, const uint32_t line)
-{
-  (void) fct;
-  (void) line;
-
-#if PICASO_DISPLAY_USE_SD
-  BaseChannel *serial =  (BaseChannel *)  oc->serial;
-#else
-  UARTDriver *serial = oc->serial;
 #endif
-  
-
-#if PICASO_DISPLAY_USE_SD
-  const uint32_t ret = chnReadTimeout(serial, response, size, readTimout);
-#else
-  const uint32_t ret = uartReadTimeout(serial, response, size, readTimout);
-#endif
-  if (ret != size) {
-    DebugTrace ("oledReceiveAnswer2 ret[%lu] != expectedSize[%u] @%s : line %lu", ret, size, fct, line);
-    oledTrace (oc, "LCD Protocol error");
-    oledStatus = OLED_ERROR;
-  } else {
-    oledStatus = OLED_OK;
-  }
-  return ret;
-}
 
 #if PICASO_DISPLAY_USE_UART
-static void oledStartReceiveAnswer (OledConfig *oc, size_t *size,
+
+static void oledStartReceiveAnswer (OledConfig *oc, uint8_t *response, size_t *size,
 				    const char* fct, const uint32_t line)
 {
   (void) fct;
   (void) line;
 
   UARTDriver *serial = oc->serial;
-  uint8_t *response = oc->response;
   response[0] = 0;
-
-  if (*size > sizeof (oc->response)) {
-    oledTrace (oc, "oledConfig->response buffer too small");
-    return;
-  }
 
   uartStartRead(serial, response, size);
 }
@@ -1080,8 +915,6 @@ static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
   (void) line;
 
   UARTDriver *serial = oc->serial;
-  uint8_t *response = oc->response;
-
 
   size_t ask = *size;
   msg_t status = uartWaitReadTimeout(serial, size, readTimout);
@@ -1090,47 +923,6 @@ static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
   if (status != MSG_OK) {
     DebugTrace ("oledWaitReceiveAnswer ask[%u] != expectedSize[%u] @%s : line %lu", ret,
 		ask, fct, line);
-    oledTrace (oc, "LCD Protocol error");
-    oledStatus = OLED_ERROR;
-  } else if (response[0] != QDS_ACK) {
-    DebugTrace("oledWaitReceiveAnswer get NACK [%d] @%s : line %lu XY=[%d,%d]", response[0],
-	       fct, line, oc->curXpos, oc->curYpos);
-    oledTrace(oc, "NACK");
-    oledStatus = OLED_ERROR;
-  } else {
-    oledStatus = OLED_OK;
-  }
-  return ret;
-}
-static void oledStartReceiveAnswer2 (OledConfig *oc, uint8_t *response, size_t *size,
-				    const char* fct, const uint32_t line)
-{
-  (void) fct;
-  (void) line;
-
-  UARTDriver *serial = oc->serial;
-  response[0] = 0;
-
-  uartStartRead(serial, response, size);
-}
-
-static uint32_t oledWaitReceiveAnswer2 (OledConfig *oc, size_t *size,
-				       const char* fct, const uint32_t line)
-
-{
-  (void) fct;
-  (void) line;
-
-  UARTDriver *serial = oc->serial;
-
-  size_t ask = *size;
-  msg_t status = uartWaitReadTimeout(serial, size, readTimout);
-  size_t ret = *size;
-
-  if (status != MSG_OK) {
-    DebugTrace ("oledWaitReceiveAnswer2 ask[%u] != expectedSize[%u] @%s : line %lu", ret,
-		ask, fct, line);
-    oledTrace (oc, "LCD Protocol error");
     oledStatus = OLED_ERROR;
   } else {
     oledStatus = OLED_OK;
@@ -1138,109 +930,6 @@ static uint32_t oledWaitReceiveAnswer2 (OledConfig *oc, size_t *size,
   return ret;
 }
 #endif
-
-static uint32_t oledSendCommand (OledConfig *oc, KindOfCommand kof, 
-				 const char* fct, const uint32_t line, const char *fmt, ...)
-{
-  va_list ap;
-  uint32_t ret=0;
-  
-  uint8_t *response = oc->response;
-  
-  // purge read buffer
-  const  size_t respBufferSize = sizeof (oc->response);
-#if PICASO_DISPLAY_USE_SD
-  BaseChannel * serial =  (BaseChannel *)  oc->serial;
-  chnReadTimeout (serial, response, respBufferSize, TIME_IMMEDIATE);
-#else
-  size_t size=0;
-  UARTDriver * serial = oc->serial;
-#endif
-  
-  // send command
-  va_start(ap, fmt);
-#if PICASO_DISPLAY_USE_SD
-  directchvprintf(oc->serial, fmt, ap);
-#else
-  switch (kof) {
-  case KOF_NONE :
-    break;
-    
-  case  KOF_ACK:
-    size = 1U;
-    oledStartReceiveAnswer(oc, &size, fct, line);
-    break;
-    
-  case  KOF_INT16:
-    size = 3U;
-    oledStartReceiveAnswer(oc, &size, fct, line);
-    break;
-    
-  case KOF_INT16LENGTH_THEN_DATA:
-    size = 3U;
-    oledStartReceiveAnswer(oc, &size, fct, line);
-    break;
-  }
-
-  size_t length = chvsnprintf(oc->sendBuffer, sizeof(oc->sendBuffer), fmt, ap);
-  uartSendTimeout(oc->serial, &length, oc->sendBuffer, TIME_INFINITE);
-#endif
-  va_end(ap);
-  
-  // get response
-  switch (kof) {
-  case KOF_NONE :
-    return 0;
-    break;
-    
-  case  KOF_ACK:
-#if PICASO_DISPLAY_USE_SD
-    ret = oledReceiveAnswer(oc, 1, fct, line);
-#else
-    ret = oledWaitReceiveAnswer(oc, &size, fct, line);
-#endif
-    break;
-    
-  case  KOF_INT16:
-#if PICASO_DISPLAY_USE_SD
-    ret = oledReceiveAnswer(oc, 3, fct, line);
-#else
-    ret = oledWaitReceiveAnswer(oc, &size, fct, line);
-#endif
-    break;
-    
-  case KOF_INT16LENGTH_THEN_DATA:
-#if PICASO_DISPLAY_USE_SD
-    ret = oledReceiveAnswer(oc, 3, fct, line);
-#else
-    ret = oledWaitReceiveAnswer(oc, &size, fct, line);
-#endif
-   if (ret == 3) {
-      // little endianness
-      const uint32_t len = getResponseAsUint16(oc);
-      const uint32_t bsize = MIN(len, respBufferSize-1);
-      
-      //DebugTrace ("receiveLen=%d constrainedSize=%d", len, size);
-      if (bsize) {
-#if PICASO_DISPLAY_USE_SD	
-	ret = chnReadTimeout(serial, response, bsize, readTimout);
-#else
-	ret = uartReadTimeout(serial, response, bsize, readTimout);
-#endif
-	if (ret != bsize) 
-	  oledTrace (oc, "KOF_INT16LENGTH_THEN_DATA: OLED Protocol error");
-	else 
-	  response[ret] = 0; // NULL string termination 
-      } else {
-	ret = 0;
-      }
-    }
-    break;
-  }
-  
-  
-  return ret;
-}
 
 
 static uint32_t oledTransmitBuffer (OledConfig *oc, const char* fct, const uint32_t line,
@@ -1263,7 +952,7 @@ static uint32_t oledTransmitBuffer (OledConfig *oc, const char* fct, const uint3
     streamWrite(oc->serial, outBuffer, outSize);
 #else
   if (inSize != 0) {
-    oledStartReceiveAnswer2(oc, inBuffer, &inSizeRw, fct, line);
+    oledStartReceiveAnswer(oc, inBuffer, &inSizeRw, fct, line);
   }
   size_t length = outSize;
   if (outSize != 0) {
@@ -1276,9 +965,9 @@ static uint32_t oledTransmitBuffer (OledConfig *oc, const char* fct, const uint3
     return 0;
 
 #if PICASO_DISPLAY_USE_SD
-  ret = oledReceiveAnswer2(oc, inBuffer, inSize, fct, line);
+  ret = oledReceiveAnswer(oc, inBuffer, inSize, fct, line);
 #else
-  ret = oledWaitReceiveAnswer2(oc, &inSizeRw, fct, line);
+  ret = oledWaitReceiveAnswer(oc, &inSizeRw, fct, line);
 #endif
   
   return ret;
@@ -1316,14 +1005,6 @@ static void sendVt100Seq (UARTDriver *serial, const char *fmt, ...)
 }
 
 
-
-static size_t uartReadTimeout (UARTDriver *serial, uint8_t *response, 
-			     size_t size, sysinterval_t  rTimout)
-{
-  uartReceiveTimeout(serial, &size, response, rTimout);
-  return size;
-}
-
 static void uartStartRead (UARTDriver *serial, uint8_t *response, 
 		    size_t *size)
 {
@@ -1356,26 +1037,5 @@ static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t
   return msg;
 }
 #endif
-
-
-static bool oledGetDynamicString(OledConfig *oc, const char* fct, const uint32_t line,
-				 uint16_t dynSize,
-				 uint8_t *inBuffer, const size_t inSize)
-{
-  dynSize =  MIN(dynSize, inSize - 1);
-  uint16_t ret = oledTransmitBuffer(oc, fct, line,
-				    NULL, 0,
-				    (uint8_t *) inBuffer, dynSize);
-  if (ret != dynSize) {
-    DebugTrace("%s error ret=%u instead of %u", fct, ret, dynSize);
-    inBuffer[0] = 0;
-    return false;
-  } else {
-    inBuffer[dynSize] = 0;
-    return true;  
-  }
-}
-
-
 
 #include "picaso4Display_ll.c"
