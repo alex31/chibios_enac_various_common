@@ -509,7 +509,7 @@ bool txt_moveCursor(OledConfig *oledConfig, uint16_t line, uint16_t column) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_putCh(OledConfig *oledConfig, uint16_t car) {
@@ -531,7 +531,7 @@ bool txt_putCh(OledConfig *oledConfig, uint16_t car) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_putStr(OledConfig *oledConfig, const char *cstr, uint16_t *length) {
@@ -563,7 +563,7 @@ bool txt_putStr(OledConfig *oledConfig, const char *cstr, uint16_t *length) {
     if (length != NULL) *length = __builtin_bswap16(response.length);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_charWidth(OledConfig *oledConfig, char car, uint16_t *width) {
@@ -590,7 +590,7 @@ bool txt_charWidth(OledConfig *oledConfig, char car, uint16_t *width) {
     if (width != NULL) *width = __builtin_bswap16(response.width);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_charHeight(OledConfig *oledConfig, char car, uint16_t *height) {
@@ -617,7 +617,7 @@ bool txt_charHeight(OledConfig *oledConfig, char car, uint16_t *height) {
     if (height != NULL) *height = __builtin_bswap16(response.height);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_Fgcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol) {
@@ -647,7 +647,7 @@ bool txt_Fgcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol) {
     if (oldCol != NULL) *oldCol = __builtin_bswap16(response.oldCol);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_Bgcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol) {
@@ -677,7 +677,7 @@ bool txt_Bgcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol) {
     if (oldCol != NULL) *oldCol = __builtin_bswap16(response.oldCol);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_fontID(OledConfig *oledConfig, uint16_t id) {
@@ -699,7 +699,7 @@ bool txt_fontID(OledConfig *oledConfig, uint16_t id) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_widthMult(OledConfig *oledConfig, uint16_t wMultiplier,
@@ -730,7 +730,7 @@ bool txt_widthMult(OledConfig *oledConfig, uint16_t wMultiplier,
     if (oldMul != NULL) *oldMul = __builtin_bswap16(response.oldMul);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_heightMult(OledConfig *oledConfig, uint16_t hMultiplier,
@@ -761,7 +761,7 @@ bool txt_heightMult(OledConfig *oledConfig, uint16_t hMultiplier,
     if (oldMul != NULL) *oldMul = __builtin_bswap16(response.oldMul);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_xgap(OledConfig *oledConfig, uint16_t xGap, uint16_t *oldGap) {
@@ -791,7 +791,7 @@ bool txt_xgap(OledConfig *oledConfig, uint16_t xGap, uint16_t *oldGap) {
     if (oldGap != NULL) *oldGap = __builtin_bswap16(response.oldGap);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_ygap(OledConfig *oledConfig, uint16_t yGap, uint16_t *oldGap) {
@@ -821,7 +821,7 @@ bool txt_ygap(OledConfig *oledConfig, uint16_t yGap, uint16_t *oldGap) {
     if (oldGap != NULL) *oldGap = __builtin_bswap16(response.oldGap);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_bold(OledConfig *oledConfig, uint16_t mode, uint16_t *oldBold) {
@@ -851,7 +851,7 @@ bool txt_bold(OledConfig *oledConfig, uint16_t mode, uint16_t *oldBold) {
     if (oldBold != NULL) *oldBold = __builtin_bswap16(response.oldBold);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_inverse(OledConfig *oledConfig, uint16_t mode, uint16_t *oldInv) {
@@ -881,7 +881,7 @@ bool txt_inverse(OledConfig *oledConfig, uint16_t mode, uint16_t *oldInv) {
     if (oldInv != NULL) *oldInv = __builtin_bswap16(response.oldInv);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_italic(OledConfig *oledConfig, uint16_t mode, uint16_t *oldItal) {
@@ -911,7 +911,7 @@ bool txt_italic(OledConfig *oledConfig, uint16_t mode, uint16_t *oldItal) {
     if (oldItal != NULL) *oldItal = __builtin_bswap16(response.oldItal);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_opacity(OledConfig *oledConfig, uint16_t mode, uint16_t *oldOpa) {
@@ -941,7 +941,7 @@ bool txt_opacity(OledConfig *oledConfig, uint16_t mode, uint16_t *oldOpa) {
     if (oldOpa != NULL) *oldOpa = __builtin_bswap16(response.oldOpa);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_underline(OledConfig *oledConfig, uint16_t mode, uint16_t *oldUnder) {
@@ -971,7 +971,7 @@ bool txt_underline(OledConfig *oledConfig, uint16_t mode, uint16_t *oldUnder) {
     if (oldUnder != NULL) *oldUnder = __builtin_bswap16(response.oldUnder);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_attributes(OledConfig *oledConfig, uint16_t bitfield,
@@ -1002,7 +1002,7 @@ bool txt_attributes(OledConfig *oledConfig, uint16_t bitfield,
     if (oldAttr != NULL) *oldAttr = __builtin_bswap16(response.oldAttr);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_set(OledConfig *oledConfig, uint16_t function, uint16_t value) {
@@ -1027,7 +1027,7 @@ bool txt_set(OledConfig *oledConfig, uint16_t function, uint16_t value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool txt_wrap(OledConfig *oledConfig, uint16_t xpos) {
@@ -1050,7 +1050,7 @@ bool txt_wrap(OledConfig *oledConfig, uint16_t xpos) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_cls(OledConfig *oledConfig) {
@@ -1071,7 +1071,7 @@ bool gfx_cls(OledConfig *oledConfig) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_changeColour(OledConfig *oledConfig, uint16_t oldColor,
@@ -1096,7 +1096,7 @@ bool gfx_changeColour(OledConfig *oledConfig, uint16_t oldColor,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_circle(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t radius,
@@ -1125,7 +1125,7 @@ bool gfx_circle(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t radius,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_circleFilled(OledConfig *oledConfig, uint16_t x, uint16_t y,
@@ -1154,7 +1154,7 @@ bool gfx_circleFilled(OledConfig *oledConfig, uint16_t x, uint16_t y,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_line(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2,
@@ -1185,7 +1185,7 @@ bool gfx_line(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_rectangle(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
@@ -1216,7 +1216,7 @@ bool gfx_rectangle(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_rectangleFilled(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
@@ -1247,7 +1247,7 @@ bool gfx_rectangleFilled(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_polyline(OledConfig *oledConfig, uint16_t n, uint16_t vx[],
@@ -1311,7 +1311,7 @@ bool gfx_triangle(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_triangleFilled(OledConfig *oledConfig, uint16_t x1, uint16_t y1,
@@ -1348,7 +1348,7 @@ bool gfx_triangleFilled(OledConfig *oledConfig, uint16_t x1, uint16_t y1,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_orbit(OledConfig *oledConfig, uint16_t angle, uint16_t distance,
@@ -1381,7 +1381,7 @@ bool gfx_orbit(OledConfig *oledConfig, uint16_t angle, uint16_t distance,
     if (Ydist != NULL) *Ydist = __builtin_bswap16(response.Ydist);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_putPixel(OledConfig *oledConfig, uint16_t x, uint16_t y,
@@ -1408,7 +1408,7 @@ bool gfx_putPixel(OledConfig *oledConfig, uint16_t x, uint16_t y,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_getPixel(OledConfig *oledConfig, uint16_t x, uint16_t y,
@@ -1438,7 +1438,7 @@ bool gfx_getPixel(OledConfig *oledConfig, uint16_t x, uint16_t y,
     if (color != NULL) *color = __builtin_bswap16(response.color);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_moveTo(OledConfig *oledConfig, uint16_t x, uint16_t y) {
@@ -1462,7 +1462,7 @@ bool gfx_moveTo(OledConfig *oledConfig, uint16_t x, uint16_t y) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_lineTo(OledConfig *oledConfig, uint16_t x, uint16_t y) {
@@ -1486,7 +1486,7 @@ bool gfx_lineTo(OledConfig *oledConfig, uint16_t x, uint16_t y) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_clipping(OledConfig *oledConfig, uint16_t mode) {
@@ -1508,7 +1508,7 @@ bool gfx_clipping(OledConfig *oledConfig, uint16_t mode) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_clipWindow(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
@@ -1537,7 +1537,7 @@ bool gfx_clipWindow(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_setClipRegion(OledConfig *oledConfig) {
@@ -1558,7 +1558,7 @@ bool gfx_setClipRegion(OledConfig *oledConfig) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_ellipse(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t xrad,
@@ -1590,7 +1590,7 @@ bool gfx_ellipse(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t xrad,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_ellipseFilled(OledConfig *oledConfig, uint16_t x, uint16_t y,
@@ -1622,7 +1622,7 @@ bool gfx_ellipseFilled(OledConfig *oledConfig, uint16_t x, uint16_t y,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_button(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y,
@@ -1664,7 +1664,7 @@ bool gfx_button(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y,
                             strlen(cstr) + 1, (uint8_t *)&response,
                             sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_panel(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y,
@@ -1698,7 +1698,7 @@ bool gfx_panel(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_slider(OledConfig *oledConfig, uint16_t mode, uint16_t x1, uint16_t y1,
@@ -1737,7 +1737,7 @@ bool gfx_slider(OledConfig *oledConfig, uint16_t mode, uint16_t x1, uint16_t y1,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_screenCopyPaste(OledConfig *oledConfig, uint16_t xs, uint16_t ys,
@@ -1772,7 +1772,7 @@ bool gfx_screenCopyPaste(OledConfig *oledConfig, uint16_t xs, uint16_t ys,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_bevelShadow(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
@@ -1800,7 +1800,7 @@ bool gfx_bevelShadow(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_bevelWidth(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
@@ -1828,7 +1828,7 @@ bool gfx_bevelWidth(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_bGcolour(OledConfig *oledConfig, uint16_t color) {
@@ -1850,7 +1850,7 @@ bool gfx_bGcolour(OledConfig *oledConfig, uint16_t color) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_outlineColour(OledConfig *oledConfig, uint16_t color) {
@@ -1872,7 +1872,7 @@ bool gfx_outlineColour(OledConfig *oledConfig, uint16_t color) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_contrast(OledConfig *oledConfig, uint16_t contrast) {
@@ -1894,7 +1894,7 @@ bool gfx_contrast(OledConfig *oledConfig, uint16_t contrast) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_frameDelay(OledConfig *oledConfig, uint16_t delayMsec) {
@@ -1916,7 +1916,7 @@ bool gfx_frameDelay(OledConfig *oledConfig, uint16_t delayMsec) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_linePattern(OledConfig *oledConfig, uint16_t pattern) {
@@ -1938,7 +1938,7 @@ bool gfx_linePattern(OledConfig *oledConfig, uint16_t pattern) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_screenMode(OledConfig *oledConfig, uint16_t mode, uint16_t *oldMode) {
@@ -1968,7 +1968,7 @@ bool gfx_screenMode(OledConfig *oledConfig, uint16_t mode, uint16_t *oldMode) {
     if (oldMode != NULL) *oldMode = __builtin_bswap16(response.oldMode);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_transparency(OledConfig *oledConfig, uint16_t mode,
@@ -1997,7 +1997,7 @@ bool gfx_transparency(OledConfig *oledConfig, uint16_t mode,
     if (previous != NULL) *previous = __builtin_bswap16(response.previous);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_transparentColour(OledConfig *oledConfig, uint16_t color,
@@ -2026,7 +2026,7 @@ bool gfx_transparentColour(OledConfig *oledConfig, uint16_t color,
     if (previous != NULL) *previous = __builtin_bswap16(response.previous);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_set(OledConfig *oledConfig, uint16_t function, uint16_t mode) {
@@ -2050,7 +2050,7 @@ bool gfx_set(OledConfig *oledConfig, uint16_t function, uint16_t mode) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool gfx_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
@@ -2078,7 +2078,7 @@ bool gfx_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_init(OledConfig *oledConfig, uint16_t *value) {
@@ -2104,7 +2104,7 @@ bool media_init(OledConfig *oledConfig, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_setAdd(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr) {
@@ -2128,7 +2128,7 @@ bool media_setAdd(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_setSector(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr) {
@@ -2152,7 +2152,7 @@ bool media_setSector(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_readByte(OledConfig *oledConfig, uint16_t *value) {
@@ -2178,7 +2178,7 @@ bool media_readByte(OledConfig *oledConfig, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_readWord(OledConfig *oledConfig, uint16_t *value) {
@@ -2204,7 +2204,7 @@ bool media_readWord(OledConfig *oledConfig, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_writeByte(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
@@ -2231,7 +2231,7 @@ bool media_writeByte(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_writeWord(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
@@ -2258,7 +2258,7 @@ bool media_writeWord(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_flush(OledConfig *oledConfig, uint16_t *status) {
@@ -2284,7 +2284,7 @@ bool media_flush(OledConfig *oledConfig, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_image(OledConfig *oledConfig, uint16_t x, uint16_t y) {
@@ -2308,7 +2308,7 @@ bool media_image(OledConfig *oledConfig, uint16_t x, uint16_t y) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_video(OledConfig *oledConfig, uint16_t x, uint16_t y) {
@@ -2332,7 +2332,7 @@ bool media_video(OledConfig *oledConfig, uint16_t x, uint16_t y) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool media_videoFrame(OledConfig *oledConfig, uint16_t x, uint16_t y,
@@ -2359,7 +2359,7 @@ bool media_videoFrame(OledConfig *oledConfig, uint16_t x, uint16_t y,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_peekB(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t *value) {
@@ -2387,7 +2387,7 @@ bool misc_peekB(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_pokeB(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t value) {
@@ -2412,7 +2412,7 @@ bool misc_pokeB(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_peekW(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t *value) {
@@ -2440,7 +2440,7 @@ bool misc_peekW(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_pokeW(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t value) {
@@ -2465,7 +2465,7 @@ bool misc_pokeW(OledConfig *oledConfig, uint16_t eveRegIndex, uint16_t value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_peekM(OledConfig *oledConfig, uint16_t address, uint16_t *value) {
@@ -2493,7 +2493,7 @@ bool misc_peekM(OledConfig *oledConfig, uint16_t address, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_pokeM(OledConfig *oledConfig, uint16_t address, uint16_t value) {
@@ -2518,7 +2518,7 @@ bool misc_pokeM(OledConfig *oledConfig, uint16_t address, uint16_t value) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_joystick(OledConfig *oledConfig, uint16_t *value) {
@@ -2545,7 +2545,7 @@ bool misc_joystick(OledConfig *oledConfig, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_beep(OledConfig *oledConfig, uint16_t note, uint16_t duration_ms) {
@@ -2570,7 +2570,7 @@ bool misc_beep(OledConfig *oledConfig, uint16_t note, uint16_t duration_ms) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_setbaudWait(OledConfig *oledConfig, uint16_t index) {
@@ -2616,7 +2616,7 @@ bool sys_sleep(OledConfig *oledConfig, uint16_t duration_s,
     if (duration != NULL) *duration = __builtin_bswap16(response.duration);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool sys_memFree(OledConfig *oledConfig, uint16_t handle, uint16_t *value) {
@@ -2644,7 +2644,7 @@ bool sys_memFree(OledConfig *oledConfig, uint16_t handle, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool sys_memHeap(OledConfig *oledConfig, uint16_t *avail) {
@@ -2671,7 +2671,7 @@ bool sys_memHeap(OledConfig *oledConfig, uint16_t *avail) {
     if (avail != NULL) *avail = __builtin_bswap16(response.avail);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool sys_getModel(OledConfig *oledConfig, uint16_t *n, char *str) {
@@ -2687,7 +2687,7 @@ bool sys_getModel(OledConfig *oledConfig, uint16_t *n, char *str) {
   stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)str, 3) == 3;
-  if (!stus) {
+  if ((!stus) || (str[0] != QDS_ACK)) {
     DebugTrace("%s error ", __FUNCTION__);
     str[0] = 0;
     return false;
@@ -2729,7 +2729,7 @@ bool sys_getVersion(OledConfig *oledConfig, uint16_t *version) {
     if (version != NULL) *version = __builtin_bswap16(response.version);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool sys_getPmmC(OledConfig *oledConfig, uint16_t *version) {
@@ -2755,7 +2755,7 @@ bool sys_getPmmC(OledConfig *oledConfig, uint16_t *version) {
     if (version != NULL) *version = __builtin_bswap16(response.version);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_screenSaverTimeout(OledConfig *oledConfig, uint16_t timout_ms) {
@@ -2779,7 +2779,7 @@ bool misc_screenSaverTimeout(OledConfig *oledConfig, uint16_t timout_ms) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_screenSaverSpeed(OledConfig *oledConfig, uint16_t speed_index) {
@@ -2802,7 +2802,7 @@ bool misc_screenSaverSpeed(OledConfig *oledConfig, uint16_t speed_index) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool misc_screenSaverMode(OledConfig *oledConfig, uint16_t mode) {
@@ -2825,7 +2825,7 @@ bool misc_screenSaverMode(OledConfig *oledConfig, uint16_t mode) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool touch_detectRegion(OledConfig *oledConfig, uint16_t x1, uint16_t y1,
@@ -2855,7 +2855,7 @@ bool touch_detectRegion(OledConfig *oledConfig, uint16_t x1, uint16_t y1,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool touch_set(OledConfig *oledConfig, uint16_t mode) {
@@ -2878,7 +2878,7 @@ bool touch_set(OledConfig *oledConfig, uint16_t mode) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool touch_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
@@ -2906,7 +2906,7 @@ bool touch_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_error(OledConfig *oledConfig, uint16_t *errno) {
@@ -2933,7 +2933,7 @@ bool file_error(OledConfig *oledConfig, uint16_t *errno) {
     if (errno != NULL) *errno = __builtin_bswap16(response.errno);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_count(OledConfig *oledConfig, const char *filename, uint16_t *count) {
@@ -2963,7 +2963,7 @@ bool file_count(OledConfig *oledConfig, const char *filename, uint16_t *count) {
     if (count != NULL) *count = __builtin_bswap16(response.count);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_dir(OledConfig *oledConfig, const char *filename, uint16_t *count) {
@@ -2993,7 +2993,7 @@ bool file_dir(OledConfig *oledConfig, const char *filename, uint16_t *count) {
     if (count != NULL) *count = __builtin_bswap16(response.count);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_findFirst(OledConfig *oledConfig, const char *filename,
@@ -3024,7 +3024,7 @@ bool file_findFirst(OledConfig *oledConfig, const char *filename,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_findFirstRet(OledConfig *oledConfig, const char *filename,
@@ -3044,7 +3044,7 @@ bool file_findFirstRet(OledConfig *oledConfig, const char *filename,
   stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
                             (uint8_t *)filename, strlen(filename) + 1,
                             (uint8_t *)str, 3) == 3;
-  if (!stus) {
+  if ((!stus) || (str[0] != QDS_ACK)) {
     DebugTrace("%s error ", __FUNCTION__);
     str[0] = 0;
     return false;
@@ -3087,7 +3087,7 @@ bool file_findNext(OledConfig *oledConfig, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_findNextRet(OledConfig *oledConfig, uint16_t *n, char *str) {
@@ -3103,7 +3103,7 @@ bool file_findNextRet(OledConfig *oledConfig, uint16_t *n, char *str) {
   stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)str, 3) == 3;
-  if (!stus) {
+  if ((!stus) || (str[0] != QDS_ACK)) {
     DebugTrace("%s error ", __FUNCTION__);
     str[0] = 0;
     return false;
@@ -3150,7 +3150,7 @@ bool file_exists(OledConfig *oledConfig, const char *filename,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_open(OledConfig *oledConfig, const char *filename, char mode,
@@ -3187,7 +3187,7 @@ bool file_open(OledConfig *oledConfig, const char *filename, char mode,
     if (handle != NULL) *handle = __builtin_bswap16(response.handle);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_close(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
@@ -3215,7 +3215,7 @@ bool file_close(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_read(OledConfig *oledConfig, uint16_t size, uint16_t handle,
@@ -3235,7 +3235,7 @@ bool file_read(OledConfig *oledConfig, uint16_t size, uint16_t handle,
   stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)str, 3) == 3;
-  if (!stus) {
+  if ((!stus) || (str[0] != QDS_ACK)) {
     DebugTrace("%s error ", __FUNCTION__);
     str[0] = 0;
     return false;
@@ -3284,7 +3284,7 @@ bool file_seek(OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_index(OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
@@ -3319,7 +3319,7 @@ bool file_index(OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_tell(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
@@ -3354,7 +3354,7 @@ bool file_tell(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
     if (loWord != NULL) *loWord = __builtin_bswap16(response.loWord);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_write(OledConfig *oledConfig, uint16_t size, uint16_t source,
@@ -3387,7 +3387,7 @@ bool file_write(OledConfig *oledConfig, uint16_t size, uint16_t source,
     if (count != NULL) *count = __builtin_bswap16(response.count);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_size(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
@@ -3422,7 +3422,7 @@ bool file_size(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
     if (loWord != NULL) *loWord = __builtin_bswap16(response.loWord);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_image(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t handle,
@@ -3455,7 +3455,7 @@ bool file_image(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t handle,
     if (errno != NULL) *errno = __builtin_bswap16(response.errno);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_screenCapture(OledConfig *oledConfig, uint16_t x, uint16_t y,
@@ -3493,7 +3493,7 @@ bool file_screenCapture(OledConfig *oledConfig, uint16_t x, uint16_t y,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_putC(OledConfig *oledConfig, uint16_t car, uint16_t handle,
@@ -3524,7 +3524,7 @@ bool file_putC(OledConfig *oledConfig, uint16_t car, uint16_t handle,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_getC(OledConfig *oledConfig, uint16_t handle, uint16_t *car) {
@@ -3552,7 +3552,7 @@ bool file_getC(OledConfig *oledConfig, uint16_t handle, uint16_t *car) {
     if (car != NULL) *car = __builtin_bswap16(response.car);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_putW(OledConfig *oledConfig, uint16_t word, uint16_t handle,
@@ -3583,7 +3583,7 @@ bool file_putW(OledConfig *oledConfig, uint16_t word, uint16_t handle,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_getW(OledConfig *oledConfig, uint16_t handle, uint16_t *word) {
@@ -3611,7 +3611,7 @@ bool file_getW(OledConfig *oledConfig, uint16_t handle, uint16_t *word) {
     if (word != NULL) *word = __builtin_bswap16(response.word);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_putS(OledConfig *oledConfig, const char *cstr, uint16_t *count) {
@@ -3641,7 +3641,7 @@ bool file_putS(OledConfig *oledConfig, const char *cstr, uint16_t *count) {
     if (count != NULL) *count = __builtin_bswap16(response.count);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_getS(OledConfig *oledConfig, uint16_t size, uint16_t handle,
@@ -3661,7 +3661,7 @@ bool file_getS(OledConfig *oledConfig, uint16_t size, uint16_t handle,
   stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)str, 3) == 3;
-  if (!stus) {
+  if ((!stus) || (str[0] != QDS_ACK)) {
     DebugTrace("%s error ", __FUNCTION__);
     str[0] = 0;
     return false;
@@ -3708,7 +3708,7 @@ bool file_erase(OledConfig *oledConfig, const char *filename,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_rewind(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
@@ -3736,7 +3736,7 @@ bool file_rewind(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_loadFunction(OledConfig *oledConfig, const char *fnname,
@@ -3767,7 +3767,7 @@ bool file_loadFunction(OledConfig *oledConfig, const char *fnname,
     if (pointer != NULL) *pointer = __builtin_bswap16(response.pointer);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_loadImageControl(OledConfig *oledConfig, const char *filename1,
@@ -3808,7 +3808,7 @@ bool file_loadImageControl(OledConfig *oledConfig, const char *filename1,
     if (handle != NULL) *handle = __builtin_bswap16(response.handle);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_mount(OledConfig *oledConfig, uint16_t *status) {
@@ -3835,7 +3835,7 @@ bool file_mount(OledConfig *oledConfig, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_unmount(OledConfig *oledConfig) {
@@ -3857,7 +3857,7 @@ bool file_unmount(OledConfig *oledConfig) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_playWAV(OledConfig *oledConfig, const char *wavname,
@@ -3888,7 +3888,7 @@ bool file_playWAV(OledConfig *oledConfig, const char *wavname,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool file_writeString(OledConfig *oledConfig, uint16_t handle, const char *cstr,
@@ -3920,7 +3920,7 @@ bool file_writeString(OledConfig *oledConfig, uint16_t handle, const char *cstr,
     if (pointer != NULL) *pointer = __builtin_bswap16(response.pointer);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool snd_volume(OledConfig *oledConfig, uint16_t level) {
@@ -3943,7 +3943,7 @@ bool snd_volume(OledConfig *oledConfig, uint16_t level) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool snd_pitch(OledConfig *oledConfig, uint16_t rate, uint16_t *oldRate) {
@@ -3971,7 +3971,7 @@ bool snd_pitch(OledConfig *oledConfig, uint16_t rate, uint16_t *oldRate) {
     if (oldRate != NULL) *oldRate = __builtin_bswap16(response.oldRate);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool snd_bufSize(OledConfig *oledConfig, uint16_t bufferSize) {
@@ -3994,7 +3994,7 @@ bool snd_bufSize(OledConfig *oledConfig, uint16_t bufferSize) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool snd_stop(OledConfig *oledConfig) {
@@ -4016,7 +4016,7 @@ bool snd_stop(OledConfig *oledConfig) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool snd_pause(OledConfig *oledConfig) {
@@ -4038,7 +4038,7 @@ bool snd_pause(OledConfig *oledConfig) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool snd_continue(OledConfig *oledConfig) {
@@ -4060,7 +4060,7 @@ bool snd_continue(OledConfig *oledConfig) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool snd_playing(OledConfig *oledConfig, uint16_t *togo) {
@@ -4087,7 +4087,7 @@ bool snd_playing(OledConfig *oledConfig, uint16_t *togo) {
     if (togo != NULL) *togo = __builtin_bswap16(response.togo);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_setPosition(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4122,7 +4122,7 @@ bool img_setPosition(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_enable(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4153,7 +4153,7 @@ bool img_enable(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_disable(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4184,7 +4184,7 @@ bool img_disable(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_darken(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4215,7 +4215,7 @@ bool img_darken(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_lighten(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4246,7 +4246,7 @@ bool img_lighten(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_setWord(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4281,7 +4281,7 @@ bool img_setWord(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_getWord(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4314,7 +4314,7 @@ bool img_getWord(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (value != NULL) *value = __builtin_bswap16(response.value);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_show(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4345,7 +4345,7 @@ bool img_show(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_setAttributes(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4378,7 +4378,7 @@ bool img_setAttributes(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_clearAttributes(OledConfig *oledConfig, uint16_t handle,
@@ -4411,7 +4411,7 @@ bool img_clearAttributes(OledConfig *oledConfig, uint16_t handle,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_touched(OledConfig *oledConfig, uint16_t handle, uint16_t index,
@@ -4442,7 +4442,7 @@ bool img_touched(OledConfig *oledConfig, uint16_t handle, uint16_t index,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool img_blitComtoDisplay(OledConfig *oledConfig, uint16_t x, uint16_t y,
@@ -4503,7 +4503,7 @@ bool bus_in(OledConfig *oledConfig, uint16_t *busState) {
     if (busState != NULL) *busState = __builtin_bswap16(response.busState);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool bus_out(OledConfig *oledConfig, uint16_t busState) {
@@ -4526,7 +4526,7 @@ bool bus_out(OledConfig *oledConfig, uint16_t busState) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool bus_read(OledConfig *oledConfig, uint16_t *busState) {
@@ -4553,7 +4553,7 @@ bool bus_read(OledConfig *oledConfig, uint16_t *busState) {
     if (busState != NULL) *busState = __builtin_bswap16(response.busState);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool bus_set(OledConfig *oledConfig, uint16_t dirMask) {
@@ -4576,7 +4576,7 @@ bool bus_set(OledConfig *oledConfig, uint16_t dirMask) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool bus_write(OledConfig *oledConfig, uint16_t mask) {
@@ -4599,7 +4599,7 @@ bool bus_write(OledConfig *oledConfig, uint16_t mask) {
                             (uint8_t *)&command1, sizeof(command1),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool pin_hi(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
@@ -4627,7 +4627,7 @@ bool pin_hi(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool pin_lo(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
@@ -4655,7 +4655,7 @@ bool pin_lo(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool pin_read(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
@@ -4683,7 +4683,7 @@ bool pin_read(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }
 
 bool pin_set(OledConfig *oledConfig, uint16_t mode, uint16_t pin,
@@ -4714,5 +4714,5 @@ bool pin_set(OledConfig *oledConfig, uint16_t mode, uint16_t pin,
     if (status != NULL) *status = __builtin_bswap16(response.status);
   }
 
-  return stus;
+  return stus && (response.ack == QDS_ACK);
 }

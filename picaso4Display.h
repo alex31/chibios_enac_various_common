@@ -37,20 +37,9 @@ typedef struct {
 } PolyPoint;
 
 
-// enforce the use of oledStart over oledInit
-bool __attribute__((deprecated)) oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled,
-					   const uint32_t baud,     ioportid_t rstGpio, uint32_t rstPin,
-					   enum OledConfig_Device dev);
-static inline bool oledStart (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
-	        ioline_t reset, enum OledConfig_Device dev)
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  return oledInit (oledConfig, oled, baud, PAL_PORT(reset), PAL_PAD(reset), dev);
-#pragma GCC diagnostic pop  
-}
-  
-void   oledHardReset (OledConfig *oledConfig);
+bool oledStart (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
+		ioline_t reset, enum OledConfig_Device dev);
+void oledHardReset (OledConfig *oledConfig);
 bool oledIsCorrectDevice (OledConfig *oledConfig);
 void oledAcquireLock (OledConfig *oledConfig);
 void oledReleaseLock (OledConfig *oledConfig);
@@ -150,8 +139,9 @@ struct OledConfig {
   UARTDriver *serial;
 #endif
   mutex_t omutex ;
-  ioportid_t rstGpio;
-  uint32_t rstPin;
+  //  ioportid_t rstGpio;
+  //  uint32_t rstPin;
+  ioline_t rstLine;
   enum OledConfig_Device deviceType;
   // =============
   uint16_t bg;
@@ -161,10 +151,6 @@ struct OledConfig {
   uint8_t fgIdx; 
   uint8_t curXpos; 
   uint8_t curYpos;   
-  uint8_t response[16];
-#if PICASO_DISPLAY_USE_UART
- char sendBuffer[80];
-#endif
 };
 
 

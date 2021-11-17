@@ -35,6 +35,7 @@ static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
 #endif
 static bool findDeviceType (OledConfig *oledConfig);
 
+#if CH_DBG_ENABLE_ASSERTS 
 #define RET_UNLESS_INIT(oledCfg)    {if (oledIsInitialised(oledCfg) == false) return ;}
 #define RET_UNLESS_4DSYS(oledCfg)  {if (oledCfg->deviceType == TERM_VT100) return ;}
 #define RET_UNLESS_GOLDELOX(oledCfg)  {if (oledCfg->deviceType != GOLDELOX) return ;}
@@ -42,6 +43,15 @@ static bool findDeviceType (OledConfig *oledConfig);
 #define RET_UNLESS_INIT_BOOL(oledCfg)    {if (oledIsInitialised(oledCfg) == false) return false;}
 #define RET_UNLESS_4DSYS_BOOL(oledCfg)  {if (oledCfg->deviceType == TERM_VT100) return false;}
 #define RET_UNLESS_GOLDELOX_BOOL(oledCfg)  {if (oledCfg->deviceType != GOLDELOX) return false;}
+#else
+#define RET_UNLESS_INIT(oledCfg)
+#define RET_UNLESS_4DSYS(oledCfg)
+#define RET_UNLESS_GOLDELOX(oledCfg)
+
+#define RET_UNLESS_INIT_BOOL(oledCfg)
+#define RET_UNLESS_4DSYS_BOOL(oledCfg)
+#define RET_UNLESS_GOLDELOX_BOOL(oledCfg)
+#endif
 
 static bool oledIsInitialised (const OledConfig *oledConfig) ;
 static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout);
@@ -76,11 +86,10 @@ static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
   oledConfig->serialConfig.cr3 = 0;
 }
 
-bool oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
-	      ioportid_t rstGpio, uint32_t rstPin, enum OledConfig_Device dev)
+bool oledStart (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
+		ioline_t rstLine, enum OledConfig_Device dev)
 {
-  oledConfig->rstGpio = rstGpio;
-  oledConfig->rstPin = rstPin;
+  oledConfig->rstLine = rstLine;
   oledConfig->deviceType = dev;
 
   oledHardReset(oledConfig);
@@ -109,7 +118,6 @@ bool oledInit (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
   oledClearScreen(oledConfig);
   oledSetTextOpacity(oledConfig, true);
 
-
   // disable screensaver : 0 is special value for disabling screensaver
   // since oled has remanance problem, we activate screensaver after 20 seconds
   oledScreenSaverTimout(oledConfig, 20000);
@@ -126,10 +134,10 @@ void oledHardReset (OledConfig *oledConfig)
 
   RET_UNLESS_4DSYS(oledConfig);
 
-  palClearPad(oledConfig->rstGpio, oledConfig->rstPin);
+  palClearLine(oledConfig->rstLine);
   chThdSleepMilliseconds(10);
-  palSetPad(oledConfig->rstGpio, oledConfig->rstPin);
-  chThdSleepMilliseconds(3500);
+  palSetLine(oledConfig->rstLine);
+  chThdSleepMilliseconds(3000);
 }
 
 
@@ -148,11 +156,7 @@ void oledReleaseLock (OledConfig *oledConfig)
 { 
   RET_UNLESS_INIT(oledConfig);
   (void) oledConfig;
-#if (CH_KERNEL_MAJOR > 2)
   chMtxUnlock(&(oledConfig->omutex));
-#else
-  chMtxUnlock();
-#endif
 }
 
 
@@ -491,7 +495,8 @@ void oledUseColorIndex (OledConfig *oledConfig, uint8_t colorIndex)
 
 void oledSetTextOpacity (OledConfig *oledConfig, bool opaque)
 {
-  txt_opacity(oledConfig, opaque, NULL);
+  if (oledConfig->deviceType == GOLDELOX)
+    txt_opacity(oledConfig, opaque, NULL);
 }
 
 
@@ -580,7 +585,7 @@ bool oledIsCorrectDevice (OledConfig *oledConfig)
   if (oledConfig->deviceType == AUTO_4DS) 
     return findDeviceType(oledConfig);
   else
-    return gfx_bGcolour(oledConfig, 0x0000);
+    return (gfx_cls(oledConfig) && gfx_cls(oledConfig));
 }
 
 static bool findDeviceType (OledConfig *oledConfig)
@@ -593,8 +598,12 @@ static bool findDeviceType (OledConfig *oledConfig)
 
   for (enum OledConfig_Device type=GOLDELOX; type <= DIABLO16; type++) {
     oledConfig->deviceType = type;
-    if (oledIsCorrectDevice(oledConfig))
+    if (oledIsCorrectDevice(oledConfig)) {
+      DebugTrace("find correct device type = %u", type);
       return true;
+    } else {
+      oledHardReset(oledConfig);
+    }
   }
   return false;
 }
@@ -695,7 +704,7 @@ static uint16_t oledTouchGet (OledConfig *oledConfig, uint16_t mode)
   uint16_t value;
   
   touch_get(oledConfig, mode, &value);
-  return value;;
+  return value;
 }
 
 
