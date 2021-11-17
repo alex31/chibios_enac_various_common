@@ -2,6 +2,8 @@
 #include <ch.h>
 #include <hal.h>
 
+typedef struct OledConfig OledConfig;
+
 //
 
 bool txt_moveCursor(OledConfig *oledConfig, uint16_t line, uint16_t column);
@@ -32,7 +34,7 @@ bool txt_Bgcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol);
 
 //
 
-bool txt_fontID(OledConfig *oledConfig, uint16_t id);
+bool txt_fontID(OledConfig *oledConfig, uint16_t id, uint16_t *oldFont);
 
 //
 
@@ -83,7 +85,7 @@ bool txt_set(OledConfig *oledConfig, uint16_t function, uint16_t value);
 
 // 0:off, 1..N:wrap position
 
-bool txt_wrap(OledConfig *oledConfig, uint16_t xpos);
+bool txt_wrap(OledConfig *oledConfig, uint16_t xpos, uint16_t *oldWrap);
 
 //
 
@@ -216,31 +218,36 @@ bool gfx_screenCopyPaste(OledConfig *oledConfig, uint16_t xs, uint16_t ys,
 
 // 0..4
 
-bool gfx_bevelShadow(OledConfig *oledConfig, uint16_t value, uint16_t *status);
+bool gfx_bevelShadow(OledConfig *oledConfig, uint16_t value,
+                     uint16_t *oldStatus);
 
 // 0..15
 
-bool gfx_bevelWidth(OledConfig *oledConfig, uint16_t value, uint16_t *status);
+bool gfx_bevelWidth(OledConfig *oledConfig, uint16_t value, uint16_t *oldWidth);
 
 //
 
-bool gfx_bGcolour(OledConfig *oledConfig, uint16_t color);
+bool gfx_bGcolour(OledConfig *oledConfig, uint16_t color, uint16_t *oldCol);
 
 //
 
-bool gfx_outlineColour(OledConfig *oledConfig, uint16_t color);
+bool gfx_outlineColour(OledConfig *oledConfig, uint16_t color,
+                       uint16_t *oldCol);
 
 // 0..15
 
-bool gfx_contrast(OledConfig *oledConfig, uint16_t contrast);
+bool gfx_contrast(OledConfig *oledConfig, uint16_t contrast,
+                  uint16_t *oldContrast);
 
 //
 
-bool gfx_frameDelay(OledConfig *oledConfig, uint16_t delayMsec);
+bool gfx_frameDelay(OledConfig *oledConfig, uint16_t delayMsec,
+                    uint16_t *oldDelay);
 
 //
 
-bool gfx_linePattern(OledConfig *oledConfig, uint16_t pattern);
+bool gfx_linePattern(OledConfig *oledConfig, uint16_t pattern,
+                     uint16_t *oldPattern);
 
 // 0 = LANDSCAPE, 1 = LANDSCAPE REVERSE, 2=portrait, 3=portrait_reverse
 

@@ -2,7 +2,7 @@
 #define __PICASO4_DISPLAY_H__
 #include <ch.h>
 #include <hal.h>
-
+#include "picaso4Display_ll.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,13 +29,16 @@ typedef struct OledConfig  OledConfig;
     OLED_PORTRAIT,    OLED_PORTRAIT_REVERSE};
 typedef enum {OLED_OK,
 	      OLED_ERROR} OledStatus;
-#define COLOR_TABLE_SIZE 11
+#define COLOR_TABLE_SIZE 11U
 
 typedef struct {
     uint16_t x;
     uint16_t y;
 } PolyPoint;
 
+  
+#define gfx_clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
+#define gfx_colorDecTo16b(r,v,b) (gfx_clampColor((r*31/100), (v*63/100), (b*31/100)))
 
 bool oledStart (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
 		ioline_t reset, enum OledConfig_Device dev);

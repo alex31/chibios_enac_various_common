@@ -8,8 +8,8 @@
 #include "picaso4Display_ll.h"
 
 
-#define clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
-#define colorDecTo16b(r,v,b) (clampColor((r*31/100), (v*63/100), (b*31/100)))
+#define gfx_clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
+#define gfx_colorDecTo16b(r,v,b) (gfx_clampColor((r*31/100), (v*63/100), (b*31/100)))
 #define QDS_ACK 0x6
 
 typedef enum {KOF_NONE, KOF_ACK, KOF_INT16, 
@@ -69,7 +69,7 @@ static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t
 
 static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
 {
-  oledConfig->bg = colorDecTo16b(0,0,0);
+  oledConfig->bg = gfx_colorDecTo16b(0,0,0);
   oledConfig->tbg[0] = mkColor24 (0,0,0);
   oledConfig->fg[0] = mkColor24(50,50,50);
   oledConfig->tbgIdx = oledConfig->fgIdx = 0;
@@ -409,7 +409,7 @@ void oledChangeBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b)
   RET_UNLESS_INIT(oledConfig);
   
   const uint16_t oldCol = oledConfig->bg;
-  const uint16_t newCol = oledConfig->bg = colorDecTo16b(r,g,b);
+  const uint16_t newCol = oledConfig->bg = gfx_colorDecTo16b(r,g,b);
   RET_UNLESS_4DSYS(oledConfig);
   gfx_changeColour(oledConfig, oldCol, newCol);
 } 
@@ -424,7 +424,7 @@ void oledSetTextBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
   case GOLDELOX :
   case PICASO : 
   case DIABLO16 :
-    txt_Bgcolour(oledConfig,  colorDecTo16b(r,g,b), NULL);
+    txt_Bgcolour(oledConfig,  gfx_colorDecTo16b(r,g,b), NULL);
     break;
   case TERM_VT100 : 
     sendVt100Seq(oledConfig->serial, "48;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
@@ -442,7 +442,7 @@ void oledSetTextFgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
   case GOLDELOX :
   case PICASO : 
   case DIABLO16 :
-    txt_Fgcolour(oledConfig,  colorDecTo16b(r,g,b), NULL);
+    txt_Fgcolour(oledConfig,  gfx_colorDecTo16b(r,g,b), NULL);
     break;
   case TERM_VT100 : 
     sendVt100Seq(oledConfig->serial, "38;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
@@ -842,7 +842,7 @@ static uint16_t getResponseAsUint16 (const uint8_t *buffer)
 static  uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t colorIndex) {
   const Color24 fg = oledConfig->fg[colorIndex];
   
-  return (colorDecTo16b(fg.r, fg.g, fg.b));
+  return (gfx_colorDecTo16b(fg.r, fg.g, fg.b));
 }
 
 static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout)
