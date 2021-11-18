@@ -424,7 +424,7 @@ void oledSetTextBgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
   case GOLDELOX :
   case PICASO : 
   case DIABLO16 :
-    txt_Bgcolour(oledConfig,  gfx_colorDecTo16b(r,g,b), NULL);
+    txt_bgColour(oledConfig,  gfx_colorDecTo16b(r,g,b), NULL);
     break;
   case TERM_VT100 : 
     sendVt100Seq(oledConfig->serial, "48;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
@@ -442,7 +442,7 @@ void oledSetTextFgColor (OledConfig *oledConfig, uint8_t r, uint8_t g, uint8_t b
   case GOLDELOX :
   case PICASO : 
   case DIABLO16 :
-    txt_Fgcolour(oledConfig,  gfx_colorDecTo16b(r,g,b), NULL);
+    txt_fgColour(oledConfig,  gfx_colorDecTo16b(r,g,b), NULL);
     break;
   case TERM_VT100 : 
     sendVt100Seq(oledConfig->serial, "38;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
