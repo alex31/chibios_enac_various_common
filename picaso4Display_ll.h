@@ -255,17 +255,16 @@ bool gfx_screenMode(OledConfig *oledConfig, uint16_t mode, uint16_t *oldMode);
 
 // 0..1
 
-bool gfx_transparency(OledConfig *oledConfig, uint16_t mode,
-                      uint16_t *previous);
+bool gfx_transparency(OledConfig *oledConfig, uint16_t mode, uint16_t *oldMode);
 
 //
 
 bool gfx_transparentColour(OledConfig *oledConfig, uint16_t color,
-                           uint16_t *previous);
+                           uint16_t *oldColor);
 
 // see manual
 
-bool gfx_set(OledConfig *oledConfig, uint16_t function, uint16_t mode);
+bool gfx_set(OledConfig *oledConfig, uint16_t function, uint16_t value);
 
 //
 
@@ -281,7 +280,8 @@ bool media_setAdd(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr);
 
 //
 
-bool media_setSector(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr);
+bool media_setSector(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr,
+                     uint16_t *value);
 
 //
 

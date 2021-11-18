@@ -26,7 +26,7 @@ typedef struct OledConfig  OledConfig;
   enum OledTextAttribute {OLED_RESET_ATTRIB=0,
     OLED_BOLD=16, OLED_ITALIC=32, OLED_INVERSE=64, OLED_UNDERLINE=128};
   enum OledScreenOrientation {OLED_LANDSCAPE=0, OLED_LANDSCAPE_REVERSE,
-    OLED_PORTRAIT,    OLED_PORTRAIT_REVERSE};
+    OLED_PORTRAIT, OLED_PORTRAIT_REVERSE};
 typedef enum {OLED_OK,
 	      OLED_ERROR} OledStatus;
 #define COLOR_TABLE_SIZE 11U
@@ -39,6 +39,7 @@ typedef struct {
   
 #define gfx_clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
 #define gfx_colorDecTo16b(r,v,b) (gfx_clampColor((r*31/100), (v*63/100), (b*31/100)))
+#define CMD_NOT_IMPL 0xbaba
 
 bool oledStart (OledConfig *oledConfig,  LINK_DRIVER *oled, const uint32_t baud,
 		ioline_t reset, enum OledConfig_Device dev);
@@ -70,8 +71,8 @@ void oledSetTextSizeMultiplier (OledConfig *oledConfig, uint8_t xmul, uint8_t ym
 void oledSetScreenOrientation (OledConfig *oledConfig, enum OledScreenOrientation orientation);
 void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y);
 void oledGotoX (OledConfig *oledConfig, uint8_t x);
-uint8_t oledGetX  (const OledConfig *oledConfig);
-uint8_t oledGetY  (const OledConfig *oledConfig);
+uint8_t oledGetX (const OledConfig *oledConfig);
+uint8_t oledGetY (const OledConfig *oledConfig);
 void oledGotoNextLine (OledConfig *oledConfig);
 void oledClearScreen (OledConfig *oledConfig);
 bool oledInitSdCard (OledConfig *oledConfig);
