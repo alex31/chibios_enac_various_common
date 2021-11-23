@@ -32,7 +32,6 @@
 #include "ff.h"  
 #include "stdutil.h"
 #include "sdio.h"
-#include "portage.h"
 
 #ifndef GPIOC_SDIO_D0
 #if defined STM32F4XX 
@@ -492,7 +491,7 @@ bool sdioIsCardResponding(void)
     return true;
   
   sdcStart(&SDCD1, NULL);
-  bool ret = sdcConnect(&SDCD1) == CH_SUCCESS;
+  bool ret = sdcConnect(&SDCD1) == OSAL_SUCCESS;
 
   sdcDisconnect(&SDCD1);
   sdcStop(&SDCD1);
@@ -534,7 +533,7 @@ bool sdioConnect (void)
 
 
   sdcStart(&SDCD1, NULL);   
-  while (sdcConnect(&SDCD1) != CH_SUCCESS) {
+  while (sdcConnect(&SDCD1) != OSAL_SUCCESS) {
     chThdSleepMilliseconds(100);
     DebugTrace ("sdcConnect still not connected");
   }
