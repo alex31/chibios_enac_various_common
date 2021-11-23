@@ -654,9 +654,9 @@ SdioError sdLogWriteByte(const FileDes fd, const uint8_t value)
 #define WA_LOG_BASE_SIZE 1024
 #if  FF_USE_LFN == 2
 #if FF_FS_EXFAT
-static THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE+((FF_MAX_LFN+1)*2)+(19*32));
+static IN_DMA_SECTION_NOINIT(THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE+((FF_MAX_LFN+1)*2)+(19*32)));
 #else
-static THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE+((FF_MAX_LFN+1)*2));
+static IN_DMA_SECTION_NOINIT(THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE+((FF_MAX_LFN+1)*2)));
 #endif
 #else
 static THD_WORKING_AREA(waThdSdLog, WA_LOG_BASE_SIZE);
