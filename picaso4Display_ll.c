@@ -4,8 +4,9 @@
     This code has been generated from API description
     All hand modifications will be lost at next generation
 */
-static bool gfx_polyxxx(OledConfig *oledConfig, uint16_t cmd, uint16_t n,
-                        uint16_t vx[], uint16_t vy[], uint16_t color) {
+static bool gfx_polyxxx(const OledConfig *oledConfig, uint16_t cmd, uint16_t n,
+                        const uint16_t vx[], const uint16_t vy[],
+                        uint16_t color) {
   struct {
     uint16_t cmd;
     uint16_t n;
@@ -30,7 +31,8 @@ static bool gfx_polyxxx(OledConfig *oledConfig, uint16_t cmd, uint16_t n,
                             (uint8_t *)&response, sizeof(response)) != 0;
 }
 
-bool txt_moveCursor(OledConfig *oledConfig, uint16_t line, uint16_t column) {
+bool txt_moveCursor(const OledConfig *oledConfig, uint16_t line,
+                    uint16_t column) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFE4),
@@ -58,7 +60,7 @@ bool txt_moveCursor(OledConfig *oledConfig, uint16_t line, uint16_t column) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_putCh(OledConfig *oledConfig, uint16_t car) {
+bool txt_putCh(const OledConfig *oledConfig, uint16_t car) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFFE),
@@ -83,7 +85,8 @@ bool txt_putCh(OledConfig *oledConfig, uint16_t car) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_putStr(OledConfig *oledConfig, const char *cstr, uint16_t *length) {
+bool txt_putStr(const OledConfig *oledConfig, const char *cstr,
+                uint16_t *length) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0006),
@@ -119,7 +122,7 @@ bool txt_putStr(OledConfig *oledConfig, const char *cstr, uint16_t *length) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_charWidth(OledConfig *oledConfig, char car, uint16_t *width) {
+bool txt_charWidth(const OledConfig *oledConfig, char car, uint16_t *width) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0002),
@@ -147,7 +150,7 @@ bool txt_charWidth(OledConfig *oledConfig, char car, uint16_t *width) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_charHeight(OledConfig *oledConfig, char car, uint16_t *height) {
+bool txt_charHeight(const OledConfig *oledConfig, char car, uint16_t *height) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0001),
@@ -175,7 +178,8 @@ bool txt_charHeight(OledConfig *oledConfig, char car, uint16_t *height) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_fgColour(OledConfig *oledConfig, uint16_t colour, uint16_t *oldCol) {
+bool txt_fgColour(const OledConfig *oledConfig, uint16_t colour,
+                  uint16_t *oldCol) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7F),
@@ -208,7 +212,8 @@ bool txt_fgColour(OledConfig *oledConfig, uint16_t colour, uint16_t *oldCol) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_bgColour(OledConfig *oledConfig, uint16_t colour, uint16_t *oldCol) {
+bool txt_bgColour(const OledConfig *oledConfig, uint16_t colour,
+                  uint16_t *oldCol) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7E),
@@ -241,7 +246,7 @@ bool txt_bgColour(OledConfig *oledConfig, uint16_t colour, uint16_t *oldCol) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_fontID(OledConfig *oledConfig, uint16_t id, uint16_t *oldFont) {
+bool txt_fontID(const OledConfig *oledConfig, uint16_t id, uint16_t *oldFont) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7D),
@@ -274,7 +279,7 @@ bool txt_fontID(OledConfig *oledConfig, uint16_t id, uint16_t *oldFont) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_widthMult(OledConfig *oledConfig, uint16_t wMultiplier,
+bool txt_widthMult(const OledConfig *oledConfig, uint16_t wMultiplier,
                    uint16_t *oldMul) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -309,7 +314,7 @@ bool txt_widthMult(OledConfig *oledConfig, uint16_t wMultiplier,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_heightMult(OledConfig *oledConfig, uint16_t hMultiplier,
+bool txt_heightMult(const OledConfig *oledConfig, uint16_t hMultiplier,
                     uint16_t *oldMul) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -344,7 +349,7 @@ bool txt_heightMult(OledConfig *oledConfig, uint16_t hMultiplier,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_xgap(OledConfig *oledConfig, uint16_t xGap, uint16_t *oldGap) {
+bool txt_xgap(const OledConfig *oledConfig, uint16_t xGap, uint16_t *oldGap) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7A),
@@ -377,7 +382,7 @@ bool txt_xgap(OledConfig *oledConfig, uint16_t xGap, uint16_t *oldGap) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_ygap(OledConfig *oledConfig, uint16_t yGap, uint16_t *oldGap) {
+bool txt_ygap(const OledConfig *oledConfig, uint16_t yGap, uint16_t *oldGap) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF79),
@@ -410,7 +415,7 @@ bool txt_ygap(OledConfig *oledConfig, uint16_t yGap, uint16_t *oldGap) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_bold(OledConfig *oledConfig, uint16_t mode, uint16_t *oldBold) {
+bool txt_bold(const OledConfig *oledConfig, uint16_t mode, uint16_t *oldBold) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF76),
@@ -443,7 +448,8 @@ bool txt_bold(OledConfig *oledConfig, uint16_t mode, uint16_t *oldBold) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_inverse(OledConfig *oledConfig, uint16_t mode, uint16_t *oldInv) {
+bool txt_inverse(const OledConfig *oledConfig, uint16_t mode,
+                 uint16_t *oldInv) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF74),
@@ -476,7 +482,8 @@ bool txt_inverse(OledConfig *oledConfig, uint16_t mode, uint16_t *oldInv) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_italic(OledConfig *oledConfig, uint16_t mode, uint16_t *oldItal) {
+bool txt_italic(const OledConfig *oledConfig, uint16_t mode,
+                uint16_t *oldItal) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF75),
@@ -509,7 +516,8 @@ bool txt_italic(OledConfig *oledConfig, uint16_t mode, uint16_t *oldItal) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_opacity(OledConfig *oledConfig, uint16_t mode, uint16_t *oldOpa) {
+bool txt_opacity(const OledConfig *oledConfig, uint16_t mode,
+                 uint16_t *oldOpa) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF77),
@@ -542,7 +550,8 @@ bool txt_opacity(OledConfig *oledConfig, uint16_t mode, uint16_t *oldOpa) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_underline(OledConfig *oledConfig, uint16_t mode, uint16_t *oldUnder) {
+bool txt_underline(const OledConfig *oledConfig, uint16_t mode,
+                   uint16_t *oldUnder) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF73),
@@ -561,21 +570,16 @@ bool txt_underline(OledConfig *oledConfig, uint16_t mode, uint16_t *oldUnder) {
     uint16_t oldUnder;
   } __attribute__((__packed__)) response;
 
-  stus = oledTransmitBuffer(
-             oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
-             sizeof(command1), (uint8_t *)&response,
-             sizeof(response) - (oledConfig->deviceType == GOLDELOX
-                                     ? sizeof(*oldUnder)
-                                     : 0)) != 0;
+  stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
+                            (uint8_t *)&command1, sizeof(command1),
+                            (uint8_t *)&response, sizeof(response)) != 0;
 
-  if (oledConfig->deviceType != GOLDELOX) {
-    if (oldUnder != NULL) *oldUnder = __builtin_bswap16(response.oldUnder);
-  }
+  if (oldUnder != NULL) *oldUnder = __builtin_bswap16(response.oldUnder);
 
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_attributes(OledConfig *oledConfig, uint16_t bitfield,
+bool txt_attributes(const OledConfig *oledConfig, uint16_t bitfield,
                     uint16_t *oldAttr) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -610,7 +614,7 @@ bool txt_attributes(OledConfig *oledConfig, uint16_t bitfield,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_set(OledConfig *oledConfig, uint16_t function, uint16_t value) {
+bool txt_set(const OledConfig *oledConfig, uint16_t function, uint16_t value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFE3),
@@ -639,7 +643,7 @@ bool txt_set(OledConfig *oledConfig, uint16_t function, uint16_t value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool txt_wrap(OledConfig *oledConfig, uint16_t xpos, uint16_t *oldWrap) {
+bool txt_wrap(const OledConfig *oledConfig, uint16_t xpos, uint16_t *oldWrap) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -668,7 +672,7 @@ bool txt_wrap(OledConfig *oledConfig, uint16_t xpos, uint16_t *oldWrap) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_cls(OledConfig *oledConfig) {
+bool gfx_cls(const OledConfig *oledConfig) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD7),
@@ -693,8 +697,8 @@ bool gfx_cls(OledConfig *oledConfig) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_changeColour(OledConfig *oledConfig, uint16_t oldColor,
-                      uint16_t newColor) {
+bool gfx_changeColour(const OledConfig *oledConfig, uint16_t oldColour,
+                      uint16_t newColour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFBE),
@@ -704,12 +708,12 @@ bool gfx_changeColour(OledConfig *oledConfig, uint16_t oldColor,
   bool stus = false;
   struct {
     uint16_t cmd;
-    uint16_t oldColor;
-    uint16_t newColor;
+    uint16_t oldColour;
+    uint16_t newColour;
   } __attribute__((__packed__))
   command1 = {.cmd = cmds[oledConfig->deviceType],
-              .oldColor = __builtin_bswap16(oldColor),
-              .newColor = __builtin_bswap16(newColor)};
+              .oldColour = __builtin_bswap16(oldColour),
+              .newColour = __builtin_bswap16(newColour)};
 
   struct {
     uint8_t ack;
@@ -722,8 +726,8 @@ bool gfx_changeColour(OledConfig *oledConfig, uint16_t oldColor,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_circle(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t radius,
-                uint16_t colour) {
+bool gfx_circle(const OledConfig *oledConfig, uint16_t x, uint16_t y,
+                uint16_t radius, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFCD),
@@ -755,7 +759,7 @@ bool gfx_circle(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t radius,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_circleFilled(OledConfig *oledConfig, uint16_t x, uint16_t y,
+bool gfx_circleFilled(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                       uint16_t radius, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -788,8 +792,8 @@ bool gfx_circleFilled(OledConfig *oledConfig, uint16_t x, uint16_t y,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_line(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2,
-              uint16_t y2, uint16_t colour) {
+bool gfx_line(const OledConfig *oledConfig, uint16_t x1, uint16_t y1,
+              uint16_t x2, uint16_t y2, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD2),
@@ -823,7 +827,7 @@ bool gfx_line(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_rectangle(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
+bool gfx_rectangle(const OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
                    uint16_t brx, uint16_t bry, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -858,8 +862,9 @@ bool gfx_rectangle(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_rectangleFilled(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
-                         uint16_t brx, uint16_t bry, uint16_t colour) {
+bool gfx_rectangleFilled(const OledConfig *oledConfig, uint16_t tlx,
+                         uint16_t tly, uint16_t brx, uint16_t bry,
+                         uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFCE),
@@ -893,8 +898,8 @@ bool gfx_rectangleFilled(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_polyline(OledConfig *oledConfig, uint16_t n, uint16_t vx[],
-                  uint16_t vy[], uint16_t color) {
+bool gfx_polyline(const OledConfig *oledConfig, uint16_t n, const uint16_t vx[],
+                  const uint16_t vy[], uint16_t color) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0005),
@@ -904,8 +909,8 @@ bool gfx_polyline(OledConfig *oledConfig, uint16_t n, uint16_t vx[],
   return gfx_polyxxx(oledConfig, cmds[oledConfig->deviceType], n, vx, vy,
                      color);
 }
-bool gfx_polygon(OledConfig *oledConfig, uint16_t n, uint16_t vx[],
-                 uint16_t vy[], uint16_t color) {
+bool gfx_polygon(const OledConfig *oledConfig, uint16_t n, const uint16_t vx[],
+                 const uint16_t vy[], uint16_t color) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0004),
@@ -915,8 +920,9 @@ bool gfx_polygon(OledConfig *oledConfig, uint16_t n, uint16_t vx[],
   return gfx_polyxxx(oledConfig, cmds[oledConfig->deviceType], n, vx, vy,
                      color);
 }
-bool gfx_polygonFilled(OledConfig *oledConfig, uint16_t n, uint16_t vx[],
-                       uint16_t vy[], uint16_t color) {
+bool gfx_polygonFilled(const OledConfig *oledConfig, uint16_t n,
+                       const uint16_t vx[], const uint16_t vy[],
+                       uint16_t color) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -927,8 +933,9 @@ bool gfx_polygonFilled(OledConfig *oledConfig, uint16_t n, uint16_t vx[],
   return gfx_polyxxx(oledConfig, cmds[oledConfig->deviceType], n, vx, vy,
                      color);
 }
-bool gfx_triangle(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2,
-                  uint16_t y2, uint16_t x3, uint16_t y3, uint16_t colour) {
+bool gfx_triangle(const OledConfig *oledConfig, uint16_t x1, uint16_t y1,
+                  uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3,
+                  uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFC9),
@@ -966,7 +973,7 @@ bool gfx_triangle(OledConfig *oledConfig, uint16_t x1, uint16_t y1, uint16_t x2,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_triangleFilled(OledConfig *oledConfig, uint16_t x1, uint16_t y1,
+bool gfx_triangleFilled(const OledConfig *oledConfig, uint16_t x1, uint16_t y1,
                         uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3,
                         uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
@@ -1007,7 +1014,7 @@ bool gfx_triangleFilled(OledConfig *oledConfig, uint16_t x1, uint16_t y1,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_orbit(OledConfig *oledConfig, uint16_t angle, uint16_t distance,
+bool gfx_orbit(const OledConfig *oledConfig, uint16_t angle, uint16_t distance,
                uint16_t *Xdist, uint16_t *Ydist) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1042,7 +1049,7 @@ bool gfx_orbit(OledConfig *oledConfig, uint16_t angle, uint16_t distance,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_putPixel(OledConfig *oledConfig, uint16_t x, uint16_t y,
+bool gfx_putPixel(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                   uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1073,7 +1080,7 @@ bool gfx_putPixel(OledConfig *oledConfig, uint16_t x, uint16_t y,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_getPixel(OledConfig *oledConfig, uint16_t x, uint16_t y,
+bool gfx_getPixel(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                   uint16_t *colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1104,7 +1111,7 @@ bool gfx_getPixel(OledConfig *oledConfig, uint16_t x, uint16_t y,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_moveTo(OledConfig *oledConfig, uint16_t x, uint16_t y) {
+bool gfx_moveTo(const OledConfig *oledConfig, uint16_t x, uint16_t y) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD6),
@@ -1131,7 +1138,7 @@ bool gfx_moveTo(OledConfig *oledConfig, uint16_t x, uint16_t y) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_lineTo(OledConfig *oledConfig, uint16_t x, uint16_t y) {
+bool gfx_lineTo(const OledConfig *oledConfig, uint16_t x, uint16_t y) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD4),
@@ -1158,7 +1165,7 @@ bool gfx_lineTo(OledConfig *oledConfig, uint16_t x, uint16_t y) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_clipping(OledConfig *oledConfig, uint16_t mode) {
+bool gfx_clipping(const OledConfig *oledConfig, uint16_t mode) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF6C),
@@ -1183,7 +1190,7 @@ bool gfx_clipping(OledConfig *oledConfig, uint16_t mode) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_clipWindow(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
+bool gfx_clipWindow(const OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
                     uint16_t brx, uint16_t bry) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1215,7 +1222,7 @@ bool gfx_clipWindow(OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_setClipRegion(OledConfig *oledConfig) {
+bool gfx_setClipRegion(const OledConfig *oledConfig) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFBC),
@@ -1240,8 +1247,8 @@ bool gfx_setClipRegion(OledConfig *oledConfig) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_ellipse(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t xrad,
-                 uint16_t yrad, uint16_t colour) {
+bool gfx_ellipse(const OledConfig *oledConfig, uint16_t x, uint16_t y,
+                 uint16_t xrad, uint16_t yrad, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -1276,7 +1283,7 @@ bool gfx_ellipse(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t xrad,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_ellipseFilled(OledConfig *oledConfig, uint16_t x, uint16_t y,
+bool gfx_ellipseFilled(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                        uint16_t xrad, uint16_t yrad, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1312,9 +1319,10 @@ bool gfx_ellipseFilled(OledConfig *oledConfig, uint16_t x, uint16_t y,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_button(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y,
-                uint16_t buttoncolour, uint16_t txtcolour, uint16_t font,
-                uint16_t twtWidth, uint16_t twtHeight, const char *cstr) {
+bool gfx_button(const OledConfig *oledConfig, uint16_t state, uint16_t x,
+                uint16_t y, uint16_t buttoncolour, uint16_t txtcolour,
+                uint16_t font, uint16_t twtWidth, uint16_t twtHeight,
+                const char *cstr) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -1358,8 +1366,8 @@ bool gfx_button(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_panel(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y,
-               uint16_t width, uint16_t height, uint16_t colour) {
+bool gfx_panel(const OledConfig *oledConfig, uint16_t state, uint16_t x,
+               uint16_t y, uint16_t width, uint16_t height, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -1396,9 +1404,9 @@ bool gfx_panel(OledConfig *oledConfig, uint16_t state, uint16_t x, uint16_t y,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_slider(OledConfig *oledConfig, uint16_t mode, uint16_t x1, uint16_t y1,
-                uint16_t x2, uint16_t y2, uint16_t colour, uint16_t scale,
-                int16_t value) {
+bool gfx_slider(const OledConfig *oledConfig, uint16_t mode, uint16_t x1,
+                uint16_t y1, uint16_t x2, uint16_t y2, uint16_t colour,
+                uint16_t scale, int16_t value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -1438,7 +1446,7 @@ bool gfx_slider(OledConfig *oledConfig, uint16_t mode, uint16_t x1, uint16_t y1,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_screenCopyPaste(OledConfig *oledConfig, uint16_t xs, uint16_t ys,
+bool gfx_screenCopyPaste(const OledConfig *oledConfig, uint16_t xs, uint16_t ys,
                          uint16_t xd, uint16_t yd, uint16_t width,
                          uint16_t height) {
   RET_UNLESS_INIT_BOOL(oledConfig);
@@ -1477,7 +1485,7 @@ bool gfx_screenCopyPaste(OledConfig *oledConfig, uint16_t xs, uint16_t ys,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_bevelShadow(OledConfig *oledConfig, uint16_t value,
+bool gfx_bevelShadow(const OledConfig *oledConfig, uint16_t value,
                      uint16_t *oldBevel) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1507,7 +1515,7 @@ bool gfx_bevelShadow(OledConfig *oledConfig, uint16_t value,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_bevelWidth(OledConfig *oledConfig, uint16_t value,
+bool gfx_bevelWidth(const OledConfig *oledConfig, uint16_t value,
                     uint16_t *oldWidth) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1537,7 +1545,8 @@ bool gfx_bevelWidth(OledConfig *oledConfig, uint16_t value,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_bgCcolour(OledConfig *oledConfig, uint16_t colour, uint16_t *oldCol) {
+bool gfx_bgCcolour(const OledConfig *oledConfig, uint16_t colour,
+                   uint16_t *oldCol) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF6E),
@@ -1570,7 +1579,7 @@ bool gfx_bgCcolour(OledConfig *oledConfig, uint16_t colour, uint16_t *oldCol) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_outlineColour(OledConfig *oledConfig, uint16_t colour,
+bool gfx_outlineColour(const OledConfig *oledConfig, uint16_t colour,
                        uint16_t *oldCol) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1604,7 +1613,7 @@ bool gfx_outlineColour(OledConfig *oledConfig, uint16_t colour,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_contrast(OledConfig *oledConfig, uint16_t contrast,
+bool gfx_contrast(const OledConfig *oledConfig, uint16_t contrast,
                   uint16_t *oldContrast) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1640,7 +1649,7 @@ bool gfx_contrast(OledConfig *oledConfig, uint16_t contrast,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_frameDelay(OledConfig *oledConfig, uint16_t delayMsec,
+bool gfx_frameDelay(const OledConfig *oledConfig, uint16_t delayMsec,
                     uint16_t *oldDelay) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1675,7 +1684,7 @@ bool gfx_frameDelay(OledConfig *oledConfig, uint16_t delayMsec,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_linePattern(OledConfig *oledConfig, uint16_t pattern,
+bool gfx_linePattern(const OledConfig *oledConfig, uint16_t pattern,
                      uint16_t *oldPattern) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1711,7 +1720,8 @@ bool gfx_linePattern(OledConfig *oledConfig, uint16_t pattern,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_screenMode(OledConfig *oledConfig, uint16_t mode, uint16_t *oldMode) {
+bool gfx_screenMode(const OledConfig *oledConfig, uint16_t mode,
+                    uint16_t *oldMode) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF68),
@@ -1744,7 +1754,7 @@ bool gfx_screenMode(OledConfig *oledConfig, uint16_t mode, uint16_t *oldMode) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_transparency(OledConfig *oledConfig, uint16_t mode,
+bool gfx_transparency(const OledConfig *oledConfig, uint16_t mode,
                       uint16_t *oldMode) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1774,7 +1784,7 @@ bool gfx_transparency(OledConfig *oledConfig, uint16_t mode,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_transparentColour(OledConfig *oledConfig, uint16_t colour,
+bool gfx_transparentColour(const OledConfig *oledConfig, uint16_t colour,
                            uint16_t *oldColor) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -1804,7 +1814,7 @@ bool gfx_transparentColour(OledConfig *oledConfig, uint16_t colour,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_set(OledConfig *oledConfig, uint16_t function, uint16_t value) {
+bool gfx_set(const OledConfig *oledConfig, uint16_t function, uint16_t value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD8),
@@ -1832,7 +1842,7 @@ bool gfx_set(OledConfig *oledConfig, uint16_t function, uint16_t value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool gfx_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
+bool gfx_get(const OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -1861,7 +1871,7 @@ bool gfx_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_init(OledConfig *oledConfig, uint16_t *value) {
+bool media_init(const OledConfig *oledConfig, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB1),
@@ -1894,7 +1904,8 @@ bool media_init(OledConfig *oledConfig, uint16_t *value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_setAdd(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr) {
+bool media_setAdd(const OledConfig *oledConfig, uint16_t hiAddr,
+                  uint16_t loAddr) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB9),
@@ -1922,8 +1933,8 @@ bool media_setAdd(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_setSector(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr,
-                     uint16_t *value) {
+bool media_setSector(const OledConfig *oledConfig, uint16_t hiAddr,
+                     uint16_t loAddr, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB8),
@@ -1959,7 +1970,7 @@ bool media_setSector(OledConfig *oledConfig, uint16_t hiAddr, uint16_t loAddr,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_readByte(OledConfig *oledConfig, uint16_t *value) {
+bool media_readByte(const OledConfig *oledConfig, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB7),
@@ -1987,7 +1998,7 @@ bool media_readByte(OledConfig *oledConfig, uint16_t *value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_readWord(OledConfig *oledConfig, uint16_t *value) {
+bool media_readWord(const OledConfig *oledConfig, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB6),
@@ -2015,7 +2026,8 @@ bool media_readWord(OledConfig *oledConfig, uint16_t *value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_writeByte(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
+bool media_writeByte(const OledConfig *oledConfig, uint16_t value,
+                     uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB5),
@@ -2043,7 +2055,8 @@ bool media_writeByte(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_writeWord(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
+bool media_writeWord(const OledConfig *oledConfig, uint16_t value,
+                     uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB4),
@@ -2071,7 +2084,7 @@ bool media_writeWord(OledConfig *oledConfig, uint16_t value, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_flush(OledConfig *oledConfig, uint16_t *status) {
+bool media_flush(const OledConfig *oledConfig, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB2),
@@ -2099,7 +2112,7 @@ bool media_flush(OledConfig *oledConfig, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_image(OledConfig *oledConfig, uint16_t x, uint16_t y) {
+bool media_image(const OledConfig *oledConfig, uint16_t x, uint16_t y) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB3),
@@ -2126,7 +2139,7 @@ bool media_image(OledConfig *oledConfig, uint16_t x, uint16_t y) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_video(OledConfig *oledConfig, uint16_t x, uint16_t y) {
+bool media_video(const OledConfig *oledConfig, uint16_t x, uint16_t y) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFBB),
@@ -2153,7 +2166,7 @@ bool media_video(OledConfig *oledConfig, uint16_t x, uint16_t y) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool media_videoFrame(OledConfig *oledConfig, uint16_t x, uint16_t y,
+bool media_videoFrame(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                       int16_t frameNumber) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -2184,7 +2197,7 @@ bool media_videoFrame(OledConfig *oledConfig, uint16_t x, uint16_t y,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_peekB(OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
+bool misc_peekB(const OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
                 uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -2216,7 +2229,7 @@ bool misc_peekB(OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_pokeB(OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
+bool misc_pokeB(const OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
                 uint16_t value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -2247,7 +2260,7 @@ bool misc_pokeB(OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_peekW(OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
+bool misc_peekW(const OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
                 uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -2279,7 +2292,7 @@ bool misc_peekW(OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_pokeW(OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
+bool misc_pokeW(const OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
                 uint16_t value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -2310,7 +2323,8 @@ bool misc_pokeW(OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_peekM(OledConfig *oledConfig, uint16_t address, uint16_t *value) {
+bool misc_peekM(const OledConfig *oledConfig, uint16_t address,
+                uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2340,7 +2354,8 @@ bool misc_peekM(OledConfig *oledConfig, uint16_t address, uint16_t *value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_pokeM(OledConfig *oledConfig, uint16_t address, uint16_t value) {
+bool misc_pokeM(const OledConfig *oledConfig, uint16_t address,
+                uint16_t value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2369,7 +2384,7 @@ bool misc_pokeM(OledConfig *oledConfig, uint16_t address, uint16_t value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_joystick(OledConfig *oledConfig, uint16_t *value) {
+bool misc_joystick(const OledConfig *oledConfig, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD9),
@@ -2398,7 +2413,8 @@ bool misc_joystick(OledConfig *oledConfig, uint16_t *value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_beep(OledConfig *oledConfig, uint16_t note, uint16_t duration_ms) {
+bool misc_beep(const OledConfig *oledConfig, uint16_t note,
+               uint16_t duration_ms) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFDA),
@@ -2427,7 +2443,7 @@ bool misc_beep(OledConfig *oledConfig, uint16_t note, uint16_t duration_ms) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_setbaudWait(OledConfig *oledConfig, int16_t index) {
+bool misc_setbaudWait(const OledConfig *oledConfig, int16_t index) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x000B),
@@ -2447,7 +2463,7 @@ bool misc_setbaudWait(OledConfig *oledConfig, int16_t index) {
   return stus;
 }
 
-bool sys_sleep(OledConfig *oledConfig, uint16_t duration_s,
+bool sys_sleep(const OledConfig *oledConfig, uint16_t duration_s,
                uint16_t *duration) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -2478,7 +2494,8 @@ bool sys_sleep(OledConfig *oledConfig, uint16_t duration_s,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool sys_memFree(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
+bool sys_memFree(const OledConfig *oledConfig, uint16_t handle,
+                 uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2507,7 +2524,7 @@ bool sys_memFree(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool sys_memHeap(OledConfig *oledConfig, uint16_t *avail) {
+bool sys_memHeap(const OledConfig *oledConfig, uint16_t *avail) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2536,7 +2553,7 @@ bool sys_memHeap(OledConfig *oledConfig, uint16_t *avail) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool sys_getModel(OledConfig *oledConfig, uint16_t *n, char *str) {
+bool sys_getModel(const OledConfig *oledConfig, uint16_t *n, char *str) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0007),
@@ -2572,7 +2589,7 @@ bool sys_getModel(OledConfig *oledConfig, uint16_t *n, char *str) {
   return stus;
 }
 
-bool sys_getVersion(OledConfig *oledConfig, uint16_t *version) {
+bool sys_getVersion(const OledConfig *oledConfig, uint16_t *version) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0008),
@@ -2600,7 +2617,7 @@ bool sys_getVersion(OledConfig *oledConfig, uint16_t *version) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool sys_getPmmC(OledConfig *oledConfig, uint16_t *version) {
+bool sys_getPmmC(const OledConfig *oledConfig, uint16_t *version) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0009),
@@ -2628,7 +2645,7 @@ bool sys_getPmmC(OledConfig *oledConfig, uint16_t *version) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_screenSaverTimeout(OledConfig *oledConfig, uint16_t timout_ms) {
+bool misc_screenSaverTimeout(const OledConfig *oledConfig, uint16_t timout_ms) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x000C),
@@ -2656,7 +2673,7 @@ bool misc_screenSaverTimeout(OledConfig *oledConfig, uint16_t timout_ms) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_screenSaverSpeed(OledConfig *oledConfig, uint16_t speed_index) {
+bool misc_screenSaverSpeed(const OledConfig *oledConfig, uint16_t speed_index) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x000D),
@@ -2683,7 +2700,7 @@ bool misc_screenSaverSpeed(OledConfig *oledConfig, uint16_t speed_index) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool misc_screenSaverMode(OledConfig *oledConfig, uint16_t mode) {
+bool misc_screenSaverMode(const OledConfig *oledConfig, uint16_t mode) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x000E),
@@ -2709,7 +2726,7 @@ bool misc_screenSaverMode(OledConfig *oledConfig, uint16_t mode) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool touch_detectRegion(OledConfig *oledConfig, uint16_t x1, uint16_t y1,
+bool touch_detectRegion(const OledConfig *oledConfig, uint16_t x1, uint16_t y1,
                         uint16_t x2, uint16_t y2) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -2742,7 +2759,7 @@ bool touch_detectRegion(OledConfig *oledConfig, uint16_t x1, uint16_t y1,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool touch_set(OledConfig *oledConfig, uint16_t mode) {
+bool touch_set(const OledConfig *oledConfig, uint16_t mode) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2768,7 +2785,7 @@ bool touch_set(OledConfig *oledConfig, uint16_t mode) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool touch_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
+bool touch_get(const OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2797,7 +2814,7 @@ bool touch_get(OledConfig *oledConfig, uint16_t mode, uint16_t *value) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_error(OledConfig *oledConfig, uint16_t *errno) {
+bool file_error(const OledConfig *oledConfig, uint16_t *errno) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2826,7 +2843,8 @@ bool file_error(OledConfig *oledConfig, uint16_t *errno) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_count(OledConfig *oledConfig, const char *filename, uint16_t *count) {
+bool file_count(const OledConfig *oledConfig, const char *filename,
+                uint16_t *count) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2858,7 +2876,8 @@ bool file_count(OledConfig *oledConfig, const char *filename, uint16_t *count) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_dir(OledConfig *oledConfig, const char *filename, uint16_t *count) {
+bool file_dir(const OledConfig *oledConfig, const char *filename,
+              uint16_t *count) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2890,7 +2909,7 @@ bool file_dir(OledConfig *oledConfig, const char *filename, uint16_t *count) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_findFirst(OledConfig *oledConfig, const char *filename,
+bool file_findFirst(const OledConfig *oledConfig, const char *filename,
                     uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -2923,7 +2942,7 @@ bool file_findFirst(OledConfig *oledConfig, const char *filename,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_findFirstRet(OledConfig *oledConfig, const char *filename,
+bool file_findFirstRet(const OledConfig *oledConfig, const char *filename,
                        uint16_t *n, char *str) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -2963,7 +2982,7 @@ bool file_findFirstRet(OledConfig *oledConfig, const char *filename,
   return stus;
 }
 
-bool file_findNext(OledConfig *oledConfig, uint16_t *status) {
+bool file_findNext(const OledConfig *oledConfig, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -2992,7 +3011,7 @@ bool file_findNext(OledConfig *oledConfig, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_findNextRet(OledConfig *oledConfig, uint16_t *n, char *str) {
+bool file_findNextRet(const OledConfig *oledConfig, uint16_t *n, char *str) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3028,7 +3047,7 @@ bool file_findNextRet(OledConfig *oledConfig, uint16_t *n, char *str) {
   return stus;
 }
 
-bool file_exists(OledConfig *oledConfig, const char *filename,
+bool file_exists(const OledConfig *oledConfig, const char *filename,
                  uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3061,7 +3080,7 @@ bool file_exists(OledConfig *oledConfig, const char *filename,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_open(OledConfig *oledConfig, const char *filename, char mode,
+bool file_open(const OledConfig *oledConfig, const char *filename, char mode,
                uint16_t *handle) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3100,7 +3119,8 @@ bool file_open(OledConfig *oledConfig, const char *filename, char mode,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_close(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
+bool file_close(const OledConfig *oledConfig, uint16_t handle,
+                uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3129,7 +3149,7 @@ bool file_close(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_read(OledConfig *oledConfig, uint16_t size, uint16_t handle,
+bool file_read(const OledConfig *oledConfig, uint16_t size, uint16_t handle,
                uint16_t *n, char *str) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3169,7 +3189,7 @@ bool file_read(OledConfig *oledConfig, uint16_t size, uint16_t handle,
   return stus;
 }
 
-bool file_seek(OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
+bool file_seek(const OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
                uint16_t loWord, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3204,7 +3224,7 @@ bool file_seek(OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_index(OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
+bool file_index(const OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
                 uint16_t loWord, uint16_t recordNum, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3241,7 +3261,7 @@ bool file_index(OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_tell(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
+bool file_tell(const OledConfig *oledConfig, uint16_t handle, uint16_t *status,
                uint16_t *hiWord, uint16_t *loWord) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3277,7 +3297,7 @@ bool file_tell(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_write(OledConfig *oledConfig, uint16_t size, uint16_t source,
+bool file_write(const OledConfig *oledConfig, uint16_t size, uint16_t source,
                 uint16_t handle, uint16_t *count) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3312,7 +3332,7 @@ bool file_write(OledConfig *oledConfig, uint16_t size, uint16_t source,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_size(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
+bool file_size(const OledConfig *oledConfig, uint16_t handle, uint16_t *status,
                uint16_t *hiWord, uint16_t *loWord) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3348,8 +3368,8 @@ bool file_size(OledConfig *oledConfig, uint16_t handle, uint16_t *status,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_image(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t handle,
-                uint16_t *errno) {
+bool file_image(const OledConfig *oledConfig, uint16_t x, uint16_t y,
+                uint16_t handle, uint16_t *errno) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3383,7 +3403,7 @@ bool file_image(OledConfig *oledConfig, uint16_t x, uint16_t y, uint16_t handle,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_screenCapture(OledConfig *oledConfig, uint16_t x, uint16_t y,
+bool file_screenCapture(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                         uint16_t width, uint16_t height, uint16_t handle,
                         uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
@@ -3423,7 +3443,7 @@ bool file_screenCapture(OledConfig *oledConfig, uint16_t x, uint16_t y,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_putC(OledConfig *oledConfig, uint16_t car, uint16_t handle,
+bool file_putC(const OledConfig *oledConfig, uint16_t car, uint16_t handle,
                uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3456,7 +3476,7 @@ bool file_putC(OledConfig *oledConfig, uint16_t car, uint16_t handle,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_getC(OledConfig *oledConfig, uint16_t handle, uint16_t *car) {
+bool file_getC(const OledConfig *oledConfig, uint16_t handle, uint16_t *car) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3485,7 +3505,7 @@ bool file_getC(OledConfig *oledConfig, uint16_t handle, uint16_t *car) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_putW(OledConfig *oledConfig, uint16_t word, uint16_t handle,
+bool file_putW(const OledConfig *oledConfig, uint16_t word, uint16_t handle,
                uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3518,7 +3538,7 @@ bool file_putW(OledConfig *oledConfig, uint16_t word, uint16_t handle,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_getW(OledConfig *oledConfig, uint16_t handle, uint16_t *word) {
+bool file_getW(const OledConfig *oledConfig, uint16_t handle, uint16_t *word) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3547,7 +3567,8 @@ bool file_getW(OledConfig *oledConfig, uint16_t handle, uint16_t *word) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_putS(OledConfig *oledConfig, const char *cstr, uint16_t *count) {
+bool file_putS(const OledConfig *oledConfig, const char *cstr,
+               uint16_t *count) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3579,7 +3600,7 @@ bool file_putS(OledConfig *oledConfig, const char *cstr, uint16_t *count) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_getS(OledConfig *oledConfig, uint16_t size, uint16_t handle,
+bool file_getS(const OledConfig *oledConfig, uint16_t size, uint16_t handle,
                uint16_t *n, char *str) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3619,7 +3640,7 @@ bool file_getS(OledConfig *oledConfig, uint16_t size, uint16_t handle,
   return stus;
 }
 
-bool file_erase(OledConfig *oledConfig, const char *filename,
+bool file_erase(const OledConfig *oledConfig, const char *filename,
                 uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3652,7 +3673,8 @@ bool file_erase(OledConfig *oledConfig, const char *filename,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_rewind(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
+bool file_rewind(const OledConfig *oledConfig, uint16_t handle,
+                 uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3681,7 +3703,7 @@ bool file_rewind(OledConfig *oledConfig, uint16_t handle, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_loadFunction(OledConfig *oledConfig, const char *filename,
+bool file_loadFunction(const OledConfig *oledConfig, const char *filename,
                        uint16_t *pointer) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3714,8 +3736,8 @@ bool file_loadFunction(OledConfig *oledConfig, const char *filename,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_callFunction(OledConfig *oledConfig, uint16_t handle, uint16_t n,
-                       uint16_t *args, uint16_t *value) {
+bool file_callFunction(const OledConfig *oledConfig, uint16_t handle,
+                       uint16_t n, const uint16_t *args, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3748,8 +3770,8 @@ bool file_callFunction(OledConfig *oledConfig, uint16_t handle, uint16_t n,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_run(OledConfig *oledConfig, const char *filename, uint16_t n,
-              uint16_t *args, uint16_t *value) {
+bool file_run(const OledConfig *oledConfig, const char *filename, uint16_t n,
+              const uint16_t *args, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3789,8 +3811,8 @@ bool file_run(OledConfig *oledConfig, const char *filename, uint16_t n,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_exec(OledConfig *oledConfig, const char *filename, uint16_t n,
-               uint16_t *args, uint16_t *value) {
+bool file_exec(const OledConfig *oledConfig, const char *filename, uint16_t n,
+               const uint16_t *args, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3830,7 +3852,7 @@ bool file_exec(OledConfig *oledConfig, const char *filename, uint16_t n,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_loadImageControl(OledConfig *oledConfig, const char *filename1,
+bool file_loadImageControl(const OledConfig *oledConfig, const char *filename1,
                            const char *filename2, uint16_t mode,
                            uint16_t *handle) {
   RET_UNLESS_INIT_BOOL(oledConfig);
@@ -3873,7 +3895,7 @@ bool file_loadImageControl(OledConfig *oledConfig, const char *filename1,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_mount(OledConfig *oledConfig, uint16_t *status) {
+bool file_mount(const OledConfig *oledConfig, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3902,7 +3924,7 @@ bool file_mount(OledConfig *oledConfig, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_unmount(OledConfig *oledConfig) {
+bool file_unmount(const OledConfig *oledConfig) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3928,7 +3950,7 @@ bool file_unmount(OledConfig *oledConfig) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_playWAV(OledConfig *oledConfig, const char *filename,
+bool file_playWAV(const OledConfig *oledConfig, const char *filename,
                   uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -3961,8 +3983,8 @@ bool file_playWAV(OledConfig *oledConfig, const char *filename,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool file_writeString(OledConfig *oledConfig, uint16_t handle, const char *cstr,
-                      uint16_t *pointer) {
+bool file_writeString(const OledConfig *oledConfig, uint16_t handle,
+                      const char *cstr, uint16_t *pointer) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -3994,7 +4016,7 @@ bool file_writeString(OledConfig *oledConfig, uint16_t handle, const char *cstr,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool snd_volume(OledConfig *oledConfig, uint16_t level) {
+bool snd_volume(const OledConfig *oledConfig, uint16_t level) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4020,7 +4042,7 @@ bool snd_volume(OledConfig *oledConfig, uint16_t level) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool snd_pitch(OledConfig *oledConfig, uint16_t rate, uint16_t *oldRate) {
+bool snd_pitch(const OledConfig *oledConfig, uint16_t rate, uint16_t *oldRate) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4049,7 +4071,7 @@ bool snd_pitch(OledConfig *oledConfig, uint16_t rate, uint16_t *oldRate) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool snd_bufSize(OledConfig *oledConfig, uint16_t bufferSize) {
+bool snd_bufSize(const OledConfig *oledConfig, uint16_t bufferSize) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4076,7 +4098,7 @@ bool snd_bufSize(OledConfig *oledConfig, uint16_t bufferSize) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool snd_stop(OledConfig *oledConfig) {
+bool snd_stop(const OledConfig *oledConfig) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4102,7 +4124,7 @@ bool snd_stop(OledConfig *oledConfig) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool snd_pause(OledConfig *oledConfig) {
+bool snd_pause(const OledConfig *oledConfig) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4128,7 +4150,7 @@ bool snd_pause(OledConfig *oledConfig) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool snd_continue(OledConfig *oledConfig) {
+bool snd_continue(const OledConfig *oledConfig) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4154,7 +4176,7 @@ bool snd_continue(OledConfig *oledConfig) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool snd_playing(OledConfig *oledConfig, uint16_t *togo) {
+bool snd_playing(const OledConfig *oledConfig, uint16_t *togo) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4183,8 +4205,9 @@ bool snd_playing(OledConfig *oledConfig, uint16_t *togo) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_setPosition(OledConfig *oledConfig, uint16_t handle, int16_t index,
-                     uint16_t xpos, uint16_t ypos, uint16_t *status) {
+bool img_setPosition(const OledConfig *oledConfig, uint16_t handle,
+                     int16_t index, uint16_t xpos, uint16_t ypos,
+                     uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4219,7 +4242,7 @@ bool img_setPosition(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_enable(OledConfig *oledConfig, uint16_t handle, int16_t index,
+bool img_enable(const OledConfig *oledConfig, uint16_t handle, int16_t index,
                 uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -4251,7 +4274,7 @@ bool img_enable(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_disable(OledConfig *oledConfig, uint16_t handle, int16_t index,
+bool img_disable(const OledConfig *oledConfig, uint16_t handle, int16_t index,
                  uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -4283,7 +4306,7 @@ bool img_disable(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_darken(OledConfig *oledConfig, uint16_t handle, int16_t index,
+bool img_darken(const OledConfig *oledConfig, uint16_t handle, int16_t index,
                 uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -4315,7 +4338,7 @@ bool img_darken(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_lighten(OledConfig *oledConfig, uint16_t handle, int16_t index,
+bool img_lighten(const OledConfig *oledConfig, uint16_t handle, int16_t index,
                  uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -4347,7 +4370,7 @@ bool img_lighten(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_setWord(OledConfig *oledConfig, uint16_t handle, int16_t index,
+bool img_setWord(const OledConfig *oledConfig, uint16_t handle, int16_t index,
                  uint16_t offset, uint16_t value, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -4383,7 +4406,7 @@ bool img_setWord(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_getWord(OledConfig *oledConfig, uint16_t handle, int16_t index,
+bool img_getWord(const OledConfig *oledConfig, uint16_t handle, int16_t index,
                  uint16_t offset, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -4418,7 +4441,7 @@ bool img_getWord(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_show(OledConfig *oledConfig, uint16_t handle, int16_t index,
+bool img_show(const OledConfig *oledConfig, uint16_t handle, int16_t index,
               uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -4450,8 +4473,8 @@ bool img_show(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_setAttributes(OledConfig *oledConfig, uint16_t handle, int16_t index,
-                       uint16_t value, uint16_t *status) {
+bool img_setAttributes(const OledConfig *oledConfig, uint16_t handle,
+                       int16_t index, uint16_t value, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4484,8 +4507,8 @@ bool img_setAttributes(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_clearAttributes(OledConfig *oledConfig, uint16_t handle, int16_t index,
-                         uint16_t value, uint16_t *status) {
+bool img_clearAttributes(const OledConfig *oledConfig, uint16_t handle,
+                         int16_t index, uint16_t value, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4518,7 +4541,7 @@ bool img_clearAttributes(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_touched(OledConfig *oledConfig, uint16_t handle, int16_t index,
+bool img_touched(const OledConfig *oledConfig, uint16_t handle, int16_t index,
                  int16_t *value) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -4550,7 +4573,7 @@ bool img_touched(OledConfig *oledConfig, uint16_t handle, int16_t index,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool img_blitComtoDisplay(OledConfig *oledConfig, uint16_t x, uint16_t y,
+bool img_blitComtoDisplay(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                           uint16_t width, uint16_t height,
                           const uint16_t *data) {
   RET_UNLESS_INIT_BOOL(oledConfig);
@@ -4587,7 +4610,7 @@ bool img_blitComtoDisplay(OledConfig *oledConfig, uint16_t x, uint16_t y,
   return stus;
 }
 
-bool bus_in(OledConfig *oledConfig, uint16_t *busState) {
+bool bus_in(const OledConfig *oledConfig, uint16_t *busState) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4616,7 +4639,7 @@ bool bus_in(OledConfig *oledConfig, uint16_t *busState) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool bus_out(OledConfig *oledConfig, uint16_t busState) {
+bool bus_out(const OledConfig *oledConfig, uint16_t busState) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4643,7 +4666,7 @@ bool bus_out(OledConfig *oledConfig, uint16_t busState) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool bus_read(OledConfig *oledConfig, uint16_t *busState) {
+bool bus_read(const OledConfig *oledConfig, uint16_t *busState) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4672,7 +4695,7 @@ bool bus_read(OledConfig *oledConfig, uint16_t *busState) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool bus_set(OledConfig *oledConfig, uint16_t dirMask) {
+bool bus_set(const OledConfig *oledConfig, uint16_t dirMask) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4699,7 +4722,7 @@ bool bus_set(OledConfig *oledConfig, uint16_t dirMask) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool bus_write(OledConfig *oledConfig, uint16_t bitfield) {
+bool bus_write(const OledConfig *oledConfig, uint16_t bitfield) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4726,7 +4749,7 @@ bool bus_write(OledConfig *oledConfig, uint16_t bitfield) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool pin_hi(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
+bool pin_hi(const OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4755,7 +4778,7 @@ bool pin_hi(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool pin_lo(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
+bool pin_lo(const OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4784,7 +4807,7 @@ bool pin_lo(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool pin_read(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
+bool pin_read(const OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
@@ -4813,7 +4836,7 @@ bool pin_read(OledConfig *oledConfig, uint16_t pin, uint16_t *status) {
   return stus && (response.ack == QDS_ACK);
 }
 
-bool pin_set_picaso(OledConfig *oledConfig, uint16_t mode, uint16_t pin,
+bool pin_set_picaso(const OledConfig *oledConfig, uint16_t mode, uint16_t pin,
                     uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);
@@ -4845,7 +4868,7 @@ bool pin_set_picaso(OledConfig *oledConfig, uint16_t mode, uint16_t pin,
   return stus && (response.ack == QDS_ACK);
 }
 
-bool pin_set_diablo(OledConfig *oledConfig, uint16_t mode, uint16_t pin,
+bool pin_set_diablo(const OledConfig *oledConfig, uint16_t mode, uint16_t pin,
                     uint16_t *status) {
   RET_UNLESS_INIT_BOOL(oledConfig);
   RET_UNLESS_4DSYS_BOOL(oledConfig);

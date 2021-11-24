@@ -19,18 +19,18 @@ const uint32_t readTimout = TIME_MS2I(500);
 static OledStatus oledStatus = OLED_OK;
 
 
-static uint32_t oledTransmitBuffer (OledConfig *oc, const char* fct, const uint32_t line,
+static uint32_t oledTransmitBuffer (const OledConfig *oc, const char* fct, const uint32_t line,
 					 const uint8_t *outBuffer, const size_t outSize,
 					 uint8_t *inBuffer, const size_t inSize);
 #if PICASO_DISPLAY_USE_SD
-static uint32_t oledReceiveAnswer (OledConfig *oc, uint8_t *response, const size_t size,
+static uint32_t oledReceiveAnswer (const OledConfig *oc, uint8_t *response, const size_t size,
 				   const char* fct, const uint32_t line);
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 #else
 static void sendVt100Seq (UARTDriver *serial, const char *fmt, ...);
-static void oledStartReceiveAnswer (OledConfig *oc, uint8_t *response, const size_t size,
+static void oledStartReceiveAnswer (const OledConfig *oc, uint8_t *response, const size_t size,
 				     const char* fct, const uint32_t line);
-static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
+static uint32_t oledWaitReceiveAnswer (const OledConfig *oc, size_t *size,
 					const char* fct, const uint32_t line);
 #endif
 static bool findDeviceType (OledConfig *oledConfig);
@@ -54,12 +54,12 @@ static bool findDeviceType (OledConfig *oledConfig);
 #endif
 
 static bool oledIsInitialised (const OledConfig *oledConfig) ;
-static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout);
+static void oledScreenSaverTimout (const OledConfig *oledConfig, uint16_t timout);
 static void oledPreInit (OledConfig *oledConfig, uint32_t baud);
-static uint32_t oledGetFileError  (OledConfig *oledConfig);
-static bool oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const uint32_t offset);
+static uint32_t oledGetFileError  (const OledConfig *oledConfig);
+static bool oledFileSeek  (const OledConfig *oledConfig, const uint16_t handle, const uint32_t offset);
 static uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t colorIndex);
-static uint16_t oledTouchGet (OledConfig *oledConfig, uint16_t mode);
+static uint16_t oledTouchGet (const OledConfig *oledConfig, uint16_t mode);
 static uint16_t getResponseAsUint16 (const uint8_t *buff);
 #if PICASO_DISPLAY_USE_UART
 static void uartStartRead (UARTDriver *serial, uint8_t *response, 
@@ -697,7 +697,7 @@ void oledEnableTouch (OledConfig *oledConfig, bool enable)
    touch_set(oledConfig, enable ? 0x00 : 0x01);
 }
 
-static uint16_t oledTouchGet (OledConfig *oledConfig, uint16_t mode)
+static uint16_t oledTouchGet (const OledConfig *oledConfig, uint16_t mode)
 {
   if (oledIsInitialised(oledConfig) == false) 
     return 0xff;
@@ -817,6 +817,42 @@ void oledDisplayGci (OledConfig *oledConfig, const uint16_t handle, uint32_t off
   }
 }
 
+/* va_list argp; */
+/* va_start(argp, format); */
+/* char char_to_print = va_arg(argp, int); */
+
+bool oledCallFunction(OledConfig *oledConfig, uint16_t handle, uint16_t *retVal, const size_t numArgs, ...)
+{
+    uint16_t args[numArgs];
+    va_list argp;
+    va_start(argp, numArgs);
+    for (size_t i=0; i< numArgs; i++) {
+      args[i] = va_arg(argp, int);
+    } 
+    return file_callFunction(oledConfig, handle, numArgs, args, retVal);
+}
+
+bool oledFileRun(OledConfig *oledConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...)
+{
+    uint16_t args[numArgs];
+    va_list argp;
+    va_start(argp, numArgs);
+    for (size_t i=0; i< numArgs; i++) {
+      args[i] = va_arg(argp, int);
+    } 
+    return file_run(oledConfig, filename, numArgs, args, retVal);
+}
+
+bool oledFileExec(OledConfig *oledConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...)
+{
+    uint16_t args[numArgs];
+    va_list argp;
+    va_start(argp, numArgs);
+    for (size_t i=0; i< numArgs; i++) {
+      args[i] = va_arg(argp, int);
+    } 
+    return file_exec(oledConfig, filename, numArgs, args, retVal);
+}
 
 /*
 #                 _ __           _                    _                   
@@ -845,7 +881,7 @@ static  uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t 
   return (gfx_colorDecTo16b(fg.r, fg.g, fg.b));
 }
 
-static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout)
+static void oledScreenSaverTimout (const OledConfig *oledConfig, uint16_t timout)
 {
   RET_UNLESS_INIT(oledConfig);
   RET_UNLESS_GOLDELOX(oledConfig);
@@ -853,7 +889,7 @@ static void oledScreenSaverTimout (OledConfig *oledConfig, uint16_t timout)
   misc_screenSaverTimeout(oledConfig, timout);
 }
 
-static uint32_t oledGetFileError  (OledConfig *oledConfig)
+static uint32_t oledGetFileError  (const OledConfig *oledConfig)
 {
   if (oledIsInitialised(oledConfig) == false) return 0;
   uint16_t errno;
@@ -862,7 +898,7 @@ static uint32_t oledGetFileError  (OledConfig *oledConfig)
   return errno;
 }
 
-static bool oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const uint32_t offset)
+static bool oledFileSeek  (const OledConfig *oledConfig, const uint16_t handle, const uint32_t offset)
 {
   if (oledIsInitialised(oledConfig) == false) return false;
 
@@ -880,7 +916,7 @@ static bool oledFileSeek  (OledConfig *oledConfig, const uint16_t handle, const 
 }
 
 #if PICASO_DISPLAY_USE_SD
-static uint32_t oledReceiveAnswer (OledConfig *oc, uint8_t *response, const size_t size,
+static uint32_t oledReceiveAnswer (const OledConfig *oc, uint8_t *response, const size_t size,
 				   const char* fct, const uint32_t line)
 {
   (void) fct;
@@ -903,7 +939,7 @@ static uint32_t oledReceiveAnswer (OledConfig *oc, uint8_t *response, const size
 
 #if PICASO_DISPLAY_USE_UART
 
-static void oledStartReceiveAnswer (OledConfig *oc, uint8_t *response, const size_t size,
+static void oledStartReceiveAnswer (const OledConfig *oc, uint8_t *response, const size_t size,
 				    const char* fct, const uint32_t line)
 {
   (void) fct;
@@ -915,7 +951,7 @@ static void oledStartReceiveAnswer (OledConfig *oc, uint8_t *response, const siz
   uartStartRead(serial, response, size);
 }
 
-static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
+static uint32_t oledWaitReceiveAnswer (const OledConfig *oc, size_t *size,
 				       const char* fct, const uint32_t line)
 
 {
@@ -940,7 +976,7 @@ static uint32_t oledWaitReceiveAnswer (OledConfig *oc, size_t *size,
 #endif
 
 
-static uint32_t oledTransmitBuffer (OledConfig *oc, const char* fct, const uint32_t line,
+static uint32_t oledTransmitBuffer (const OledConfig *oc, const char* fct, const uint32_t line,
 				    const uint8_t *outBuffer, const size_t outSize,
 				    uint8_t *inBuffer, const size_t inSize)
 {

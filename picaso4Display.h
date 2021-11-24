@@ -105,6 +105,9 @@ void oledPlayWav (OledConfig *oledConfig, const char* fileName);
 uint32_t oledOpenFile  (OledConfig *oledConfig, const char* fileName, uint16_t *handle);
 void oledCloseFile (OledConfig *oledConfig, const uint16_t handle);
 void oledDisplayGci  (OledConfig *oledConfig, const uint16_t handle, uint32_t offset);
+bool oledCallFunction(OledConfig *oledConfig, uint16_t handle, uint16_t *retVal, const size_t numArgs, ...);
+bool oledFileRun(OledConfig *oledConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...);
+bool oledFileExec(OledConfig *oledConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...);
 bool oledSetBaud (OledConfig *oledConfig, uint32_t baud);
 OledStatus oledGetStatus(void);
 
