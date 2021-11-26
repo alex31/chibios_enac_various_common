@@ -570,11 +570,16 @@ bool txt_underline(const OledConfig *oledConfig, uint16_t mode,
     uint16_t oldUnder;
   } __attribute__((__packed__)) response;
 
-  stus = oledTransmitBuffer(oledConfig, __FUNCTION__, __LINE__,
-                            (uint8_t *)&command1, sizeof(command1),
-                            (uint8_t *)&response, sizeof(response)) != 0;
+  stus = oledTransmitBuffer(
+             oledConfig, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+             sizeof(command1), (uint8_t *)&response,
+             sizeof(response) - (oledConfig->deviceType == GOLDELOX
+                                     ? sizeof(*oldUnder)
+                                     : 0)) != 0;
 
-  if (oldUnder != NULL) *oldUnder = __builtin_bswap16(response.oldUnder);
+  if (oledConfig->deviceType != GOLDELOX) {
+    if (oldUnder != NULL) *oldUnder = __builtin_bswap16(response.oldUnder);
+  }
 
   return stus && (response.ack == QDS_ACK);
 }
