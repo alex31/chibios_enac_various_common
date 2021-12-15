@@ -230,258 +230,655 @@ bool gfx_triangle(const OledConfig *oledConfig, uint16_t x1, uint16_t y1,
                   uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3,
                   uint16_t colour);
 
-// x1,y1,x2,y2,x3,y3,colour
+// x1,y1 : first vertice of the triangle, x2,y2 : second vertice of the
+// triangle, x3,y3 : third vertice of the triangle, colour : colour of the
+// triangle. Draws a solid triangle between specified vertices using the
+// specified colour.
 bool gfx_triangleFilled(const OledConfig *oledConfig, uint16_t x1, uint16_t y1,
                         uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3,
                         uint16_t colour);
 
+// angle : angle from the origin to the remote point. The angle is specified in
+// degrees, distance : distance from the origin to the remote point in pixel
+// units. Xdist,Ydist : coordinates from the current origin. Calculates the
+// coordinates of a distant point relative to the current origin, where the only
+// known parameters are the angle and the distance from the current origin.
 bool gfx_orbit(const OledConfig *oledConfig, uint16_t angle, uint16_t distance,
                uint16_t *Xdist, uint16_t *Ydist);
 
+// x, y : pixel coordinates, colour : colour of the pixel
+// Draws a pixel at specified coordinates using the specified colour.
 bool gfx_putPixel(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                   uint16_t colour);
 
+// x, y : pixel coordinates
+// colour : 16bit colour of the pixel.
+// Reads the colour value of the pixel at the specified coordinate.
 bool gfx_getPixel(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                   uint16_t *colour);
 
+// x,y : coordinates of the new origin.
+// Moves the origin to a new position.
 bool gfx_moveTo(const OledConfig *oledConfig, uint16_t x, uint16_t y);
 
+// x,y : line end coordinates.
+// Draws a line from the current origin to a new position. The Origin is then
+// set to the new position. The line is drawn using the current object colour,
+// using the “Set Graphics Parameters” – “Object Colour” command. The line may
+// be tessellated with the “Line Pattern” command.
 bool gfx_lineTo(const OledConfig *oledConfig, uint16_t x, uint16_t y);
 
-// 0 .. 1
+// mode : 0 = Clipping Disabled, 1 = Clipping Enabled
+// Enables or Disables the ability for Clipping to be used.
 bool gfx_clipping(const OledConfig *oledConfig, uint16_t mode);
 
+// tlx,tly :  top left corner of the clipping window, brx,bry : bottom right
+// corner of the clipping window. Specifies a clipping window region on the
+// screen such that any objects and text placed onto the screen will be clipped
+// and displayed only within that region. For the clipping window to take
+// effect, the clipping setting must be enabled separately using the “Clipping”
+// command
 bool gfx_clipWindow(const OledConfig *oledConfig, uint16_t tlx, uint16_t tly,
                     uint16_t brx, uint16_t bry);
 
+// Forces the clip region to the extent of the last text that was printed, or
+// the last image that was shown.
 bool gfx_setClipRegion(const OledConfig *oledConfig);
 
+// x,y : center of ellipse, xrad : x-radius of ellipse, yrad : y-radius of
+// ellipse, colour : colour of the ellipse. Plots a coloured Ellipse on the
+// screen at centre x, y with x-radius = xrad and y-radius = yrad.
 bool gfx_ellipse(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                  uint16_t xrad, uint16_t yrad, uint16_t colour);
 
+// x,y : center of ellipse, xrad : x-radius of ellipse, yrad : y-radius of
+// ellipse, colour : colour of the ellipse. Plots a solid coloured Ellipse on
+// the screen at centre x, y with x-radius = xrad and y-radius = yrad.
 bool gfx_ellipseFilled(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                        uint16_t xrad, uint16_t yrad, uint16_t colour);
 
+// "state : appearance of button, 0 = depressed
+//  1 = raised, x,y : top left corner position, buttoncolour : button colour,
+//  txtcolour : text colour, font : font ID, txtWidth : text width (font width
+//  multiplier, minimum must be 1) , txtHeight : teext height (font width
+//  multiplier, minimum must be 1), cstr : text string, printable ASCII
+//  character set Null terminated. May have \n characters to create a multiline
+//  button." Draws a 3 dimensional Text Button at location defined by
+//  parameters. Size depends on font, width, height and length of text. Can
+//  contain multiple lines of text by having \n character in the string. In this
+//  case, the widest text in the string sets the overall width, and height is
+//  set by the number of text lines. In case of multiple lines, each line is
+//  left justified. To centre or right justify text, prepare string according to
+//  requirements.
 bool gfx_button(const OledConfig *oledConfig, uint16_t state, uint16_t x,
                 uint16_t y, uint16_t buttoncolour, uint16_t txtcolour,
-                uint16_t font, uint16_t twtWidth, uint16_t twtHeight,
+                uint16_t font, uint16_t txtWidth, uint16_t txtHeight,
                 const char *cstr);
 
+// "state : appearance of panel, 0 = recessed
+//  1 = raised, x,y : top left corner position of the panel, width : width of
+//  the panel ,height : height of the panel, colour : colour of the panel."
+// Draws a 3 dimensional rectangular panel
 bool gfx_panel(const OledConfig *oledConfig, uint16_t state, uint16_t x,
                uint16_t y, uint16_t width, uint16_t height, uint16_t colour);
 
-bool gfx_slider(const OledConfig *oledConfig, uint16_t mode, uint16_t x1,
-                uint16_t y1, uint16_t x2, uint16_t y2, uint16_t colour,
+// mode : 0 = Indented, 1 = Raised, 2 = Hidden (background colour), tlx,tly :
+// top left corner position, brx,bry : bottom right corner position ,colour :
+// colour of the slider, scale : full scale range of the slider for the thumb (0
+// to n), value : relative position of the thumb on the slider bar Draws a
+// vertical or horizontal slider bar. Mode operation rules : if width > height
+// slider is assumed to be horizontal, if height <= width slider is assumed to
+// be vertical, If value parameter is positive, thumb is set to the position
+// that is the proportion of value to the scale parameter. If value parameter is
+// negative, thumb is driven to the graphics position set by the ABSolute of
+// value. Thumb colour is determine by the “Set Graphics Parameters” – “Object
+// Colour” command, however, if the current object colour is BLACK, a darkened
+// shade of the colour parameter is used for the thumb .
+bool gfx_slider(const OledConfig *oledConfig, uint16_t mode, uint16_t tlx,
+                uint16_t tly, uint16_t brx, uint16_t bry, uint16_t colour,
                 uint16_t scale, int16_t value);
 
+// xs, ys : position of the top left corner of the area to be copied (source),
+// xd, yd : position of the top left corner of where the paste is to be made
+// (destination), width : width of the copied area, height : height of the
+// copied area. Copies an area of the screen from xs, ys of size given by width
+// and height parameters and pastes it to another location determined by xd, yd.
 bool gfx_screenCopyPaste(const OledConfig *oledConfig, uint16_t xs, uint16_t ys,
                          uint16_t xd, uint16_t yd, uint16_t width,
                          uint16_t height);
 
-// number of pixel 0..4
+// value : number of pixel, 0 = No Bevel Shadow, 1-4 = Number of Pixels Deep
+// (default = 3) oldBevel : previous bevel shadow status. Changes the graphics
+// “Draw Button” commands bevel shadow depth
 bool gfx_bevelShadow(const OledConfig *oledConfig, uint16_t value,
                      uint16_t *oldBevel);
 
-// 0..15
+// value : 0 = No Bevel, 1-15 = Number of Pixels Wide (Default = 2)
+// oldWidth : previous bevel width status.
+// Changes the graphics “Draw Button” commands bevel width
 bool gfx_bevelWidth(const OledConfig *oledConfig, uint16_t value,
                     uint16_t *oldWidth);
 
+// colour : colour to be set (0-65535 or HEX 0x0000-0xFFFF)
+// oldCol : previous background Colour.
+// Sets the screen background colour
 // argument(s) oldCol not returned if screen is of goldelox type
 bool gfx_bgCcolour(const OledConfig *oledConfig, uint16_t colour,
                    uint16_t *oldCol);
 
-// argument(s) oldCol not returned if screen is of goldelox type
+// colour : colour to be set (0-65535 or HEX 0x0000-0xFFFF), set to 0 for no
+// effect oldCol : previous outline Colour. Sets the outline colour for
+// rectangles and circles. argument(s) oldCol not returned if screen is of
+// goldelox type
 bool gfx_outlineColour(const OledConfig *oledConfig, uint16_t colour,
                        uint16_t *oldCol);
 
-// 0..15
-// argument(s) oldContrast not returned if screen is of goldelox type
+// contrast : 0 = Display OFF, 1 - 15 = Contrast Level
+// oldContrast : previous Contrast value.
+// Sets the contrast of the display, or turns it On/Off depending on display
+// model argument(s) oldContrast not returned if screen is of goldelox type
 bool gfx_contrast(const OledConfig *oledConfig, uint16_t contrast,
                   uint16_t *oldContrast);
 
+// delayMsec : delay in milliseconds (0-255)
+// oldDelay : previous Frame Delay value.
+// Sets the inter frame delay for the “Media Video” command
 // argument(s) oldDelay not returned if screen is of goldelox type
 bool gfx_frameDelay(const OledConfig *oledConfig, uint16_t delayMsec,
                     uint16_t *oldDelay);
 
-// argument(s) oldPattern not returned if screen is of goldelox type
+// pattern : 0 = all line pixels are on (Default), 0-65535 (or HEX
+// 0x0000-0xFFFF) = number of bits in the line are turned off to form a pattern
+// oldPattern : previous Line Pattern value.
+// Sets the line draw pattern for line drawing. If set to zero, lines are solid,
+// else each '1' bit represents a pixel that is turned off. argument(s)
+// oldPattern not returned if screen is of goldelox type
 bool gfx_linePattern(const OledConfig *oledConfig, uint16_t pattern,
                      uint16_t *oldPattern);
 
-// 0 = LANDSCAPE, 1 = LANDSCAPE REVERSE, 2=portrait, 3=portrait_reverse
-// argument(s) oldMode not returned if screen is of goldelox type
+// mode : 0 = Landscape, 1 = Landscape reverse, 2 = Portrait, 3 = Portrait
+// reverse oldMode : previous Screen Mode value. Alters the graphics orientation
+// (Landscape, Landscape reverse, Portrait or Portrait reverse) argument(s)
+// oldMode not returned if screen is of goldelox type
 bool gfx_screenMode(const OledConfig *oledConfig, uint16_t mode,
                     uint16_t *oldMode);
 
-// 0..1
+// mode : 0 = Transparency OFF, 1 = Transparency ON
+// oldMode : previous Transparency value.
+// Turns the transparency ON or OFF. Transparency is automatically turned OFF
+// after the next image or video command.
 bool gfx_transparency(const OledConfig *oledConfig, uint16_t mode,
                       uint16_t *oldMode);
 
+// colour : colour to make transparent (0-65535 or HEX 0x0000-0xFFFF)
+// oldColor : previous Transparent Colour value.
+// Alters the colour that needs to be made transparent.
 bool gfx_transparentColour(const OledConfig *oledConfig, uint16_t colour,
                            uint16_t *oldColor);
 
-// see manual
+// function, value : see « Serial Commands Reference Manual » of appropriate
+// display processor Sets various parameters for the graphics gommands.
 bool gfx_set(const OledConfig *oledConfig, uint16_t function, uint16_t value);
 
+// mode : 0 = Current orientations maximum X value (X_MAX), 1 = Current
+// orientations maximum Y value (Y_MAX), 2 = Left location of last Object, 3 =
+// Top location of Object, 4 = Right location of last Object, 5 = Bottom
+// location of Object value : Mode=0: horizontal resolution - 1, Mode=1:
+// vertical resolution - 1, Mode=2: left location of the last drawn object,
+// Mode=3: top location of the last drawn object, Mode=4: right location of the
+// last drawn object, Mode=5: bottom location of the last drawn object. Returns
+// various graphics parameters to the caller.
 bool gfx_get(const OledConfig *oledConfig, uint16_t mode, uint16_t *value);
 
-// argument(s) value not returned if screen is of goldelox type
+// value : Non-Zero = card is present and successfully initialised, 0 = no card
+// is present or not able to initialise. Initialises a uSD/SD/SDHC memory card
+// for further operations. SD card is connected to the SPI of the processor
+// display.
 bool media_init(const OledConfig *oledConfig, uint16_t *value);
 
+// hiAddr : high word (upper 2 bytes) of a 4 byte media memory byte address
+// location, loAddr : low word (lower 2 bytes) of a 4 byte media memory byte
+// address location. Sets the media memory internal Address pointer for access
+// at a non-sector aligned byte address.
 bool media_setAdd(const OledConfig *oledConfig, uint16_t hiAddr,
                   uint16_t loAddr);
 
-// argument(s) value not returned if screen is of goldelox type
+// hiAddr : high word (upper 2 bytes) of a 4 byte media memory byte address
+// location, loAddr : low word (lower 2 bytes) of a 4 byte media memory byte
+// address location. Sets the media memory internal Address pointer for sector
+// access.
 bool media_setSector(const OledConfig *oledConfig, uint16_t hiAddr,
-                     uint16_t loAddr, uint16_t *value);
+                     uint16_t loAddr);
 
+// value : byte value in the LSB.
+// Returns the byte value from the current media address, set by the “Set Byte
+// Address” command. The internal byte address will then be internally
+// incremented by one.
 bool media_readByte(const OledConfig *oledConfig, uint16_t *value);
 
+// value : word value
+// Returns the word value (2 bytes) from the current media address, set by the
+// “Set Byte Address” command. The internal byte address will then be internally
+// incremented by two. If the address is not aligned, the word will still be
+// read correctly.
 bool media_readWord(const OledConfig *oledConfig, uint16_t *value);
 
-bool media_writeByte(const OledConfig *oledConfig, uint16_t value,
+// s : byte value, in the LSB, to be written at the current byte address
+// location. status : Non Zero = successful media response, 0 = attempt failed.
+// Writes a byte to the current media address that was initially set with the
+// “Set Sector Address” command. See « Serial Commands Reference Manual » for
+// more information.
+bool media_writeByte(const OledConfig *oledConfig, uint16_t s,
                      uint16_t *status);
 
+// value : 16 bit word to be written at the current media address location.
+// status : Non Zero = successful media response, 0 = attempt failed.
+// Writes a word to the current media address that was initially set with the
+// “Set Sector Address” command. See « Serial Commands Reference Manual » for
+// more information.
 bool media_writeWord(const OledConfig *oledConfig, uint16_t value,
                      uint16_t *status);
 
+// status : Non Zero = successful media response, 0 = attempt failed.
+// After writing any data to a sector, the Flush Media command should be called
+// to ensure that the current sector that is being written is correctly stored
+// back to the media else write operations may be unpredictable.
 bool media_flush(const OledConfig *oledConfig, uint16_t *status);
 
+// x,y : top left position where the image will be displayed.
+// Displays an image from the media storage at the specified co-ordinates. The
+// image address is previously specified with the “Set Byte Address” command or
+// “Set Sector Address” command. If the image is shown partially off screen, it
+// may not be displayed correctly.
 bool media_image(const OledConfig *oledConfig, uint16_t x, uint16_t y);
 
+// x,y : top left position where the video clip will be displayed.
+// Displays a video clip from the media storage device at the specified
+// co-ordinates. The video address location in the media is previously specified
+// with the “Set Byte Address” or “Set Sector Address” commands. If the video is
+// shown partially off screen, it may not be displayed correctly. Note that
+// showing a video blocks all other processes until the video has finished
+// showing. See the “Display Video Frame” command for alternatives.
 bool media_video(const OledConfig *oledConfig, uint16_t x, uint16_t y);
 
+// x,y : top left position of the video frame to be displayed, frameNumber :
+// required frame number to be displayed. Displays a video from the media
+// storage device at the specified co-ordinates. The video address is previously
+// specified with the “Set Byte Address” command or “Set Sector Address”
+// command. If the video is shown partially off it may not be displayed
+// correctly. The frames can be shown in any order. This function gives a great
+// flexibility for showing various icons from an image strip, as well as showing
+// videos while doing other tasks.
 bool media_videoFrame(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                       int16_t frameNumber);
 
-bool misc_peekB(const OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
-                uint16_t *value);
+// eveReg : byte register address
+// value : register value in the LSB.
+// Returns the EVE System Byte Register value in the lower byte. See EVE System
+// Registers Memory Map in « Serial Commands Reference Manual ».
+bool misc_peekB(const OledConfig *oledConfig, uint16_t eveReg, uint16_t *value);
 
-bool misc_pokeB(const OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
-                uint16_t value);
+// eveReg : byte register address, value : register value in the LSB.
+// Sets the EVE System Byte Register value in the lower byte. See EVE System
+// Registers Memory Map in « Serial Commands Reference Manual ».
+bool misc_pokeB(const OledConfig *oledConfig, uint16_t eveReg, uint16_t value);
 
-bool misc_peekW(const OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
-                uint16_t *value);
+// eveReg : word register address
+// value : registre value
+// Returns the EVE System Word Register value. See EVE System Registers Memory
+// Map in « Serial Commands Reference Manual ».
+bool misc_peekW(const OledConfig *oledConfig, uint16_t eveReg, uint16_t *value);
 
-bool misc_pokeW(const OledConfig *oledConfig, uint16_t eveReg, uint16_t index,
-                uint16_t value);
+// eveReg : word register address, value : register value
+// Sets the EVE System Word Register value. See EVE System Registers Memory Map
+// in « Serial Commands Reference Manual ».
+bool misc_pokeW(const OledConfig *oledConfig, uint16_t eveReg, uint16_t value);
 
+// address : address to be peeked
+// value : contents of the specified memory address.
+// Returns the word contents of a specified memory address. This command would
+// normally be used to read the contents of File and/or ImageControl handles.
 bool misc_peekM(const OledConfig *oledConfig, uint16_t address,
                 uint16_t *value);
 
+// address : address to be poked, value : data to be poked into the address
+// Sets the word contents of a specified memory address. This command would
+// normally be used to alter the contents of File and/or ImageControl handles.
 bool misc_pokeM(const OledConfig *oledConfig, uint16_t address, uint16_t value);
 
+// value : value of the Joystick position, 0=Released, 1=Up , 2=Left , 3=Down ,
+// 4=Right, 5=Press (5 position switch implementation). Return the value of the
+// joystick position. Refer to the processor datasheet.
 bool misc_joystick(const OledConfig *oledConfig, uint16_t *value);
 
-// note=[0..64]
+// note : frequency of the note (0-64), duration_ms : time in milliseconds that
+// the note will be played for. Produce a single musical note for the required
+// duration through IO2.
 bool misc_beep(const OledConfig *oledConfig, uint16_t note,
                uint16_t duration_ms);
 
-// The response will be 0x06 at the new baud rate set, 100ms after the command
-// is sent
+// index : baud rate index value. See index table in « Serial Commands Reference
+// Manual » Set the required baud rate. Please refer to the « Serial Commands
+// Reference Manual ».
 bool misc_setbaudWait(const OledConfig *oledConfig, int16_t index);
 
+// duration_s : Sleep duration (0-65535) approximately in seconds (in sleep
+// mode, timing is controlled by an RC oscillator, so is not totally accurate)
+// ack,duration : remaining time when touch screen is touched, else returns
+// zero. "Puts display and processor into low power mode for a period of time.
+// If ""duration"" is zero, goes into sleep mode forever and needs power cycling
+// to re-initialize. If ""duration"" is 1 to 65535, display will sleep for that
+// period of time, or will be woken when touch screen is touched. Returns
+// remaining time when screen was touched. When returning from sleep mode,
+// display and processor are restored from low power mode."
 bool sys_sleep(const OledConfig *oledConfig, uint16_t duration_s,
                uint16_t *duration);
 
+// handle : pointer to the memory block.
+// status : Non Zero = operation successful, 0 = attempt failed.
+// "Releases the memory space used by the the ""Load Image Control"" and ""File
+// Load Function"" commands."
 bool sys_memFree(const OledConfig *oledConfig, uint16_t handle,
                  uint16_t *status);
 
+// avail : largest available memory chunk of the heap.
+// Returns byte size of the largest chunk of memory available in the heap.
 bool sys_memHeap(const OledConfig *oledConfig, uint16_t *avail);
 
+// n : number of characters in the model name to return, str[n] : display
+// module’s model name (without NULL terminator). Returns the Display Model in
+// the form of a string without Null terminator.
 bool sys_getModel(const OledConfig *oledConfig, uint16_t *n, char *str);
 
+// version : SPE Version installed on the module.
+// Returns the SPE Version installed on the module.
 bool sys_getVersion(const OledConfig *oledConfig, uint16_t *version);
 
+// version : PmmC Version installed on the module.
+// Returns the PmmC Version installed on the module.
 bool sys_getPmmC(const OledConfig *oledConfig, uint16_t *version);
 
-// 1..65535
+// timout_ms : Screen saver timeout in milliseconds (1 to 65535, 0 disables the
+// screen saver). Set the screen saver Timeout. Default screen saver timeout
+// settings could be adjusted. This feature is display dependent, please refer
+// to module's datasheet.
 bool misc_screenSaverTimeout(const OledConfig *oledConfig, uint16_t timout_ms);
 
-// see reference manuel
-bool misc_screenSaverSpeed(const OledConfig *oledConfig, uint16_t speed_index);
+// speed : screen saver speed. Range is display dependant. Please refer to
+// module datasheet Set the screen saver speed. Default screen saver speed
+// settings could be adjusted. This feature is display dependent, please refer
+// to module datasheet.
+bool misc_screenSaverSpeed(const OledConfig *oledConfig, uint16_t speed);
 
-// see reference manuel
+// mode : screen saver scroll direction. Display dependant, please refer to
+// module datasheet. Set the screen saver scroll direction. This feature is
+// display dependent, please refer to module's datasheet.
 bool misc_screenSaverMode(const OledConfig *oledConfig, uint16_t mode);
 
-bool touch_detectRegion(const OledConfig *oledConfig, uint16_t x1, uint16_t y1,
-                        uint16_t x2, uint16_t y2);
+// tlx,tly : position of the top left corner of the region, brx,bry : position
+// of the bottom right corner of the region. Specifies a touch detect region on
+// the screen. This setting will filter out any touch activity outside the
+// region and only touch activity within that region will be reported by the
+// status poll “Touch Get” command
+bool touch_detectRegion(const OledConfig *oledConfig, uint16_t tlx,
+                        uint16_t tly, uint16_t brx, uint16_t bry);
 
-// 0..2
+// mode : 0=Enables and initialises Touch Screen hardware, 1=Disables the Touch
+// Screen (Touch Screen task runs in the background, disabling it when not in
+// use free up extra CPU cycles), 2 = reset the current active region to default
+// (= full screen area) Sets various Touch Screen related parameters.
 bool touch_set(const OledConfig *oledConfig, uint16_t mode);
 
-// 0..2
+// mode : 0 = get Status, 1 = get X coordinates, 2 = get Y coordinates.
+// value : mode0 = returns the various states of the touch screen
+// (0=invalid/notouch, 1=press, 2=release, 3=moving), mode1 = returns the X
+// coordinates of the touch reported by mode0, mode2 = returns the Y coordinates
+// of the touch reported by mode0. Returns various touch screen parameters,
+// based on the touch detect region set by the “Touch Detect Region” command.
 bool touch_get(const OledConfig *oledConfig, uint16_t mode, uint16_t *value);
 
+// errno : error number (0 = no error).
+// Returns the most recent error code. See error table in « Serial Commands
+// Reference Manual »
 bool file_error(const OledConfig *oledConfig, uint16_t *errno);
 
+// filename : Name of the file(s) for search (passed as a string). Filename must
+// be 8.3 format. count : number of files that match the criteria. Returns
+// number of files found that match the criteria. The wild card character '*'
+// matches up with any combination of allowable characters and '?' matches up
+// with any single allowable character.
 bool file_count(const OledConfig *oledConfig, const char *filename,
                 uint16_t *count);
 
+// filename : Name of the file(s) for search (passed as a string). Filename must
+// be 8.3 format. count : number of files that match the criteria. Lists the
+// stream of file names that agree with the search key on the Display Screen.
+// The wild card character ‘*’ matches up with any combination of allowable
+// characters and ‘?’ matches up with any single allowable character. Note:
+// “Find First File and Report” and “Find Next File and Report” are recommended
+// alternatives
 bool file_dir(const OledConfig *oledConfig, const char *filename,
               uint16_t *count);
 
+// filename : Name of the file(s) for search (passed as a string). Filename must
+// be 8.3 format. status : 1 = at least one file exists that satisfies the
+// criteria, 0 = no file satisfies the criteria. Returns 1 if at least one file
+// exists that satisfies the file argument. Wildcards are usually used so if the
+// “Find First File” command returns true, further tests can be made using the
+// “Find Next File” command to find all the files that match the wildcard class.
+// Notes : filename is printed on the screen. “Find First File and Report” and
+// “Find Next File and Report” are recommended alternatives in order to return
+// the responses.
 bool file_findFirst(const OledConfig *oledConfig, const char *filename,
                     uint16_t *status);
 
+// filename : Name of the file(s) for search (passed as a string). Filename must
+// be 8.3 format. length : Length of the filename string, str[n] : Filename if
+// it exists. Filename string is not NULL terminated. Returns length of filename
+// and filename if at least 1 file exists that matches the criteria. Wildcards
+// are usually used so further tests can be made using “Find Next File” or “Find
+// Next File and Report” commands to find all the files that match the wildcard
+// class.
 bool file_findFirstRet(const OledConfig *oledConfig, const char *filename,
-                       uint16_t *n, char *str);
+                       uint16_t *length, char *str);
 
+// status : 1 = at least one file exists that satisfies the criteria, 0 = no
+// file satisfies the criteria. Returns 1 if more file exists that satisfies the
+// file argument that was given for the “Find First File” or “Find First File
+// and Report” commands. Wildcards must be used for the “Find First File” or
+// “Find First File and Report” commands else this function will always return
+// zero as the only occurrence will have already been found. Note : filename is
+// printed on the screen.
 bool file_findNext(const OledConfig *oledConfig, uint16_t *status);
 
-bool file_findNextRet(const OledConfig *oledConfig, uint16_t *n, char *str);
+// length : Length of the filename string, str[n] : Filename if it exists.
+// Filename string is not NULL terminated. "Returns length of filename and
+// filename if at least 1 file exists that matches criteria given for the “Find
+// First File” or “Find First File and Report” commands. Wildcards must be used
+// for “Find First File” or “Find First File and Report” commands else this
+// function will always return zero as the only occurrence will have already
+// been found. Wildcards are usually used, so if the “Find First File” or “Find
+// First File and Report” commands return the stringlength and filename, further
+// tests can be made using ""Find Next File and Report"" command to find all the
+// files that match the wildcard class."
+bool file_findNextRet(const OledConfig *oledConfig, uint16_t *length,
+                      char *str);
 
+// filename : Name of the file(s) for search (passed as a string). Filename must
+// be 8.3 format. status : 1 = File found, 0 = File not found. Tests for the
+// existence of the file provided with the search key.
 bool file_exists(const OledConfig *oledConfig, const char *filename,
                  uint16_t *status);
 
+// filename : Name of the file(s) for search (passed as a string). Filename must
+// be 8.3 format. Mode : ‘r’ or ‘w’ or ‘a’ (read write, append) handle : return
+// handle if file exists, else internal file error is set Returns handle if file
+// exists. The file ‘handle’ that is created is now used as reference for
+// ‘filename’ for further file commands such as “File Close”, etc. For File
+// Write and File Append modes ('w' and 'a') the file is created if it does not
+// exist.
 bool file_open(const OledConfig *oledConfig, const char *filename, char mode,
                uint16_t *handle);
 
+// handle :  The file handle that was created by the “File Open” command which
+// is now used as reference ‘handle’ for the filename, for further file
+// functions such as in this function to close the file. Status : 1 = file
+// closed, 0 = file not closed The File Close command will close the previously
+// opened file.
 bool file_close(const OledConfig *oledConfig, uint16_t handle,
                 uint16_t *status);
 
+// size : Number of bytes to be read. handle : The handle that references the
+// file to be read. count : Returns the number of bytes read. data : Data read
+// from the file Returns the number of bytes specified by ‘size’ from the file
+// referenced by ‘handle’.
 bool file_read(const OledConfig *oledConfig, uint16_t size, uint16_t handle,
                uint16_t *n, char *str);
 
+// "handle The handle that references the file 
+// HiWord Contains the upper 16bits of the memory pointer into the file. LoWord
+// Contains the lower 16bits of the memory pointer into the file." Status : 1 =
+// success, 0 = error The File Seek command places the file pointer at the
+// required position in a file that has been opened in 'r' (read) or 'a'
+// (append) mode.
 bool file_seek(const OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
                uint16_t loWord, uint16_t *status);
 
+// "Handle : The handle that references the file 
+//  HiSize :  Contains the upper 16bits of the size of the file records
+//  LoSize : Contains the lower 16bits of the size of the file records 
+// recordnum : The index of the required record"
+// Status : 1 = success, 0 = error
+// Places the file pointer at the position in a file that has been opened in 'r'
+// (read) or 'a' (append) mode. In append mode, File Index does not expand a
+// filesize, instead, the file pointer (handle) is set to the end position of
+// the file, e.g. assuming the record size is 100 bytes, the File Index command
+// with HiSize = 0, LoSize = 100 and recordnum = 22 will set the file position
+// to 2200 for the file handle, so subsequent data may be read from that
+// position onwards with “Read Character from the File”, “Read Word from the
+// File”, “Read String from the File” commands or an image can be displayed with
+// the “Display Image (FAT)” command.
 bool file_index(const OledConfig *oledConfig, uint16_t handle, uint16_t hiWord,
                 uint16_t loWord, uint16_t recordNum, uint16_t *status);
 
+// Handle : The handle that references the file
+// "Status : 1 = success, 0 = error 
+//  HiWord Contains the upper 16bits of the value of the pointer 
+//  LoWord  Contains the lower 16bits of the value of the pointer"
+// The File Tell command returns the current value of the file pointer.
 bool file_tell(const OledConfig *oledConfig, uint16_t handle, uint16_t *status,
                uint16_t *hiWord, uint16_t *loWord);
 
-bool file_write(const OledConfig *oledConfig, uint16_t size, uint16_t source,
-                uint16_t handle, uint16_t *count);
+// size : Number of bytes to be written. Maximum that can be written at one time
+// is 512 bytes.source :  String of Data without Null terminator. Handle :  The
+// handle that references the file to write. count  Returns the number of bytes
+// written. write chunk of data to file
+bool file_write(const OledConfig *oledConfig, uint16_t size,
+                const uint8_t *source, uint16_t handle, uint16_t *count);
 
+// Handle : The handle that references the file
+// "Status : 1 = success, 0 = error 
+//  HiWord Contains the upper 16bits of the file size 
+//  LoWord  Contains the lower 16bits of the file size"
 bool file_size(const OledConfig *oledConfig, uint16_t handle, uint16_t *status,
                uint16_t *hiWord, uint16_t *loWord);
 
+// "x : X-position of the image to be displayed 
+//  y : Y-position of the image to be displayed 
+//  handle : The handle that references the file containing the image(s)."
+// error  Returns a copy of the File Error, see the “File Error” command
+// Display an image from the file stream at screen location specified by x, y
+// (top left corner).If there is more than 1 image in the file, it can be
+// accessed with the “File Seek” command
 bool file_image(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                 uint16_t handle, uint16_t *errno);
 
+// "X : X-position of the image to be captured 
+//  y :  Y-position of the image to be captured 
+//  width : Width of the area to be captured 
+// height : Height of the area to be captured 
+//  handle : The handle that references the file to store the image(s)"
+// status :  0: If the operation was successful
+// "The Screen Capture command saves an image of the screen shot to file at the
+// current file position.The image can later be displayed with the “Display
+// Image (FAT)” command. The file may beopened in append mode to accumulate
+// multiple images. Later, the images can be displayed with the “File Seek”
+// command. The image is saved from x, y (with respect to top left corner),and
+// the capture area is determined by ""width"" and ""height""."
 bool file_screenCapture(const OledConfig *oledConfig, uint16_t x, uint16_t y,
                         uint16_t width, uint16_t height, uint16_t handle,
                         uint16_t *status);
 
+// car: data byte (in the LSB) about to be written, handle: The handle that
+// references the file to be written to. status: returns the number of bytes
+// written successfully This function writes the byte specified by "char" to the
+// file, at the position indicated by the associated file-position pointer (set
+// by the “File Seek” or “File Index” commands) and advances the pointer
+// appropriately (incremented by 1). The file must be previously opened with 'w'
+// (write) or 'a' (append) modes.
 bool file_putC(const OledConfig *oledConfig, uint16_t car, uint16_t handle,
                uint16_t *status);
 
+// handle: the handle that references the file to be read from
+// car: returns the data byte read from the file in the LSB
+// The Read Character from the File command reads a byte from the file, at the
+// position indicated by the associated file-position pointer (set by the “File
+// Seek” or “File Index”commands) and advances the pointer appropriately
+// (incremented by 1). The file must be previously opened with 'r' (read) mode.
 bool file_getC(const OledConfig *oledConfig, uint16_t handle, uint16_t *car);
 
+// word: word about to be written, handle: The handle that references the file
+// to be written to. status: returns the number of bytes written successfully
+// This function writes the word specified by "word" to the file, at the
+// position indicated by the associated file-position pointer (set by the “File
+// Seek” or “File Index” commands) and advances the pointer appropriately
+// (incremented by 2). The file must be previously opened with 'w' (write) or
+// 'a' (append) modes.
 bool file_putW(const OledConfig *oledConfig, uint16_t word, uint16_t handle,
                uint16_t *status);
 
+// handle: the handle that references the file to be read from
+// word: returns the word read from the file in the LSB
+// The Read Word from the File command reads a word from the file, at the
+// position indicated by the associated file-position pointer (set by the “File
+// Seek” or “File Index”commands) and advances the pointer appropriately
+// (incremented by 2). The file must be previously opened with 'r' (read) mode.
 bool file_getW(const OledConfig *oledConfig, uint16_t handle, uint16_t *word);
 
+// data: a Null terminated string to be written to the file,handle: the handle
+// that references the file to be written to count: returns the number of
+// characters written (excluding the null terminator) This function writes a
+// null terminated string to the file, at the position indicated by the
+// associated file-position pointer (set by the “File Seek” or “File Index”
+// commands) and advances the pointer appropriately. The file must be previously
+// opened with 'w' (write) or 'a' (append) modes.
 bool file_putS(const OledConfig *oledConfig, const char *cstr, uint16_t *count);
 
+// size: the maximum number of bytes to be read from the file handle: the handle
+// that references the file to be read from count: returns the number of
+// characters read from file (excluding the null teminator),data:  returns the
+// string read from the file excluding the Null terminator This function reads a
+// line of text from a file at the current file position indicated by the
+// associated file-position pointer (set by the “File Seek” or “File Index”
+// commands) and advances the pointer appropriately. Characters are read until
+// either a newline or an EOF is received or until the specified maximum "size"
+// is reached. In all cases, the string is null terminated. The file must be
+// previously opened with 'r' (read) mode.
 bool file_getS(const OledConfig *oledConfig, uint16_t size, uint16_t handle,
                uint16_t *n, char *str);
 
+// filename: name of the file to be erased (passed as a string). Filename must
+// be 8.3 format status: 1=success, 0=failure This function erases a file on the
+// disk. Note: If the function fails, the appropriate error number is set in the
+// “File Error” command and will usually be error 19, "failure during FILE
+// search"
 bool file_erase(const OledConfig *oledConfig, const char *filename,
                 uint16_t *status);
 
+// handle: the handle that references the file
+// status: 1=success, 0=failure
+// The File Rewind command resets the file pointer to the beginning of a file
+// that has been opened in 'r' (read), 'w', or 'a' (append) mode
 bool file_rewind(const OledConfig *oledConfig, uint16_t handle,
                  uint16_t *status);
 
