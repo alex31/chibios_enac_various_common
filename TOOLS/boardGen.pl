@@ -169,12 +169,17 @@ my $dmaByFun = {};
 my $pinsByNonAfSignal = {};
 my $generateLockrAscr = 0;
 
+my %groups; # 'key is group name; value is array ref :
+#			                ° string : code to eval after token replacement
+#					° array ref to list of string : the pin name as LINE_XXX
+
 sub addPluginsRootDir ();
 sub genHeader ();
 sub genFooter ();
 sub genAfDefine ();
 sub genIOPins();
 sub genMacros();
+sub genGroupMacros();
 sub genCapRegister ($$$$); # port, mode, min, max
 sub genCapRegisterAf ($$$$); # port, mode, min, max
 sub getFunction ($$$); # port, jpin, mode
@@ -343,6 +348,7 @@ foreach my $p (@ports) {
 genAfDefine();
 push (@boardContent, @passive);
 push (@boardContent, "\n");
+genGroupMacros();
 genFooter ();
 
 
@@ -619,6 +625,13 @@ sub parseCfgFile ($)
 		$l =~ s/#.*//;
 		$l =~ s|//.*||;
 		next if $l =~ /^\s*$/;
+
+		if ($l =~ /^GROUP/) {
+		    my ($grpName, $evalFn) = $l =~ /^GROUP\s+(\S+)\s+(.*)/;
+		    $groups{$grpName} = [$evalFn];
+		    next;
+		}
+		
 		$l =~ s/\s+(?=[^()]*\))//g; #remove space in the parentheses
 		my @words = split (/\s+/, $l);
 
@@ -778,6 +791,50 @@ sub genAfDefine ()
 	
     }
     push (@boardContent, "\n\n");
+}
+
+
+sub genGroupMacros ()
+{
+    foreach my $port (@ports) {
+	my $empty=1;
+	for (my $pin =0; $pin<=15; $pin++) {
+	    my $jpin = sprintf ("%02d", $pin);
+	    my $keyName = "${port}${jpin}";
+	    my $lineName = "LINE";
+	    $lineName .= "_$keyName" unless exists $options{'no-pp-line'};
+	    next unless  exists  $config{$keyName} ;
+	    my $pinName = $config{$keyName}->{A_NAME};
+	    $lineName .= ('_' . $pinName);
+#	    say sprintf ("DBG> config{$keyName} = %s", join (' ', %{$config{$keyName}}));
+	    foreach my $group (keys %groups) {
+		$groups{$group}->[1] //= [];
+		my $evalFn = $groups{$group}->[0];
+		$evalFn =~ s/%NAME/\'$pinName\'/g;
+		if (exists $config{$keyName}->{A_ALIAS}) {
+		    $evalFn =~ s/%ALIAS/\'$config{$keyName}->{A_ALIAS}\'/g;
+		}
+		$evalFn =~ s/%MODE/\'$config{$keyName}->{A_MODE}\'/g;
+		if (eval($evalFn)) {
+		    push(@{$groups{$group}->[1]}, $lineName);
+		} else {
+#		    say "DBG> evalFn = $evalFn do not matches";
+		}
+	    }
+	}
+    }
+
+    foreach my $group (keys %groups) {
+	my $groupLen = scalar @{$groups{$group}->[1]};
+	if ($groupLen) {
+	    push(@boardContent,
+		 sprintf("#define $group \\\n\t%s\n", join (", \\\n\t",  @{$groups{$group}->[1]})));
+	} else {
+	    push(@boardContent, "#define $group \n");
+	    warn "WARNING : group $group has no members\n";
+	}
+	push(@boardContent, "#define ${group}_SIZE \t $groupLen\n\n");
+    }
 }
 
 
@@ -1485,7 +1542,7 @@ sub fillPinField ($$)
     my ($pinRef, $param) = @_;
 
     return 0 unless exists $configByParam{$param};
-
+    $pinRef->{A_ALIAS} = $param;
     foreach my $k (keys %{$configByParam{$param}}) {
 	$pinRef->{$k} = $configByParam{$param}->{$k};
 #	say ("DBG> p=$param $k=$configByParam{$param}->{$k}");
