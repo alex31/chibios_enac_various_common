@@ -805,7 +805,11 @@ sub genAfDefine ()
     push (@boardContent, "\n\n");
 }
 
-
+# token are %NAME, %AF, %MODE, %ALIAS
+#  ° %NAME is the name of the pin
+#  ° %AF is the given alternate function definition
+#  ° %MODE is the multiplexer mode : INPUT, OUTPUT, ANALOG, ALTERNATE
+#  ° %ALIAS is the alias of the function definition : UART, PWM, etc etc
 sub genGroupMacros ()
 {
     my %pinNames;
