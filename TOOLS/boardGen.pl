@@ -173,6 +173,8 @@ my %groups; # 'key is group name; value is array ref :
 #			                ° string : code to eval after token replacement
 #					° array ref to list of string : the pin name as LINE_XXX
 
+my %orderedGroups;  # 'key is group name; value is array ref of lines
+
 sub addPluginsRootDir ();
 sub genHeader ();
 sub genFooter ();
@@ -631,6 +633,15 @@ sub parseCfgFile ($)
 		    $groups{$grpName} = [$evalFn];
 		    next;
 		}
+
+		if ($l =~ /^ORDERED_GROUP/) {
+		    my ($grpName, $lines) = $l =~ /^ORDERED_GROUP\s+(\S+)\s+(.*)/;
+		    $lines =~ s/\s+//g;
+		    $orderedGroups{$grpName} = [split(/,/, $lines)];
+		    #say "DBG> orderedGroups{$grpName} = @{$orderedGroups{$grpName}}";
+		      
+		    next;
+		}
 		
 		$l =~ s/\s+(?=[^()]*\))//g; #remove space in the parentheses
 		my @words = split (/\s+/, $l);
@@ -669,6 +680,7 @@ sub parseCfgFile ($)
 		    my $af = getAF_byName ($l, $pin, $w);
 		    if ($af >= 0) {
 			$currentFunc = $w;
+			$conf{A_SYM_AF} = $currentFunc;
 			$conf{A_AF} = $af;
 			next;
 		    }
@@ -796,6 +808,8 @@ sub genAfDefine ()
 
 sub genGroupMacros ()
 {
+    my %pinNames;
+    
     foreach my $port (@ports) {
 	my $empty=1;
 	for (my $pin =0; $pin<=15; $pin++) {
@@ -806,13 +820,19 @@ sub genGroupMacros ()
 	    next unless  exists  $config{$keyName} ;
 	    my $pinName = $config{$keyName}->{A_NAME};
 	    $lineName .= ('_' . $pinName);
-#	    say sprintf ("DBG> config{$keyName} = %s", join (' ', %{$config{$keyName}}));
+	    $pinNames{$pinName} = $lineName;
+	    # say sprintf ("DBG> config{$keyName} = %s", join (' ', %{$config{$keyName}}));
 	    foreach my $group (keys %groups) {
 		$groups{$group}->[1] //= [];
 		my $evalFn = $groups{$group}->[0];
 		$evalFn =~ s/%NAME/\'$pinName\'/g;
 		if (exists $config{$keyName}->{A_ALIAS}) {
 		    $evalFn =~ s/%ALIAS/\'$config{$keyName}->{A_ALIAS}\'/g;
+		}
+		if (exists $config{$keyName}->{A_SYM_AF}) {
+		    $evalFn =~ s/%AF/\'$config{$keyName}->{A_SYM_AF}\'/g;
+		} elsif ($evalFn =~ /%AF/) {
+		    next;
 		}
 		$evalFn =~ s/%MODE/\'$config{$keyName}->{A_MODE}\'/g;
 		if (eval($evalFn)) {
@@ -829,6 +849,22 @@ sub genGroupMacros ()
 	if ($groupLen) {
 	    push(@boardContent,
 		 sprintf("#define $group \\\n\t%s\n", join (", \\\n\t",  @{$groups{$group}->[1]})));
+	} else {
+	    push(@boardContent, "#define $group \n");
+	    warn "WARNING : group $group has no members\n";
+	}
+	push(@boardContent, "#define ${group}_SIZE \t $groupLen\n\n");
+    }
+
+    foreach my $group (keys %orderedGroups) {
+	my $groupLen = scalar @{$orderedGroups{$group}};
+	if ($groupLen) {
+	    foreach my $pinName (@{$orderedGroups{$group}}) {
+		die ("Error : use of non defined pin name $pinName for group $group\n") unless exists $pinNames{$pinName};
+	    }
+	    push(@boardContent,
+		 sprintf("#define $group \\\n\t%s\n", join (", \\\n\t",
+							    map ($pinNames{$_}, @{$orderedGroups{$group}}))));
 	} else {
 	    push(@boardContent, "#define $group \n");
 	    warn "WARNING : group $group has no members\n";
