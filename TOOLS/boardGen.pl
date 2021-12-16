@@ -814,7 +814,12 @@ sub genAfDefine ()
 sub genGroupMacros ()
 {
     my %pinNames;
-    
+    push (@boardContent, <<EOL);
+#define BOARD_GROUP_FOREACH(line, group) \\
+  for (ioline_t i=0, lines[] = {group}, line = lines[i]; (i < group ## _SIZE) && (line=lines[i]); i++)
+
+EOL
+
     foreach my $port (@ports) {
 	my $empty=1;
 	for (my $pin =0; $pin<=15; $pin++) {
