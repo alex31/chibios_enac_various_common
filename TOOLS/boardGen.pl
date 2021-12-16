@@ -255,6 +255,7 @@ if (exists $options{'mcu'}) {
     my $mc = $options{'mcu'};
     my @matchingMcus = getMcus($mc);
     my $nbMatch = scalar(@matchingMcus);
+    $nbMatch = 0 unless defined $matchingMcus[0];
     given ($nbMatch) {
 	when (0) {
 	    say ("$mc does not match any mcu");
@@ -950,14 +951,21 @@ sub usage ()
         : $0 --no-pp-line : don't prepend line name with port letter and pin number
 	: $0 --no-adcp-in : do not permit to use non 5V tolerant pins for input or alternate
 	: $0 --no-error : do not abort when pin check is not OK
-	: $0 --kikadsymb : generate a pin affectation csv file for kikadsymb, with mcu reference as name
-                       in the same directory than the cfg file 
+	: $0 --kikadsymb : generate a pin affectation txt and csv file for kikadsymb, with mcu reference as name
+                       in the same directory than the cfg file, or in the current directory if --mcu option is used
         : $0 cfgFile boardFile (if boardFile is '-', use stdout)
 	OR
-	: $0 --find=tok,tok,... cfgFile : display AF for each pins capable of function witch matches all tockens, 
+	: $0 --find=tok,tok,... cfgFile : display AF for each pins capable of function wich matches all tockens, 
           $x do not generate board.h
 	: $0 --dma=tok cfgFile : display DMA parameters in a form directy suitable for mcuconf.h for 
-          $x                             each function witch matches tocken, 
+          $x                             each function wich matches tocken, 
+          $x do not generate board.h
+	: $0 --mcu=regexp  : display all MCU whose name match regexp
+          $x do not generate board.h
+	: $0 --mcu=mcuname --find=tok,tok,... : display AF for each pins capable of function wich matches all tockens, 
+          $x do not generate board.h
+	: $0 --mcu=mcuname --dma=tok  : display DMA parameters in a form directy suitable for mcuconf.h for 
+          $x                             each function wich matches tocken, 
           $x do not generate board.h
 EOL
 exit (-1);
@@ -1209,6 +1217,7 @@ sub generateHardwareTableByPin ($$)
 
   
     $mcuname =~ s/[\(\)-]//g;
+    $cfgFileRoot //= './';
     open (FHD, ">", "$cfgFileRoot/$mcuname.csv") or
 	die "cannot open $cfgFileRoot/$mcuname.csv for writing\n";
 
