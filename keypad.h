@@ -4,20 +4,20 @@
   configuration should be provided in a keypad_conf.h wich will
   define constant as in this example :
 
-#define KEYPAD_NUM_OF_ROWS 5
+#define KEYPAD_GPIO_ROW_SIZE 5
 
-#define KEYPAD_NUM_OF_COLS 4
+#define KEYPAD_GPIO_COL_SIZE 4
 
-#define KEYPAD_GPIO_ROW {LINE_KP_ROW0, LINE_KP_ROW1, LINE_KP_ROW2, LINE_KP_ROW3, LINE_KP_ROW4}
+#define KEYPAD_GPIO_ROW LINE_KP_ROW0, LINE_KP_ROW1, LINE_KP_ROW2, LINE_KP_ROW3, LINE_KP_ROW4
 
-#define KEYPAD_GPIO_COL {LINE_KP_COL0, LINE_KP_COL1, LINE_KP_COL2, LINE_KP_COL3}
+#define KEYPAD_GPIO_COL LINE_KP_COL0, LINE_KP_COL1, LINE_KP_COL2, LINE_KP_COL3
 
 
-#define KEYPAD_SYMBOLS {KP_F1,    KP_F2, KP_HASH,     KP_MULTIPLY, \
+#define KEYPAD_SYMBOLS  KP_F1,    KP_F2, KP_HASH,     KP_MULTIPLY, \
 			KP_1,     KP_2,  KP_3,        KP_UP, \
 			KP_4,     KP_5,  KP_6,        KP_DOWN, \
 			KP_7,     KP_8,  KP_9,        KP_ESC, \
-                        KP_LEFT,  KP_0,  KP_RIGHT,    KP_ENTER}
+                        KP_LEFT,  KP_0,  KP_RIGHT,    KP_ENTER
 
  */
 
@@ -31,12 +31,12 @@
 
 #include "keypad_conf.h"
 
-#ifndef KEYPAD_NUM_OF_ROWS
-#error KEYPAD_NUM_OF_ROWS should be defined in keypad_conf.h
+#ifndef KEYPAD_GPIO_ROW_SIZE
+#error KEYPAD_GPIO_ROW_SIZE should be defined in keypad_conf.h
 #endif
 
-#ifndef KEYPAD_NUM_OF_COLS
-#error KEYPAD_NUM_OF_COLS should be defined in keypad_conf.h
+#ifndef KEYPAD_GPIO_COL_SIZE
+#error KEYPAD_GPIO_COL_SIZE should be defined in keypad_conf.h
 #endif
 
 #ifndef KEYPAD_SYMBOLS
@@ -53,13 +53,13 @@ extern "C" {
 #endif
 
 
-typedef enum KEYPAD_SYMBOLS Keypad_Symbol;
+  typedef enum {KEYPAD_SYMBOLS} Keypad_Symbol;
 
 
 
 typedef struct __attribute__ ((packed)) {
-  ioline_t kpRow[KEYPAD_NUM_OF_ROWS]; // configure in output for selecting row
-  ioline_t kpCol[KEYPAD_NUM_OF_COLS]; // configure in input for reading col
+  ioline_t kpRow[KEYPAD_GPIO_ROW_SIZE]; // configure in output for selecting row
+  ioline_t kpCol[KEYPAD_GPIO_COL_SIZE]; // configure in input for reading col
 } Keypad_Def;
 
 typedef struct {

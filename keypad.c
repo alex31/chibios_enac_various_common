@@ -14,8 +14,8 @@ static void  thdKeypadScan(void *arg) ;
 static const Keypad_key noPress = {KEYPAD_NO_PRESS, KEYPAD_NO_PRESS};
 
 static const Keypad_Def keypadWiring = {
-  .kpRow = KEYPAD_GPIO_ROW,
-  .kpCol = KEYPAD_GPIO_COL
+  .kpRow = {KEYPAD_GPIO_ROW},
+  .kpCol = {KEYPAD_GPIO_COL}
 };
 
 
@@ -50,7 +50,7 @@ static void thdKeypadScan(void *arg)
   while (!chThdShouldTerminateX()) {
     Keypad_key kk = scanKeypad (wta->kd);
     if ((keypadKeyAreNotEqual(kk, noPress)) && (keypadKeyAreEqual(kk, lastKey))) {
-      const Keypad_Symbol ks = (kk.row * KEYPAD_NUM_OF_COLS) + kk.col;
+      const Keypad_Symbol ks = (kk.row * KEYPAD_GPIO_COL_SIZE) + kk.col;
       (wta->cb) (ks, wta->userData);
       // wait for release
       uint32_t cnt=0;
@@ -73,25 +73,25 @@ static void thdKeypadScan(void *arg)
 
 static void configureLines (const Keypad_Def *kd)
 {
-  for (int r = 0; r < KEYPAD_NUM_OF_ROWS; r++) {
+  for (int r = 0; r < KEYPAD_GPIO_ROW_SIZE; r++) {
     palSetLineMode (kd->kpRow[r], PAL_MODE_OUTPUT_OPENDRAIN);
   }
-  for (int c = 0; c < KEYPAD_NUM_OF_COLS; c++) {
+  for (int c = 0; c < KEYPAD_GPIO_COL_SIZE; c++) {
     palSetLineMode (kd->kpCol[c],  PAL_MODE_INPUT_PULLUP);
   }
 }
 
 static Keypad_key scanKeypad (const Keypad_Def *kd)
 {
-  for (int r = 0; r < KEYPAD_NUM_OF_ROWS; r++) {
+  for (int r = 0; r < KEYPAD_GPIO_ROW_SIZE; r++) {
     palSetLine (kd->kpRow[r]);
   }
 
-  for (int r = 0; r < KEYPAD_NUM_OF_ROWS; r++) {
+  for (int r = 0; r < KEYPAD_GPIO_ROW_SIZE; r++) {
     palClearLine (kd->kpRow[r]);
  
     chThdSleepMilliseconds (1);
-    for (int c=0; c < KEYPAD_NUM_OF_COLS; c++) {
+    for (int c=0; c < KEYPAD_GPIO_COL_SIZE; c++) {
       int level = palReadLine (kd->kpCol[c]);
       if (level == 0) {// keypress
 	palSetLine (kd->kpRow[r]);
