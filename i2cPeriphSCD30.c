@@ -96,7 +96,6 @@ static Scd30Status scd30Transaction(const Scd30Driver *scdd, const Scd30Command 
   const size_t txSize = sizeof(cmd) + (optArg ? sizeof(*optArg) : 0);
   const size_t rxSize = sizeof(*optAnswer) * nbAnswerAtom;
   Scd30Status status = SCD30_OK;
-
  
   chDbgAssert(nbAnswerAtom <= 6U, "maximum answer size is 6 atoms");
   if (optAnswer)
@@ -133,6 +132,13 @@ static Scd30Status scd30Transaction(const Scd30Driver *scdd, const Scd30Command 
   } else {
     status = SCD30_I2C_ERROR;
   }
+
+  if (status == SCD30_I2C_ERROR) {
+    const I2CConfig *cfg = scdd->i2cp->config;
+    i2cStop(scdd->i2cp);
+    i2cStart(scdd->i2cp, cfg);
+  }
+  
   i2cReleaseBus(scdd->i2cp);
   return status;
 }
