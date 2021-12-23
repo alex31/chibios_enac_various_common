@@ -93,7 +93,7 @@ static Scd30Status scd30Transaction(const Scd30Driver *scdd, const Scd30Command 
 {
   static IN_DMA_SECTION(uint8_t tx[sizeof(cmd) + sizeof(*optArg)]);
   static IN_DMA_SECTION(uint8_t rx[sizeof(*optAnswer) * 6]);
-  const size_t txSize = sizeof(cmd) + optArg ? sizeof(*optArg) : 0;
+  const size_t txSize = sizeof(cmd) + (optArg ? sizeof(*optArg) : 0);
   const size_t rxSize = sizeof(*optAnswer) * nbAnswerAtom;
   Scd30Status status = SCD30_OK;
 
@@ -209,7 +209,7 @@ Scd30Status scd30FetchData(Scd30Driver *scdd)
 
 Scd30Status scd30SetSelfCalibration(Scd30Driver *scdd, const bool activate)
 {
-  Scd30DataAtom atom = {.data16 = __builtin_bswap16(activate ? 1 : 0)};
+  Scd30DataAtom atom = {.data16 = __builtin_bswap16(activate ? 1U : 0U)};
   return scd30Transaction(scdd, SCD30_SELF_CALIBRATION, &atom, NULL, 0);
 }
 
