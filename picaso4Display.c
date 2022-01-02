@@ -59,6 +59,7 @@ static void oledPreInit (OledConfig *oledConfig, uint32_t baud);
 static uint32_t oledGetFileError  (const OledConfig *oledConfig);
 static bool oledFileSeek  (const OledConfig *oledConfig, const uint16_t handle, const uint32_t offset);
 static uint16_t fgColorIndexTo16b (const OledConfig *oledConfig, const uint8_t colorIndex);
+static uint8_t colorDimmed (const uint8_t channel, const uint8_t luminosity);
 static uint16_t oledTouchGet (const OledConfig *oledConfig, uint16_t mode);
 static uint16_t getResponseAsUint16 (const uint8_t *buff);
 #if PICASO_DISPLAY_USE_UART
@@ -67,14 +68,22 @@ static void uartStartRead (UARTDriver *serial, uint8_t *response,
 static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t  rTimout);
 #endif
 
+
+static uint8_t colorDimmed (const uint8_t channel, const uint8_t luminosity)
+{
+  return ((uint32_t) channel * luminosity) / 100U;
+}
+
+
 static void oledPreInit (OledConfig *oledConfig, uint32_t baud)
 {
   oledConfig->bg = gfx_colorDecTo16b(0,0,0);
   oledConfig->tbg[0] = mkColor24 (0,0,0);
   oledConfig->fg[0] = mkColor24(50,50,50);
-  oledConfig->tbgIdx = oledConfig->fgIdx = 0;
+  oledConfig->colIdx = 0;
   oledConfig->curXpos = 0;
   oledConfig->curYpos = 0;
+  oledConfig->luminosity = 100U;
   oledConfig->serial = NULL;
 
   // initial USART conf only for 4D system screen
@@ -473,22 +482,26 @@ void oledUseColorIndex (OledConfig *oledConfig, uint8_t colorIndex)
 {
   RET_UNLESS_INIT(oledConfig);
   if (++colorIndex >= COLOR_TABLE_SIZE) return;
-
+  oledConfig->colIdx = colorIndex;
   if (oledConfig->deviceType != TERM_VT100) {
     if (oledConfig->fg[0].rgb != oledConfig->fg[colorIndex].rgb)  {
-      oledSetTextFgColor(oledConfig, oledConfig->fg[colorIndex].r, 
-			  oledConfig->fg[colorIndex].g, oledConfig->fg[colorIndex].b);
+      oledSetTextFgColor(oledConfig, colorDimmed(oledConfig->fg[colorIndex].r, oledConfig->luminosity), 
+			 colorDimmed(oledConfig->fg[colorIndex].g, oledConfig->luminosity),
+			 colorDimmed(oledConfig->fg[colorIndex].b, oledConfig->luminosity));
     }
     
     if (oledConfig->tbg[0].rgb != oledConfig->tbg[colorIndex].rgb)  {
-      oledSetTextBgColor(oledConfig, oledConfig->tbg[colorIndex].r, 
-			  oledConfig->tbg[colorIndex].g, oledConfig->tbg[colorIndex].b);
+      oledSetTextBgColor(oledConfig, colorDimmed(oledConfig->tbg[colorIndex].r, oledConfig->luminosity), 
+			 colorDimmed(oledConfig->tbg[colorIndex].g, oledConfig->luminosity),
+			 colorDimmed(oledConfig->tbg[colorIndex].b, oledConfig->luminosity));
     }
   } else {
-    oledSetTextFgColor(oledConfig, oledConfig->fg[colorIndex].r, 
-			oledConfig->fg[colorIndex].g, oledConfig->fg[colorIndex].b);
-    oledSetTextBgColor(oledConfig, oledConfig->tbg[colorIndex].r, 
-			oledConfig->tbg[colorIndex].g, oledConfig->tbg[colorIndex].b);
+    oledSetTextFgColor(oledConfig, colorDimmed(oledConfig->fg[colorIndex].r, oledConfig->luminosity), 
+		       colorDimmed(oledConfig->fg[colorIndex].g, oledConfig->luminosity),
+		       colorDimmed(oledConfig->fg[colorIndex].b, oledConfig->luminosity));
+    oledSetTextBgColor(oledConfig, colorDimmed(oledConfig->tbg[colorIndex].r, oledConfig->luminosity), 
+		       colorDimmed(oledConfig->tbg[colorIndex].g, oledConfig->luminosity),
+		       colorDimmed(oledConfig->tbg[colorIndex].b, oledConfig->luminosity));
   }
 }
 
@@ -571,6 +584,12 @@ void oledGotoNextLine (OledConfig *oledConfig)
     sendVt100Seq(oledConfig->serial, "B");
     //    chprintf(oledConfig->serial, "\r\n");
   }
+}
+
+void oledSetLuminosity (OledConfig *oledConfig, uint8_t luminosity)
+{
+  oledConfig->luminosity = luminosity;
+  //  oledUseColorIndex(oledConfig, oledConfig->colIdx);
 }
 
 

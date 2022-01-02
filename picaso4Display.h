@@ -67,6 +67,7 @@ void oledUseColorIndex (OledConfig *oledConfig, uint8_t colorIndex);
 void oledSetTextOpacity (OledConfig *oledConfig, bool opaque);
 void oledSetTextAttributeMask (OledConfig *oledConfig, enum OledTextAttribute attrib);
 void oledSetTextGap (OledConfig *oledConfig, uint8_t xgap, uint8_t ygap);
+void oledSetLuminosity (OledConfig *oledConfig, uint8_t luminosity);
 void oledSetTextSizeMultiplier (OledConfig *oledConfig, uint8_t xmul, uint8_t ymul);
 void oledSetScreenOrientation (OledConfig *oledConfig, enum OledScreenOrientation orientation);
 void oledGotoXY (OledConfig *oledConfig, uint8_t x, uint8_t y);
@@ -153,11 +154,11 @@ struct OledConfig {
   // =============
   uint16_t bg;
   Color24 tbg[COLOR_TABLE_SIZE]; 
-  Color24 fg[COLOR_TABLE_SIZE]; 
-  uint8_t tbgIdx; 
-  uint8_t fgIdx; 
+  Color24 fg[COLOR_TABLE_SIZE];
+  uint8_t colIdx;
   uint8_t curXpos; 
-  uint8_t curYpos;   
+  uint8_t curYpos;
+  uint8_t luminosity;
 };
 
 
