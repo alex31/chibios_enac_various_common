@@ -77,19 +77,11 @@ typedef enum {PWM_NORMAL=0, PWM_COMPLEMENTARY} PwmOutputSide;
   ((uint32_t)((b) & 0xff) << 8)  |  \
    (uint32_t)((a) & 0xff)
   
-#define SWAP_ENDIAN32(x) ( (((x)>>24) & 0x000000FFL) \
-			    | (((x)>>8)  & 0x0000FF00L) \
-			    | (((x)<<8)  & 0x00FF0000L) \
-			    | (((x)<<24) & 0xFF000000L) )
+#define SWAP_ENDIAN16(x) __builtin_bswap16(x)
 
-static inline uint64_t SWAP_ENDIAN64(uint64_t x) {
-  x = (x & 0x00000000FFFFFFFF) << 32 | (x & 0xFFFFFFFF00000000) >> 32;
-  x = (x & 0x0000FFFF0000FFFF) << 16 | (x & 0xFFFF0000FFFF0000) >> 16;
-  x = (x & 0x00FF00FF00FF00FF) << 8  | (x & 0xFF00FF00FF00FF00) >> 8;
-  return x;
-}
+#define SWAP_ENDIAN32(x) __builtin_bswap32(x)
 
-#define SWAP_ENDIAN16(x) ((int16_t) ((((x) & 0xff) << 8) | (((x) & 0xff00) >> 8)))
+#define SWAP_ENDIAN64(x) __builtin_bswap64(x)
 
 #define REINTERPRET_CAST(type, val) ({_Static_assert(sizeof(val) <= sizeof(type), \
 						    "sizeof (type) is too small");  \
