@@ -1,4 +1,4 @@
-#include "/home/alex/DEV/STM32/CHIBIOS/COMMON/various/picaso4Display_ll.h"
+#include "picaso4Display_ll.h"
 
 /*
     This code has been generated from API description
