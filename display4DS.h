@@ -2,7 +2,7 @@
 #define __PICASO4_DISPLAY_H__
 #include <ch.h>
 #include <hal.h>
-#include "picaso4Display_ll.h"
+#include "display4DS_ll.h"
 #ifdef __cplusplus
 extern "C" {
 #endif

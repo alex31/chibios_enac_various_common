@@ -4,8 +4,8 @@
 #include <ctype.h>
 #include "stdutil.h"
 #include "printf.h"
-#include "picaso4Display.h"
-#include "picaso4Display_ll.h"
+#include "display4DS.h"
+#include "display4DS_ll.h"
 
 
 #define gfx_clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
@@ -1101,4 +1101,4 @@ static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t
 }
 #endif
 
-#include "picaso4Display_ll.c"
+#include "display4DS_ll.c"
