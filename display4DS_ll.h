@@ -871,106 +871,286 @@ bool file_erase(const FdsConfig *fdsConfig, const char *filename,
 // that has been opened in 'r' (read), 'w', or 'a' (append) mode
 bool file_rewind(const FdsConfig *fdsConfig, uint16_t handle, uint16_t *status);
 
+// filename:Name of the 4DGL function (filename.4FN) or application program
+// (filename.4XE) that is about to be loaded into RAM in 8.3 format pointer:
+// Returns a pointer to the memory allocation where the function has been loaded
+// from file which can be then used as a function call The File Load Function
+// command allocates the RAM area to the 4FN or 4XE program, load it from the
+// uSD card in to the RAM and return a function pointer to the allocation. The
+// function can then be invoked just like any other function would be called via
+// a function pointer using the “File Call Function” commands. The 4FN or 4XE
+// program may be discarded at any time when no longer required, thus freeing
+// its memory resources. The loaded function can be discarded with the “Memory
+// Free” command.
 bool file_loadFunction(const FdsConfig *fdsConfig, const char *filename,
                        uint16_t *pointer);
 
+// handle: The file handle that was created by the “File Load Function” n:
+// Number of arguments args: optionals arguments value:  Returns the value from
+// main in the called function Call the function previously loaded through “File
+// Load Function”. The loaded function can be discarded with the “Memory Free”
+// command.
 bool file_callFunction(const FdsConfig *fdsConfig, uint16_t handle, uint16_t n,
                        const uint16_t *args, uint16_t *value);
 
+// filename: A 4FN or a 4XE file is an executable file generated when a 4DGL
+// file is compiled, provided in 8.3 format n: number of arguments args:
+// optional arguments value: Returns the value from the called program
+//  The File Run command will load the 4FN or 4XE program from the uSD card in
+//  to the RAM and execute it. Once the program is called, the Host must wait
+//  until the program finished execution. Any attempt to send further commands
+//  while the 4FN or 4XE file is executing can cause the module to reset or
+//  respond with erroneous data.
 bool file_run(const FdsConfig *fdsConfig, const char *filename, uint16_t n,
               const uint16_t *args, uint16_t *value);
 
+// filename: A 4FN or a 4XE file is an executable file generated when a 4DGL
+// file is compiled, provided in 8.3 format n: number of arguments args:
+// optional arguments value: Returns the value from the called program
+//  The File Run command will load the 4FN or 4XE program from the uSD card in
+//  to the RAM and execute it. Once the program is called, the Host must wait
+//  until the program finished execution. Any attempt to send further commands
+//  while the 4FN or 4XE file is executing can cause the module to reset or
+//  respond with erroneous data.
 bool file_exec(const FdsConfig *fdsConfig, const char *filename, uint16_t n,
                const uint16_t *args, uint16_t *value);
 
+// filename1: The control list filename "*.dat". filename2: The image filename
+// "*.gci". both Created from Graphics Composer, 8.3 format. mode: [0 .. 2] (see
+// the documentation for details) handle:  handle (pointer to the memory
+// allocation) to the image control list that has been created. Returns NULL if
+// function fails. Reads a control file to create an image list. The GCI file
+// may contain images, videos or animations built through the Graphics Composer
+// Software tool.The GCI file is created by selecting the GCI – FAT Selected
+// Folder option in the Built Option type. See the Graphics Composer User Guide
+// for further details on the Graphics Composer.
 bool file_loadImageControl(const FdsConfig *fdsConfig, const char *filename1,
                            const char *filename2, uint16_t mode,
                            uint16_t *handle);
 
+// status: Non-zero: If the operation successful. 0: if the attempt failed
+// Starts up the FAT16 disk file services and allocates a small 32 byte control
+// block for subsequent use. When you open a file using the “File Open” command
+// a further 512 + 44 = 556 bytes are attached to the FAT16 file control block.
+// When you close a file using the “File Close” command, the 556 byte allocation
+// is released leaving the 32 byte file control block. The File Mount command
+// must be called before any other FAT16 file related functions can be used. The
+// control block and all FAT16 file resources are completely released with the
+// “File Unmount” command.
 bool file_mount(const FdsConfig *fdsConfig, uint16_t *status);
 
+// The “File Unmount” command releases any buffers for FAT16 and unmount the
+// Disk FileSystem. This function is to be called to close the FAT16 file
+// system.
 bool file_unmount(const FdsConfig *fdsConfig);
 
+// filename: Name of the wav file to be opened and played. Filename must be 8.3
+// format. status:  If there are no errors, returns number of blocks to play (1
+// to 32767) If errors occurred, the following is returned 6 : can’t play this
+// rate 5 : no data chunk found in first sector 4 : no format data 3 : no wave
+// chunk signature 2 : bad wave file format 1 : file not found
 bool file_playWAV(const FdsConfig *fdsConfig, const char *filename,
                   uint16_t *status);
 
+// handle: A string pointer to the memory area where the string is to be loaded.
+// The  first string would start with handle = 0, next one would use the handle
+// = string pointer returned from the execution of the Write string earlier.
+// string: A Null terminated string which is to be passed to the Child (4XE or
+// 4FN) program. pointer: Returns a pointer to the memory allocation where the
+// string has been loaded.
+//  Load the Memory space with the string to be used by the “File Call
+//  Function”, “File Run” and “File Execute” commands as an argument. The Memory
+//  Space for the “Read String for 4XE/4FN File” command or “Load String for
+//  4XE/4FN File” command is pre-allocated memory, 512 bytes in size. It doesn’t
+//  need to be released.
 bool file_writeString(const FdsConfig *fdsConfig, uint16_t handle,
                       const char *cstr, uint16_t *pointer);
 
-// level is 0 – 127
+// level: is 0 – 127
+// Set the sound playback volume. Var must be in the range from 8 (min volume)
+// to 127 (max volume). If var is less than 8, volume is set to 8, and if var >
+// 127 it is set to 127.
 bool snd_volume(const FdsConfig *fdsConfig, uint16_t level);
 
-// rate is 4000 – 65535
+// rate:  Sample's playback rate. Minimum is 4KHz. Range is, 4000 – 65535
+// oldRate: Returns sample's original sample rate.
+// Sets the samples playback rate to a different frequency. Setting pitch to
+// zero restores the original sample rate.
 bool snd_pitch(const FdsConfig *fdsConfig, uint16_t rate, uint16_t *oldRate);
 
-// 0 .. 2
+// buffersize:Specifies the buffer size. 0 = 1024 bytes (default), 1 = 2048
+// bytes, 2 = 4096 bytes Specify the memory chunk size for the wavefile buffer,
+// default size 1024 bytes. Depending on the sample size, memory constraints,
+// and the sample quality, it may be beneficial to change the buffer size from
+// the default size of 1024 bytes. This command is for control of a wav buffer,
+// see the “Play WAV File” command
 bool snd_bufSize(const FdsConfig *fdsConfig, uint16_t bufferSize);
 
+// Stop any sound that is currently playing, releasing buffers and closing any
+// open WAV file. This command is for control of a wav buffer, see the “Play WAV
+// File” command
 bool snd_stop(const FdsConfig *fdsConfig);
 
+// Pause any sound that is currently playing. This command is for control of a
+// wav buffer, see the “Play WAV File” command
 bool snd_pause(const FdsConfig *fdsConfig);
 
+//  Resume any sound that is currently paused by the “Sound Pause” command. This
+//  command is for control of a wav buffer, see the “Play WAV File” command
 bool snd_continue(const FdsConfig *fdsConfig);
 
+// togo:  Number of 512 byte blocks to go.
+// Returns 0 if sound has finished playing, else return number of 512 byte
+// blocks to go. This command is for control of a wav buffer, see the “Play WAV
+// File” command
 bool snd_playing(const FdsConfig *fdsConfig, uint16_t *togo);
 
+// handle:Pointer to the Image List., index: Index of the images in the list,
+// xpos: Top left horizontal screen position where image is to be displayed.,
+// ypos: Top left vertical screen position where image is to be displayed.
+// status: 1-> If the operation successful. 0 -> if the attempt failed.
 bool img_setPosition(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                      uint16_t xpos, uint16_t ypos, uint16_t *status);
 
+// handle:Pointer to the Image List., index: Index of the images in the list.
+// status: 1 -> If the operation successfull. 0 -> if the attempt failed
+// This command requires that an image control has been created with the “Load
+// ImageControl” command. Enables a selected image in the image list. Returns
+// TRUE if index was ok and function was successful. This is the default state
+// so when the “Show Image” command is called, all the images in the list will
+// be shown. To enable all of the images in the list at the same time set index
+// to -1. To enable a selected image, use the image index number.
 bool img_enable(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                 uint16_t *status);
 
+// handle:Pointer to the Image List., index: Index of the images in the list.
+// status: 1 -> If the operation successfull. 0 -> if the attempt failed
+// This function requires that an image control has been created with the “Load
+// ImageControl” command. Disables an image in the image list. Returns TRUE if
+// index was ok and function was successful. Use this function to turn off an
+// image so that when the “Show Image” command is called the selected image in
+// the list will not be shown. To disable all of the images in the list at the
+// same time set index to -1.
 bool img_disable(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  uint16_t *status);
 
+// handle:Pointer to the Image List., index: Index of the images in the list.
+// status: 1 -> If the operation successfull. 0 -> if the attempt failed
+// This function requires that an image control has been created with the “Load
+// ImageControl” command. Darken an image in the image list. Returns TRUE if
+// index was ok and function was successful. Use this function to darken an
+// image so that when the “Show Image” command is called the control will take
+// effect. To darken all of the images in the list at the same time set index to
+// -1. Note: This feature will take effect one time only and when the “Show
+// Image” command is called again the darkened image will revert back to normal.
 bool img_darken(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                 uint16_t *status);
 
+// handle:Pointer to the Image List., index: Index of the images in the list.
+// status: 1 -> If the operation successfull. 0 -> if the attempt failed
+//  This function requires that an image control has been created with the “Load
+//  ImageControl” command. Lighten an image in the image list. Returns TRUE if
+//  index was ok and function was successful. Use this function to lighten an
+//  image so that when the “Show Image” command is called the control will take
+//  effect. To lighten all of the images in the list at the same time set index
+//  to -1. Note: This feature will take effect one time only and when the “Show
+//  Image” command is called again the lightened image will revert back to
+//  normal.
 bool img_lighten(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  uint16_t *status);
 
+// handle:Pointer to the Image List., index: Index of the images in the list.
+// offset:Offset of the required word in the image entry.2 -> xpos, 3 -> ypos, 6
+// -> flags, 7 -> delay, 9 -> index. value: The word to be written to the entry.
+// status:  1 -> If the operation successfull. 0 -> if the attempt failed
+// This function requires that an image control has been created with the “Load
+// Image Control” command. Set image parameters in an image entry. Note: The
+// “Show Image” command will now show an error box for out of range video
+// frames. Also, if frame is set to -1, just a rectangle will be drawn in
+// background colour to blank an image. It applies to PmmC R29 or above.
 bool img_setWord(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  uint16_t offset, uint16_t value, uint16_t *status);
 
+// handle:Pointer to the Image List., index: Index of the images in the list.
+// offset:Offset of the required word in the image entry.2 -> xpos, 3 -> ypos, 6
+// -> flags, 7 -> delay, 9 -> index. value : value corresponding to the entrie
+// This function requires that an image control has been created with the “Load
+// Image Control” command. Returns the image parameters in an image entry.
 bool img_getWord(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  uint16_t offset, uint16_t *value);
 
+// handle:Pointer to the Image List., index: Index of the images in the list.
+// status:  1 -> If the operation successfull. 0 -> if the attempt failed
+// This function requires that an image control has been created with the “Load
+// ImageControl” command. Enable the displaying of the image entry in the image
+// control. Returns a non-zero value if successful but return value is usually
+// ignored.
 bool img_show(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
               uint16_t *status);
 
+// handle:Pointer to the Image List., index: Index of the images in the list.,
+// value: Refer to the Image Attribute Flags in the description status: status:
+// 1 -> If the operation successfull. 0 -> if the attempt failed
+//  see the documentation for detailled explanation
 bool img_setAttributes(const FdsConfig *fdsConfig, uint16_t handle,
                        int16_t index, uint16_t value, uint16_t *status);
 
+// handle:Pointer to the Image List., index: Index of the images in the list.,
+// value: Refer to the Image Attribute Flags in the description status: status:
+// 1 -> If the operation successfull. 0 -> if the attempt failed
+//  see the documentation for detailled explanation
 bool img_clearAttributes(const FdsConfig *fdsConfig, uint16_t handle,
                          int16_t index, uint16_t value, uint16_t *status);
 
+// handle:Pointer to the Image List., index: Index of the images in the list
+// value: Returns image index if image touched, -1 if image not touched.
+// This command requires that an image control has been created with the “Load
+// ImageControl” command. Returns index if image touched or returns -1 image not
+// touched. If index is passed as -1 the command tests all images and returns -1
+// if image not touched or returns index.
 bool img_touched(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  int16_t *value);
 
+// x,y: Specifies the horizontal and vertical position of the top-left corner of
+// the x, y image to be displayed. width: width of the image to be displayed.
+// height: height of the image to be displayed. data[width*height]:
+// pixel1...pixeln 16 bit pixel data to be plotted on the Display screen. 16 bit
+// = 5bit Red, 6bit Green, 5bit Blue This command will BLIT (Block Image
+// Transfer) 16 bit pixel data from the Com port on to the screen.
 bool img_blitComtoDisplay(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                           uint16_t width, uint16_t height,
                           const uint16_t *data);
 
+//  see detailed 4dsystem documentation
 bool bus_in(const FdsConfig *fdsConfig, uint16_t *busState);
 
+//  see detailed 4dsystem documentation
 bool bus_out(const FdsConfig *fdsConfig, uint16_t busState);
 
+//  see detailed 4dsystem documentation
 bool bus_read(const FdsConfig *fdsConfig, uint16_t *busState);
 
+//  see detailed 4dsystem documentation
 bool bus_set(const FdsConfig *fdsConfig, uint16_t dirMask);
 
+//  see detailed 4dsystem documentation
 bool bus_write(const FdsConfig *fdsConfig, uint16_t bitfield);
 
+//  see detailed 4dsystem documentation
 bool pin_hi(const FdsConfig *fdsConfig, uint16_t pin, uint16_t *status);
 
+//  see detailed 4dsystem documentation
 bool pin_lo(const FdsConfig *fdsConfig, uint16_t pin, uint16_t *status);
 
+//  see detailed 4dsystem documentation
 bool pin_read(const FdsConfig *fdsConfig, uint16_t pin, uint16_t *status);
 
 // Pin=1..7 mode = 0 .. 1 (see reference manuel)
+//  see detailed 4dsystem documentation
 bool pin_set_picaso(const FdsConfig *fdsConfig, uint16_t mode, uint16_t pin,
                     uint16_t *status);
 
 // Pin = 1..16 mode = 0..6 (see reference manuel)
+//  see detailed 4dsystem documentation
 bool pin_set_diablo(const FdsConfig *fdsConfig, uint16_t mode, uint16_t pin,
                     uint16_t *status);
