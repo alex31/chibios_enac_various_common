@@ -8,21 +8,19 @@
 #include "display4DS_ll.h"
 
 
-#define gfx_clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
-#define gfx_colorDecTo16b(r,v,b) (gfx_clampColor((r*31/100), (v*63/100), (b*31/100)))
 #define QDS_ACK 0x6
 
 typedef enum {KOF_NONE, KOF_ACK, KOF_INT16, 
 	      KOF_INT16LENGTH_THEN_DATA} KindOfCommand;
 
 const uint32_t readTimout = TIME_MS2I(500);
-static OledStatus fdsStatus = OLED_OK;
+static FdsStatus fdsStatus = FDS_OK;
 
 
 static uint32_t fdsTransmitBuffer (const FdsConfig *oc, const char* fct, const uint32_t line,
 					 const uint8_t *outBuffer, const size_t outSize,
 					 uint8_t *inBuffer, const size_t inSize);
-#if PICASO_DISPLAY_USE_SD
+#if FDS_DISPLAY_USE_SD
 static uint32_t fdsReceiveAnswer (const FdsConfig *oc, uint8_t *response, const size_t size,
 				   const char* fct, const uint32_t line);
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
@@ -62,7 +60,7 @@ static uint16_t fgColorIndexTo16b (const FdsConfig *fdsConfig, const uint8_t col
 static uint8_t colorDimmed (const uint8_t channel, const uint8_t luminosity);
 static uint16_t fdsTouchGet (const FdsConfig *fdsConfig, uint16_t mode);
 static uint16_t getResponseAsUint16 (const uint8_t *buff);
-#if PICASO_DISPLAY_USE_UART
+#if FDS_DISPLAY_USE_UART
 static void uartStartRead (UARTDriver *serial, uint8_t *response, 
 			   const size_t size);
 static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t  rTimout);
@@ -77,7 +75,7 @@ static uint8_t colorDimmed (const uint8_t channel, const uint8_t luminosity)
 
 static void fdsPreInit (FdsConfig *fdsConfig, uint32_t baud)
 {
-  fdsConfig->bg = gfx_colorDecTo16b(0,0,0);
+  fdsConfig->bg = fds_colorDecTo16b(0,0,0);
   fdsConfig->tbg[0] = mkColor24 (0,0,0);
   fdsConfig->fg[0] = mkColor24(50,50,50);
   fdsConfig->colIdx = 0;
@@ -95,7 +93,7 @@ static void fdsPreInit (FdsConfig *fdsConfig, uint32_t baud)
   fdsConfig->serialConfig.cr3 = 0;
 }
 
-bool fdsStart (FdsConfig *fdsConfig,  LINK_DRIVER *fds, const uint32_t baud,
+bool fdsStart (FdsConfig *fdsConfig,  FDS_LINK_DRIVER *fds, const uint32_t baud,
 		ioline_t rstLine, enum FdsConfig_Device dev)
 {
   fdsConfig->rstLine = rstLine;
@@ -107,7 +105,7 @@ bool fdsStart (FdsConfig *fdsConfig,  LINK_DRIVER *fds, const uint32_t baud,
   fdsPreInit(fdsConfig,
 	       fdsConfig->deviceType == TERM_VT100 ? baud : 9600);
   chMtxObjectInit(&(fdsConfig->omutex));
-#if PICASO_DISPLAY_USE_SD
+#if FDS_DISPLAY_USE_SD
   fdsConfig->serial = (BaseSequentialStream *) fds;
   sdStart(fds, &(fdsConfig->serialConfig));
 #else
@@ -206,7 +204,7 @@ bool fdsSetBaud (FdsConfig *fdsConfig, uint32_t baud)
   uint32_t actualbaudRate; 
   uint16_t baudCode = 0;
 
-  LINK_DRIVER *sd = (LINK_DRIVER *) fdsConfig->serial;
+  FDS_LINK_DRIVER *sd = (FDS_LINK_DRIVER *) fdsConfig->serial;
 
   RET_UNLESS_INIT_BOOL(fdsConfig);
   
@@ -301,7 +299,7 @@ bool fdsSetBaud (FdsConfig *fdsConfig, uint32_t baud)
 
   misc_setbaudWait(fdsConfig, baudCode);
   chThdSleepMilliseconds(10);
-#if PICASO_DISPLAY_USE_SD
+#if FDS_DISPLAY_USE_SD
   sdStop(sd);
   sdStart(sd, &(fdsConfig->serialConfig));
 #else
@@ -401,7 +399,7 @@ bool fdsPrintBuffer (FdsConfig *fdsConfig, const char *buffer)
     break;
   case TERM_VT100 : 
     sendVt100Seq(fdsConfig->serial, "%d;%dH",  fdsConfig->curYpos+1, fdsConfig->curXpos+1);
-    #if PICASO_DISPLAY_USE_SD
+    #if FDS_DISPLAY_USE_SD
     directchprintf(fdsConfig->serial, buffer);
 #else
     size_t length = strnlen(buffer, sizeof(buffer));
@@ -418,7 +416,7 @@ void fdsChangeBgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
   RET_UNLESS_INIT(fdsConfig);
   
   const uint16_t oldCol = fdsConfig->bg;
-  const uint16_t newCol = fdsConfig->bg = gfx_colorDecTo16b(r,g,b);
+  const uint16_t newCol = fdsConfig->bg = fds_colorDecTo16b(r,g,b);
   RET_UNLESS_4DSYS(fdsConfig);
   gfx_changeColour(fdsConfig, oldCol, newCol);
 } 
@@ -433,7 +431,7 @@ void fdsSetTextBgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
   case GOLDELOX :
   case PICASO : 
   case DIABLO16 :
-    txt_bgColour(fdsConfig,  gfx_colorDecTo16b(r,g,b), NULL);
+    txt_bgColour(fdsConfig,  fds_colorDecTo16b(r,g,b), NULL);
     break;
   case TERM_VT100 : 
     sendVt100Seq(fdsConfig->serial, "48;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
@@ -451,7 +449,7 @@ void fdsSetTextFgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
   case GOLDELOX :
   case PICASO : 
   case DIABLO16 :
-    txt_fgColour(fdsConfig,  gfx_colorDecTo16b(r,g,b), NULL);
+    txt_fgColour(fdsConfig,  fds_colorDecTo16b(r,g,b), NULL);
     break;
   case TERM_VT100 : 
     sendVt100Seq(fdsConfig->serial, "38;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
@@ -513,7 +511,7 @@ void fdsSetTextOpacity (FdsConfig *fdsConfig, bool opaque)
 }
 
 
-void fdsSetTextAttributeMask (FdsConfig *fdsConfig, enum OledTextAttribute attrib)
+void fdsSetTextAttributeMask (FdsConfig *fdsConfig, enum FdsTextAttribute attrib)
 {
   txt_attributes(fdsConfig, attrib, NULL);
 }
@@ -530,7 +528,7 @@ void fdsSetTextSizeMultiplier (FdsConfig *fdsConfig, uint8_t xmul, uint8_t ymul)
   txt_heightMult(fdsConfig, ymul, NULL);
 }
 
-void fdsSetScreenOrientation (FdsConfig *fdsConfig, enum OledScreenOrientation orientation)
+void fdsSetScreenOrientation (FdsConfig *fdsConfig, enum FdsScreenOrientation orientation)
 {
   gfx_screenMode(fdsConfig, orientation, NULL);
 }
@@ -897,7 +895,7 @@ static uint16_t getResponseAsUint16 (const uint8_t *buffer)
 static  uint16_t fgColorIndexTo16b (const FdsConfig *fdsConfig, const uint8_t colorIndex) {
   const Color24 fg = fdsConfig->fg[colorIndex];
   
-  return (gfx_colorDecTo16b(fg.r, fg.g, fg.b));
+  return (fds_colorDecTo16b(fg.r, fg.g, fg.b));
 }
 
 static void fdsScreenSaverTimout (const FdsConfig *fdsConfig, uint16_t timout)
@@ -934,7 +932,7 @@ static bool fdsFileSeek  (const FdsConfig *fdsConfig, const uint16_t handle, con
   return status == 1;
 }
 
-#if PICASO_DISPLAY_USE_SD
+#if FDS_DISPLAY_USE_SD
 static uint32_t fdsReceiveAnswer (const FdsConfig *oc, uint8_t *response, const size_t size,
 				   const char* fct, const uint32_t line)
 {
@@ -948,15 +946,15 @@ static uint32_t fdsReceiveAnswer (const FdsConfig *oc, uint8_t *response, const 
 
   if (ret != size) {
     DebugTrace ("fdsReceiveAnswer ret[%lu] != expectedSize[%u] @%s : line %lu", ret, size, fct, line);
-    fdsStatus = OLED_ERROR;
+    fdsStatus = FDS_ERROR;
   } else {
-    fdsStatus = OLED_OK;
+    fdsStatus = FDS_OK;
   }
   return ret;
 }
 #endif
 
-#if PICASO_DISPLAY_USE_UART
+#if FDS_DISPLAY_USE_UART
 
 static void fdsStartReceiveAnswer (const FdsConfig *oc, uint8_t *response, const size_t size,
 				    const char* fct, const uint32_t line)
@@ -986,9 +984,9 @@ static uint32_t fdsWaitReceiveAnswer (const FdsConfig *oc, size_t *size,
   if (status != MSG_OK) {
     DebugTrace ("fdsWaitReceiveAnswer ask[%u] != read[%u] @%s : line %lu", ask,
 		ret, fct, line);
-    fdsStatus = OLED_ERROR;
+    fdsStatus = FDS_ERROR;
   } else {
-    fdsStatus = OLED_OK;
+    fdsStatus = FDS_OK;
   }
   return ret;
 }
@@ -1001,7 +999,7 @@ static uint32_t fdsTransmitBuffer (const FdsConfig *oc, const char* fct, const u
 {
   uint32_t ret = 0;
 
-#if PICASO_DISPLAY_USE_SD
+#if FDS_DISPLAY_USE_SD
   BaseChannel * serial =  (BaseChannel *)  oc->serial;
   if (inSize != 0)
     chnReadTimeout (serial, inBuffer, inSize, TIME_IMMEDIATE);
@@ -1010,7 +1008,7 @@ static uint32_t fdsTransmitBuffer (const FdsConfig *oc, const char* fct, const u
 #endif
   
   // send command
-#if PICASO_DISPLAY_USE_SD
+#if FDS_DISPLAY_USE_SD
   if (outSize != 0)
     streamWrite(oc->serial, outBuffer, outSize);
 #else
@@ -1027,7 +1025,7 @@ static uint32_t fdsTransmitBuffer (const FdsConfig *oc, const char* fct, const u
   if (inSize == 0)
     return 0;
 
-#if PICASO_DISPLAY_USE_SD
+#if FDS_DISPLAY_USE_SD
   ret = fdsReceiveAnswer(oc, inBuffer, inSize, fct, line);
 #else
   ret = fdsWaitReceiveAnswer(oc, &inSizeRw, fct, line);
@@ -1037,12 +1035,12 @@ static uint32_t fdsTransmitBuffer (const FdsConfig *oc, const char* fct, const u
 }
 
 
-OledStatus fdsGetStatus(void)
+FdsStatus fdsGetStatus(void)
 {
   return fdsStatus;
 }
 
-#if PICASO_DISPLAY_USE_SD
+#if FDS_DISPLAY_USE_SD
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...)
 {
   char buffer[80] = {0x1b, '['};

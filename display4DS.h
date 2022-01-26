@@ -1,34 +1,31 @@
-#ifndef __PICASO4_DISPLAY_H__
-#define __PICASO4_DISPLAY_H__
+#pragma once
 #include <ch.h>
 #include <hal.h>
 #include "display4DS_ll.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
-#if !defined(PICASO_DISPLAY_USE_UART)
-#define PICASO_DISPLAY_USE_UART FALSE
+  
+#if !defined(FDS_DISPLAY_USE_UART)
+#define FDS_DISPLAY_USE_UART FALSE
 #endif
-
-
-#define PICASO_DISPLAY_USE_SD   (!PICASO_DISPLAY_USE_UART)
-
-#if  PICASO_DISPLAY_USE_SD
-#define LINK_DRIVER SerialDriver
+#define FDS_DISPLAY_USE_SD   (!FDS_DISPLAY_USE_UART)
+  
+#if  FDS_DISPLAY_USE_SD
+#define FDS_LINK_DRIVER SerialDriver
 #else
-#define LINK_DRIVER UARTDriver
+#define FDS_LINK_DRIVER UARTDriver
 #endif
-
-typedef struct FdsConfig  FdsConfig;
+  
+  typedef struct FdsConfig  FdsConfig;
   enum FdsConfig_Device {GOLDELOX, PICASO, DIABLO16, AUTO_4DS, TERM_VT100}; 
-  enum OledTextAttribute {OLED_RESET_ATTRIB=0,
-    OLED_BOLD=16, OLED_ITALIC=32, OLED_INVERSE=64, OLED_UNDERLINE=128};
-  enum OledScreenOrientation {OLED_LANDSCAPE=0, OLED_LANDSCAPE_REVERSE,
-    OLED_PORTRAIT, OLED_PORTRAIT_REVERSE};
-typedef enum {OLED_OK,
-	      OLED_ERROR} OledStatus;
+  enum FdsTextAttribute {FDS_RESET_ATTRIB=0,
+    FDS_BOLD=16, FDS_ITALIC=32, FDS_INVERSE=64, FDS_UNDERLINE=128};
+  enum FdsScreenOrientation {FDS_LANDSCAPE=0, FDS_LANDSCAPE_REVERSE,
+    FDS_PORTRAIT, FDS_PORTRAIT_REVERSE};
+typedef enum {FDS_OK,
+	      FDS_ERROR} FdsStatus;
 #define COLOR_TABLE_SIZE 11U
 
 typedef struct {
@@ -37,11 +34,10 @@ typedef struct {
 } PolyPoint;
 
   
-#define gfx_clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
-#define gfx_colorDecTo16b(r,v,b) (gfx_clampColor((r*31/100), (v*63/100), (b*31/100)))
 #define CMD_NOT_IMPL 0xbaba
 
-bool fdsStart (FdsConfig *fdsConfig,  LINK_DRIVER *fds, const uint32_t baud,
+  
+bool fdsStart (FdsConfig *fdsConfig,  FDS_LINK_DRIVER *fds, const uint32_t baud,
 		ioline_t reset, enum FdsConfig_Device dev);
 void fdsHardReset (FdsConfig *fdsConfig);
 bool fdsIsCorrectDevice (FdsConfig *fdsConfig);
@@ -65,11 +61,11 @@ void fdsSetTextFgColorTable (FdsConfig *fdsConfig,  uint8_t colorIndex,
 			      uint8_t r, uint8_t g, uint8_t b);
 void fdsUseColorIndex (FdsConfig *fdsConfig, uint8_t colorIndex);
 void fdsSetTextOpacity (FdsConfig *fdsConfig, bool opaque);
-void fdsSetTextAttributeMask (FdsConfig *fdsConfig, enum OledTextAttribute attrib);
+void fdsSetTextAttributeMask (FdsConfig *fdsConfig, enum FdsTextAttribute attrib);
 void fdsSetTextGap (FdsConfig *fdsConfig, uint8_t xgap, uint8_t ygap);
 void fdsSetLuminosity (FdsConfig *fdsConfig, uint8_t luminosity);
 void fdsSetTextSizeMultiplier (FdsConfig *fdsConfig, uint8_t xmul, uint8_t ymul);
-void fdsSetScreenOrientation (FdsConfig *fdsConfig, enum OledScreenOrientation orientation);
+void fdsSetScreenOrientation (FdsConfig *fdsConfig, enum FdsScreenOrientation orientation);
 void fdsGotoXY (FdsConfig *fdsConfig, uint8_t x, uint8_t y);
 void fdsGotoX (FdsConfig *fdsConfig, uint8_t x);
 uint8_t fdsGetX (const FdsConfig *fdsConfig);
@@ -110,7 +106,9 @@ bool fdsCallFunction(FdsConfig *fdsConfig, uint16_t handle, uint16_t *retVal, co
 bool fdsFileRun(FdsConfig *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...);
 bool fdsFileExec(FdsConfig *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...);
 bool fdsSetBaud (FdsConfig *fdsConfig, uint32_t baud);
-OledStatus fdsGetStatus(void);
+FdsStatus fdsGetStatus(void);
+#define fds_clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
+#define fds_colorDecTo16b(r,v,b) (fds_clampColor((r*31/100), (v*63/100), (b*31/100)))
 
 typedef union  {
   struct {
@@ -139,7 +137,7 @@ static inline Color24 mkColor24 (uint8_t r, uint8_t g, uint8_t b) {
 
 
 struct FdsConfig {
-#if PICASO_DISPLAY_USE_SD
+#if FDS_DISPLAY_USE_SD
   SerialConfig serialConfig;
   BaseSequentialStream *serial;
 #else
@@ -166,6 +164,3 @@ struct FdsConfig {
 }
 #endif
 
-
-
-#endif //__PICASO4_DISPLAY_H__
