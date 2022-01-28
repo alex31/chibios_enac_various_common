@@ -427,6 +427,93 @@ bool gfx_set(const FdsConfig *fdsConfig, uint16_t function, uint16_t value);
 // various graphics parameters to the caller.
 bool gfx_get(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *value);
 
+// handle: A pointer to the memory block for widget variable utilization,
+// params: A pointer to the memory block holding the widget parameters The Draw
+// Scale command draws the Scale PmmC widget on the screen.
+bool gfx_scale(const FdsConfig *fdsConfig, uint16_t handle, uint16_t param);
+
+// options: Bevel direction (0 – Inwards, 1 – Outwards) Additional bit for
+// filling panel with fill color (0x8000 - PANEL2_FILLED), x & y: Specifies the
+// Top-Left X-position, Top-Left Y-position, width: Specifies the panel width,
+// height: Specifies the panel height, width1: Outer bevel offset, width2: Inner
+// bevel offset, maincolour: Main bevel colour, shadowcolour: Shadow bevel
+// colour, fcolour: Fill colour
+//  The Draw Panel 2 command draws the Panel 2 PmmC widget on the screen.
+bool gfx_pannel2(const FdsConfig *fdsConfig, uint16_t options, uint16_t x,
+                 uint16_t y, uint16_t width, uint16_t height, uint16_t width1,
+                 uint16_t width2, uint16_t maincolour, uint16_t shadowcolour,
+                 uint16_t fcolour);
+
+// value: A value (usually a constant) specifying the current frame of the
+// widget, handle: A pointer to the memory block for widget variable
+// utilization, params: A pointer to the memory block holding the widget
+// parameters The Draw Button4 command draws the Button4 PmmC widget on the
+// screen.
+bool gfx_button4(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+                 uint16_t params);
+
+// value: A value (usually a constant) specifying the current frame of the
+// widget, handle: A pointer to the memory block for widget variable
+// utilization, params: A pointer to the memory block holding the widget
+// parameters The Draw Switch command draws the Switch PmmC widget on the
+// screen.
+bool gfx_switch(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+                uint16_t params);
+
+// value: A value (usually a constant) specifying the current frame of the
+// widget, handle: A pointer to the memory block for widget variable
+// utilization, params: A pointer to the memory block holding the widget
+// parameters The Draw Slider5 command draws the Slider5 PmmC widget on the
+// screen.
+bool gfx_slider5(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+                 uint16_t params);
+
+// value: A value (usually a constant) specifying the current frame of the
+// widget, handle: A pointer to the memory block for widget variable
+// utilization, params: A pointer to the memory block holding the widget
+// parameters The Draw Dial command draws the Dial PmmC widget on the screen.
+bool gfx_dial(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+              uint16_t params);
+
+// value: A value (usually a constant) specifying the current frame of the
+// widget, handle: A pointer to the memory block for widget variable
+// utilization, params: A pointer to the memory block holding the widget
+// parameters The Draw Led command draws the Led PmmC widget on the screen.
+bool gfx_led(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+             uint16_t params);
+
+// value: A value (usually a constant) specifying the current frame of the
+// widget, handle: A pointer to the memory block for widget variable
+// utilization, params: A pointer to the memory block holding the widget
+// parameters The Draw Gauge command draws the Gauge PmmC widget on the screen.
+bool gfx_gauge(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+               uint16_t params);
+
+// value: A value (usually a constant) specifying the current frame of the
+// widget, handle: A pointer to the memory block for widget variable
+// utilization, params: A pointer to the memory block holding the widget
+// parameters The Draw Angular Meter command draws the Angular Meter PmmC widget
+// on the screen.
+bool gfx_angularMeter(const FdsConfig *fdsConfig, uint16_t value,
+                      uint16_t handle, uint16_t params);
+
+// x & y: Specifies the top left corner position of the digit on the screen,
+// digitSize: Specifies the size of the digit, onColour: Specifies the colour of
+// the activate LED segments, offColour: Specifies the colour of the inactive
+// LED segments, value: Value to be displayed by the widget The Draw Led Digit
+// command draws the Led Digit PmmC widget on the screen.
+bool gfx_ledGigit(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
+                  uint16_t digitSize, uint16_t onColour, uint16_t offColour,
+                  uint16_t value);
+
+// value: A value (usually a constant) specifying the current frame of the
+// widget, handle: A pointer to the memory block for widget variable
+// utilization, params: A pointer to the memory block holding the widget
+// parameters The Draw Led Digits command draws the Led Digits PmmC widget on
+// the screen.
+bool gfx_ledDigits(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+                   uint16_t params);
+
 // value : Non-Zero = card is present and successfully initialised, 0 = no card
 // is present or not able to initialise. Initialises a uSD/SD/SDHC memory card
 // for further operations. SD card is connected to the SPI of the processor
@@ -801,11 +888,11 @@ bool file_screenCapture(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
 
 // car: data byte (in the LSB) about to be written, handle: The handle that
 // references the file to be written to. status: returns the number of bytes
-// written successfully This function writes the byte specified by "char" to the
-// file, at the position indicated by the associated file-position pointer (set
-// by the “File Seek” or “File Index” commands) and advances the pointer
+// written successfully "This function writes the byte specified by ""char"" to
+// the file, at the position indicated by the associated file-position pointer
+// (set by the “File Seek” or “File Index” commands) and advances the pointer
 // appropriately (incremented by 1). The file must be previously opened with 'w'
-// (write) or 'a' (append) modes.
+// (write) or 'a' (append) modes."
 bool file_putC(const FdsConfig *fdsConfig, uint16_t car, uint16_t handle,
                uint16_t *status);
 
@@ -819,11 +906,11 @@ bool file_getC(const FdsConfig *fdsConfig, uint16_t handle, uint16_t *car);
 
 // word: word about to be written, handle: The handle that references the file
 // to be written to. status: returns the number of bytes written successfully
-// This function writes the word specified by "word" to the file, at the
+// "This function writes the word specified by ""word"" to the file, at the
 // position indicated by the associated file-position pointer (set by the “File
 // Seek” or “File Index” commands) and advances the pointer appropriately
 // (incremented by 2). The file must be previously opened with 'w' (write) or
-// 'a' (append) modes.
+// 'a' (append) modes."
 bool file_putW(const FdsConfig *fdsConfig, uint16_t word, uint16_t handle,
                uint16_t *status);
 
@@ -847,21 +934,21 @@ bool file_putS(const FdsConfig *fdsConfig, const char *cstr, uint16_t *count);
 // size: the maximum number of bytes to be read from the file handle: the handle
 // that references the file to be read from count: returns the number of
 // characters read from file (excluding the null teminator),data:  returns the
-// string read from the file excluding the Null terminator This function reads a
-// line of text from a file at the current file position indicated by the
+// string read from the file excluding the Null terminator "This function reads
+// a line of text from a file at the current file position indicated by the
 // associated file-position pointer (set by the “File Seek” or “File Index”
 // commands) and advances the pointer appropriately. Characters are read until
-// either a newline or an EOF is received or until the specified maximum "size"
-// is reached. In all cases, the string is null terminated. The file must be
-// previously opened with 'r' (read) mode.
+// either a newline or an EOF is received or until the specified maximum
+// ""size"" is reached. In all cases, the string is null terminated. The file
+// must be previously opened with 'r' (read) mode."
 bool file_getS(const FdsConfig *fdsConfig, uint16_t size, uint16_t handle,
                uint16_t *n, char *str);
 
 // filename: name of the file to be erased (passed as a string). Filename must
-// be 8.3 format status: 1=success, 0=failure This function erases a file on the
-// disk. Note: If the function fails, the appropriate error number is set in the
-// “File Error” command and will usually be error 19, "failure during FILE
-// search"
+// be 8.3 format status: 1=success, 0=failure "This function erases a file on
+// the disk. Note: If the function fails, the appropriate error number is set in
+// the “File Error” command and will usually be error 19, ""failure during FILE
+// search"""
 bool file_erase(const FdsConfig *fdsConfig, const char *filename,
                 uint16_t *status);
 
@@ -915,15 +1002,15 @@ bool file_run(const FdsConfig *fdsConfig, const char *filename, uint16_t n,
 bool file_exec(const FdsConfig *fdsConfig, const char *filename, uint16_t n,
                const uint16_t *args, uint16_t *value);
 
-// filename1: The control list filename "*.dat". filename2: The image filename
-// "*.gci". both Created from Graphics Composer, 8.3 format. mode: [0 .. 2] (see
-// the documentation for details) handle:  handle (pointer to the memory
-// allocation) to the image control list that has been created. Returns NULL if
-// function fails. Reads a control file to create an image list. The GCI file
-// may contain images, videos or animations built through the Graphics Composer
-// Software tool.The GCI file is created by selecting the GCI – FAT Selected
-// Folder option in the Built Option type. See the Graphics Composer User Guide
-// for further details on the Graphics Composer.
+// "filename1: The control list filename ""*.dat"". filename2: The image
+// filename ""*.gci"". both Created from Graphics Composer, 8.3 format. mode: [0
+// .. 2] (see the documentation for details)" handle:  handle (pointer to the
+// memory allocation) to the image control list that has been created. Returns
+// NULL if function fails. Reads a control file to create an image list. The GCI
+// file may contain images, videos or animations built through the Graphics
+// Composer Software tool.The GCI file is created by selecting the GCI – FAT
+// Selected Folder option in the Built Option type. See the Graphics Composer
+// User Guide for further details on the Graphics Composer.
 bool file_loadImageControl(const FdsConfig *fdsConfig, const char *filename1,
                            const char *filename2, uint16_t mode,
                            uint16_t *handle);

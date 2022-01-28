@@ -35,9 +35,9 @@ bool txt_moveCursor(const FdsConfig *fdsConfig, uint16_t line,
                     uint16_t column) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFE4),
-                                          __builtin_bswap16(0xFFE9),
-                                          __builtin_bswap16(0xFFF0)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFE4), __builtin_bswap16(0xFFE9),
+      __builtin_bswap16(0xFFF0), __builtin_bswap16(0xFFE9)};
 
   bool stus = false;
   struct {
@@ -63,9 +63,9 @@ bool txt_moveCursor(const FdsConfig *fdsConfig, uint16_t line,
 bool txt_putCh(const FdsConfig *fdsConfig, uint16_t car) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFFE),
-                                          __builtin_bswap16(0xFFFE),
-                                          __builtin_bswap16(0xFFFE)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFFE), __builtin_bswap16(0xFFFE),
+      __builtin_bswap16(0xFFFE), __builtin_bswap16(0xFFFE)};
 
   bool stus = false;
   struct {
@@ -89,9 +89,9 @@ bool txt_putStr(const FdsConfig *fdsConfig, const char *cstr,
                 uint16_t *length) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0006),
-                                          __builtin_bswap16(0x0018),
-                                          __builtin_bswap16(0x0018)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x0006), __builtin_bswap16(0x0018),
+      __builtin_bswap16(0x0018), __builtin_bswap16(0x0018)};
 
   bool stus = false;
   struct {
@@ -124,9 +124,9 @@ bool txt_putStr(const FdsConfig *fdsConfig, const char *cstr,
 bool txt_charWidth(const FdsConfig *fdsConfig, char car, uint16_t *width) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0002),
-                                          __builtin_bswap16(0x001E),
-                                          __builtin_bswap16(0x001E)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x0002), __builtin_bswap16(0x001E),
+      __builtin_bswap16(0x001E), __builtin_bswap16(0x001E)};
 
   bool stus = false;
   struct {
@@ -152,9 +152,9 @@ bool txt_charWidth(const FdsConfig *fdsConfig, char car, uint16_t *width) {
 bool txt_charHeight(const FdsConfig *fdsConfig, char car, uint16_t *height) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0001),
-                                          __builtin_bswap16(0x001D),
-                                          __builtin_bswap16(0x001D)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x0001), __builtin_bswap16(0x001D),
+      __builtin_bswap16(0x001D), __builtin_bswap16(0x001D)};
 
   bool stus = false;
   struct {
@@ -181,9 +181,9 @@ bool txt_fgColour(const FdsConfig *fdsConfig, uint16_t colour,
                   uint16_t *oldCol) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7F),
-                                          __builtin_bswap16(0xFFE7),
-                                          __builtin_bswap16(0xFFEE)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF7F), __builtin_bswap16(0xFFE7),
+      __builtin_bswap16(0xFFEE), __builtin_bswap16(0xFFE7)};
 
   bool stus = false;
   struct {
@@ -215,9 +215,9 @@ bool txt_bgColour(const FdsConfig *fdsConfig, uint16_t colour,
                   uint16_t *oldCol) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7E),
-                                          __builtin_bswap16(0xFFE6),
-                                          __builtin_bswap16(0xFFED)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF7E), __builtin_bswap16(0xFFE6),
+      __builtin_bswap16(0xFFED), __builtin_bswap16(0xFFE6)};
 
   bool stus = false;
   struct {
@@ -248,9 +248,9 @@ bool txt_bgColour(const FdsConfig *fdsConfig, uint16_t colour,
 bool txt_fontID(const FdsConfig *fdsConfig, uint16_t id, uint16_t *oldFont) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7D),
-                                          __builtin_bswap16(0xFFE5),
-                                          __builtin_bswap16(0xFFEC)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF7D), __builtin_bswap16(0xFFE5),
+      __builtin_bswap16(0xFFEC), __builtin_bswap16(0xFFE5)};
 
   bool stus = false;
   struct {
@@ -282,9 +282,9 @@ bool txt_widthMult(const FdsConfig *fdsConfig, uint16_t wMultiplier,
                    uint16_t *oldMul) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7C),
-                                          __builtin_bswap16(0xFFE4),
-                                          __builtin_bswap16(0xFFEB)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF7C), __builtin_bswap16(0xFFE4),
+      __builtin_bswap16(0xFFEB), __builtin_bswap16(0xFFE4)};
 
   bool stus = false;
   struct {
@@ -317,9 +317,9 @@ bool txt_heightMult(const FdsConfig *fdsConfig, uint16_t hMultiplier,
                     uint16_t *oldMul) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7B),
-                                          __builtin_bswap16(0xFFE3),
-                                          __builtin_bswap16(0xFFEA)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF7B), __builtin_bswap16(0xFFE3),
+      __builtin_bswap16(0xFFEA), __builtin_bswap16(0xFFE3)};
 
   bool stus = false;
   struct {
@@ -351,9 +351,9 @@ bool txt_heightMult(const FdsConfig *fdsConfig, uint16_t hMultiplier,
 bool txt_xgap(const FdsConfig *fdsConfig, uint16_t xGap, uint16_t *oldGap) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF7A),
-                                          __builtin_bswap16(0xFFE2),
-                                          __builtin_bswap16(0xFFE9)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF7A), __builtin_bswap16(0xFFE2),
+      __builtin_bswap16(0xFFE9), __builtin_bswap16(0xFFE2)};
 
   bool stus = false;
   struct {
@@ -384,9 +384,9 @@ bool txt_xgap(const FdsConfig *fdsConfig, uint16_t xGap, uint16_t *oldGap) {
 bool txt_ygap(const FdsConfig *fdsConfig, uint16_t yGap, uint16_t *oldGap) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF79),
-                                          __builtin_bswap16(0xFFE1),
-                                          __builtin_bswap16(0xFFE8)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF79), __builtin_bswap16(0xFFE1),
+      __builtin_bswap16(0xFFE8), __builtin_bswap16(0xFFE1)};
 
   bool stus = false;
   struct {
@@ -417,9 +417,9 @@ bool txt_ygap(const FdsConfig *fdsConfig, uint16_t yGap, uint16_t *oldGap) {
 bool txt_bold(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *oldBold) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF76),
-                                          __builtin_bswap16(0xFFDE),
-                                          __builtin_bswap16(0xFFE5)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF76), __builtin_bswap16(0xFFDE),
+      __builtin_bswap16(0xFFE5), __builtin_bswap16(0xFFDE)};
 
   bool stus = false;
   struct {
@@ -450,9 +450,9 @@ bool txt_bold(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *oldBold) {
 bool txt_inverse(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *oldInv) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF74),
-                                          __builtin_bswap16(0xFFDC),
-                                          __builtin_bswap16(0xFFE3)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF74), __builtin_bswap16(0xFFDC),
+      __builtin_bswap16(0xFFE3), __builtin_bswap16(0xFFDC)};
 
   bool stus = false;
   struct {
@@ -483,9 +483,9 @@ bool txt_inverse(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *oldInv) {
 bool txt_italic(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *oldItal) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF75),
-                                          __builtin_bswap16(0xFFDD),
-                                          __builtin_bswap16(0xFFE4)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF75), __builtin_bswap16(0xFFDD),
+      __builtin_bswap16(0xFFE4), __builtin_bswap16(0xFFDD)};
 
   bool stus = false;
   struct {
@@ -516,9 +516,9 @@ bool txt_italic(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *oldItal) {
 bool txt_opacity(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *oldOpa) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF77),
-                                          __builtin_bswap16(0xFFDF),
-                                          __builtin_bswap16(0xFFE6)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF77), __builtin_bswap16(0xFFDF),
+      __builtin_bswap16(0xFFE6), __builtin_bswap16(0xFFDF)};
 
   bool stus = false;
   struct {
@@ -550,9 +550,9 @@ bool txt_underline(const FdsConfig *fdsConfig, uint16_t mode,
                    uint16_t *oldUnder) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF73),
-                                          __builtin_bswap16(0xFFDB),
-                                          __builtin_bswap16(0xFFE2)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF73), __builtin_bswap16(0xFFDB),
+      __builtin_bswap16(0xFFE2), __builtin_bswap16(0xFFDB)};
 
   bool stus = false;
   struct {
@@ -584,9 +584,9 @@ bool txt_attributes(const FdsConfig *fdsConfig, uint16_t bitfield,
                     uint16_t *oldAttr) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF72),
-                                          __builtin_bswap16(0xFFDA),
-                                          __builtin_bswap16(0xFFE1)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF72), __builtin_bswap16(0xFFDA),
+      __builtin_bswap16(0xFFE1), __builtin_bswap16(0xFFDA)};
 
   bool stus = false;
   struct {
@@ -618,9 +618,9 @@ bool txt_attributes(const FdsConfig *fdsConfig, uint16_t bitfield,
 bool txt_set(const FdsConfig *fdsConfig, uint16_t function, uint16_t value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFE3),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFE3), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -647,9 +647,9 @@ bool txt_set(const FdsConfig *fdsConfig, uint16_t function, uint16_t value) {
 bool txt_wrap(const FdsConfig *fdsConfig, uint16_t xpos, uint16_t *oldWrap) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFD9),
-                                          __builtin_bswap16(0xFFE0)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD9),
+      __builtin_bswap16(0xFFE0), __builtin_bswap16(0xFFD9)};
 
   bool stus = false;
   struct {
@@ -676,9 +676,9 @@ bool txt_wrap(const FdsConfig *fdsConfig, uint16_t xpos, uint16_t *oldWrap) {
 bool gfx_cls(const FdsConfig *fdsConfig) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD7),
-                                          __builtin_bswap16(0xFFCD),
-                                          __builtin_bswap16(0xFF82)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFD7), __builtin_bswap16(0xFFCD),
+      __builtin_bswap16(0xFF82), __builtin_bswap16(0xFFCD)};
 
   bool stus = false;
   struct {
@@ -702,9 +702,9 @@ bool gfx_changeColour(const FdsConfig *fdsConfig, uint16_t oldColour,
                       uint16_t newColour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFBE),
-                                          __builtin_bswap16(0xFFB4),
-                                          __builtin_bswap16(0xFF69)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFBE), __builtin_bswap16(0xFFB4),
+      __builtin_bswap16(0xFF69), __builtin_bswap16(0xFFB4)};
 
   bool stus = false;
   struct {
@@ -731,9 +731,9 @@ bool gfx_circle(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                 uint16_t radius, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFCD),
-                                          __builtin_bswap16(0xFFC3),
-                                          __builtin_bswap16(0xFF78)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFCD), __builtin_bswap16(0xFFC3),
+      __builtin_bswap16(0xFF78), __builtin_bswap16(0xFFC3)};
 
   bool stus = false;
   struct {
@@ -764,9 +764,9 @@ bool gfx_circleFilled(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                       uint16_t radius, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFCC),
-                                          __builtin_bswap16(0xFFC2),
-                                          __builtin_bswap16(0xFF77)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFCC), __builtin_bswap16(0xFFC2),
+      __builtin_bswap16(0xFF77), __builtin_bswap16(0xFFC2)};
 
   bool stus = false;
   struct {
@@ -797,9 +797,9 @@ bool gfx_line(const FdsConfig *fdsConfig, uint16_t x1, uint16_t y1, uint16_t x2,
               uint16_t y2, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD2),
-                                          __builtin_bswap16(0xFFC8),
-                                          __builtin_bswap16(0xFF7D)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFD2), __builtin_bswap16(0xFFC8),
+      __builtin_bswap16(0xFF7D), __builtin_bswap16(0xFFC8)};
 
   bool stus = false;
   struct {
@@ -832,9 +832,9 @@ bool gfx_rectangle(const FdsConfig *fdsConfig, uint16_t tlx, uint16_t tly,
                    uint16_t brx, uint16_t bry, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFCF),
-                                          __builtin_bswap16(0xFFC5),
-                                          __builtin_bswap16(0xFF7A)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFCF), __builtin_bswap16(0xFFC5),
+      __builtin_bswap16(0xFF7A), __builtin_bswap16(0xFFC5)};
 
   bool stus = false;
   struct {
@@ -867,9 +867,9 @@ bool gfx_rectangleFilled(const FdsConfig *fdsConfig, uint16_t tlx, uint16_t tly,
                          uint16_t brx, uint16_t bry, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFCE),
-                                          __builtin_bswap16(0xFFC4),
-                                          __builtin_bswap16(0xFF79)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFCE), __builtin_bswap16(0xFFC4),
+      __builtin_bswap16(0xFF79), __builtin_bswap16(0xFFC4)};
 
   bool stus = false;
   struct {
@@ -935,9 +935,9 @@ bool gfx_triangle(const FdsConfig *fdsConfig, uint16_t x1, uint16_t y1,
                   uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFC9),
-                                          __builtin_bswap16(0xFFBF),
-                                          __builtin_bswap16(0xFF74)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFC9), __builtin_bswap16(0xFFBF),
+      __builtin_bswap16(0xFF74), __builtin_bswap16(0xFFBF)};
 
   bool stus = false;
   struct {
@@ -975,9 +975,9 @@ bool gfx_triangleFilled(const FdsConfig *fdsConfig, uint16_t x1, uint16_t y1,
                         uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFA9),
-                                          __builtin_bswap16(0xFF59)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFA9),
+      __builtin_bswap16(0xFF59), __builtin_bswap16(0xFFA9)};
 
   bool stus = false;
   struct {
@@ -1015,9 +1015,9 @@ bool gfx_orbit(const FdsConfig *fdsConfig, uint16_t angle, uint16_t distance,
                uint16_t *Xdist, uint16_t *Ydist) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0003),
-                                          __builtin_bswap16(0x0012),
-                                          __builtin_bswap16(0x0012)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x0003), __builtin_bswap16(0x0012),
+      __builtin_bswap16(0x0012), __builtin_bswap16(0x0012)};
 
   bool stus = false;
   struct {
@@ -1050,9 +1050,9 @@ bool gfx_putPixel(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                   uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFCB),
-                                          __builtin_bswap16(0xFFC1),
-                                          __builtin_bswap16(0xFF76)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFCB), __builtin_bswap16(0xFFC1),
+      __builtin_bswap16(0xFF76), __builtin_bswap16(0xFFC1)};
 
   bool stus = false;
   struct {
@@ -1081,9 +1081,9 @@ bool gfx_getPixel(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                   uint16_t *colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFCA),
-                                          __builtin_bswap16(0xFFC0),
-                                          __builtin_bswap16(0xFF75)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFCA), __builtin_bswap16(0xFFC0),
+      __builtin_bswap16(0xFF75), __builtin_bswap16(0xFFC0)};
 
   bool stus = false;
   struct {
@@ -1111,9 +1111,9 @@ bool gfx_getPixel(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
 bool gfx_moveTo(const FdsConfig *fdsConfig, uint16_t x, uint16_t y) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD6),
-                                          __builtin_bswap16(0xFFCC),
-                                          __builtin_bswap16(0xFF81)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFD6), __builtin_bswap16(0xFFCC),
+      __builtin_bswap16(0xFF81), __builtin_bswap16(0xFFCC)};
 
   bool stus = false;
   struct {
@@ -1138,9 +1138,9 @@ bool gfx_moveTo(const FdsConfig *fdsConfig, uint16_t x, uint16_t y) {
 bool gfx_lineTo(const FdsConfig *fdsConfig, uint16_t x, uint16_t y) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD4),
-                                          __builtin_bswap16(0xFFCA),
-                                          __builtin_bswap16(0xFF7F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFD4), __builtin_bswap16(0xFFCA),
+      __builtin_bswap16(0xFF7F), __builtin_bswap16(0xFFCA)};
 
   bool stus = false;
   struct {
@@ -1165,9 +1165,9 @@ bool gfx_lineTo(const FdsConfig *fdsConfig, uint16_t x, uint16_t y) {
 bool gfx_clipping(const FdsConfig *fdsConfig, uint16_t mode) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF6C),
-                                          __builtin_bswap16(0xFFA2),
-                                          __builtin_bswap16(0xFF46)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF6C), __builtin_bswap16(0xFFA2),
+      __builtin_bswap16(0xFF46), __builtin_bswap16(0xFFA2)};
 
   bool stus = false;
   struct {
@@ -1191,9 +1191,9 @@ bool gfx_clipWindow(const FdsConfig *fdsConfig, uint16_t tlx, uint16_t tly,
                     uint16_t brx, uint16_t bry) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFBF),
-                                          __builtin_bswap16(0xFFB5),
-                                          __builtin_bswap16(0xFF6A)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFBF), __builtin_bswap16(0xFFB5),
+      __builtin_bswap16(0xFF6A), __builtin_bswap16(0xFFB5)};
 
   bool stus = false;
   struct {
@@ -1222,9 +1222,9 @@ bool gfx_clipWindow(const FdsConfig *fdsConfig, uint16_t tlx, uint16_t tly,
 bool gfx_setClipRegion(const FdsConfig *fdsConfig) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFBC),
-                                          __builtin_bswap16(0xFFB3),
-                                          __builtin_bswap16(0xFF68)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFBC), __builtin_bswap16(0xFFB3),
+      __builtin_bswap16(0xFF68), __builtin_bswap16(0xFFB3)};
 
   bool stus = false;
   struct {
@@ -1248,9 +1248,9 @@ bool gfx_ellipse(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                  uint16_t xrad, uint16_t yrad, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFB2),
-                                          __builtin_bswap16(0xFF67)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFB2),
+      __builtin_bswap16(0xFF67), __builtin_bswap16(0xFFB2)};
 
   bool stus = false;
   struct {
@@ -1284,9 +1284,9 @@ bool gfx_ellipseFilled(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                        uint16_t xrad, uint16_t yrad, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFB1),
-                                          __builtin_bswap16(0xFF66)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFB1),
+      __builtin_bswap16(0xFF66), __builtin_bswap16(0xFFB1)};
 
   bool stus = false;
   struct {
@@ -1322,9 +1322,9 @@ bool gfx_button(const FdsConfig *fdsConfig, uint16_t state, uint16_t x,
                 const char *cstr) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0011),
-                                          __builtin_bswap16(0x0011)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0011),
+      __builtin_bswap16(0x0011), __builtin_bswap16(0x0011)};
 
   bool stus = false;
   struct {
@@ -1367,9 +1367,9 @@ bool gfx_panel(const FdsConfig *fdsConfig, uint16_t state, uint16_t x,
                uint16_t y, uint16_t width, uint16_t height, uint16_t colour) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFAF),
-                                          __builtin_bswap16(0xFF5F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFAF),
+      __builtin_bswap16(0xFF5F), __builtin_bswap16(0xFFAF)};
 
   bool stus = false;
   struct {
@@ -1406,9 +1406,9 @@ bool gfx_slider(const FdsConfig *fdsConfig, uint16_t mode, uint16_t tlx,
                 uint16_t scale, int16_t value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFAE),
-                                          __builtin_bswap16(0xFF5E)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFAE),
+      __builtin_bswap16(0xFF5E), __builtin_bswap16(0xFFAE)};
 
   bool stus = false;
   struct {
@@ -1448,9 +1448,9 @@ bool gfx_screenCopyPaste(const FdsConfig *fdsConfig, uint16_t xs, uint16_t ys,
                          uint16_t height) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFAD),
-                                          __builtin_bswap16(0xFF5D)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFAD),
+      __builtin_bswap16(0xFF5D), __builtin_bswap16(0xFFAD)};
 
   bool stus = false;
   struct {
@@ -1486,9 +1486,9 @@ bool gfx_bevelShadow(const FdsConfig *fdsConfig, uint16_t value,
                      uint16_t *oldBevel) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF98),
-                                          __builtin_bswap16(0xFF3C)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF98),
+      __builtin_bswap16(0xFF3C), __builtin_bswap16(0xFF98)};
 
   bool stus = false;
   struct {
@@ -1516,9 +1516,9 @@ bool gfx_bevelWidth(const FdsConfig *fdsConfig, uint16_t value,
                     uint16_t *oldWidth) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF99),
-                                          __builtin_bswap16(0xFF3D)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF99),
+      __builtin_bswap16(0xFF3D), __builtin_bswap16(0xFF99)};
 
   bool stus = false;
   struct {
@@ -1546,9 +1546,9 @@ bool gfx_bgCcolour(const FdsConfig *fdsConfig, uint16_t colour,
                    uint16_t *oldCol) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF6E),
-                                          __builtin_bswap16(0xFFA4),
-                                          __builtin_bswap16(0xFF48)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF6E), __builtin_bswap16(0xFFA4),
+      __builtin_bswap16(0xFF48), __builtin_bswap16(0xFFA4)};
 
   bool stus = false;
   struct {
@@ -1580,9 +1580,9 @@ bool gfx_outlineColour(const FdsConfig *fdsConfig, uint16_t colour,
                        uint16_t *oldCol) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF67),
-                                          __builtin_bswap16(0xFF9D),
-                                          __builtin_bswap16(0xFF41)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF67), __builtin_bswap16(0xFF9D),
+      __builtin_bswap16(0xFF41), __builtin_bswap16(0xFF9D)};
 
   bool stus = false;
   struct {
@@ -1614,9 +1614,9 @@ bool gfx_contrast(const FdsConfig *fdsConfig, uint16_t contrast,
                   uint16_t *oldContrast) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF66),
-                                          __builtin_bswap16(0xFF9C),
-                                          __builtin_bswap16(0xFF40)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF66), __builtin_bswap16(0xFF9C),
+      __builtin_bswap16(0xFF40), __builtin_bswap16(0xFF9C)};
 
   bool stus = false;
   struct {
@@ -1650,9 +1650,9 @@ bool gfx_frameDelay(const FdsConfig *fdsConfig, uint16_t delayMsec,
                     uint16_t *oldDelay) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF69),
-                                          __builtin_bswap16(0xFF9F),
-                                          __builtin_bswap16(0xFF43)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF69), __builtin_bswap16(0xFF9F),
+      __builtin_bswap16(0xFF43), __builtin_bswap16(0xFF9F)};
 
   bool stus = false;
   struct {
@@ -1685,9 +1685,9 @@ bool gfx_linePattern(const FdsConfig *fdsConfig, uint16_t pattern,
                      uint16_t *oldPattern) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF65),
-                                          __builtin_bswap16(0xFF9B),
-                                          __builtin_bswap16(0xFF3F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF65), __builtin_bswap16(0xFF9B),
+      __builtin_bswap16(0xFF3F), __builtin_bswap16(0xFF9B)};
 
   bool stus = false;
   struct {
@@ -1721,9 +1721,9 @@ bool gfx_screenMode(const FdsConfig *fdsConfig, uint16_t mode,
                     uint16_t *oldMode) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFF68),
-                                          __builtin_bswap16(0xFF9E),
-                                          __builtin_bswap16(0xFF42)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFF68), __builtin_bswap16(0xFF9E),
+      __builtin_bswap16(0xFF42), __builtin_bswap16(0xFF9E)};
 
   bool stus = false;
   struct {
@@ -1755,9 +1755,9 @@ bool gfx_transparency(const FdsConfig *fdsConfig, uint16_t mode,
                       uint16_t *oldMode) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFA0),
-                                          __builtin_bswap16(0xFF44)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFA0),
+      __builtin_bswap16(0xFF44), __builtin_bswap16(0xFFA0)};
 
   bool stus = false;
   struct {
@@ -1785,9 +1785,9 @@ bool gfx_transparentColour(const FdsConfig *fdsConfig, uint16_t colour,
                            uint16_t *oldColor) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFA1),
-                                          __builtin_bswap16(0xFF45)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFA1),
+      __builtin_bswap16(0xFF45), __builtin_bswap16(0xFFA1)};
 
   bool stus = false;
   struct {
@@ -1814,9 +1814,9 @@ bool gfx_transparentColour(const FdsConfig *fdsConfig, uint16_t colour,
 bool gfx_set(const FdsConfig *fdsConfig, uint16_t function, uint16_t value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD8),
-                                          __builtin_bswap16(0xFFCE),
-                                          __builtin_bswap16(0xFF83)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFD8), __builtin_bswap16(0xFFCE),
+      __builtin_bswap16(0xFF83), __builtin_bswap16(0xFFCE)};
 
   bool stus = false;
   struct {
@@ -1842,9 +1842,9 @@ bool gfx_set(const FdsConfig *fdsConfig, uint16_t function, uint16_t value) {
 bool gfx_get(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFA6),
-                                          __builtin_bswap16(0xFF4A)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFA6),
+      __builtin_bswap16(0xFF4A), __builtin_bswap16(0xFFA6)};
 
   bool stus = false;
   struct {
@@ -1868,12 +1868,383 @@ bool gfx_get(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *value) {
   return stus && (response.ack == QDS_ACK);
 }
 
+bool gfx_scale(const FdsConfig *fdsConfig, uint16_t handle, uint16_t param) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEAA)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t handle;
+    uint16_t param;
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fdsConfig->deviceType],
+                                            .handle = __builtin_bswap16(handle),
+                                            .param = __builtin_bswap16(param)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_scale unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_pannel2(const FdsConfig *fdsConfig, uint16_t options, uint16_t x,
+                 uint16_t y, uint16_t width, uint16_t height, uint16_t width1,
+                 uint16_t width2, uint16_t maincolour, uint16_t shadowcolour,
+                 uint16_t fcolour) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEC7)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t options;
+    uint16_t x;
+    uint16_t y;
+    uint16_t width;
+    uint16_t height;
+    uint16_t width1;
+    uint16_t width2;
+    uint16_t maincolour;
+    uint16_t shadowcolour;
+    uint16_t fcolour;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .options = __builtin_bswap16(options),
+              .x = __builtin_bswap16(x),
+              .y = __builtin_bswap16(y),
+              .width = __builtin_bswap16(width),
+              .height = __builtin_bswap16(height),
+              .width1 = __builtin_bswap16(width1),
+              .width2 = __builtin_bswap16(width2),
+              .maincolour = __builtin_bswap16(maincolour),
+              .shadowcolour = __builtin_bswap16(shadowcolour),
+              .fcolour = __builtin_bswap16(fcolour)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_pannel2 unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_button4(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+                 uint16_t params) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEAC)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t value;
+    uint16_t handle;
+    uint16_t params;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .value = __builtin_bswap16(value),
+              .handle = __builtin_bswap16(handle),
+              .params = __builtin_bswap16(params)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_button4 unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_switch(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+                uint16_t params) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEAD)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t value;
+    uint16_t handle;
+    uint16_t params;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .value = __builtin_bswap16(value),
+              .handle = __builtin_bswap16(handle),
+              .params = __builtin_bswap16(params)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_switch unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_slider5(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+                 uint16_t params) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEAF)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t value;
+    uint16_t handle;
+    uint16_t params;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .value = __builtin_bswap16(value),
+              .handle = __builtin_bswap16(handle),
+              .params = __builtin_bswap16(params)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_slider5 unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_dial(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+              uint16_t params) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEC5)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t value;
+    uint16_t handle;
+    uint16_t params;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .value = __builtin_bswap16(value),
+              .handle = __builtin_bswap16(handle),
+              .params = __builtin_bswap16(params)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_dial unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_led(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+             uint16_t params) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEAB)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t value;
+    uint16_t handle;
+    uint16_t params;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .value = __builtin_bswap16(value),
+              .handle = __builtin_bswap16(handle),
+              .params = __builtin_bswap16(params)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_led unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_gauge(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+               uint16_t params) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEC4)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t value;
+    uint16_t handle;
+    uint16_t params;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .value = __builtin_bswap16(value),
+              .handle = __builtin_bswap16(handle),
+              .params = __builtin_bswap16(params)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_gauge unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_angularMeter(const FdsConfig *fdsConfig, uint16_t value,
+                      uint16_t handle, uint16_t params) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEC8)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t value;
+    uint16_t handle;
+    uint16_t params;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .value = __builtin_bswap16(value),
+              .handle = __builtin_bswap16(handle),
+              .params = __builtin_bswap16(params)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_angularMeter unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_ledGigit(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
+                  uint16_t digitSize, uint16_t onColour, uint16_t offColour,
+                  uint16_t value) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEC1)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t x;
+    uint16_t y;
+    uint16_t digitSize;
+    uint16_t onColour;
+    uint16_t offColour;
+    uint16_t value;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .x = __builtin_bswap16(x),
+              .y = __builtin_bswap16(y),
+              .digitSize = __builtin_bswap16(digitSize),
+              .onColour = __builtin_bswap16(onColour),
+              .offColour = __builtin_bswap16(offColour),
+              .value = __builtin_bswap16(value)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_ledGigit unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
+bool gfx_ledDigits(const FdsConfig *fdsConfig, uint16_t value, uint16_t handle,
+                   uint16_t params) {
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  RET_UNLESS_4DSYS_BOOL(fdsConfig);
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEC2)};
+
+  bool stus = false;
+  struct {
+    uint16_t cmd;
+    uint16_t value;
+    uint16_t handle;
+    uint16_t params;
+  } __attribute__((__packed__))
+  command1 = {.cmd = cmds[fdsConfig->deviceType],
+              .value = __builtin_bswap16(value),
+              .handle = __builtin_bswap16(handle),
+              .params = __builtin_bswap16(params)};
+
+  struct {
+    uint8_t ack;
+  } __attribute__((__packed__)) response;
+  osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
+                "function gfx_ledDigits unimplemented for this screen");
+  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+                           (uint8_t *)&command1, sizeof(command1),
+                           (uint8_t *)&response, sizeof(response)) != 0;
+
+  return stus && (response.ack == QDS_ACK);
+}
+
 bool media_init(const FdsConfig *fdsConfig, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB1),
-                                          __builtin_bswap16(0xFF89),
-                                          __builtin_bswap16(0xFF25)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFB1), __builtin_bswap16(0xFF89),
+      __builtin_bswap16(0xFF25), __builtin_bswap16(0xFF89)};
 
   bool stus = false;
   struct {
@@ -1900,9 +2271,9 @@ bool media_setAdd(const FdsConfig *fdsConfig, uint16_t hiAddr,
                   uint16_t loAddr) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB9),
-                                          __builtin_bswap16(0xFF93),
-                                          __builtin_bswap16(0xFF2F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFB9), __builtin_bswap16(0xFF93),
+      __builtin_bswap16(0xFF2F), __builtin_bswap16(0xFF93)};
 
   bool stus = false;
   struct {
@@ -1929,9 +2300,9 @@ bool media_setSector(const FdsConfig *fdsConfig, uint16_t hiAddr,
                      uint16_t loAddr) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB8),
-                                          __builtin_bswap16(0xFF92),
-                                          __builtin_bswap16(0xFF2E)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFB8), __builtin_bswap16(0xFF92),
+      __builtin_bswap16(0xFF2E), __builtin_bswap16(0xFF92)};
 
   bool stus = false;
   struct {
@@ -1957,9 +2328,9 @@ bool media_setSector(const FdsConfig *fdsConfig, uint16_t hiAddr,
 bool media_readByte(const FdsConfig *fdsConfig, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB7),
-                                          __builtin_bswap16(0xFF8F),
-                                          __builtin_bswap16(0xFF2B)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFB7), __builtin_bswap16(0xFF8F),
+      __builtin_bswap16(0xFF2B), __builtin_bswap16(0xFF8F)};
 
   bool stus = false;
   struct {
@@ -1985,9 +2356,9 @@ bool media_readByte(const FdsConfig *fdsConfig, uint16_t *value) {
 bool media_readWord(const FdsConfig *fdsConfig, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB6),
-                                          __builtin_bswap16(0xFF8E),
-                                          __builtin_bswap16(0xFF2A)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFB6), __builtin_bswap16(0xFF8E),
+      __builtin_bswap16(0xFF2A), __builtin_bswap16(0xFF8E)};
 
   bool stus = false;
   struct {
@@ -2013,9 +2384,9 @@ bool media_readWord(const FdsConfig *fdsConfig, uint16_t *value) {
 bool media_writeByte(const FdsConfig *fdsConfig, uint16_t s, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB5),
-                                          __builtin_bswap16(0xFF8D),
-                                          __builtin_bswap16(0xFF29)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFB5), __builtin_bswap16(0xFF8D),
+      __builtin_bswap16(0xFF29), __builtin_bswap16(0xFF8D)};
 
   bool stus = false;
   struct {
@@ -2042,9 +2413,9 @@ bool media_writeWord(const FdsConfig *fdsConfig, uint16_t value,
                      uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB4),
-                                          __builtin_bswap16(0xFF8C),
-                                          __builtin_bswap16(0xFF28)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFB4), __builtin_bswap16(0xFF8C),
+      __builtin_bswap16(0xFF28), __builtin_bswap16(0xFF8C)};
 
   bool stus = false;
   struct {
@@ -2070,9 +2441,9 @@ bool media_writeWord(const FdsConfig *fdsConfig, uint16_t value,
 bool media_flush(const FdsConfig *fdsConfig, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB2),
-                                          __builtin_bswap16(0xFF8A),
-                                          __builtin_bswap16(0xFF26)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFB2), __builtin_bswap16(0xFF8A),
+      __builtin_bswap16(0xFF26), __builtin_bswap16(0xFF8A)};
 
   bool stus = false;
   struct {
@@ -2098,9 +2469,9 @@ bool media_flush(const FdsConfig *fdsConfig, uint16_t *status) {
 bool media_image(const FdsConfig *fdsConfig, uint16_t x, uint16_t y) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFB3),
-                                          __builtin_bswap16(0xFF8B),
-                                          __builtin_bswap16(0xFF27)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFB3), __builtin_bswap16(0xFF8B),
+      __builtin_bswap16(0xFF27), __builtin_bswap16(0xFF8B)};
 
   bool stus = false;
   struct {
@@ -2125,9 +2496,9 @@ bool media_image(const FdsConfig *fdsConfig, uint16_t x, uint16_t y) {
 bool media_video(const FdsConfig *fdsConfig, uint16_t x, uint16_t y) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFBB),
-                                          __builtin_bswap16(0xFF95),
-                                          __builtin_bswap16(0xFF31)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFBB), __builtin_bswap16(0xFF95),
+      __builtin_bswap16(0xFF31), __builtin_bswap16(0xFF95)};
 
   bool stus = false;
   struct {
@@ -2153,9 +2524,9 @@ bool media_videoFrame(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                       int16_t frameNumber) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFBA),
-                                          __builtin_bswap16(0xFF94),
-                                          __builtin_bswap16(0xFF30)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFBA), __builtin_bswap16(0xFF94),
+      __builtin_bswap16(0xFF30), __builtin_bswap16(0xFF94)};
 
   bool stus = false;
   struct {
@@ -2183,9 +2554,9 @@ bool media_videoFrame(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
 bool misc_peekB(const FdsConfig *fdsConfig, uint16_t eveReg, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFF6),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFF6), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -2212,9 +2583,9 @@ bool misc_peekB(const FdsConfig *fdsConfig, uint16_t eveReg, uint16_t *value) {
 bool misc_pokeB(const FdsConfig *fdsConfig, uint16_t eveReg, uint16_t value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFF4),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFF4), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -2240,9 +2611,9 @@ bool misc_pokeB(const FdsConfig *fdsConfig, uint16_t eveReg, uint16_t value) {
 bool misc_peekW(const FdsConfig *fdsConfig, uint16_t eveReg, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFF5),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFF5), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -2269,9 +2640,9 @@ bool misc_peekW(const FdsConfig *fdsConfig, uint16_t eveReg, uint16_t *value) {
 bool misc_pokeW(const FdsConfig *fdsConfig, uint16_t eveReg, uint16_t value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFF3),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFF3), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -2297,9 +2668,9 @@ bool misc_pokeW(const FdsConfig *fdsConfig, uint16_t eveReg, uint16_t value) {
 bool misc_peekM(const FdsConfig *fdsConfig, uint16_t address, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0027),
-                                          __builtin_bswap16(0x0027)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0027),
+      __builtin_bswap16(0x0027), __builtin_bswap16(0x0027)};
 
   bool stus = false;
   struct {
@@ -2327,9 +2698,9 @@ bool misc_peekM(const FdsConfig *fdsConfig, uint16_t address, uint16_t *value) {
 bool misc_pokeM(const FdsConfig *fdsConfig, uint16_t address, uint16_t value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0028),
-                                          __builtin_bswap16(0x0028)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0028),
+      __builtin_bswap16(0x0028), __builtin_bswap16(0x0028)};
 
   bool stus = false;
   struct {
@@ -2356,9 +2727,9 @@ bool misc_pokeM(const FdsConfig *fdsConfig, uint16_t address, uint16_t value) {
 bool misc_joystick(const FdsConfig *fdsConfig, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFD9),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFD9), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -2386,9 +2757,9 @@ bool misc_beep(const FdsConfig *fdsConfig, uint16_t note,
                uint16_t duration_ms) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0xFFDA),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0xFFDA), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -2415,9 +2786,9 @@ bool misc_beep(const FdsConfig *fdsConfig, uint16_t note,
 bool misc_setbaudWait(const FdsConfig *fdsConfig, int16_t index) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x000B),
-                                          __builtin_bswap16(0x0026),
-                                          __builtin_bswap16(0x0026)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x000B), __builtin_bswap16(0x0026),
+      __builtin_bswap16(0x0026), __builtin_bswap16(0x0026)};
 
   bool stus = false;
   struct {
@@ -2436,9 +2807,9 @@ bool sys_sleep(const FdsConfig *fdsConfig, uint16_t duration_s,
                uint16_t *duration) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF3B),
-                                          __builtin_bswap16(0xFE6D)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF3B),
+      __builtin_bswap16(0xFE6D), __builtin_bswap16(0xFF3B)};
 
   bool stus = false;
   struct {
@@ -2467,9 +2838,9 @@ bool sys_memFree(const FdsConfig *fdsConfig, uint16_t handle,
                  uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF24),
-                                          __builtin_bswap16(0xFE5F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF24),
+      __builtin_bswap16(0xFE5F), __builtin_bswap16(0xFF24)};
 
   bool stus = false;
   struct {
@@ -2496,9 +2867,9 @@ bool sys_memFree(const FdsConfig *fdsConfig, uint16_t handle,
 bool sys_memHeap(const FdsConfig *fdsConfig, uint16_t *avail) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF23),
-                                          __builtin_bswap16(0xFE5E)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF23),
+      __builtin_bswap16(0xFE5E), __builtin_bswap16(0xFF23)};
 
   bool stus = false;
   struct {
@@ -2525,9 +2896,9 @@ bool sys_memHeap(const FdsConfig *fdsConfig, uint16_t *avail) {
 bool sys_getModel(const FdsConfig *fdsConfig, uint16_t *n, char *str) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0007),
-                                          __builtin_bswap16(0x001A),
-                                          __builtin_bswap16(0x001A)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x0007), __builtin_bswap16(0x001A),
+      __builtin_bswap16(0x001A), __builtin_bswap16(0x001A)};
 
   bool stus = false;
   struct {
@@ -2561,9 +2932,9 @@ bool sys_getModel(const FdsConfig *fdsConfig, uint16_t *n, char *str) {
 bool sys_getVersion(const FdsConfig *fdsConfig, uint16_t *version) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0008),
-                                          __builtin_bswap16(0x001B),
-                                          __builtin_bswap16(0x001B)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x0008), __builtin_bswap16(0x001B),
+      __builtin_bswap16(0x001B), __builtin_bswap16(0x001B)};
 
   bool stus = false;
   struct {
@@ -2589,9 +2960,9 @@ bool sys_getVersion(const FdsConfig *fdsConfig, uint16_t *version) {
 bool sys_getPmmC(const FdsConfig *fdsConfig, uint16_t *version) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0009),
-                                          __builtin_bswap16(0x001C),
-                                          __builtin_bswap16(0x001C)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x0009), __builtin_bswap16(0x001C),
+      __builtin_bswap16(0x001C), __builtin_bswap16(0x001C)};
 
   bool stus = false;
   struct {
@@ -2617,9 +2988,9 @@ bool sys_getPmmC(const FdsConfig *fdsConfig, uint16_t *version) {
 bool misc_screenSaverTimeout(const FdsConfig *fdsConfig, uint16_t timout_ms) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x000C),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x000C), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -2645,9 +3016,9 @@ bool misc_screenSaverTimeout(const FdsConfig *fdsConfig, uint16_t timout_ms) {
 bool misc_screenSaverSpeed(const FdsConfig *fdsConfig, uint16_t speed) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x000D),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x000D), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -2671,9 +3042,9 @@ bool misc_screenSaverSpeed(const FdsConfig *fdsConfig, uint16_t speed) {
 bool misc_screenSaverMode(const FdsConfig *fdsConfig, uint16_t mode) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x000E),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x000E), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {
@@ -2698,9 +3069,9 @@ bool touch_detectRegion(const FdsConfig *fdsConfig, uint16_t tlx, uint16_t tly,
                         uint16_t brx, uint16_t bry) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF39),
-                                          __builtin_bswap16(0xFE6A)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF39),
+      __builtin_bswap16(0xFE6A), __builtin_bswap16(0xFF39)};
 
   bool stus = false;
   struct {
@@ -2730,9 +3101,9 @@ bool touch_detectRegion(const FdsConfig *fdsConfig, uint16_t tlx, uint16_t tly,
 bool touch_set(const FdsConfig *fdsConfig, uint16_t mode) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF38),
-                                          __builtin_bswap16(0xFE69)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF38),
+      __builtin_bswap16(0xFE69), __builtin_bswap16(0xFF38)};
 
   bool stus = false;
   struct {
@@ -2756,9 +3127,9 @@ bool touch_set(const FdsConfig *fdsConfig, uint16_t mode) {
 bool touch_get(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF37),
-                                          __builtin_bswap16(0xFE68)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF37),
+      __builtin_bswap16(0xFE68), __builtin_bswap16(0xFF37)};
 
   bool stus = false;
   struct {
@@ -2785,9 +3156,9 @@ bool touch_get(const FdsConfig *fdsConfig, uint16_t mode, uint16_t *value) {
 bool file_error(const FdsConfig *fdsConfig, uint16_t *errno) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF1F),
-                                          __builtin_bswap16(0xFE58)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF1F),
+      __builtin_bswap16(0xFE58), __builtin_bswap16(0xFF1F)};
 
   bool stus = false;
   struct {
@@ -2815,9 +3186,9 @@ bool file_count(const FdsConfig *fdsConfig, const char *filename,
                 uint16_t *count) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0001),
-                                          __builtin_bswap16(0x0001)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0001),
+      __builtin_bswap16(0x0001), __builtin_bswap16(0x0001)};
 
   bool stus = false;
   struct {
@@ -2848,9 +3219,9 @@ bool file_dir(const FdsConfig *fdsConfig, const char *filename,
               uint16_t *count) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0002),
-                                          __builtin_bswap16(0x0002)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0002),
+      __builtin_bswap16(0x0002), __builtin_bswap16(0x0002)};
 
   bool stus = false;
   struct {
@@ -2881,9 +3252,9 @@ bool file_findFirst(const FdsConfig *fdsConfig, const char *filename,
                     uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0006),
-                                          __builtin_bswap16(0x0006)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0006),
+      __builtin_bswap16(0x0006), __builtin_bswap16(0x0006)};
 
   bool stus = false;
   struct {
@@ -2914,9 +3285,9 @@ bool file_findFirstRet(const FdsConfig *fdsConfig, const char *filename,
                        uint16_t *length, char *str) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0024),
-                                          __builtin_bswap16(0x0024)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0024),
+      __builtin_bswap16(0x0024), __builtin_bswap16(0x0024)};
 
   bool stus = false;
   struct {
@@ -2954,9 +3325,9 @@ bool file_findFirstRet(const FdsConfig *fdsConfig, const char *filename,
 bool file_findNext(const FdsConfig *fdsConfig, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF1B),
-                                          __builtin_bswap16(0xFE54)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF1B),
+      __builtin_bswap16(0xFE54), __builtin_bswap16(0xFF1B)};
 
   bool stus = false;
   struct {
@@ -2983,9 +3354,9 @@ bool file_findNext(const FdsConfig *fdsConfig, uint16_t *status) {
 bool file_findNextRet(const FdsConfig *fdsConfig, uint16_t *length, char *str) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0025),
-                                          __builtin_bswap16(0x0025)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0025),
+      __builtin_bswap16(0x0025), __builtin_bswap16(0x0025)};
 
   bool stus = false;
   struct {
@@ -3021,9 +3392,9 @@ bool file_exists(const FdsConfig *fdsConfig, const char *filename,
                  uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0005),
-                                          __builtin_bswap16(0x0005)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0005),
+      __builtin_bswap16(0x0005), __builtin_bswap16(0x0005)};
 
   bool stus = false;
   struct {
@@ -3054,9 +3425,9 @@ bool file_open(const FdsConfig *fdsConfig, const char *filename, char mode,
                uint16_t *handle) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x000A),
-                                          __builtin_bswap16(0x000A)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x000A),
+      __builtin_bswap16(0x000A), __builtin_bswap16(0x000A)};
 
   bool stus = false;
   struct {
@@ -3092,9 +3463,9 @@ bool file_open(const FdsConfig *fdsConfig, const char *filename, char mode,
 bool file_close(const FdsConfig *fdsConfig, uint16_t handle, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF18),
-                                          __builtin_bswap16(0xFE51)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF18),
+      __builtin_bswap16(0xFE51), __builtin_bswap16(0xFF18)};
 
   bool stus = false;
   struct {
@@ -3122,9 +3493,9 @@ bool file_read(const FdsConfig *fdsConfig, uint16_t size, uint16_t handle,
                uint16_t *n, char *str) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x000C),
-                                          __builtin_bswap16(0x000C)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x000C),
+      __builtin_bswap16(0x000C), __builtin_bswap16(0x000C)};
 
   bool stus = false;
   struct {
@@ -3162,9 +3533,9 @@ bool file_seek(const FdsConfig *fdsConfig, uint16_t handle, uint16_t hiWord,
                uint16_t loWord, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF16),
-                                          __builtin_bswap16(0xFE4F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF16),
+      __builtin_bswap16(0xFE4F), __builtin_bswap16(0xFF16)};
 
   bool stus = false;
   struct {
@@ -3197,9 +3568,9 @@ bool file_index(const FdsConfig *fdsConfig, uint16_t handle, uint16_t hiWord,
                 uint16_t loWord, uint16_t recordNum, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF15),
-                                          __builtin_bswap16(0xFE4E)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF15),
+      __builtin_bswap16(0xFE4E), __builtin_bswap16(0xFF15)};
 
   bool stus = false;
   struct {
@@ -3234,9 +3605,9 @@ bool file_tell(const FdsConfig *fdsConfig, uint16_t handle, uint16_t *status,
                uint16_t *hiWord, uint16_t *loWord) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x000F),
-                                          __builtin_bswap16(0x000F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x000F),
+      __builtin_bswap16(0x000F), __builtin_bswap16(0x000F)};
 
   bool stus = false;
   struct {
@@ -3308,9 +3679,9 @@ bool file_size(const FdsConfig *fdsConfig, uint16_t handle, uint16_t *status,
                uint16_t *hiWord, uint16_t *loWord) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x000E),
-                                          __builtin_bswap16(0x000E)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x000E),
+      __builtin_bswap16(0x000E), __builtin_bswap16(0x000E)};
 
   bool stus = false;
   struct {
@@ -3344,9 +3715,9 @@ bool file_image(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                 uint16_t handle, uint16_t *errno) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF11),
-                                          __builtin_bswap16(0xFE4A)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF11),
+      __builtin_bswap16(0xFE4A), __builtin_bswap16(0xFF11)};
 
   bool stus = false;
   struct {
@@ -3380,9 +3751,9 @@ bool file_screenCapture(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                         uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF10),
-                                          __builtin_bswap16(0xFE49)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF10),
+      __builtin_bswap16(0xFE49), __builtin_bswap16(0xFF10)};
 
   bool stus = false;
   struct {
@@ -3419,9 +3790,9 @@ bool file_putC(const FdsConfig *fdsConfig, uint16_t car, uint16_t handle,
                uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x001F),
-                                          __builtin_bswap16(0x001F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x001F),
+      __builtin_bswap16(0x001F), __builtin_bswap16(0x001F)};
 
   bool stus = false;
   struct {
@@ -3451,9 +3822,9 @@ bool file_putC(const FdsConfig *fdsConfig, uint16_t car, uint16_t handle,
 bool file_getC(const FdsConfig *fdsConfig, uint16_t handle, uint16_t *car) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF0E),
-                                          __builtin_bswap16(0xFE47)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF0E),
+      __builtin_bswap16(0xFE47), __builtin_bswap16(0xFF0E)};
 
   bool stus = false;
   struct {
@@ -3481,9 +3852,9 @@ bool file_putW(const FdsConfig *fdsConfig, uint16_t word, uint16_t handle,
                uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF0D),
-                                          __builtin_bswap16(0xFE46)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF0D),
+      __builtin_bswap16(0xFE46), __builtin_bswap16(0xFF0D)};
 
   bool stus = false;
   struct {
@@ -3513,9 +3884,9 @@ bool file_putW(const FdsConfig *fdsConfig, uint16_t word, uint16_t handle,
 bool file_getW(const FdsConfig *fdsConfig, uint16_t handle, uint16_t *word) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF0C),
-                                          __builtin_bswap16(0xFE45)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF0C),
+      __builtin_bswap16(0xFE45), __builtin_bswap16(0xFF0C)};
 
   bool stus = false;
   struct {
@@ -3542,9 +3913,9 @@ bool file_getW(const FdsConfig *fdsConfig, uint16_t handle, uint16_t *word) {
 bool file_putS(const FdsConfig *fdsConfig, const char *cstr, uint16_t *count) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0020),
-                                          __builtin_bswap16(0x0020)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0020),
+      __builtin_bswap16(0x0020), __builtin_bswap16(0x0020)};
 
   bool stus = false;
   struct {
@@ -3575,9 +3946,9 @@ bool file_getS(const FdsConfig *fdsConfig, uint16_t size, uint16_t handle,
                uint16_t *n, char *str) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0007),
-                                          __builtin_bswap16(0x0007)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0007),
+      __builtin_bswap16(0x0007), __builtin_bswap16(0x0007)};
 
   bool stus = false;
   struct {
@@ -3615,9 +3986,9 @@ bool file_erase(const FdsConfig *fdsConfig, const char *filename,
                 uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0003),
-                                          __builtin_bswap16(0x0003)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0003),
+      __builtin_bswap16(0x0003), __builtin_bswap16(0x0003)};
 
   bool stus = false;
   struct {
@@ -3648,9 +4019,9 @@ bool file_rewind(const FdsConfig *fdsConfig, uint16_t handle,
                  uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF08),
-                                          __builtin_bswap16(0xFE41)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF08),
+      __builtin_bswap16(0xFE41), __builtin_bswap16(0xFF08)};
 
   bool stus = false;
   struct {
@@ -3678,9 +4049,9 @@ bool file_loadFunction(const FdsConfig *fdsConfig, const char *filename,
                        uint16_t *pointer) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0008),
-                                          __builtin_bswap16(0x0008)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0008),
+      __builtin_bswap16(0x0008), __builtin_bswap16(0x0008)};
 
   bool stus = false;
   struct {
@@ -3828,9 +4199,9 @@ bool file_loadImageControl(const FdsConfig *fdsConfig, const char *filename1,
                            uint16_t *handle) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0009),
-                                          __builtin_bswap16(0x0009)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0009),
+      __builtin_bswap16(0x0009), __builtin_bswap16(0x0009)};
 
   bool stus = false;
   struct {
@@ -3869,9 +4240,9 @@ bool file_loadImageControl(const FdsConfig *fdsConfig, const char *filename1,
 bool file_mount(const FdsConfig *fdsConfig, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF03),
-                                          __builtin_bswap16(0xFE3C)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF03),
+      __builtin_bswap16(0xFE3C), __builtin_bswap16(0xFF03)};
 
   bool stus = false;
   struct {
@@ -3898,9 +4269,9 @@ bool file_mount(const FdsConfig *fdsConfig, uint16_t *status) {
 bool file_unmount(const FdsConfig *fdsConfig) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF02),
-                                          __builtin_bswap16(0xFE3B)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF02),
+      __builtin_bswap16(0xFE3B), __builtin_bswap16(0xFF02)};
 
   bool stus = false;
   struct {
@@ -3925,9 +4296,9 @@ bool file_playWAV(const FdsConfig *fdsConfig, const char *filename,
                   uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x000B),
-                                          __builtin_bswap16(0x000B)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x000B),
+      __builtin_bswap16(0x000B), __builtin_bswap16(0x000B)};
 
   bool stus = false;
   struct {
@@ -3958,9 +4329,9 @@ bool file_writeString(const FdsConfig *fdsConfig, uint16_t handle,
                       const char *cstr, uint16_t *pointer) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0021),
-                                          __builtin_bswap16(0x0021)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0021),
+      __builtin_bswap16(0x0021), __builtin_bswap16(0x0021)};
 
   bool stus = false;
   struct {
@@ -3990,9 +4361,9 @@ bool file_writeString(const FdsConfig *fdsConfig, uint16_t handle,
 bool snd_volume(const FdsConfig *fdsConfig, uint16_t level) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF00),
-                                          __builtin_bswap16(0xFE35)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF00),
+      __builtin_bswap16(0xFE35), __builtin_bswap16(0xFF00)};
 
   bool stus = false;
   struct {
@@ -4016,9 +4387,9 @@ bool snd_volume(const FdsConfig *fdsConfig, uint16_t level) {
 bool snd_pitch(const FdsConfig *fdsConfig, uint16_t rate, uint16_t *oldRate) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFEFF),
-                                          __builtin_bswap16(0xFE34)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEFF),
+      __builtin_bswap16(0xFE34), __builtin_bswap16(0xFEFF)};
 
   bool stus = false;
   struct {
@@ -4045,9 +4416,9 @@ bool snd_pitch(const FdsConfig *fdsConfig, uint16_t rate, uint16_t *oldRate) {
 bool snd_bufSize(const FdsConfig *fdsConfig, uint16_t bufferSize) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFEFE),
-                                          __builtin_bswap16(0xFE33)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEFE),
+      __builtin_bswap16(0xFE33), __builtin_bswap16(0xFEFE)};
 
   bool stus = false;
   struct {
@@ -4072,9 +4443,9 @@ bool snd_bufSize(const FdsConfig *fdsConfig, uint16_t bufferSize) {
 bool snd_stop(const FdsConfig *fdsConfig) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFEFD),
-                                          __builtin_bswap16(0xFE32)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEFD),
+      __builtin_bswap16(0xFE32), __builtin_bswap16(0xFEFD)};
 
   bool stus = false;
   struct {
@@ -4098,9 +4469,9 @@ bool snd_stop(const FdsConfig *fdsConfig) {
 bool snd_pause(const FdsConfig *fdsConfig) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFEFC),
-                                          __builtin_bswap16(0xFE31)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEFC),
+      __builtin_bswap16(0xFE31), __builtin_bswap16(0xFEFC)};
 
   bool stus = false;
   struct {
@@ -4124,9 +4495,9 @@ bool snd_pause(const FdsConfig *fdsConfig) {
 bool snd_continue(const FdsConfig *fdsConfig) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFEFB),
-                                          __builtin_bswap16(0xFE30)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEFB),
+      __builtin_bswap16(0xFE30), __builtin_bswap16(0xFEFB)};
 
   bool stus = false;
   struct {
@@ -4150,9 +4521,9 @@ bool snd_continue(const FdsConfig *fdsConfig) {
 bool snd_playing(const FdsConfig *fdsConfig, uint16_t *togo) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFEFA),
-                                          __builtin_bswap16(0xFE2F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFEFA),
+      __builtin_bswap16(0xFE2F), __builtin_bswap16(0xFEFA)};
 
   bool stus = false;
   struct {
@@ -4180,9 +4551,9 @@ bool img_setPosition(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                      uint16_t xpos, uint16_t ypos, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF4E),
-                                          __builtin_bswap16(0xFE8A)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF4E),
+      __builtin_bswap16(0xFE8A), __builtin_bswap16(0xFF4E)};
 
   bool stus = false;
   struct {
@@ -4216,9 +4587,9 @@ bool img_enable(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                 uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF4D),
-                                          __builtin_bswap16(0xFE89)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF4D),
+      __builtin_bswap16(0xFE89), __builtin_bswap16(0xFF4D)};
 
   bool stus = false;
   struct {
@@ -4248,9 +4619,9 @@ bool img_disable(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF4C),
-                                          __builtin_bswap16(0xFE88)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF4C),
+      __builtin_bswap16(0xFE88), __builtin_bswap16(0xFF4C)};
 
   bool stus = false;
   struct {
@@ -4280,9 +4651,9 @@ bool img_darken(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                 uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF4B),
-                                          __builtin_bswap16(0xFE87)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF4B),
+      __builtin_bswap16(0xFE87), __builtin_bswap16(0xFF4B)};
 
   bool stus = false;
   struct {
@@ -4312,9 +4683,9 @@ bool img_lighten(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF4A),
-                                          __builtin_bswap16(0xFE86)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF4A),
+      __builtin_bswap16(0xFE86), __builtin_bswap16(0xFF4A)};
 
   bool stus = false;
   struct {
@@ -4344,9 +4715,9 @@ bool img_setWord(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  uint16_t offset, uint16_t value, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF49),
-                                          __builtin_bswap16(0xFE85)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF49),
+      __builtin_bswap16(0xFE85), __builtin_bswap16(0xFF49)};
 
   bool stus = false;
   struct {
@@ -4380,9 +4751,9 @@ bool img_getWord(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  uint16_t offset, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF48),
-                                          __builtin_bswap16(0xFE84)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF48),
+      __builtin_bswap16(0xFE84), __builtin_bswap16(0xFF48)};
 
   bool stus = false;
   struct {
@@ -4415,9 +4786,9 @@ bool img_show(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
               uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF47),
-                                          __builtin_bswap16(0xFE83)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF47),
+      __builtin_bswap16(0xFE83), __builtin_bswap16(0xFF47)};
 
   bool stus = false;
   struct {
@@ -4447,9 +4818,9 @@ bool img_setAttributes(const FdsConfig *fdsConfig, uint16_t handle,
                        int16_t index, uint16_t value, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF46),
-                                          __builtin_bswap16(0xFE82)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF46),
+      __builtin_bswap16(0xFE82), __builtin_bswap16(0xFF46)};
 
   bool stus = false;
   struct {
@@ -4481,9 +4852,9 @@ bool img_clearAttributes(const FdsConfig *fdsConfig, uint16_t handle,
                          int16_t index, uint16_t value, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF45),
-                                          __builtin_bswap16(0xFE81)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF45),
+      __builtin_bswap16(0xFE81), __builtin_bswap16(0xFF45)};
 
   bool stus = false;
   struct {
@@ -4515,9 +4886,9 @@ bool img_touched(const FdsConfig *fdsConfig, uint16_t handle, int16_t index,
                  int16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF44),
-                                          __builtin_bswap16(0xFE80)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFF44),
+      __builtin_bswap16(0xFE80), __builtin_bswap16(0xFF44)};
 
   bool stus = false;
   struct {
@@ -4583,9 +4954,9 @@ bool img_blitComtoDisplay(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
 bool bus_in(const FdsConfig *fdsConfig, uint16_t *busState) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFD3),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD3),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD3)};
 
   bool stus = false;
   struct {
@@ -4612,9 +4983,9 @@ bool bus_in(const FdsConfig *fdsConfig, uint16_t *busState) {
 bool bus_out(const FdsConfig *fdsConfig, uint16_t busState) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFD2),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD2),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD2)};
 
   bool stus = false;
   struct {
@@ -4639,9 +5010,9 @@ bool bus_out(const FdsConfig *fdsConfig, uint16_t busState) {
 bool bus_read(const FdsConfig *fdsConfig, uint16_t *busState) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFCF),
-                                          __builtin_bswap16(0xFF86)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFCF),
+      __builtin_bswap16(0xFF86), __builtin_bswap16(0xFFCF)};
 
   bool stus = false;
   struct {
@@ -4668,9 +5039,9 @@ bool bus_read(const FdsConfig *fdsConfig, uint16_t *busState) {
 bool bus_set(const FdsConfig *fdsConfig, uint16_t dirMask) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFD1),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD1),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD1)};
 
   bool stus = false;
   struct {
@@ -4695,9 +5066,9 @@ bool bus_set(const FdsConfig *fdsConfig, uint16_t dirMask) {
 bool bus_write(const FdsConfig *fdsConfig, uint16_t bitfield) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFD0),
-                                          __builtin_bswap16(0xFF87)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD0),
+      __builtin_bswap16(0xFF87), __builtin_bswap16(0xFFD0)};
 
   bool stus = false;
   struct {
@@ -4722,9 +5093,9 @@ bool bus_write(const FdsConfig *fdsConfig, uint16_t bitfield) {
 bool pin_hi(const FdsConfig *fdsConfig, uint16_t pin, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFD6),
-                                          __builtin_bswap16(0xFF8F)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD6),
+      __builtin_bswap16(0xFF8F), __builtin_bswap16(0xFFD6)};
 
   bool stus = false;
   struct {
@@ -4751,9 +5122,9 @@ bool pin_hi(const FdsConfig *fdsConfig, uint16_t pin, uint16_t *status) {
 bool pin_lo(const FdsConfig *fdsConfig, uint16_t pin, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFD5),
-                                          __builtin_bswap16(0xFF8E)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD5),
+      __builtin_bswap16(0xFF8E), __builtin_bswap16(0xFFD5)};
 
   bool stus = false;
   struct {
@@ -4780,9 +5151,9 @@ bool pin_lo(const FdsConfig *fdsConfig, uint16_t pin, uint16_t *status) {
 bool pin_read(const FdsConfig *fdsConfig, uint16_t pin, uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFD4),
-                                          __builtin_bswap16(0xFF8C)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD4),
+      __builtin_bswap16(0xFF8C), __builtin_bswap16(0xFFD4)};
 
   bool stus = false;
   struct {
@@ -4810,9 +5181,9 @@ bool pin_set_picaso(const FdsConfig *fdsConfig, uint16_t mode, uint16_t pin,
                     uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFFD7),
-                                          __builtin_bswap16(CMD_NOT_IMPL)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD7),
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0xFFD7)};
 
   bool stus = false;
   struct {
@@ -4842,9 +5213,9 @@ bool pin_set_diablo(const FdsConfig *fdsConfig, uint16_t mode, uint16_t pin,
                     uint16_t *status) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0xFF90)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(CMD_NOT_IMPL),
+      __builtin_bswap16(0xFF90), __builtin_bswap16(CMD_NOT_IMPL)};
 
   bool stus = false;
   struct {

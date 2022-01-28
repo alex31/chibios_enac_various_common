@@ -19,7 +19,7 @@ extern "C" {
 #endif
   
   typedef struct FdsConfig  FdsConfig;
-  enum FdsConfig_Device {GOLDELOX, PICASO, DIABLO16, AUTO_4DS, TERM_VT100}; 
+  enum FdsConfig_Device {GOLDELOX, PICASO, DIABLO16, PIXXI, AUTO_4DS, TERM_VT100}; 
   enum FdsTextAttribute {FDS_RESET_ATTRIB=0,
     FDS_BOLD=16, FDS_ITALIC=32, FDS_INVERSE=64, FDS_UNDERLINE=128};
   enum FdsScreenOrientation {FDS_LANDSCAPE=0, FDS_LANDSCAPE_REVERSE,

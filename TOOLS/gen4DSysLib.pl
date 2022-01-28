@@ -124,12 +124,13 @@ sub parseApiEntry($)
     my $desc = shift;
     chomp($desc);
 #    $desc =~ s/\s//g;
-    my ($name, $cmd_gold, $cmd_pic, $cmd_dia, $argIn, $argOut, @comment) = split(/;/, $desc);
+    my ($name, $cmd_gold, $cmd_pic, $cmd_dia, $cmd_pixx, $argIn, $argOut, @comment) = split(/;/, $desc);
     $cmd_gold = "CMD_NOT_IMPL" unless $cmd_gold =~ /0x/;
     $cmd_pic = "CMD_NOT_IMPL" unless $cmd_pic =~ /0x/;
     $cmd_dia = "CMD_NOT_IMPL" unless $cmd_dia =~ /0x/;
+    $cmd_pixx = "CMD_NOT_IMPL" unless $cmd_pixx =~ /0x/;
     my @funEntry = ($name,
-		    [$cmd_gold, $cmd_pic, $cmd_dia],
+		    [$cmd_gold, $cmd_pic, $cmd_dia, $cmd_pixx],
 		    [split(/,/, $argIn)],
 		    [split(/,/, $argOut)],
 		    \@comment
@@ -140,8 +141,8 @@ sub parseApiEntry($)
 
 sub checkForErr()
 {
-    my (%gold, %pic, %diab);
-    my @uniqFn=({}, {}, {});
+    my (%gold, %pic, %diab, %pixx);
+    my @uniqFn=({}, {}, {}, {});
     # look for function that do not return arg but ack
     #    foreach my $fnRef (grep ((scalar(@{$_->[F_ARGOUT]}) == 1), @functions)) {
     # look for all functions
@@ -163,6 +164,12 @@ sub checkForErr()
 		if exists $diab{$fnRef->[F_CMD]->[2]};
 	    $diab{$fnRef->[F_CMD]->[2]} = $fnRef->[F_NAME];
 	}
+
+	if ($fnRef->[F_CMD]->[3] =~ /0x/) {	
+	    die "pixxi $fnRef->[F_CMD]->[3] used for $diab{$fnRef->[F_CMD]->[3]} and $fnRef->[F_NAME]\n"
+		if exists $diab{$fnRef->[F_CMD]->[3]};
+	    $diab{$fnRef->[F_CMD]->[3]} = $fnRef->[F_NAME];
+	}
     }
 
     # pour chaque architecture trouver les codes de cmd qui ne sont pas présents dans les 2 autres
@@ -183,6 +190,12 @@ sub checkForErr()
 	 say "diab cmd ${diab{$cmd}}[$cmd] not found on goldelox/picaso"
 	     if (!exists $gold{$cmd}) and (!exists $pic{$cmd});
 	$uniqFn[2]->{${diab{$cmd}}} = 1 unless exists $pic{$cmd} or exists $diab{$cmd};
+    }
+   say '----------';
+     foreach my $cmd (keys %pixx) {
+	 say "pixx cmd ${pixx{$cmd}}[$cmd] not found on goldelox/picaso"
+	     if (!exists $gold{$cmd}) and (!exists $pic{$cmd});
+	$uniqFn[2]->{${pixx{$cmd}}} = 1 unless exists $pic{$cmd} or exists $pixx{$cmd};
     }
 
 }
@@ -257,7 +270,7 @@ sub codeGenEnum($)
     print $fh "\n};\n";
 
     print $fh "enum qdsType_t {\n";
-    print $fh "cmd_goldelox, cmd_picaso, cmd_diablo\n};\n\n";
+    print $fh "cmd_goldelox, cmd_picaso, cmd_diablo, cmd_pixxi\n};\n\n";
     print $fh "#define CMD_NOT_IMPL 0xbaba\n";
 }
 
@@ -265,11 +278,12 @@ sub codeGenCmdArray($)
 {
     my $fh = shift;
     my $nbEntries = scalar(@functions);
-    print $fh "static  const uint16_t cmdCodeByType[$nbEntries][3] = {\n";
+    print $fh "static  const uint16_t cmdCodeByType[$nbEntries][4] = {\n";
     foreach my $fnEntryRef (@functions) {
 	print $fh "{__builtin_bswap16($fnEntryRef->[F_CMD]->[0]), ".
 	          "__builtin_bswap16($fnEntryRef->[F_CMD]->[1]),  " .
-	          "__builtin_bswap16($fnEntryRef->[F_CMD]->[2])},\n"; 
+	          "__builtin_bswap16($fnEntryRef->[F_CMD]->[2]),  " .
+	          "__builtin_bswap16($fnEntryRef->[F_CMD]->[3])},\n"; 
     }
     print $fh "};\n\n";
 }
@@ -322,7 +336,8 @@ sub codeGenFunction($$)
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
-				          __builtin_bswap16($fnEntryRef->[F_CMD]->[2])};
+					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
+				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
 
   bool stus = false;
 EOL
