@@ -31,6 +31,7 @@ sub codeGenFileExecPrototype($$);
 sub codeGenFileExecFunction($$);
 sub codeGenFileWritePrototype($$);
 sub codeGenFileWriteFunction($$);
+sub codeGenAvailability($$);
 sub getParamOut($); # take entryref, return an array of arrayref of tripplet (type, name, arrayNum)
 sub getParamIn($); # take entryref, return an array of arrayref of tripplet (type, name, arrayNum)
 sub getProtoParam($$); # take tripplet (type, name, arrayNum) ref, P_IN or P_OUT, return string, 
@@ -46,6 +47,9 @@ my %dispatchFnTable = (
     'file_write' => [\&codeGenFileWritePrototype, \&codeGenFileWriteFunction],
     'zz__default__' => [\&codeGenPrototype, \&codeGenFunction]
     );
+
+
+my @familyNames = qw/GOLDELOX PICASO DIABLO16 PIXXI/;
 
 #          __ _   _            _               _
 #         / _` | | |          | |             | |
@@ -294,10 +298,11 @@ sub codeGenAllFunctions()
     my $fh = shift;
     GFX_FUNCTION: foreach my $fnEntryRef (@functions) {
 	say $headerFh '';
-	#	say $headerFh "// $fnEntryRef->[F_COMMENT]" if $fnEntryRef->[F_COMMENT];
+	# prepend fonction with comments for parameters IN/OUT and usage abstact
 	foreach my $cmmt (@{$fnEntryRef->[F_COMMENT]}) {
 	    say $headerFh "// $cmmt" if $cmmt;
 	}
+	codeGenAvailability($headerFh, $fnEntryRef);
 	my $goldNotreturn = join(', ', map($_->[P_VAR], grep($_->[P_OPT] =~ /:/,  getParamOut($fnEntryRef))));
 	 say $headerFh "// argument(s) $goldNotreturn not returned if screen is of goldelox type" if $goldNotreturn;
 	foreach my $filterName (sort keys %dispatchFnTable) {
@@ -312,6 +317,16 @@ sub codeGenAllFunctions()
     }
 }
 
+sub codeGenAvailability($$)
+{
+    my ($fh, $fnEntryRef) = @_;
+    my $l = scalar(@{$fnEntryRef->[F_CMD]});
+    print $headerFh "// Available on  ";
+    for (my $i=0; $i < $l; $i++) {
+	print $headerFh "$familyNames[$i], " if $fnEntryRef->[F_CMD]->[$i] !~ /CMD_NOT_IMPL/;
+    }
+    say $headerFh "";
+}
 
 sub codeGenFunction($$)
 {
