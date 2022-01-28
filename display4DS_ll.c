@@ -902,9 +902,9 @@ bool gfx_polyline(const FdsConfig *fdsConfig, uint16_t n, const uint16_t vx[],
                   const uint16_t vy[], uint16_t color) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0005),
-                                          __builtin_bswap16(0x0015),
-                                          __builtin_bswap16(0x0015)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x0005), __builtin_bswap16(0x0015),
+      __builtin_bswap16(0x0015), __builtin_bswap16(0x0015)};
 
   return gfx_polyxxx(fdsConfig, cmds[fdsConfig->deviceType], n, vx, vy, color);
 }
@@ -912,9 +912,9 @@ bool gfx_polygon(const FdsConfig *fdsConfig, uint16_t n, const uint16_t vx[],
                  const uint16_t vy[], uint16_t color) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x0004),
-                                          __builtin_bswap16(0x0013),
-                                          __builtin_bswap16(0x0013)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x0004), __builtin_bswap16(0x0013),
+      __builtin_bswap16(0x0013), __builtin_bswap16(0x0013)};
 
   return gfx_polyxxx(fdsConfig, cmds[fdsConfig->deviceType], n, vx, vy, color);
 }
@@ -923,9 +923,9 @@ bool gfx_polygonFilled(const FdsConfig *fdsConfig, uint16_t n,
                        uint16_t color) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0014),
-                                          __builtin_bswap16(0x0014)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0014),
+      __builtin_bswap16(0x0014), __builtin_bswap16(0x0014)};
   osalDbgAssert(cmds[fdsConfig->deviceType] != CMD_NOT_IMPL,
                 "function gfx_polygonFilled unimplemented for this screen");
   return gfx_polyxxx(fdsConfig, cmds[fdsConfig->deviceType], n, vx, vy, color);
@@ -3641,9 +3641,9 @@ bool file_write(const FdsConfig *fdsConfig, uint16_t size,
                 const uint8_t *source, uint16_t handle, uint16_t *count) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0010),
-                                          __builtin_bswap16(0x0010)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0010),
+      __builtin_bswap16(0x0010), __builtin_bswap16(0x0010)};
 
   bool stus = false;
   struct {
@@ -4082,9 +4082,9 @@ bool file_callFunction(const FdsConfig *fdsConfig, uint16_t handle, uint16_t n,
                        const uint16_t *args, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0019),
-                                          __builtin_bswap16(0x0019)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0019),
+      __builtin_bswap16(0x0019), __builtin_bswap16(0x0019)};
 
   bool stus = false;
   struct {
@@ -4116,9 +4116,9 @@ bool file_run(const FdsConfig *fdsConfig, const char *filename, uint16_t n,
               const uint16_t *args, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x000D),
-                                          __builtin_bswap16(0x000D)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x000D),
+      __builtin_bswap16(0x000D), __builtin_bswap16(0x000D)};
 
   bool stus = false;
   struct {
@@ -4157,9 +4157,9 @@ bool file_exec(const FdsConfig *fdsConfig, const char *filename, uint16_t n,
                const uint16_t *args, uint16_t *value) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0004),
-                                          __builtin_bswap16(0x0004)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(CMD_NOT_IMPL), __builtin_bswap16(0x0004),
+      __builtin_bswap16(0x0004), __builtin_bswap16(0x0004)};
 
   bool stus = false;
   struct {
@@ -4919,9 +4919,9 @@ bool img_blitComtoDisplay(const FdsConfig *fdsConfig, uint16_t x, uint16_t y,
                           const uint16_t *data) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(0x000A),
-                                          __builtin_bswap16(0x0023),
-                                          __builtin_bswap16(0x0023)};
+  static const uint16_t cmds[AUTO_4DS] = {
+      __builtin_bswap16(0x000A), __builtin_bswap16(0x0023),
+      __builtin_bswap16(0x0023), __builtin_bswap16(0x0023)};
   bool stus = false;
   struct {
     uint16_t cmd;

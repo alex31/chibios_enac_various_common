@@ -1088,7 +1088,11 @@ static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t
 
   osalDbgCheck(serial != NULL);
   osalSysLock();
-  
+  if (serial->rxstate != UART_RX_ACTIVE) {
+    osalSysUnlock();
+    return MSG_RESET;
+  }
+					
   msg = osalThreadSuspendTimeoutS(&serial->threadrx, rTimout);
   if (msg != MSG_OK) {
     *size -= uartStopReceiveI(serial);

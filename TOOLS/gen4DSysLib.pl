@@ -500,7 +500,8 @@ bool $fnEntryRef->[F_NAME](const FdsConfig *fdsConfig, uint16_t n, const uint16_
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
-				          __builtin_bswap16($fnEntryRef->[F_CMD]->[2])};
+					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
+				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
   $check
   return gfx_polyxxx(fdsConfig,
 	      cmds[fdsConfig->deviceType],
@@ -521,7 +522,8 @@ bool img_blitComtoDisplay(const FdsConfig *fdsConfig, uint16_t x, uint16_t y, ui
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
-				          __builtin_bswap16($fnEntryRef->[F_CMD]->[2])};
+					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
+				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
   bool stus = false;
  struct {
   uint16_t cmd;
@@ -565,7 +567,9 @@ bool file_callFunction(const FdsConfig *fdsConfig, uint16_t handle, uint16_t n,
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
-					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2])};
+					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
+				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
+
   
   bool stus = false;
   struct {
@@ -607,7 +611,8 @@ sub codeGenFileRunFunction($$)
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
-					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2])};
+					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
+				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
 
   bool stus = false;
   struct {
@@ -654,9 +659,11 @@ sub codeGenFileWriteFunction($$)
                 uint16_t handle, uint16_t *count) {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16(CMD_NOT_IMPL),
-                                          __builtin_bswap16(0x0010),
-                                          __builtin_bswap16(0x0010)};
+  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
+					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
+					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
+				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
+
 
   bool stus = false;
   struct {
@@ -704,7 +711,8 @@ sub codeGenFileExecFunction($$)
   RET_UNLESS_4DSYS_BOOL(fdsConfig);
   static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
-					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2])};
+					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
+				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
 
   bool stus = false;
   struct {
