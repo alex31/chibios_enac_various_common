@@ -458,6 +458,29 @@ bool rtcEnablePeriodicWakeup (RTCDriver *rtcp, uint32_t _second)
   return true;
 }
 
+bool rtcEnablePeriodicWakeupHires (RTCDriver *rtcp, uint16_t millisec)
+{
+#ifdef STM32_RTCSEL_LSE
+  if (STM32_RTCSEL !=  STM32_RTCSEL_LSE)
+    return false;
+#endif
+  
+  rtcp->rtc->CR &= ~RTC_CR_WUTE; // Clear WUTE in RTC_CR to disable the wakeup timer.
+  while ((rtcp->rtc->ISR & RTC_ISR_WUTWF) == 0)  {};
+  MODIFY_REG(rtcp->rtc->CR, RTC_CR_WUCKSEL, 0b000); // RTC CLOCK DIV16
+
+  uint32_t wutr = (millisec * (STM32_LSECLK / 16U)) / 1000U;
+  if (wutr > (1U << 16))
+    return false;
+      
+  rtcp->rtc->WUTR = wutr ; 
+  rtcp->rtc->CR |= RTC_CR_WUTIE;  // enable rtc wakeup ISR and Event
+  rtcp->rtc->CR |= RTC_CR_WUTE; // Set WUTE in RTC_CR to enable the wakeup timer.
+
+  while (rtcp->rtc->ISR & RTC_ISR_WUTWF)  {};
+  return true;
+}
+
 bool rtcDisablePeriodicWakeup (RTCDriver *rtcp)
 {
 #ifdef STM32_RTCSEL_LSE

@@ -45,6 +45,7 @@ bool	 tuneShiftByOffset(RTCDriver *rtcp, int millis);
 
 #ifdef RTC_ISR_WUTWF // RTC V2
 bool rtcEnablePeriodicWakeup (RTCDriver *rtcp, uint32_t _second);
+bool rtcEnablePeriodicWakeupHires (RTCDriver *rtcp, uint16_t milliseconds);
 bool rtcDisablePeriodicWakeup (RTCDriver *rtcp);
 #endif
 
