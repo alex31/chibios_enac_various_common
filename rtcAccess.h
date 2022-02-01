@@ -40,6 +40,7 @@ time_t   getTimeUnixSec(void);
 uint64_t getTimeUnixMillisec(void);
 void     setTimeUnixSec(time_t tt);
 void	 registerRtcChanged (RtcChangedCB cb);
+bool	 tuneShiftByOffset(RTCDriver *rtcp, int millis);
 
 
 #ifdef RTC_ISR_WUTWF // RTC V2

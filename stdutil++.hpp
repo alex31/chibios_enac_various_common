@@ -173,3 +173,84 @@ public:
   SyslockRAII() {chSysLock();};
   ~SyslockRAII() {chSysUnlock();};
 };
+
+
+
+// Type your code here, or load an example.
+#include <cstdio>
+#include <cstdint>
+#include <array>
+#include <bit>
+#include <numbers> 
+
+enum class Endianness {BIG_ENDIAN, LITTLE_ENDIAN};
+
+template<typename T, std::size_t LL, std::size_t RL>
+constexpr std::array<T, LL+RL> join(std::array<T, LL> rhs, std::array<T, RL> lhs)
+{
+	std::array<T, LL+RL> ar;
+    
+    auto current = std::copy(lhs.begin(), lhs.end(), ar.begin());
+    std::copy(rhs.begin(), rhs.end(), current);
+    
+    return ar;
+}
+
+template <typename T>
+constexpr auto bufferize(Endianness endns, T head) {
+   //printf("bufferise type of size %u\n", sizeof(T));
+  
+  if (endns == Endianness::BIG_ENDIAN) {
+      if constexpr (sizeof(T) == 2) {
+          head = std::bit_cast<T>(__builtin_bswap16(std::bit_cast<uint16_t>(head)));
+      } else if constexpr (sizeof(T) == 4) {
+          head = std::bit_cast<T>(__builtin_bswap32(std::bit_cast<uint32_t>(head)));
+      } else if constexpr (sizeof(T) == 8) {
+          head = std::bit_cast<T>(__builtin_bswap64(std::bit_cast<uint64_t>(head)));
+      } 
+  }
+  return std::bit_cast<std::array<std::byte, sizeof(T)>>(head);  
+}
+
+template <typename HEAD, typename... TAILs>
+constexpr auto bufferize(Endianness endns, HEAD head, TAILs... tail) {
+    return join(bufferize(endns, tail...), bufferize(endns, head)); 
+}
+
+
+// int main() { 
+//     constexpr auto array = bufferize(Endianness::LITTLE_ENDIAN,
+//                            static_cast<float>(std::numbers::pi),
+//                            static_cast<uint16_t>(0xdead), 
+//                            static_cast<std::uint8_t>(0xba));
+  
+//     for (const auto& elem : array) 
+//         printf("array_1>> elem = 0x%x\n", elem);
+
+
+//     int a = 10;
+//     short b = 0xdead;
+//     float f = std::numbers::pi;
+//     auto array2 = bufferize(Endianness::BIG_ENDIAN, f, a, b);
+//     for (const auto& elem : array2) 
+//        printf("array_2>> elem = 0x%x\n", elem);
+// }
+
+
+
+template < typename ... Types >
+struct SizeOf;
+
+template < typename TFirst >
+struct SizeOf < TFirst >
+{
+    static const auto Value = (sizeof(TFirst));
+};
+
+template < typename TFirst, typename ... TRemaining >
+struct SizeOf < TFirst, TRemaining ... >
+{
+    static const auto Value = (sizeof(TFirst) + SizeOf<TRemaining...>::Value);
+};
+
+//Used as const int size = SizeOf<int, char, double>::Value; // 4 + 1 + 8 = 13

@@ -473,3 +473,33 @@ bool rtcDisablePeriodicWakeup (RTCDriver *rtcp)
   return true;
 }
 #endif
+
+bool	 tuneShiftByOffset(RTCDriver *rtcp, int millis)
+{
+  chDbgAssert((millis < 1000) && (millis > -1000), "sub second correction allowed only");
+  
+  if ((rtcp->rtc->SSR & (1U<<15)) ||   // risk of overflow
+      (rtcp->rtc->ISR & RTC_ISR_SHPF)) // already pending operation
+    return false;
+  
+  uint32_t shiftVal = 0;
+  
+  // no correction, nothing to do
+  if (millis == 0)
+    return true;
+
+  /* Disable write protection. */
+  rtcp->rtc->WPR = 0xCA;
+  rtcp->rtc->WPR = 0x53;
+
+  if (millis > 0) {
+    shiftVal = RTC_SHIFTR_ADD1S;
+    millis = 1000 - millis;
+  } else {
+    millis = -millis;
+  }
+
+  shiftVal |= (((uint32_t) millis * STM32_RTC_PRESS_VALUE) / 1000U);
+  rtcp->rtc->SHIFTR = shiftVal;
+  return true;
+}
