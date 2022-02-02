@@ -445,8 +445,8 @@ bool	 tuneShiftByOffset(RTCDriver *rtcp, int millis)
     return true;
 
   /* Disable write protection. */
-  rtcp->rtc->WPR = 0xCA;
-  rtcp->rtc->WPR = 0x53;
+  /* rtcp->rtc->WPR = 0xCA; */
+  /* rtcp->rtc->WPR = 0x53; */
 
   if (millis > 0) {
     shiftVal = RTC_SHIFTR_ADD1S;
@@ -455,7 +455,9 @@ bool	 tuneShiftByOffset(RTCDriver *rtcp, int millis)
     millis = -millis;
   }
 
-  shiftVal |= (((uint32_t) millis * STM32_RTC_PRESS_VALUE) / 1000U);
+  shiftVal |= (((uint32_t) millis * (STM32_RTC_PRESS_VALUE-1U)) / 1000U);
+  const syssts_t sts =  osalSysGetStatusAndLockX();
   rtcp->rtc->SHIFTR = shiftVal;
+  osalSysRestoreStatusX(sts);
   return true;
 }
