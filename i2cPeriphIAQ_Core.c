@@ -25,24 +25,26 @@ void iaqCoreStart(IaqCoreDriver *hmp, I2CDriver *i2cp,
 
 IaqCoreStatus         iaqCoreFetchData(IaqCoreDriver *hmp)
 {
-  i2cAcquireBus(hmp->i2cp);
-  const msg_t i2cStatus = i2cMasterReceiveTimeout(hmp->i2cp, slaveNum,
-						  hmp->dmab->data8, sizeof(IaqCoreDmaBuffer),
-						  TIME_MS2I(100));
-  i2cReleaseBus(hmp->i2cp);
-  
-  if (i2cStatus != MSG_OK) {
-    restartI2cPeripheral(hmp->i2cp);
-    return IAQCORE_I2C_ERROR;
-  }
+  do {
+    i2cAcquireBus(hmp->i2cp);
+    const msg_t i2cStatus = i2cMasterReceiveTimeout(hmp->i2cp, slaveNum,
+						    hmp->dmab->data8, sizeof(IaqCoreDmaBuffer),
+						    TIME_MS2I(100));
+    i2cReleaseBus(hmp->i2cp);
+    
+    if (i2cStatus != MSG_OK) {
+      restartI2cPeripheral(hmp->i2cp);
+      return IAQCORE_I2C_ERROR;
+    }
+    
+    
+    if (hmp->dmab->status == IAQCORE_OK) {
+      hmp->dmab->co2_ppm = __builtin_bswap16(hmp->dmab->co2_ppm);
+      hmp->dmab->resistance = __builtin_bswap32(hmp->dmab->resistance);
+      hmp->dmab->tvoc_ppb = __builtin_bswap16(hmp->dmab->tvoc_ppb);
+    }
+  } while (hmp->dmab->status == IAQCORE_BUSY);
 
- 
-  if (hmp->dmab->status == IAQCORE_OK) {
-    hmp->dmab->co2_ppm = __builtin_bswap16(hmp->dmab->co2_ppm);
-    hmp->dmab->resistance = __builtin_bswap32(hmp->dmab->resistance);
-    hmp->dmab->tvoc_ppb = __builtin_bswap16(hmp->dmab->tvoc_ppb);
-  }
-  
   return hmp->dmab->status;
 }
 
