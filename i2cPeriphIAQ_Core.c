@@ -1,7 +1,6 @@
 #include "ch.h"
 #include "hal.h"
 #include "stdutil.h"
-#include <string.h>
 #include "i2cPeriphIAQ_Core.h"
 
 
@@ -17,13 +16,12 @@ void iaqCoreStart(IaqCoreDriver *hmp, I2CDriver *i2cp,
   chDbgAssert((hmp != NULL) && (i2cp != NULL) && (dmab != NULL), "invalid pointers");
   chDbgAssert(i2cp->config->clock_speed <= 100000, "Max IAQ Core I²C clock is 100Khz");
   
-  memset(dmab, 0, sizeof(IaqCoreDmaBuffer));
   hmp->i2cp = i2cp;
   hmp->dmab = dmab;
 }
 
 
-IaqCoreStatus         iaqCoreFetchData(IaqCoreDriver *hmp)
+IaqCoreStatus	iaqCoreFetchData(IaqCoreDriver *hmp)
 {
   do {
     i2cAcquireBus(hmp->i2cp);
@@ -49,7 +47,7 @@ IaqCoreStatus         iaqCoreFetchData(IaqCoreDriver *hmp)
 }
 
 
-static void restartI2cPeripheral(I2CDriver *i2cp)
+static void	restartI2cPeripheral(I2CDriver *i2cp)
 {
   const I2CConfig *cfg = i2cp->config;
   i2cStop(i2cp);
