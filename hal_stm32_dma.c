@@ -300,6 +300,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
  *
  * @iclass
  */
+#ifndef DMA_request_TypeDef
 void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 		      const size_t size,
 		      DMA_Stream_TypeDef *registers)
@@ -353,7 +354,7 @@ void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 
   dma_lld_get_registers(dmap, periphp, mem0p, size, registers);
 }
-
+#endif
 
 /**
  * @brief   Stops an ongoing transaction.
@@ -721,7 +722,7 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
   // because cache management does internal mask and this operation
   // would be useless
 
-#if CACHE_LINE_SIZE != 0
+#if defined CACHE_LINE_SIZE && CACHE_LINE_SIZE != 0
   const uint32_t endp = ((uint32_t) memp % CACHE_LINE_SIZE  +
 			 dsize % CACHE_LINE_SIZE );
   return endp < CACHE_LINE_SIZE  ? dsize + CACHE_LINE_SIZE  :
@@ -739,6 +740,7 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
  *
  * @notapi
  */
+#ifndef DMA_request_TypeDef
 void  dma_lld_get_registers(DMADriver *dmap, volatile void *periphp,
 			    void *mem0p, const size_t size,
 			    DMA_Stream_TypeDef *registers)
@@ -763,6 +765,7 @@ void  dma_lld_get_registers(DMADriver *dmap, volatile void *periphp,
   memcpy(registers, dmap->dmastream->stream, sizeof(DMA_Stream_TypeDef));
   registers->CR |= STM32_DMA_CR_EN;
 }
+#endif
 
 /**
  * @brief   Copy the register of a ready stream

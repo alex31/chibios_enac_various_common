@@ -537,10 +537,11 @@ void  dmaStopTransfert(DMADriver *dmap);
 bool  dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p,
 			 const size_t size);
 void  dmaStopTransfertI(DMADriver *dmap);
+#ifndef DMA_request_TypeDef
 void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 		      const size_t size,
 		      DMA_Stream_TypeDef *registers);
-  
+#endif  
 static  inline dmastate_t dmaGetState(DMADriver *dmap) {return dmap->state;}
 
 #if  STM32_DMA_USE_DOUBLE_BUFFER
@@ -743,11 +744,11 @@ static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
   }
   _dma_timeout_isr(dmap);
 }
-
+#ifndef DMA_request_TypeDef
 void  dma_lld_get_registers(DMADriver *dmap, volatile void *periphp,
 			    void *mem0p, const size_t size,
 			    DMA_Stream_TypeDef *registers);
-
+#endif
 #ifdef __cplusplus
 }
 #endif
