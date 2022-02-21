@@ -7,17 +7,18 @@
 /*
   exemple d'utilisation :
 
-  adcFillConversionGroup(&cgrp, FALSE, &end_cb, 
+  adcGetConfig(3U [NB_CHANNEL], &end_cb, 
   LINE_PC01_POTAR, ADC_SAMPLE_480,
   ADC_CHANNEL_SENSOR, ADC_SAMPLE_480, 
   NULL);
+
+  
+  Si on est en TIMER_DRIVEN, GPTD8 est utilisé
 
 
   TODO : 
   * passage des params sur 64 bits avec concatenation type | valeur par une MACRO par type
     et recuperation type et valeur par deux macros
-  * API simple pour faire de la conversion continue pilotée par TIMER
-    - il faut passer la frequence : utilisation systematique de GPTD8
   
 
   ====
