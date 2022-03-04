@@ -19,8 +19,10 @@ static void  pidAdjustCoeffs (ControlerPid* cpid);
  *    The parameters specified here are those for which we can't set up 
  *    reliable defaults, so we need to have the user set them.
  ***************************************************************************/
-void pidInit (ControlerPid* cpid, float* Input, float* Output, float* Setpoint,
-        float Kp, float Ki, float Kd, PidDirection ControllerDirection)
+void pidInit (ControlerPid* cpid, volatile float* Input,
+	      volatile float* Output, volatile float* Setpoint,
+	      float Kp, float Ki, float Kd,
+	      PidDirection ControllerDirection)
 {
 	
     cpid->myOutput = Output;
@@ -33,7 +35,7 @@ void pidInit (ControlerPid* cpid, float* Input, float* Output, float* Setpoint,
     pidSetControllerDirection(cpid, ControllerDirection);
     pidSetTunings(cpid, Kp, Ki, Kd);
 
-    cpid->lastTime = halGetCounterValue();				
+    cpid->lastTime = chSysGetRealtimeCounterX();				
 }
  
  
@@ -46,8 +48,8 @@ void pidInit (ControlerPid* cpid, float* Input, float* Output, float* Setpoint,
 bool pidCompute(ControlerPid* cpid)
 {
   if(!cpid->inAuto) return false;
-  const halrtcnt_t now = halGetCounterValue();
-  const halrtcnt_t timeChange = rtcntDiff (cpid->lastTime, now);
+  const rtcnt_t now = chSysGetRealtimeCounterX();
+  const rtcnt_t timeChange = rtcntDiff (cpid->lastTime, now);
   cpid->SampleTime = timeChange;
   pidAdjustCoeffs (cpid);
   /*Compute all the working error variables*/
@@ -100,7 +102,7 @@ void pidSetTunings(ControlerPid* cpid, float Kp, float Ki, float Kd)
 
 static void  pidAdjustCoeffs (ControlerPid* cpid)
 {
-  const float SampleTimeInSec = ((float)cpid->SampleTime) / halGetCounterFrequency() ;  
+  const float SampleTimeInSec = ((float)cpid->SampleTime) / STM32_SYSCLK ;  
   cpid->ki = cpid->dispKi * SampleTimeInSec;
   cpid->kd = cpid->dispKd / SampleTimeInSec;
  
@@ -206,5 +208,5 @@ float pidGetKi(ControlerPid* cpid){ return  cpid->dispKi;}
 float pidGetKd(ControlerPid* cpid){ return  cpid->dispKd;}
 PidMode pidGetMode(ControlerPid* cpid){ return  cpid->inAuto ? PID_AUTOMATIC : PID_MANUAL;}
 PidDirection pidGetDirection(ControlerPid* cpid){ return cpid->controllerDirection;}
-halrtcnt_t pidGetSampleTime (ControlerPid* cpid){ return cpid->SampleTime;}
+rtcnt_t pidGetSampleTime (ControlerPid* cpid){ return cpid->SampleTime;}
 
