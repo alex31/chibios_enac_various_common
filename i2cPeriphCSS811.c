@@ -171,12 +171,15 @@ Css811Status css811FetchData(Css811Driver *cssp)
   msg_t i2cStatus;
 
   uint8_t readyStatus = 0;
-  while ((readyStatus & CSS811_STATUS_DATA_READY) == 0) {
+  uint8_t count = 10;
+  while (--count && (readyStatus & CSS811_STATUS_DATA_READY) == 0) {
     i2cStatus = css811GetStatus(cssp, &readyStatus);
     if (i2cStatus != MSG_OK)
       return CSS811_I2C_ERROR;
     chThdSleepMilliseconds(100);
   }
+  if (count == 0)
+    return CSS811_NOTREADY;
     
   cssp->dmab->tx[0] = CSS811_ALG_RESULT_DATA;
   i2cStatus = css811I2CTransmit(cssp, 1U, sizeof(rxData));

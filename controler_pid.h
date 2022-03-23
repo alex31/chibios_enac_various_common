@@ -13,30 +13,38 @@ typedef struct
   float dispKi;				//   format for display purposes
   float dispKd;				//
   
-  volatile float kp;                  // * (P)roportional Tuning Parameter
-  volatile float ki;                  // * (I)ntegral Tuning Parameter
-  volatile float kd;                  // * (D)erivative Tuning Parameter
+  float kp;                  // * (P)roportional Tuning Parameter
+  float ki;                  // * (I)ntegral Tuning Parameter
+  float kd;                  // * (D)erivative Tuning Parameter
   
   PidDirection controllerDirection;
-  
-  float *myInput;              // * Pointers to the Input, Output, and Setpoint variables
-  float *myOutput;             //   This creates a hard link between the variables and the 
-  float *mySetpoint;           //   PID, freeing the user from having to constantly tell us
+
+  volatile float *myInput;              // * Pointers to the Input, Output, and Setpoint variables
+  volatile float *myOutput;             //   This creates a hard link between the variables and the 
+  volatile float *mySetpoint;           //   PID, freeing the user from having to constantly tell us
   //   what these values are.  with pointers we'll just know.
   
-  volatile halrtcnt_t  lastTime;
+  volatile rtcnt_t  lastTime;
   volatile float ITerm, lastInput;
   
-  volatile halrtcnt_t SampleTime;
+  volatile rtcnt_t SampleTime;
   volatile float outMin, outMax;
   bool inAuto;
 } ControlerPid;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 
 
   //commonly used functions **************************************************************************
-void pidInit (ControlerPid* cpid, float* Input, float* Output, float* Setpoint,
-	      float Kp, float Ki, float Kd, PidDirection ControllerDirection);
+void pidInit (ControlerPid* cpid,
+	      volatile float* Input, volatile float* Output,
+	      volatile float* Setpoint,
+	      float Kp, float Ki, float Kd,
+	      PidDirection ControllerDirection);
 
 	
 void pidSetMode (ControlerPid* cpid, PidMode Mode);               // * sets PID to either Manual (0) or Auto (non-0)
@@ -73,4 +81,10 @@ PidMode  pidGetMode(ControlerPid*);			  //  inside the PID.
 PidDirection  pidGetDirection(ControlerPid*);		  //
 
 void  pidInitialize(ControlerPid*);
-halrtcnt_t pidGetSampleTime (ControlerPid* cpid);
+rtcnt_t pidGetSampleTime (ControlerPid* cpid);
+
+#ifdef __cplusplus
+}
+#endif
+
+
