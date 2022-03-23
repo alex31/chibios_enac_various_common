@@ -24,11 +24,15 @@ sub appendLocalDefMcuconf($\@); #mcuconf path, ref to array local defs
 sub updtateXconf($$$); #conf file, updater dir, scriptName
 
 
+
+my $dos2unix = -e '/usr/bin/dos2unix' ? '/usr/bin/dos2unix' : '/bin/dos2unix';
 my @mcuconfScripts = getMcuconfMatchingScripts();
 
 if (scalar(@mcuconfScripts) > 1) {
     die(sprintf("more than one mcuconf updater exist : %s\n",
 	join(' ,', @mcuconfScripts)));	
+} elsif (scalar(@mcuconfScripts) == 0) {
+    die "no mcuconf updater found\n";	
 }
 
 my $projPath = abs_path('.');
@@ -76,11 +80,13 @@ sub getMcuconfScripts()
 sub  getMcuconfMatchingScripts()
 {
     my @families = getMcuFamilies();
+#    say('DBG7> ' . join(' ,', @families));
     my @scripts = getMcuconfScripts();
     my %matchingScripts;
 
     foreach my $s (@scripts) {
 	foreach my $f (@families) {
+	    $f =~ s/F767/F76X/;
 	    $matchingScripts{$s} = 1 if $s =~ /$f/i;
 	}
     }
@@ -95,8 +101,9 @@ sub updtateXconf($$$) #conf file, updater dir, scriptName
 
     chdir $updaterDir;
     die "file $scriptName not found" unless -e $scriptName;
+    system('/bin/cp', $confFile, '/tmp');
     my @com = ('/bin/bash', $scriptName, $confFile);
-    say(sprintf("DBG4 > %s", join(', ', @com)));
+#    say(sprintf("DBG4 > %s", join(', ', @com)));
     system(@com);
 }
 
@@ -115,7 +122,7 @@ sub getLocalDefMcuconf($) #mcuconf path, return array of line
 	push(@defs, $l) if $markFound;
     }
     close($fh);
-    say(sprintf("DBG5 > %s\n", join(', ', @defs)));
+#    say(sprintf("DBG5 > %s\n", join(', ', @defs)));
     return @defs;
 }
 
@@ -126,7 +133,7 @@ sub appendLocalDefMcuconf($\@) #mcuconf path, return array of line
     my @finalContent;    
 
     die "file $mcuconf not found" unless -e $mcuconf;
-    system('/bin/dos2unix', $mcuconf);
+    system($dos2unix, $mcuconf);
     open(my $fh, "<",  $mcuconf) or
 	die sprintf("cannot open < %s: $!\n", $mcuconf);
 
@@ -137,11 +144,11 @@ sub appendLocalDefMcuconf($\@) #mcuconf path, return array of line
     close($fh);
     push(@finalContent, @$defsRef);
     
-    open(my $fh, ">",  $mcuconf) or
+    open($fh, ">",  $mcuconf) or
 	die sprintf("cannot open > %s: $!\n", $mcuconf);
     $fh->print(@finalContent);
     close($fh);
-    system('/bin/dos2unix', $mcuconf);
+    system($dos2unix, $mcuconf);
 }
 
 sub updateMakefile()
