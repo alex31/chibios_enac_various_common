@@ -146,6 +146,7 @@ typedef struct  {
    * @brief dshot dma buffer, sgould be defined in a non Dcached region
    */
   DshotDmaBuffer *dma_buf;
+  bool		 bidir;
 #if DSHOT_SPEED == 0
   uint16_t speed_khz;
 #endif

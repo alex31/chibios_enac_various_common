@@ -103,13 +103,15 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .cr3 = 0                                       // pas de controle de flux hardware (CTS, RTS)
   };
 
+  // when dshot is bidir, the polarity is inverted
+  const uint32_t pwmPolarity = config->bidir ? PWM_OUTPUT_ACTIVE_LOW : PWM_OUTPUT_ACTIVE_HIGH;
 
   driver->config = config;
   driver->dma_conf = (DMAConfig) {
     .stream = config->dma_stream,
     .channel = config->dma_channel,
     .dma_priority = 3,
-    .irq_priority = 2,
+    .irq_priority = 3,
     .direction = DMA_DIR_M2P,
 
     .psize = timerWidthInBytes,
@@ -132,13 +134,13 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   .period    = TICKS_PER_PERIOD,
   .callback  = NULL,
   .channels  = {
-    {.mode = PWM_OUTPUT_ACTIVE_HIGH,
+    {.mode = pwmPolarity,
      .callback = NULL},
-    {.mode = DSHOT_CHANNELS > 1 ? PWM_OUTPUT_ACTIVE_HIGH : PWM_OUTPUT_DISABLED,
+    {.mode = DSHOT_CHANNELS > 1 ? pwmPolarity : PWM_OUTPUT_DISABLED,
      .callback = NULL},
-    {.mode = DSHOT_CHANNELS > 2 ? PWM_OUTPUT_ACTIVE_HIGH : PWM_OUTPUT_DISABLED,
+    {.mode = DSHOT_CHANNELS > 2 ? pwmPolarity : PWM_OUTPUT_DISABLED,
      .callback = NULL},
-    {.mode = DSHOT_CHANNELS > 3 ? PWM_OUTPUT_ACTIVE_HIGH : PWM_OUTPUT_DISABLED,
+    {.mode = DSHOT_CHANNELS > 3 ? pwmPolarity : PWM_OUTPUT_DISABLED,
      .callback = NULL},
   },
   .cr2  =  STM32_TIM_CR2_CCDS,
@@ -420,6 +422,8 @@ static void buildDshotDmaBuffer(DSHOTDriver *driver)
       dp->crc ^=  csum;   // xor data by nibbles
       csum >>= 4;
     }
+    if (driver->config->bidir == true)
+      dp->crc = ~dp->crc; // crc is inverted when dshot bidir protocol is choosed
     // generate pwm frame
     for (size_t bitIdx = 0; bitIdx < DSHOT_BIT_WIDTHS; bitIdx++) {
       const uint16_t value = dp->rawFrame &
