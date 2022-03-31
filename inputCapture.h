@@ -14,7 +14,7 @@ extern "C" {
 		 CH3_RISING_EDGE=1<<6, CH3_FALLING_EDGE=1<<7,  CH3_BOTH_EDGES=1<<8,
 		 CH4_RISING_EDGE=1<<9, CH4_FALLING_EDGE=1<<10, CH4_BOTH_EDGES=1<<11
   } ;
-
+  enum TimICState {TIMIC_STOP, TIMIC_READY, TIMIC_ACTIVE_INIT, TIMIC_ACTIVE};
   typedef struct TimICDriver TimICDriver;
   typedef void (*TimICCallbackCapture_t)(const TimICDriver *timicp, uint32_t channel, uint32_t capture);
   typedef void (*TimICCallbackOverflow_t)(const TimICDriver *timicp);
@@ -49,8 +49,10 @@ extern "C" {
      * @brief   mutex to protect data read/write in concurrent context
      */
     uint32_t channel;
+    uint32_t dier;
     mutex_t mut;
-  } ;
+    volatile enum TimICState state;
+  };
 
 
   /**

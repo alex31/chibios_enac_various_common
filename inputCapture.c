@@ -3,18 +3,20 @@
 
 enum  TimICChannel {TIMIC_CH1=1, TIMIC_CH2=2, TIMIC_CH3=4, TIMIC_CH4=8};
 
-static const TimICDriver*  driverByTimerIndex[6] = {NULL};
+static TimICDriver*  driverByTimerIndex[6] = {NULL};
 
 
-static void rccEnable(const TimICDriver * const timicp);
+static void rccEnable(TimICDriver * const timicp);
 static void rccDisable(const TimICDriver * const timicp);
-static void input_capture_lld_serve_interrupt(const TimICDriver * const timicp);
+static void input_capture_lld_serve_interrupt(TimICDriver * const timicp);
 static void _input_capture_isr_invoke_capture_cb(const TimICDriver * const timicp, uint32_t channel);
-static void _input_capture_isr_invoke_overflow_cb(const TimICDriver * const timicp);
+static void _input_capture_isr_invoke_overflow_cb(TimICDriver * const timicp);
 
 void timIcObjectInit(TimICDriver *timicp)
 {
   timicp->config = NULL;
+  timicp->state = TIMIC_STOP;
+  timicp->dier = 0;
 }
 
 void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
@@ -23,11 +25,11 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
   osalDbgAssert((configp->prescaler >= 1) &&
 		(configp->prescaler <= 65536),
 		"prescaler must be 1 .. 65536");
+  osalDbgAssert(timicp->state == TIMIC_STOP, "state error");
   timicp->config = configp;
   stm32_tim_t * const timer = timicp->config->timer;
   chMtxObjectInit(&timicp->mut);
   rccEnable(timicp);
-  uint32_t ie_dier = 0;
   timicp->channel = 0;
   if (timicp->config->active & (CH1_RISING_EDGE | CH1_FALLING_EDGE | CH1_BOTH_EDGES))
     timicp->channel |= TIMIC_CH1;
@@ -49,7 +51,6 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
 #endif
   
   timer->PSC = configp->prescaler - 1U;	 // prescaler
-  timer->CNT = 0;
   timer->ARR = configp->arr;
   if (timicp->config->mode == TIMIC_PWM_IN) {
   chDbgAssert(__builtin_popcount(timicp->channel) == 1, "In pwm mode, only one channel must be set");
@@ -128,7 +129,7 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
       }
       timer->CCMR1 |= (0b01 << TIM_CCMR1_CC1S_Pos); 
       timer->CCER |= TIM_CCER_CC1E;
-      ie_dier |= STM32_TIM_DIER_CC1IE;
+      timicp->dier |= STM32_TIM_DIER_CC1IE;
     }
     if (timicp->channel & TIMIC_CH2) {
       switch (timicp->config->active & (CH2_RISING_EDGE | CH2_FALLING_EDGE | CH2_BOTH_EDGES)) {
@@ -146,7 +147,7 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
       }
       timer->CCMR1 |= (0b01 << TIM_CCMR1_CC2S_Pos);
       timer->CCER |= TIM_CCER_CC2E;         
-      ie_dier |= STM32_TIM_DIER_CC2IE;
+      timicp->dier |= STM32_TIM_DIER_CC2IE;
     }
     if (timicp->channel & TIMIC_CH3) {
       switch (timicp->config->active & (CH3_RISING_EDGE | CH3_FALLING_EDGE | CH3_BOTH_EDGES)) {
@@ -164,7 +165,7 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
       }
       timer->CCMR2 |= (0b01 << TIM_CCMR2_CC3S_Pos);
       timer->CCER |= TIM_CCER_CC3E;         
-      ie_dier |= STM32_TIM_DIER_CC3IE;
+      timicp->dier |= STM32_TIM_DIER_CC3IE;
     }
     if (timicp->channel & TIMIC_CH4) {
       switch (timicp->config->active & (CH4_RISING_EDGE | CH4_FALLING_EDGE | CH4_BOTH_EDGES)) {
@@ -182,50 +183,59 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
       }
       timer->CCMR2 |= (0b01 << TIM_CCMR2_CC4S_Pos);
       timer->CCER |= TIM_CCER_CC4E;
-      ie_dier |= STM32_TIM_DIER_CC4IE;
+      timicp->dier |= STM32_TIM_DIER_CC4IE;
     }
   } else { 
     chSysHalt("invalid mode");
   }
   // keep only DMA bits, not ISR bits that are handle by driver
-  timer->DIER = timicp->config->dier & (~ STM32_TIM_DIER_IRQ_MASK); 
-  if (timicp->config->capture_cb)
-    timer->DIER |= ie_dier;
+  timicp->dier = timicp->dier | (timicp->config->dier & (~ STM32_TIM_DIER_IRQ_MASK)); 
+  if (timicp->config->capture_cb == NULL)
+    timicp->dier = 0;
   if (timicp->config->overflow_cb)
-    timer->DIER |= STM32_TIM_DIER_UIE;
+    timicp->dier |= STM32_TIM_DIER_UIE;
   
-  timer->SR = 0;
+  timicp->state = TIMIC_READY;
 }
 
 void timIcStartCapture(TimICDriver *timicp)
 {
   osalDbgCheck(timicp != NULL);
+  osalDbgAssert(timicp->state == TIMIC_READY, "state error");
   stm32_tim_t * const timer = timicp->config->timer;
   osalDbgCheck(timer != NULL);
-  timer->CNT = 0;
+  timer->SR = 0;
+  timer->DIER = timicp->dier;
+  timicp->state = TIMIC_ACTIVE_INIT;
   timer->CR1 |= TIM_CR1_CEN;
 }
 
 void timIcStopCapture(TimICDriver *timicp)
 {
   osalDbgCheck(timicp != NULL);
+  osalDbgAssert(timicp->state != TIMIC_STOP, "state error");
   stm32_tim_t * const timer = timicp->config->timer;
   osalDbgCheck(timer != NULL);
   timer->CR1 &= ~TIM_CR1_CEN;
+  timer->DIER = 0;
+  timicp->state = TIMIC_READY;
 }
 
 void timIcStop(TimICDriver *timicp)
 {
+  osalDbgAssert(timicp->state != TIMIC_STOP, "state error");
   chMtxLock(&timicp->mut);
   rccDisable(timicp);
   timIcObjectInit(timicp);
   chMtxUnlock(&timicp->mut);
+  timicp->state = TIMIC_STOP;
+  timicp->dier = 0;
 }
 
 
 
 
-static void rccEnable(const TimICDriver * const timicp)
+static void rccEnable(TimICDriver * const timicp)
 {
   const stm32_tim_t * const timer = timicp->config->timer;
   const bool use_isr = timicp->config->capture_cb || timicp->config->overflow_cb;
@@ -762,13 +772,13 @@ OSAL_IRQ_HANDLER(STM32_TIM8_CC_HANDLER) {
 #endif /* STM32_INPUT_CAPTURE_ENABLE_TIM8_ISR */
 #endif /* STM32_INPUT_CAPTURE_USE_TIM8 */
 
-static void input_capture_lld_serve_interrupt(const TimICDriver * const timicp)
+static void input_capture_lld_serve_interrupt(TimICDriver * const timicp)
 {
   uint32_t sr;
   stm32_tim_t * const timer = timicp->config->timer;
   
   sr  = timer->SR;
-  sr &= timer->DIER & STM32_TIM_DIER_IRQ_MASK;
+  sr &= (timer->DIER & STM32_TIM_DIER_IRQ_MASK);
   timer->SR = ~sr;
 
   if (timicp->channel & TIMIC_CH1) {
@@ -799,8 +809,10 @@ static void _input_capture_isr_invoke_capture_cb(const TimICDriver * const timic
   }
 }
 
-static void _input_capture_isr_invoke_overflow_cb(const TimICDriver * const timicp)
+static void _input_capture_isr_invoke_overflow_cb(TimICDriver * const timicp)
 {
-  if (timicp->config->overflow_cb)
+  if (timicp->state == TIMIC_ACTIVE_INIT) {
+    timicp->state = TIMIC_ACTIVE;
+  } else if (timicp->config->overflow_cb)
     timicp->config->overflow_cb(timicp);
 }
