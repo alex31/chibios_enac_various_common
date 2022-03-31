@@ -3,17 +3,12 @@
 #include "ch.h"
 #include "hal.h"
 
-/*
-
-  TODO : inferer le channel depuis active
- */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
   enum  TimICMode {TIMIC_INPUT_CAPTURE, TIMIC_PWM_IN} ;
-  enum  TimICChannel {TIMIC_CH1=1, TIMIC_CH2=2, TIMIC_CH3=4, TIMIC_CH4=8} ;
   enum  TimICActive {CH1_RISING_EDGE=1<<0, CH1_FALLING_EDGE=1<<1,  CH1_BOTH_EDGES=1<<2,
 		 CH2_RISING_EDGE=1<<3, CH2_FALLING_EDGE=1<<4,  CH2_BOTH_EDGES=1<<5,
 		 CH3_RISING_EDGE=1<<6, CH3_FALLING_EDGE=1<<7,  CH3_BOTH_EDGES=1<<8,
@@ -35,7 +30,6 @@ extern "C" {
     TimICCallbackCapture_t capture_cb;
     TimICCallbackOverflow_t overflow_cb;
     enum TimICMode	mode;
-    uint32_t channel;
     uint32_t active;
     uint32_t dier;
     uint32_t prescaler:17;
@@ -54,6 +48,7 @@ extern "C" {
     /**
      * @brief   mutex to protect data read/write in concurrent context
      */
+    uint32_t channel;
     mutex_t mut;
   } ;
 

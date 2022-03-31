@@ -1,8 +1,9 @@
 #include "inputCapture.h"
 
 
+enum  TimICChannel {TIMIC_CH1=1, TIMIC_CH2=2, TIMIC_CH3=4, TIMIC_CH4=8};
 
-static const TimICDriver*  driverByTimerIndex[8] = {NULL};
+static const TimICDriver*  driverByTimerIndex[6] = {NULL};
 
 
 static void rccEnable(const TimICDriver * const timicp);
@@ -24,11 +25,19 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
 		"prescaler must be 1 .. 65536");
   timicp->config = configp;
   stm32_tim_t * const timer = timicp->config->timer;
-  const uint32_t channel = timicp->config->channel;
   chMtxObjectInit(&timicp->mut);
   rccEnable(timicp);
   uint32_t ie_dier = 0;
-
+  timicp->channel = 0;
+  if (timicp->config->active & (CH1_RISING_EDGE | CH1_FALLING_EDGE | CH1_BOTH_EDGES))
+    timicp->channel |= TIMIC_CH1;
+  if (timicp->config->active & (CH2_RISING_EDGE | CH2_FALLING_EDGE | CH2_BOTH_EDGES))
+    timicp->channel |= TIMIC_CH2;
+  if (timicp->config->active & (CH3_RISING_EDGE | CH3_FALLING_EDGE | CH3_BOTH_EDGES))
+    timicp->channel |= TIMIC_CH3;
+  if (timicp->config->active & (CH4_RISING_EDGE | CH4_FALLING_EDGE | CH4_BOTH_EDGES))
+    timicp->channel |= TIMIC_CH4;
+  
   timer->CR1 = 0;	    // disable timer
 
   // hack in case of timer with more fields
@@ -43,10 +52,10 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
   timer->CNT = 0;
   timer->ARR = configp->arr;
   if (timicp->config->mode == TIMIC_PWM_IN) {
-  chDbgAssert(__builtin_popcount(channel) == 1, "In pwm mode, only one channel must be set");
+  chDbgAssert(__builtin_popcount(timicp->channel) == 1, "In pwm mode, only one channel must be set");
   chDbgAssert((timicp->config->capture_cb == NULL) && (timicp->config->overflow_cb == NULL),
 	      "In pwm mode, callback are not implemented, use PWMDriver instead");
-  switch (channel) {
+  switch (timicp->channel) {
   case TIMIC_CH1:
     timer->CCMR1 = (0b01 << TIM_CCMR1_CC1S_Pos) | (0b10 << TIM_CCMR1_CC2S_Pos);
     timer->CCMR2 = 0U;
@@ -103,7 +112,7 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
     timer->SMCR  = 0; 
     timer->CCER = 0;
     
-    if (channel & TIMIC_CH1) {
+    if (timicp->channel & TIMIC_CH1) {
       switch (timicp->config->active & (CH1_RISING_EDGE | CH1_FALLING_EDGE | CH1_BOTH_EDGES)) {
       case CH1_RISING_EDGE:
 	timer->CCER |= 0;
@@ -121,7 +130,7 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
       timer->CCER |= TIM_CCER_CC1E;
       ie_dier |= STM32_TIM_DIER_CC1IE;
     }
-    if (channel & TIMIC_CH2) {
+    if (timicp->channel & TIMIC_CH2) {
       switch (timicp->config->active & (CH2_RISING_EDGE | CH2_FALLING_EDGE | CH2_BOTH_EDGES)) {
       case CH2_RISING_EDGE:
 	timer->CCER |= 0;
@@ -139,7 +148,7 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
       timer->CCER |= TIM_CCER_CC2E;         
       ie_dier |= STM32_TIM_DIER_CC2IE;
     }
-    if (channel & TIMIC_CH3) {
+    if (timicp->channel & TIMIC_CH3) {
       switch (timicp->config->active & (CH3_RISING_EDGE | CH3_FALLING_EDGE | CH3_BOTH_EDGES)) {
       case CH3_RISING_EDGE:
 	timer->CCER |= 0;
@@ -157,7 +166,7 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
       timer->CCER |= TIM_CCER_CC3E;         
       ie_dier |= STM32_TIM_DIER_CC3IE;
     }
-    if (channel & TIMIC_CH4) {
+    if (timicp->channel & TIMIC_CH4) {
       switch (timicp->config->active & (CH4_RISING_EDGE | CH4_FALLING_EDGE | CH4_BOTH_EDGES)) {
       case CH4_RISING_EDGE:
 	timer->CCER |= 0;
@@ -222,7 +231,7 @@ static void rccEnable(const TimICDriver * const timicp)
   const bool use_isr = timicp->config->capture_cb || timicp->config->overflow_cb;
 #ifdef TIM1
   if (timer == STM32_TIM1) {
-    driverByTimerIndex[1] = timicp;
+    driverByTimerIndex[0] = timicp;
     rccEnableTIM1(true);
     rccResetTIM1();
     if (use_isr) {
@@ -237,7 +246,7 @@ static void rccEnable(const TimICDriver * const timicp)
 #endif
 #ifdef TIM2
   else  if (timer == STM32_TIM2) {
-    driverByTimerIndex[2] = timicp;
+    driverByTimerIndex[1] = timicp;
     rccEnableTIM2(true);
     rccResetTIM2();
     if (use_isr) {
@@ -247,7 +256,7 @@ static void rccEnable(const TimICDriver * const timicp)
 #endif
 #ifdef TIM3
   else  if (timer == STM32_TIM3) {
-    driverByTimerIndex[3] = timicp;
+    driverByTimerIndex[2] = timicp;
     rccEnableTIM3(true);
     rccResetTIM3();
     if (use_isr) {
@@ -257,7 +266,7 @@ static void rccEnable(const TimICDriver * const timicp)
 #endif
 #ifdef TIM4
   else  if (timer == STM32_TIM4) {
-    driverByTimerIndex[4] = timicp;
+    driverByTimerIndex[3] = timicp;
     rccEnableTIM4(true);
     rccResetTIM4();
     if (use_isr) {
@@ -267,7 +276,7 @@ static void rccEnable(const TimICDriver * const timicp)
 #endif
 #ifdef TIM5
   else  if (timer == STM32_TIM5) {
-    driverByTimerIndex[5] = timicp;
+    driverByTimerIndex[4] = timicp;
     rccEnableTIM5(true);
     rccResetTIM5();
     if (use_isr) {
@@ -277,7 +286,7 @@ static void rccEnable(const TimICDriver * const timicp)
 #endif
 #ifdef TIM8
   else  if (timer == STM32_TIM8) {
-    driverByTimerIndex[8] = timicp;
+    driverByTimerIndex[5] = timicp;
     rccEnableTIM8(true);
     rccResetTIM8();
     if (use_isr) {
@@ -596,7 +605,7 @@ OSAL_IRQ_HANDLER(STM32_TIM1_UP_TIM10_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  input_capture_lld_serve_interrupt(driverByTimerIndex[1]);
+  input_capture_lld_serve_interrupt(driverByTimerIndex[0]);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -605,7 +614,7 @@ OSAL_IRQ_HANDLER(STM32_TIM1_UP_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  input_capture_lld_serve_interrupt(driverByTimerIndex[1]);
+  input_capture_lld_serve_interrupt(driverByTimerIndex[0]);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -625,7 +634,7 @@ OSAL_IRQ_HANDLER(STM32_TIM1_CC_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  input_capture_lld_serve_interrupt(driverByTimerIndex[1]);
+  input_capture_lld_serve_interrupt(driverByTimerIndex[0]);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -646,7 +655,7 @@ OSAL_IRQ_HANDLER(STM32_TIM2_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  input_capture_lld_serve_interrupt(driverByTimerIndex[2]);
+  input_capture_lld_serve_interrupt(driverByTimerIndex[1]);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -667,7 +676,7 @@ OSAL_IRQ_HANDLER(STM32_TIM3_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  input_capture_lld_serve_interrupt(driverByTimerIndex[3]);
+  input_capture_lld_serve_interrupt(driverByTimerIndex[2]);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -688,7 +697,7 @@ OSAL_IRQ_HANDLER(STM32_TIM4_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  input_capture_lld_serve_interrupt(driverByTimerIndex[4]);
+  input_capture_lld_serve_interrupt(driverByTimerIndex[3]);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -709,7 +718,7 @@ OSAL_IRQ_HANDLER(STM32_TIM5_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  input_capture_lld_serve_interrupt(driverByTimerIndex[5]);
+  input_capture_lld_serve_interrupt(driverByTimerIndex[4]);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -728,7 +737,7 @@ OSAL_IRQ_HANDLER(STM32_TIM8_UP_TIM13_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  input_capture_lld_serve_interrupt(driverByTimerIndex[8]);
+  input_capture_lld_serve_interrupt(driverByTimerIndex[5]);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -746,7 +755,7 @@ OSAL_IRQ_HANDLER(STM32_TIM8_CC_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  input_capture_lld_serve_interrupt(driverByTimerIndex[8]);
+  input_capture_lld_serve_interrupt(driverByTimerIndex[5]);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -762,19 +771,19 @@ static void input_capture_lld_serve_interrupt(const TimICDriver * const timicp)
   sr &= timer->DIER & STM32_TIM_DIER_IRQ_MASK;
   timer->SR = ~sr;
 
-  if (timicp->config->channel & TIMIC_CH1) {
+  if (timicp->channel & TIMIC_CH1) {
     if ((sr & STM32_TIM_SR_CC1IF) != 0)
       _input_capture_isr_invoke_capture_cb(timicp, 0);
   }
-  if (timicp->config->channel & TIMIC_CH2) {
+  if (timicp->channel & TIMIC_CH2) {
     if ((sr & STM32_TIM_SR_CC2IF) != 0)
       _input_capture_isr_invoke_capture_cb(timicp, 1);
   }
-  if (timicp->config->channel & TIMIC_CH3) {
+  if (timicp->channel & TIMIC_CH3) {
     if ((sr & STM32_TIM_SR_CC3IF) != 0)
       _input_capture_isr_invoke_capture_cb(timicp, 2);
   }
-  if (timicp->config->channel & TIMIC_CH4) {
+  if (timicp->channel & TIMIC_CH4) {
     if ((sr & STM32_TIM_SR_CC4IF) != 0)
       _input_capture_isr_invoke_capture_cb(timicp, 3);
   }
