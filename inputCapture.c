@@ -51,7 +51,8 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
 #endif
   
   timer->PSC = configp->prescaler - 1U;	 // prescaler
-  timer->ARR = configp->arr;
+  timer->ARR = configp->arr ? configp->arr : 0xffffffff;
+  timer->DCR = configp->dcr;
   if (timicp->config->mode == TIMIC_PWM_IN) {
   chDbgAssert(__builtin_popcount(timicp->channel) == 1, "In pwm mode, only one channel must be set");
   chDbgAssert((timicp->config->capture_cb == NULL) && (timicp->config->overflow_cb == NULL),
@@ -189,12 +190,12 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
     chSysHalt("invalid mode");
   }
   // keep only DMA bits, not ISR bits that are handle by driver
-  timicp->dier = timicp->dier | (timicp->config->dier & (~ STM32_TIM_DIER_IRQ_MASK)); 
   if (timicp->config->capture_cb == NULL)
     timicp->dier = 0;
   if (timicp->config->overflow_cb)
     timicp->dier |= STM32_TIM_DIER_UIE;
   
+  timicp->dier = timicp->dier | (timicp->config->dier & (~ STM32_TIM_DIER_IRQ_MASK)); 
   timicp->state = TIMIC_READY;
 }
 

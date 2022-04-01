@@ -32,6 +32,7 @@ extern "C" {
     enum TimICMode	mode;
     uint32_t active;
     uint32_t dier;
+    uint32_t dcr;
     uint32_t prescaler:17;
     uint32_t arr;
   } TimICConfig;
