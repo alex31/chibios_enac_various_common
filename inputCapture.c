@@ -1,16 +1,16 @@
 #include "inputCapture.h"
 
 
-enum  TimICChannel {TIMIC_CH1=1, TIMIC_CH2=2, TIMIC_CH3=4, TIMIC_CH4=8};
+enum  TimICChannel {TIMIC_CH1=1<<0, TIMIC_CH2=1<<1, TIMIC_CH3=1<<2, TIMIC_CH4=1<<3};
 
-static TimICDriver*  driverByTimerIndex[6] = {NULL};
+static const TimICDriver*  driverByTimerIndex[6] = {NULL};
 
 
-static void rccEnable(TimICDriver * const timicp);
+static void rccEnable(const TimICDriver * const timicp);
 static void rccDisable(const TimICDriver * const timicp);
-static void input_capture_lld_serve_interrupt(TimICDriver * const timicp);
+static void input_capture_lld_serve_interrupt(const TimICDriver * const timicp);
 static void _input_capture_isr_invoke_capture_cb(const TimICDriver * const timicp, uint32_t channel);
-static void _input_capture_isr_invoke_overflow_cb(TimICDriver * const timicp);
+static void _input_capture_isr_invoke_overflow_cb(const TimICDriver * const timicp);
 
 void timIcObjectInit(TimICDriver *timicp)
 {
@@ -204,10 +204,12 @@ void timIcStartCapture(TimICDriver *timicp)
   osalDbgAssert(timicp->state == TIMIC_READY, "state error");
   stm32_tim_t * const timer = timicp->config->timer;
   osalDbgCheck(timer != NULL);
+  timer->CR1 = STM32_TIM_CR1_URS;
+  timer->EGR |= STM32_TIM_EGR_UG;
   timer->SR = 0;
   timer->DIER = timicp->dier;
-  timicp->state = TIMIC_ACTIVE_INIT;
-  timer->CR1 |= TIM_CR1_CEN;
+  timer->CR1 = STM32_TIM_CR1_URS | STM32_TIM_CR1_CEN;
+  timicp->state = TIMIC_ACTIVE;
 }
 
 void timIcStopCapture(TimICDriver *timicp)
@@ -235,7 +237,7 @@ void timIcStop(TimICDriver *timicp)
 
 
 
-static void rccEnable(TimICDriver * const timicp)
+static void rccEnable(const TimICDriver * const timicp)
 {
   const stm32_tim_t * const timer = timicp->config->timer;
   const bool use_isr = timicp->config->capture_cb || timicp->config->overflow_cb;
@@ -772,7 +774,7 @@ OSAL_IRQ_HANDLER(STM32_TIM8_CC_HANDLER) {
 #endif /* STM32_INPUT_CAPTURE_ENABLE_TIM8_ISR */
 #endif /* STM32_INPUT_CAPTURE_USE_TIM8 */
 
-static void input_capture_lld_serve_interrupt(TimICDriver * const timicp)
+static void input_capture_lld_serve_interrupt(const TimICDriver * const timicp)
 {
   uint32_t sr;
   stm32_tim_t * const timer = timicp->config->timer;
@@ -809,10 +811,8 @@ static void _input_capture_isr_invoke_capture_cb(const TimICDriver * const timic
   }
 }
 
-static void _input_capture_isr_invoke_overflow_cb(TimICDriver * const timicp)
+static void _input_capture_isr_invoke_overflow_cb(const TimICDriver * const timicp)
 {
-  if (timicp->state == TIMIC_ACTIVE_INIT) {
-    timicp->state = TIMIC_ACTIVE;
-  } else if (timicp->config->overflow_cb)
+  if (timicp->config->overflow_cb)
     timicp->config->overflow_cb(timicp);
 }
