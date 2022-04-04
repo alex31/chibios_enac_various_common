@@ -64,6 +64,7 @@
 #                |_|     |_|     \___/   \__|   \___/   \__|   |___/   |_|      \___|
 */
 static DshotPacket makeDshotPacket(const uint16_t throttle, const bool tlmRequest);
+static void setCrc4(DshotPacket *dp);
 static inline void setDshotPacketThrottle(DshotPacket * const dp, const uint16_t throttle);
 static inline void setDshotPacketTlm(DshotPacket * const dp, const bool tlmRequest);
 static void buildDshotDmaBuffer(DSHOTDriver *driver);
@@ -379,6 +380,18 @@ DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
 #                | |     | |    | |   \ V /  | (_| | \ |_   |  __/
 #                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|
 */
+
+static void setCrc4(DshotPacket *dp)
+{
+  // compute checksum
+  dp->crc = 0;
+  uint16_t csum = (dp->throttle << 1) | dp->telemetryRequest;
+  for (int i = 0; i < 3; i++) {
+    dp->crc ^=  csum;   // xor data by nibbles
+    csum >>= 4;
+  }
+}
+
 static DshotPacket makeDshotPacket(const uint16_t _throttle, const bool tlmRequest)
 {
   DshotPacket dp = {.throttle = _throttle,
@@ -386,13 +399,7 @@ static DshotPacket makeDshotPacket(const uint16_t _throttle, const bool tlmReque
                     .crc = 0
                    };
 
-  // compute checksum
-  uint16_t csum = (_throttle << 1) | dp.telemetryRequest;
-  for (int i = 0; i < 3; i++) {
-    dp.crc ^=  csum;   // xor data by nibbles
-    csum >>= 4;
-  }
-
+  setCrc4(&dp);
   return dp;
 }
 
@@ -415,13 +422,8 @@ static void buildDshotDmaBuffer(DSHOTDriver *driver)
   
   for (size_t chanIdx = 0; chanIdx < DSHOT_CHANNELS; chanIdx++) {
     // compute checksum
-    DshotPacket *const dp = &dsp->dp[chanIdx];
-    dp->crc = 0;
-    uint16_t csum = (dp->throttle << 1) | dp->telemetryRequest;
-    for (int i = 0; i < 3; i++) {
-      dp->crc ^=  csum;   // xor data by nibbles
-      csum >>= 4;
-    }
+    DshotPacket * const dp  = &dsp->dp[chanIdx];
+    setCrc4(dp);
     if (driver->config->bidir == true)
       dp->crc = ~dp->crc; // crc is inverted when dshot bidir protocol is choosed
     // generate pwm frame
