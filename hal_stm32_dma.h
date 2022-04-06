@@ -543,6 +543,7 @@ void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 		      DMA_Stream_TypeDef *registers);
 #endif  
 static  inline dmastate_t dmaGetState(DMADriver *dmap) {return dmap->state;}
+static  inline size_t dmaGetTransactionCounter(DMADriver *dmap) {return dmaStreamGetTransactionSize(dmap->dmastream);}
 
 #if  STM32_DMA_USE_DOUBLE_BUFFER
 /**
