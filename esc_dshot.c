@@ -197,6 +197,22 @@ void     dshotStop(DSHOTDriver *driver)
 }
 
 
+void dshotRestart(DSHOTDriver *driver)
+{
+  const bool dmaOk = dmaStart(&driver->dmap, &driver->dma_conf);
+  chDbgAssert(dmaOk == true, "dshot dma start error");
+
+  pwmStart(driver->config->pwmp, &driver->pwm_conf);
+  driver->config->pwmp->tim->DCR = DCR_DBL | DCR_DBA(driver->config->pwmp); // enable bloc register DMA transaction
+  pwmChangePeriod(driver->config->pwmp, DSHOT_PWM_PERIOD);
+
+  for (size_t j=0; j<DSHOT_CHANNELS; j++) {
+    pwmEnableChannel(driver->config->pwmp, j, 0);
+    driver->dshotMotors.dp[j] =  makeDshotPacket(0,0);
+  }
+}
+
+
 /**
  * @brief   prepare throttle order for specified ESC
  *
@@ -317,10 +333,15 @@ void dshotSendFrame(DSHOTDriver *driver)
     }
 
     buildDshotDmaBuffer(driver);
-    dmaStartTransfert(&driver->dmap,
-                      &driver->config->pwmp->tim->DMAR,
-                      driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
-
+    if (driver->config->bidir == true) {
+      dmaTransfert(&driver->dmap,
+		   &driver->config->pwmp->tim->DMAR,
+		   driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
+    } else {
+      dmaStartTransfert(&driver->dmap,
+			&driver->config->pwmp->tim->DMAR,
+			driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
+    }
   }
 }
 

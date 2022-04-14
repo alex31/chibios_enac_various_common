@@ -165,6 +165,7 @@ typedef struct  {
 
 void     dshotStart(DSHOTDriver *driver, const DSHOTConfig *config);
 void     dshotStop(DSHOTDriver *driver);
+void     dshotRestart(DSHOTDriver *driver);
 void     dshotSetThrottle(DSHOTDriver *driver, const uint8_t index, const uint16_t throttle);
 void     dshotSendFrame(DSHOTDriver *driver);
 void     dshotSendThrottles(DSHOTDriver *driver, const uint16_t throttles[DSHOT_CHANNELS]);
