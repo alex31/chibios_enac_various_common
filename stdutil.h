@@ -45,9 +45,14 @@
 
 //#define DEBUG_MB 1
 
-#if defined CONSOLE_DEV_SD
+#if defined CONSOLE_DEV_SD || (CONSOLE_DEV_USB == TRUE)
 extern BaseSequentialStream *chp;
 #endif
+
+#if (CONSOLE_DEV_USB == TRUE)
+extern SerialUSBDriver SDU1;
+#endif
+
 
 #if defined TRACE && defined CONSOLE_DEV_SD
 #include "printf.h"
