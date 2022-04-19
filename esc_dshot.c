@@ -270,6 +270,8 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
     chDbgAssert(false, "dshotSetThrottle index error");
   }
 
+  // some dangerous special commands need to be repeated 6 times
+  // to avoid catastrophic failure
   uint8_t repeat;
   switch (specmd) {
     case DSHOT_CMD_SPIN_DIRECTION_1:
@@ -280,7 +282,7 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
     case DSHOT_CMD_SETTINGS_REQUEST:
     case DSHOT_CMD_AUDIO_STREAM_MODE_ON_OFF:
     case DSHOT_CMD_SILENT_MODE_ON_OFF:
-      repeat = 10;
+      repeat = 6;
       break;
     default:
       repeat = 1;
@@ -288,7 +290,7 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
 
   while (repeat--) {
     dshotSendFrame(driver);
-    chThdSleepMilliseconds(1);
+    chThdSleepMicroseconds(500);
   }
 }
 
