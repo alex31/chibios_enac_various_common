@@ -5,7 +5,7 @@
 
 
 typedef enum  {MODBUS_LITTLE_ENDIAN, MODBUS_BIG_ENDIAN} ModbusEndianness;
-typedef enum  {MODBUS_OK, MODBUS_CRC_ERROR, MODBUS_ARG_ERROR} ModbusStatus;
+typedef enum  {MODBUS_OK, MODBUS_CRC_ERROR, MODBUS_NO_ANSWER, MODBUS_ARG_ERROR} ModbusStatus;
 
 typedef struct {
   SerialDriver    *sd;

@@ -1,7 +1,7 @@
 #include "modbus_master_extented.h"
 #include "crc16_modbus.h"
 #include <string.h>
-
+#include "stdutil.h"
 
 typedef enum  {MODBUS_READ_INPUT_REGISTERS = 0x04,
   MODBUS_WRITE_RAM = 0x41,
@@ -24,13 +24,6 @@ static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
 					 const uint8_t nominalBuffLen,
 					 const uint8_t errorBufflen);
 
-static inline uint16_t modbusCrc16(ModbusEndianness me,
-				   const uint8_t *buf, size_t len) {
-  uint16_t crc = modbus_crc16(buf, len);
-  if (me ==  MODBUS_BIG_ENDIAN)
-    crc = __builtin_bswap16(me);
-  return crc;
-}
 
 void modbusStart(ModbusDriver *mdp, const ModbusConfig *cfg)
 {
@@ -38,7 +31,8 @@ void modbusStart(ModbusDriver *mdp, const ModbusConfig *cfg)
   mdp->config = cfg;
 }
 
-ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr, const uint16_t regNum, uint16_t *regBuffer)
+ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr,
+			    const uint16_t regNum, uint16_t *regBuffer)
 {
   chDbgAssert(regNum != 0, "regNum == 0");
   chDbgAssert((regNum + regAddr) <= 32U, "(regNum + regAddr) > 32");
@@ -84,6 +78,9 @@ ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr, const uin
   if (recStatus == MODBUS_OK) {
     ResponsePDU *response = (ResponsePDU *) mdp->ioBuffer;
     memcpy(regBuffer, response->registers, regNum * sizeof(*regBuffer));
+    if (mdp->config->endianness == MODBUS_BIG_ENDIAN)
+      for (size_t i=0; i < regNum; i++) 
+	regBuffer[i] =  __builtin_bswap16(regBuffer[i]);
   }
   return recStatus;
 }
@@ -216,7 +213,7 @@ static void  sendFrameWithCrc(ModbusDriver *mdp, const uint8_t bufLen)
 {
   // the header and the data are already written in mdp->ioBuffer
   uint16_t *crc = (uint16_t *) (mdp->ioBuffer + bufLen);
-  *crc = modbusCrc16(mdp->config->endianness, mdp->ioBuffer, bufLen);
+  *crc = modbus_crc16(mdp->ioBuffer, bufLen);
   sdWrite(mdp->config->sd, mdp->ioBuffer, bufLen + 2U);
 }
 
@@ -228,11 +225,11 @@ static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
   const size_t blcrc = bufLen + 2U;
   const size_t readLen = sdReadTimeout(mdp->config->sd, mdp->ioBuffer, blcrc,
 				       TIME_MS2I(100));
-  if (readLen != nominalBuffLen) 
-    return MODBUS_ARG_ERROR;
-
+  if (readLen != blcrc) {
+    DebugTrace("readLen = %u", readLen);
+    return readLen ? MODBUS_ARG_ERROR : MODBUS_NO_ANSWER;
+  }
   uint16_t *recCrc = (uint16_t *) (mdp->ioBuffer + nominalBuffLen);
-  const uint16_t localCrc = modbusCrc16(mdp->config->endianness,
-					mdp->ioBuffer, nominalBuffLen);
+  const uint16_t localCrc = modbus_crc16(mdp->ioBuffer, nominalBuffLen);
   return *recCrc == localCrc ? MODBUS_OK : MODBUS_CRC_ERROR;
 }
