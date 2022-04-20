@@ -49,12 +49,25 @@ typedef struct {
   K96Status status;
 } SenseairK96Driver;
 
+typedef struct {
+  uint8_t address;
+  uint8_t pgaGain;
+  uint32_t meterId;
+  uint32_t mapVersion;
+  uint8_t fwType;
+  uint8_t revMain;
+  uint8_t revSub;
+  uint8_t revAux;
+  uint8_t frac;
+} SenseairK96Info;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
   void k96Start(SenseairK96Driver *k96d, const SenseairK96Config *cfg);
   ModbusStatus k96Fetch(SenseairK96Driver *k96d);
+  ModbusStatus k96FetchInfo(SenseairK96Driver *k96d, SenseairK96Info *k96i);
   static inline K96Status k96GetStatus(const SenseairK96Driver *k96d) {return k96d->status;}
   static inline int16_t k96GetLpl(const SenseairK96Driver *k96d) {return k96d->lpl;}
   static inline int16_t k96GetSpl(const SenseairK96Driver *k96d) {return k96d->spl;}

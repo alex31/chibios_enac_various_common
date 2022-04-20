@@ -29,14 +29,14 @@ extern "C" {
 			      const uint16_t regNum, uint16_t *regBuffer);
   
   ModbusStatus modbusWriteRam(ModbusDriver *mdp, const uint32_t memAddr,
-			      const uint16_t bufLen, const uint8_t *memBuffer);
+			      const uint16_t bufLen, const void *memBuffer);
   ModbusStatus modbusReadRam(ModbusDriver *mdp, const uint32_t memAddr,
-			     const uint16_t bufLen, uint8_t *memBuffer);
+			     const uint16_t bufLen, void *memBuffer);
 
   ModbusStatus modbusWriteEeprom(ModbusDriver *mdp, const uint32_t memAddr,
-				 const uint16_t bufLen, const uint8_t *memBuffer);
+				 const uint16_t bufLen, const void *memBuffer);
   ModbusStatus modbusReadEeprom(ModbusDriver *mdp, const uint32_t memAddr,
-				const uint16_t bufLen, uint8_t *memBuffer);
+				const uint16_t bufLen, void *memBuffer);
   
 #ifdef __cplusplus
 }

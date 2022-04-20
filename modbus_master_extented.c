@@ -86,28 +86,32 @@ ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr,
 }
 
 
-ModbusStatus modbusWriteRam(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen, const uint8_t *memBuffer)
+ModbusStatus modbusWriteRam(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen,
+			    const void* memBuffer)
 {
   chDbgAssert((bufLen != 0) && (bufLen < 64U), "0 < bufLen < 64");
   chDbgAssert((memAddr != 0) && ((memAddr + bufLen) < 1280U), "0 < memAddr < 1280");
   return writeMem(mdp,  MODBUS_WRITE_RAM, memAddr, bufLen, memBuffer);
 }
 
-ModbusStatus modbusReadRam(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen, uint8_t *memBuffer)
+ModbusStatus modbusReadRam(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen,
+			   void *memBuffer)
 {
   chDbgAssert((bufLen != 0) && (bufLen < 188U), "0 < bufLen < 188");
   chDbgAssert((memAddr != 0) && ((memAddr + bufLen) < 1280U), "0 < memAddr < 1280");
   return readMem(mdp, MODBUS_READ_RAM, memAddr, bufLen, memBuffer);
 }
 
-ModbusStatus modbusWriteEeprom(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen, const uint8_t *memBuffer)
+ModbusStatus modbusWriteEeprom(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen,
+			       const void* memBuffer)
 {
   chDbgAssert((bufLen != 0) && (bufLen < 64U), "0 < bufLen < 64");
   chDbgAssert((memAddr != 0) && ((memAddr + bufLen) < 32768U), "0 < memAddr < 32768");
   return writeMem(mdp,  MODBUS_WRITE_EEPROM, memAddr, bufLen, memBuffer);
 }
 
-ModbusStatus modbusReadEeprom(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen, uint8_t *memBuffer)
+ModbusStatus modbusReadEeprom(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen,
+			      void* memBuffer)
  {
   chDbgAssert((bufLen != 0) && (bufLen <= 128U), "0 < bufLen < 129");
   chDbgAssert((memAddr != 0) && ((memAddr + bufLen) < 32768U), "0 < memAddr < 32768");
@@ -199,7 +203,7 @@ static ModbusStatus  readMem(ModbusDriver *mdp, const uint8_t funCode,
   }
 
   sendFrameWithCrc(mdp, sizeof(RequestPDU));
-  const ModbusStatus recStatus = receiveFrameWithCrc(mdp, 3U, sizeof(ResponsePDU));
+  const ModbusStatus recStatus = receiveFrameWithCrc(mdp, sizeof(ResponsePDU), 3U);
   if (recStatus == MODBUS_OK) {
     ResponsePDU *response = (ResponsePDU *) mdp->ioBuffer;
     memcpy(memBuffer, response->data, bufLen * sizeof(*memBuffer));
@@ -226,10 +230,13 @@ static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
   const size_t readLen = sdReadTimeout(mdp->config->sd, mdp->ioBuffer, blcrc,
 				       TIME_MS2I(100));
   if (readLen != blcrc) {
-    DebugTrace("readLen = %u", readLen);
+    DebugTrace("error readLen = %u instead of %u", readLen, blcrc);
     return readLen ? MODBUS_ARG_ERROR : MODBUS_NO_ANSWER;
   }
   uint16_t *recCrc = (uint16_t *) (mdp->ioBuffer + nominalBuffLen);
   const uint16_t localCrc = modbus_crc16(mdp->ioBuffer, nominalBuffLen);
+  if (localCrc != *recCrc) {
+    DebugTrace("local Crc 0x%x != received Crc 0x%x", localCrc, *recCrc);
+  }
   return *recCrc == localCrc ? MODBUS_OK : MODBUS_CRC_ERROR;
 }
