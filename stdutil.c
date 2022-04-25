@@ -547,10 +547,14 @@ int _kill(int pid, int sig) {
 #endif
 void *__dso_handle = 0;
 
-
-void __cxa_pure_virtual(void) {
-  osalSysHalt("Pure virtual function call.");
+#ifdef __cplusplus
+extern "C" {
+  __attribute__((weak, noreturn))
+  void __cxa_pure_virtual(void) {
+    osalSysHalt("pure virtual");
+  }
 }
+#endif
 
 
 // legacy
