@@ -61,6 +61,22 @@ typedef struct {
   uint8_t frac;
 } SenseairK96Info;
 
+
+typedef struct {
+  int32_t irLow;
+  int32_t irHigh;
+  int32_t irSignal;
+  double irSignalFiltered;
+} SenseairK96IrChannel;
+
+typedef struct {
+  SenseairK96IrChannel lpl;
+  SenseairK96IrChannel spl;
+  SenseairK96IrChannel mpl;
+} SenseairK96IrRaw;
+
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -68,6 +84,7 @@ extern "C" {
   void k96Start(SenseairK96Driver *k96d, const SenseairK96Config *cfg);
   ModbusStatus k96Fetch(SenseairK96Driver *k96d);
   ModbusStatus k96FetchInfo(SenseairK96Driver *k96d, SenseairK96Info *k96i);
+  ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir);
   static inline K96Status k96GetStatus(const SenseairK96Driver *k96d) {return k96d->status;}
   static inline int16_t k96GetLpl(const SenseairK96Driver *k96d) {return k96d->lpl;}
   static inline int16_t k96GetSpl(const SenseairK96Driver *k96d) {return k96d->spl;}
