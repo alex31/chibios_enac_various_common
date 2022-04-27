@@ -13,6 +13,7 @@ static const SerialConfig serialCfg = {
 
 static ModbusConfig mconf = {
   .endianness = MODBUS_BIG_ENDIAN,
+  .timeBetweenOp = TIME_MS2I(5),
   .slaveAddr = 0x68
 };
 
@@ -30,7 +31,7 @@ ModbusStatus k96Fetch(SenseairK96Driver *k96d)
   ModbusStatus modbusStatus = modbusReadRegs(&k96d->mdrv, 15, 1, (uint16_t *) &k96d->status);
 
   if ((modbusStatus == MODBUS_OK) && (k96d->status == K96_OK)) {
-    chThdSleepMilliseconds(5);
+   
     return modbusReadRegs(&k96d->mdrv, 0, 10, k96d->data);
   } else if (modbusStatus != MODBUS_OK)   {
     k96d->status = (K96Status) modbusStatus;
@@ -45,39 +46,39 @@ ModbusStatus k96FetchInfo(SenseairK96Driver *k96d, SenseairK96Info *k96i)
   *k96i = (SenseairK96Info) {0};
   st = modbusReadRam(&k96d->mdrv, 0x20, sizeof(k96i->address), &k96i->address);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
+ 
   st = modbusReadRam(&k96d->mdrv, 0x21, sizeof(k96i->pgaGain), &k96i->pgaGain);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
+ 
   st = modbusReadRam(&k96d->mdrv, 0x28, sizeof(k96i->meterId), &k96i->meterId);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
+ 
   st = modbusReadRam(&k96d->mdrv, 0x2f, sizeof(k96i->mapVersion), &k96i->mapVersion);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
+ 
   st = modbusReadRam(&k96d->mdrv, 0x62, sizeof(k96i->fwType), &k96i->fwType);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
+ 
   st = modbusReadRam(&k96d->mdrv, 0x63, sizeof(k96i->revMain), &k96i->revMain);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
+ 
   st = modbusReadRam(&k96d->mdrv, 0x64, sizeof(k96i->revSub), &k96i->revSub);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
+ 
   st = modbusReadRam(&k96d->mdrv, 0x65, sizeof(k96i->revAux), &k96i->revAux);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
+ 
   st = modbusReadRam(&k96d->mdrv, 0x1e4, sizeof(k96i->frac), &k96i->frac);
-  chThdSleepMilliseconds(5);
+ 
  exit:
   return st;
 }
 
 
 
-#define BS32(f) f = __builtin_bswap32(f)
-#define BS16(f) f = __builtin_bswap16(f)
-#define BS32_16(f) BS32(f.s32); BS16(f.u16)
+#define BS32(f) _Static_assert(sizeof(f) == 4); f = __builtin_bswap32(f)
+#define BS16(f) _Static_assert(sizeof(f) == 2); f = __builtin_bswap16(f)
+#define BS32_16(f) _Static_assert(sizeof(f) == 6); BS32(f.s32); BS16(f.u16)
 
 ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir)
 {
@@ -116,15 +117,12 @@ ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir)
 
   st = modbusReadRam(&k96d->mdrv, 0x170, sizeof(ad170), &ad170);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
-  
+   
   st = modbusReadRam(&k96d->mdrv, 0x350, sizeof(ad350), &ad350);
   if (st != MODBUS_OK) goto exit;
-  chThdSleepMilliseconds(5);
-  
+   
   st = modbusReadRam(&k96d->mdrv, 0x360, sizeof(ad360), &ad360);
-  chThdSleepMilliseconds(5);
-  
+   
   BS32(ad170.lplIrLow);
   BS32(ad170.lplIrHigh);	       
   BS32(ad170.splIrLow);

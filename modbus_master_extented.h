@@ -9,12 +9,14 @@ typedef enum  {MODBUS_OK, MODBUS_CRC_ERROR, MODBUS_NO_ANSWER, MODBUS_ARG_ERROR} 
 
 typedef struct {
   SerialDriver    *sd;
-  ModbusEndianness endianness;
+  ModbusEndianness endianness; 
+  sysinterval_t	   timeBetweenOp;
   uint8_t	   slaveAddr;
 } ModbusConfig ;
 
 typedef struct {
   const ModbusConfig *config;
+  systime_t    opTimestamp;
   uint8_t      ioBuffer[255U]; // max frame length
 } ModbusDriver;
 

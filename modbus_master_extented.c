@@ -29,6 +29,7 @@ void modbusStart(ModbusDriver *mdp, const ModbusConfig *cfg)
 {
   chDbgAssert((mdp != NULL) && (cfg != NULL), "need valid pointers");
   mdp->config = cfg;
+  mdp->opTimestamp = chVTGetSystemTimeX();
 }
 
 ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr,
@@ -218,7 +219,9 @@ static void  sendFrameWithCrc(ModbusDriver *mdp, const uint8_t bufLen)
   // the header and the data are already written in mdp->ioBuffer
   uint16_t *crc = (uint16_t *) (mdp->ioBuffer + bufLen);
   *crc = modbus_crc16(mdp->ioBuffer, bufLen);
+  chThdSleepUntilWindowed(mdp->opTimestamp, mdp->opTimestamp + mdp->config->timeBetweenOp);
   sdWrite(mdp->config->sd, mdp->ioBuffer, bufLen + 2U);
+  mdp->opTimestamp = chVTGetSystemTimeX();
 }
 
 static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
@@ -229,6 +232,7 @@ static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
   const size_t blcrc = bufLen + 2U;
   const size_t readLen = sdReadTimeout(mdp->config->sd, mdp->ioBuffer, blcrc,
 				       TIME_MS2I(100));
+  mdp->opTimestamp = chVTGetSystemTimeX();
   if (readLen != blcrc) {
     DebugTrace("error readLen = %u instead of %u", readLen, blcrc);
     return readLen ? MODBUS_ARG_ERROR : MODBUS_NO_ANSWER;
