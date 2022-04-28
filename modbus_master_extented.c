@@ -30,6 +30,7 @@ void modbusStart(ModbusDriver *mdp, const ModbusConfig *cfg)
   chDbgAssert((mdp != NULL) && (cfg != NULL), "need valid pointers");
   mdp->config = cfg;
   mdp->opTimestamp = chVTGetSystemTimeX();
+  chMtxObjectInit(&mdp->mtx);
 }
 
 ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr,
@@ -73,6 +74,7 @@ ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr,
     request->nb = regNum;
   }
 
+  chMtxLock(&mdp->mtx);
   sendFrameWithCrc(mdp, sizeof(RequestPDU));
   const ModbusStatus recStatus = receiveFrameWithCrc(mdp,
 						     sizeof(ResponsePDU), sizeof(ResponsePDU)-2U);
@@ -83,6 +85,7 @@ ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr,
       for (size_t i=0; i < regNum; i++) 
 	regBuffer[i] =  __builtin_bswap16(regBuffer[i]);
   }
+  chMtxUnlock(&mdp->mtx);
   return recStatus;
 }
 
@@ -158,8 +161,10 @@ static ModbusStatus  writeMem(ModbusDriver *mdp, const uint8_t funCode,
     request->addr = memAddr;
   }
 
+  chMtxLock(&mdp->mtx);
   sendFrameWithCrc(mdp, sizeof(RequestPDU));
   const ModbusStatus recStatus = receiveFrameWithCrc(mdp, sizeof(ResponsePDU)-1U, sizeof(ResponsePDU));
+  chMtxUnlock(&mdp->mtx);
   
   return recStatus;
 }
@@ -203,13 +208,14 @@ static ModbusStatus  readMem(ModbusDriver *mdp, const uint8_t funCode,
     request->addr = memAddr;
   }
 
+  chMtxLock(&mdp->mtx);
   sendFrameWithCrc(mdp, sizeof(RequestPDU));
   const ModbusStatus recStatus = receiveFrameWithCrc(mdp, sizeof(ResponsePDU), 3U);
   if (recStatus == MODBUS_OK) {
     ResponsePDU *response = (ResponsePDU *) mdp->ioBuffer;
     memcpy(memBuffer, response->data, bufLen * sizeof(*memBuffer));
   }
-  
+  chMtxUnlock(&mdp->mtx);
   return recStatus;
 }
    

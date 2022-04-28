@@ -17,6 +17,7 @@ typedef struct {
 typedef struct {
   const ModbusConfig *config;
   systime_t    opTimestamp;
+  mutex_t      mtx;
   uint8_t      ioBuffer[255U]; // max frame length
 } ModbusDriver;
 
