@@ -74,19 +74,41 @@ ModbusStatus k96FetchInfo(SenseairK96Driver *k96d, SenseairK96Info *k96i)
   return st;
 }
 
+typedef struct {
+  int32_t s32;
+  uint16_t u16;
+}  __attribute__ ((__packed__)) S32_16;
 
+static inline void BS32U(uint32_t *f) {
+  *f = __builtin_bswap32(*f);
+}
+static inline void BS32(int32_t *f) {
+  *f = __builtin_bswap32(*f);
+}
+static inline void BS16U(uint16_t *f) {
+  *f = __builtin_bswap16(*f);
+}
+static inline void BS16(int16_t *f) {
+  *f = __builtin_bswap16(*f);
+}
 
-#define BS32(f) _Static_assert(sizeof(f) == 4); f = __builtin_bswap32(f)
-#define BS16(f) _Static_assert(sizeof(f) == 2); f = __builtin_bswap16(f)
-#define BS32_16(f) _Static_assert(sizeof(f) == 6); BS32(f.s32); BS16(f.u16)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+static inline void BS32_16( S32_16 *f) {
+  BS32(&f->s32);
+  BS16U(&f->u16);
+}
+
+#define BSWAP(f) _Generic((f),		      \
+			   uint32_t:  BS32U,  \
+			   uint16_t:  BS16U,  \
+			   int32_t:   BS32,   \
+			   int16_t:   BS16,   \
+			   S32_16:    BS32_16 \
+			   )(&f)
 
 ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir)
 {
-  typedef struct {
-    int32_t s32;
-    uint16_t u16;
-  }  __attribute__ ((__packed__)) S32_16;
-
   struct {
      int32_t lplIrLow;
      int32_t lplIrHigh;
@@ -94,7 +116,7 @@ ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir)
      int32_t splIrHigh;
      int32_t lplSignal;
      S32_16  lplSignalFiltered;
-     uint8_t dummy[6];
+     uint64_t : 48; // 6 bytes padding
      int32_t splSignal;
      S32_16  splSignalFiltered;
   } __attribute__ ((__packed__)) ad170 = {0};
@@ -122,19 +144,22 @@ ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir)
   if (st != MODBUS_OK) goto exit;
    
   st = modbusReadRam(&k96d->mdrv, 0x360, sizeof(ad360), &ad360);
-   
-  BS32(ad170.lplIrLow);
-  BS32(ad170.lplIrHigh);	       
-  BS32(ad170.splIrLow);
-  BS32(ad170.splIrHigh);
-  BS32(ad170.lplSignal);
-  BS32_16(ad170.lplSignalFiltered);
-  BS32(ad170.splSignal);       
-  BS32_16(ad170.splSignalFiltered);
-  BS32(ad350.mplIrLow);
-  BS32(ad350.mplIrHigh);	       
-  BS32(ad360.mplSignal);       
-  BS32_16(ad360.mplSignalFiltered);
+  if (st != MODBUS_OK) goto exit;
+  
+  BSWAP(ad170.lplIrLow);
+  BSWAP(ad170.lplIrHigh);	       
+  BSWAP(ad170.lplSignal);
+  BSWAP(ad170.lplSignalFiltered);
+  BSWAP(ad170.splIrLow);
+  BSWAP(ad170.splIrHigh);
+  BSWAP(ad170.splSignal);       
+  BSWAP(ad170.splSignalFiltered);
+  BSWAP(ad350.mplIrLow);
+  BSWAP(ad350.mplIrHigh);	       
+  BSWAP(ad360.mplSignal);       
+  BSWAP(ad360.mplSignalFiltered);
+
+#pragma GCC diagnostic pop
 
   k96ir->lpl.irLow = ad170.lplIrLow;
   k96ir->lpl.irHigh = ad170.lplIrHigh;
@@ -151,9 +176,11 @@ ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir)
   k96ir->mpl.irSignal = ad360.mplSignal;
   k96ir->mpl.irSignalFiltered = ad360.mplSignalFiltered.s32 + (ad360.mplSignalFiltered.u16 / 65536.0d);
 
- 
  exit:
   return st;
 }
+
+
+  
 
   
