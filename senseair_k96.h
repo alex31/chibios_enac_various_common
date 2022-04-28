@@ -85,6 +85,14 @@ extern "C" {
   ModbusStatus k96Fetch(SenseairK96Driver *k96d);
   ModbusStatus k96FetchInfo(SenseairK96Driver *k96d, SenseairK96Info *k96i);
   ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir);
+  ModbusStatus k96ReadRam(SenseairK96Driver *k96d, const uint32_t k96RamAddr,
+			  void *buffer, const size_t bufferSize);
+  ModbusStatus k96WriteRam(SenseairK96Driver *k96d, const uint32_t k96RamAddr,
+			  const void *buffer, size_t bufferSize);
+  ModbusStatus k96ReadEeprom(SenseairK96Driver *k96d, const uint32_t k96EepromAddr,
+			  void *buffer, const size_t bufferSize);
+  ModbusStatus k96WriteEeprom(SenseairK96Driver *k96d, const uint32_t k96EepromAddr,
+			  const void *buffer, const size_t bufferSize);
   static inline K96Status k96GetStatus(const SenseairK96Driver *k96d) {return k96d->status;}
   static inline int16_t k96GetLpl(const SenseairK96Driver *k96d) {return k96d->lpl;}
   static inline int16_t k96GetSpl(const SenseairK96Driver *k96d) {return k96d->spl;}

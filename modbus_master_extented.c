@@ -36,7 +36,7 @@ ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr,
 			    const uint16_t regNum, uint16_t *regBuffer)
 {
   chDbgAssert(regNum != 0, "regNum == 0");
-  chDbgAssert((regNum + regAddr) <= 32U, "(regNum + regAddr) > 32");
+  chDbgAssert((regNum + regAddr) <= 32U, "0 < (regNum + regAddr) <= 32");
   typedef struct __attribute__((packed)) {
     uint8_t devAddr;
     uint8_t funCode;
@@ -90,32 +90,32 @@ ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr,
 ModbusStatus modbusWriteRam(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen,
 			    const void* memBuffer)
 {
-  chDbgAssert((bufLen != 0) && (bufLen < 64U), "0 < bufLen < 64");
-  chDbgAssert((memAddr != 0) && ((memAddr + bufLen) < 1280U), "0 < memAddr < 1280");
+  chDbgAssert((bufLen != 0) && (bufLen <= 64U), "0 < bufLen <= 64");
+  chDbgAssert((memAddr + bufLen) < 1280U, "0 < memAddr < 1280");
   return writeMem(mdp,  MODBUS_WRITE_RAM, memAddr, bufLen, memBuffer);
 }
 
 ModbusStatus modbusReadRam(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen,
 			   void *memBuffer)
 {
-  chDbgAssert((bufLen != 0) && (bufLen < 188U), "0 < bufLen < 188");
-  chDbgAssert((memAddr != 0) && ((memAddr + bufLen) < 1280U), "0 < memAddr < 1280");
+  chDbgAssert((bufLen != 0) && (bufLen <= 187U), "0 < bufLen <= 187");
+  chDbgAssert((memAddr + bufLen) < 1280U, "0 < memAddr < 1280");
   return readMem(mdp, MODBUS_READ_RAM, memAddr, bufLen, memBuffer);
 }
 
 ModbusStatus modbusWriteEeprom(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen,
 			       const void* memBuffer)
 {
-  chDbgAssert((bufLen != 0) && (bufLen < 64U), "0 < bufLen < 64");
-  chDbgAssert((memAddr != 0) && ((memAddr + bufLen) < 32768U), "0 < memAddr < 32768");
+  chDbgAssert((bufLen != 0) && (bufLen <= 64U), "0 < bufLen <= 64");
+  chDbgAssert((memAddr + bufLen) < 32768, "0 < memAddr < 32768");
   return writeMem(mdp,  MODBUS_WRITE_EEPROM, memAddr, bufLen, memBuffer);
 }
 
 ModbusStatus modbusReadEeprom(ModbusDriver *mdp, const uint32_t memAddr, const uint16_t bufLen,
 			      void* memBuffer)
  {
-  chDbgAssert((bufLen != 0) && (bufLen <= 128U), "0 < bufLen < 129");
-  chDbgAssert((memAddr != 0) && ((memAddr + bufLen) < 32768U), "0 < memAddr < 32768");
+  chDbgAssert((bufLen != 0) && (bufLen <= 128U), "0 < bufLen <= 128");
+  chDbgAssert((memAddr + bufLen) < 32768U, "0 < memAddr < 32768");
   return readMem(mdp,  MODBUS_READ_EEPROM, memAddr, bufLen, memBuffer);
 }
   

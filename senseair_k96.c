@@ -3,6 +3,9 @@
 
 #include "senseair_k96.h"
 
+#define WRITE_MAX_LEN 64U
+#define READ_RAM_MAX_LEN 187U
+#define READ_EEPROM_MAX_LEN 128U
 
 static const SerialConfig serialCfg = {
   .speed = 115200,
@@ -181,6 +184,76 @@ ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir)
 }
 
 
+ModbusStatus k96ReadRam(SenseairK96Driver *k96d, const uint32_t k96RamAddr,
+			void *buffer, size_t bufferSize)
+{
+  uint8_t *buf8 = (uint8_t *) buffer;
   
+  ModbusStatus st = MODBUS_OK;
+  while(bufferSize != 0) {
+    const size_t chunkSize = bufferSize > READ_RAM_MAX_LEN ? READ_RAM_MAX_LEN : bufferSize;
+    st = modbusReadRam(&k96d->mdrv, k96RamAddr, chunkSize, buf8);
+    if (st != MODBUS_OK) goto exit;
+    buf8 += chunkSize;
+    bufferSize -= chunkSize;
+  }
+    
+ exit:
+  return st;
+}
+
+ModbusStatus k96ReadEeprom(SenseairK96Driver *k96d, const uint32_t k96EepromAddr,
+			void *buffer, size_t bufferSize)
+{
+  uint8_t *buf8 = (uint8_t *) buffer;
+  
+  ModbusStatus st = MODBUS_OK;
+  while(bufferSize != 0) {
+    const size_t chunkSize = bufferSize > READ_EEPROM_MAX_LEN ? READ_EEPROM_MAX_LEN : bufferSize;
+    st = modbusReadEeprom(&k96d->mdrv, k96EepromAddr, chunkSize, buf8);
+    if (st != MODBUS_OK) goto exit;
+    buf8 += chunkSize;
+    bufferSize -= chunkSize;
+  }
+    
+ exit:
+  return st;
+}
+    
 
   
+ModbusStatus k96WriteRam(SenseairK96Driver *k96d, const uint32_t k96RamAddr,
+			  const void *buffer, size_t bufferSize)
+{
+  const uint8_t *buf8 = (uint8_t *) buffer;
+  
+  ModbusStatus st = MODBUS_OK;
+  while(bufferSize != 0) {
+    const size_t chunkSize = bufferSize > WRITE_MAX_LEN ?  WRITE_MAX_LEN : bufferSize;
+    st = modbusWriteRam(&k96d->mdrv, k96RamAddr, chunkSize, buf8);
+    if (st != MODBUS_OK) goto exit;
+    buf8 += chunkSize;
+    bufferSize -= chunkSize;
+   }
+  
+ exit:
+  return st;
+}
+
+ModbusStatus k96WriteEeprom(SenseairK96Driver *k96d, const uint32_t k96EepromAddr,
+			  const void *buffer, size_t bufferSize)
+{
+  const uint8_t *buf8 = (uint8_t *) buffer;
+  
+  ModbusStatus st = MODBUS_OK;
+  while(bufferSize != 0) {
+    const size_t chunkSize = bufferSize > WRITE_MAX_LEN ?  WRITE_MAX_LEN : bufferSize;
+    st = modbusWriteEeprom(&k96d->mdrv, k96EepromAddr, chunkSize, buf8);
+    if (st != MODBUS_OK) goto exit;
+    buf8 += chunkSize;
+    bufferSize -= chunkSize;
+   }
+  
+ exit:
+  return st;
+}
