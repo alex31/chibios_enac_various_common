@@ -20,6 +20,38 @@ static ModbusConfig mconf = {
   .slaveAddr = 0x68
 };
 
+typedef struct {
+  int32_t s32;
+  uint16_t u16;
+}  __attribute__ ((__packed__)) S32_16;
+
+static inline void BS32U(uint32_t *f) {
+  *f = __builtin_bswap32(*f);
+}
+static inline void BS32(int32_t *f) {
+  *f = __builtin_bswap32(*f);
+}
+static inline void BS16U(uint16_t *f) {
+  *f = __builtin_bswap16(*f);
+}
+static inline void BS16(int16_t *f) {
+  *f = __builtin_bswap16(*f);
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+static inline void BS32_16( S32_16 *f) {
+  BS32(&f->s32);
+  BS16U(&f->u16);
+}
+
+#define BSWAP(f) _Generic((f),		      \
+			   uint32_t:  BS32U,  \
+			   uint16_t:  BS16U,  \
+			   int32_t:   BS32,   \
+			   int16_t:   BS16,   \
+			   S32_16:    BS32_16 \
+			   )(&f)
 
 void k96Start(SenseairK96Driver *k96d, const SenseairK96Config *cfg)
 {
@@ -54,6 +86,7 @@ ModbusStatus k96FetchInfo(SenseairK96Driver *k96d, SenseairK96Info *k96i)
   if (st != MODBUS_OK) goto exit;
  
   st = modbusReadRam(&k96d->mdrv, 0x28, sizeof(k96i->meterId), &k96i->meterId);
+  BSWAP(k96i->meterId);
   if (st != MODBUS_OK) goto exit;
  
   st = modbusReadRam(&k96d->mdrv, 0x2f, sizeof(k96i->mapVersion), &k96i->mapVersion);
@@ -77,38 +110,6 @@ ModbusStatus k96FetchInfo(SenseairK96Driver *k96d, SenseairK96Info *k96i)
   return st;
 }
 
-typedef struct {
-  int32_t s32;
-  uint16_t u16;
-}  __attribute__ ((__packed__)) S32_16;
-
-static inline void BS32U(uint32_t *f) {
-  *f = __builtin_bswap32(*f);
-}
-static inline void BS32(int32_t *f) {
-  *f = __builtin_bswap32(*f);
-}
-static inline void BS16U(uint16_t *f) {
-  *f = __builtin_bswap16(*f);
-}
-static inline void BS16(int16_t *f) {
-  *f = __builtin_bswap16(*f);
-}
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-static inline void BS32_16( S32_16 *f) {
-  BS32(&f->s32);
-  BS16U(&f->u16);
-}
-
-#define BSWAP(f) _Generic((f),		      \
-			   uint32_t:  BS32U,  \
-			   uint16_t:  BS16U,  \
-			   int32_t:   BS32,   \
-			   int16_t:   BS16,   \
-			   S32_16:    BS32_16 \
-			   )(&f)
 
 ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir)
 {
