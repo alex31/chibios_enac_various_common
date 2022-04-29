@@ -234,9 +234,10 @@ static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
 					 const uint8_t nominalBuffLen,
 					 const uint8_t errorBufflen)
 {
-  const size_t bufLen = nominalBuffLen > errorBufflen ? nominalBuffLen : errorBufflen;
-  const size_t blcrc = bufLen + 2U;
-  const size_t readLen = sdReadTimeout(mdp->config->sd, mdp->ioBuffer, blcrc,
+  const size_t maxBufLen = nominalBuffLen > errorBufflen ? nominalBuffLen : errorBufflen;
+  const size_t maxblcrc = maxBufLen + 2U;
+  const size_t blcrc = nominalBuffLen + 2U;
+  const size_t readLen = sdReadTimeout(mdp->config->sd, mdp->ioBuffer, maxblcrc,
 				       TIME_MS2I(100));
   mdp->opTimestamp = chVTGetSystemTimeX();
   if (readLen != blcrc) {
