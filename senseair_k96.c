@@ -184,7 +184,7 @@ ModbusStatus k96FetchIrRaw(SenseairK96Driver *k96d, SenseairK96IrRaw *k96ir)
 }
 
 
-ModbusStatus k96ReadRam(SenseairK96Driver *k96d, const uint32_t k96RamAddr,
+ModbusStatus k96ReadRam(SenseairK96Driver *k96d, uint32_t k96RamAddr,
 			void *buffer, size_t bufferSize)
 {
   uint8_t *buf8 = (uint8_t *) buffer;
@@ -196,13 +196,14 @@ ModbusStatus k96ReadRam(SenseairK96Driver *k96d, const uint32_t k96RamAddr,
     if (st != MODBUS_OK) goto exit;
     buf8 += chunkSize;
     bufferSize -= chunkSize;
+    k96RamAddr += chunkSize;
   }
     
  exit:
   return st;
 }
 
-ModbusStatus k96ReadEeprom(SenseairK96Driver *k96d, const uint32_t k96EepromAddr,
+ModbusStatus k96ReadEeprom(SenseairK96Driver *k96d, uint32_t k96EepromAddr,
 			void *buffer, size_t bufferSize)
 {
   uint8_t *buf8 = (uint8_t *) buffer;
@@ -214,6 +215,7 @@ ModbusStatus k96ReadEeprom(SenseairK96Driver *k96d, const uint32_t k96EepromAddr
     if (st != MODBUS_OK) goto exit;
     buf8 += chunkSize;
     bufferSize -= chunkSize;
+    k96EepromAddr += chunkSize;
   }
     
  exit:
@@ -222,7 +224,7 @@ ModbusStatus k96ReadEeprom(SenseairK96Driver *k96d, const uint32_t k96EepromAddr
     
 
   
-ModbusStatus k96WriteRam(SenseairK96Driver *k96d, const uint32_t k96RamAddr,
+ModbusStatus k96WriteRam(SenseairK96Driver *k96d, uint32_t k96RamAddr,
 			  const void *buffer, size_t bufferSize)
 {
   const uint8_t *buf8 = (uint8_t *) buffer;
@@ -234,13 +236,14 @@ ModbusStatus k96WriteRam(SenseairK96Driver *k96d, const uint32_t k96RamAddr,
     if (st != MODBUS_OK) goto exit;
     buf8 += chunkSize;
     bufferSize -= chunkSize;
+    k96RamAddr += chunkSize;
    }
   
  exit:
   return st;
 }
 
-ModbusStatus k96WriteEeprom(SenseairK96Driver *k96d, const uint32_t k96EepromAddr,
+ModbusStatus k96WriteEeprom(SenseairK96Driver *k96d, uint32_t k96EepromAddr,
 			  const void *buffer, size_t bufferSize)
 {
   const uint8_t *buf8 = (uint8_t *) buffer;
@@ -252,6 +255,7 @@ ModbusStatus k96WriteEeprom(SenseairK96Driver *k96d, const uint32_t k96EepromAdd
     if (st != MODBUS_OK) goto exit;
     buf8 += chunkSize;
     bufferSize -= chunkSize;
+    k96EepromAddr += chunkSize;
    }
   
  exit:

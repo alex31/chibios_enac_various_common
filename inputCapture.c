@@ -8,7 +8,7 @@ static const TimICDriver*  driverByTimerIndex[6] = {NULL};
 
 static void rccEnable(const TimICDriver * const timicp);
 static void rccDisable(const TimICDriver * const timicp);
-static void input_capture_lld_serve_interrupt(const TimICDriver * const timicp);
+static void input_capture_lld_serve_interrupt(const TimICDriver * const timicp) __attribute__((unused));
 static void _input_capture_isr_invoke_capture_cb(const TimICDriver * const timicp, uint32_t channel);
 static void _input_capture_isr_invoke_overflow_cb(const TimICDriver * const timicp);
 
