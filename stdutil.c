@@ -473,8 +473,10 @@ const char* getGpioName (const ioportid_t p)
 #if (!defined STM32L422xx) && (!defined STM32L432xx)
   _GPIOTEST(GPIOD);
   _GPIOTEST(GPIOE);
+#if (!defined STM32F411xE)
   _GPIOTEST(GPIOF);
   _GPIOTEST(GPIOG);
+#endif
 #endif
   _GPIOTEST(GPIOH);
 
