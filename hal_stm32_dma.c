@@ -437,8 +437,8 @@ void dmaStopTransfertI(DMADriver *dmap)
  *
  * @api
  */
-msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p, const size_t size,
-			  sysinterval_t timeout)
+msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void *mem0p,
+			  const size_t size, sysinterval_t timeout)
 {
   msg_t msg;
 

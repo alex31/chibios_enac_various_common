@@ -355,12 +355,12 @@ typedef struct  {
 
 
   /**
-   * @brief   DMA priority (1 .. 4)
+   * @brief   DMA priority (0 .. 3) lowest to highest
    */
   uint8_t		dma_priority;
 
   /**
-   * @brief   DMA IRQ priority (2 .. 7)
+   * @brief   DMA IRQ priority (3 .. 15) highest to lowest
    */
   uint8_t		irq_priority;
 
