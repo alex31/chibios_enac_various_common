@@ -5,16 +5,19 @@
 
 
 typedef enum  {MODBUS_LITTLE_ENDIAN, MODBUS_BIG_ENDIAN} ModbusEndianness;
-typedef enum  {MODBUS_OK, MODBUS_CRC_ERROR, MODBUS_ARG_ERROR} ModbusStatus;
+typedef enum  {MODBUS_OK, MODBUS_CRC_ERROR, MODBUS_NO_ANSWER, MODBUS_ARG_ERROR} ModbusStatus;
 
 typedef struct {
   SerialDriver    *sd;
-  ModbusEndianness endianness;
+  ModbusEndianness endianness; 
+  sysinterval_t	   timeBetweenOp;
   uint8_t	   slaveAddr;
 } ModbusConfig ;
 
 typedef struct {
   const ModbusConfig *config;
+  systime_t    opTimestamp;
+  mutex_t      mtx;
   uint8_t      ioBuffer[255U]; // max frame length
 } ModbusDriver;
 
@@ -28,15 +31,15 @@ extern "C" {
   ModbusStatus modbusReadRegs(ModbusDriver *mdp, const uint16_t regAddr,
 			      const uint16_t regNum, uint16_t *regBuffer);
   
-  ModbusStatus modbusWriteRam(ModbusDriver *mdp, const uint32_t memAddr,
-			      const uint16_t bufLen, const uint8_t *memBuffer);
-  ModbusStatus modbusReadRam(ModbusDriver *mdp, const uint32_t memAddr,
-			     const uint16_t bufLen, uint8_t *memBuffer);
+  ModbusStatus modbusWriteRam(ModbusDriver *mdp,  uint32_t memAddr,
+			      const uint16_t bufLen, const void *memBuffer);
+  ModbusStatus modbusReadRam(ModbusDriver *mdp,  uint32_t memAddr,
+			     const uint16_t bufLen, void *memBuffer);
 
-  ModbusStatus modbusWriteEeprom(ModbusDriver *mdp, const uint32_t memAddr,
-				 const uint16_t bufLen, const uint8_t *memBuffer);
-  ModbusStatus modbusReadEeprom(ModbusDriver *mdp, const uint32_t memAddr,
-				const uint16_t bufLen, uint8_t *memBuffer);
+  ModbusStatus modbusWriteEeprom(ModbusDriver *mdp,  uint32_t memAddr,
+				 const uint16_t bufLen, const void *memBuffer);
+  ModbusStatus modbusReadEeprom(ModbusDriver *mdp,  uint32_t memAddr,
+				const uint16_t bufLen, void *memBuffer);
   
 #ifdef __cplusplus
 }

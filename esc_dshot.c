@@ -64,6 +64,7 @@
 #                |_|     |_|     \___/   \__|   \___/   \__|   |___/   |_|      \___|
 */
 static DshotPacket makeDshotPacket(const uint16_t throttle, const bool tlmRequest);
+static void setCrc4(DshotPacket *dp);
 static inline void setDshotPacketThrottle(DshotPacket * const dp, const uint16_t throttle);
 static inline void setDshotPacketTlm(DshotPacket * const dp, const bool tlmRequest);
 static void buildDshotDmaBuffer(DSHOTDriver *driver);
@@ -103,13 +104,15 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .cr3 = 0                                       // pas de controle de flux hardware (CTS, RTS)
   };
 
+  // when dshot is bidir, the polarity is inverted
+  const uint32_t pwmPolarity = config->bidir ? PWM_OUTPUT_ACTIVE_LOW : PWM_OUTPUT_ACTIVE_HIGH;
 
   driver->config = config;
   driver->dma_conf = (DMAConfig) {
     .stream = config->dma_stream,
     .channel = config->dma_channel,
     .dma_priority = 3,
-    .irq_priority = 2,
+    .irq_priority = 3,
     .direction = DMA_DIR_M2P,
 
     .psize = timerWidthInBytes,
@@ -132,13 +135,13 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   .period    = TICKS_PER_PERIOD,
   .callback  = NULL,
   .channels  = {
-    {.mode = PWM_OUTPUT_ACTIVE_HIGH,
+    {.mode = pwmPolarity,
      .callback = NULL},
-    {.mode = DSHOT_CHANNELS > 1 ? PWM_OUTPUT_ACTIVE_HIGH : PWM_OUTPUT_DISABLED,
+    {.mode = DSHOT_CHANNELS > 1 ? pwmPolarity : PWM_OUTPUT_DISABLED,
      .callback = NULL},
-    {.mode = DSHOT_CHANNELS > 2 ? PWM_OUTPUT_ACTIVE_HIGH : PWM_OUTPUT_DISABLED,
+    {.mode = DSHOT_CHANNELS > 2 ? pwmPolarity : PWM_OUTPUT_DISABLED,
      .callback = NULL},
-    {.mode = DSHOT_CHANNELS > 3 ? PWM_OUTPUT_ACTIVE_HIGH : PWM_OUTPUT_DISABLED,
+    {.mode = DSHOT_CHANNELS > 3 ? pwmPolarity : PWM_OUTPUT_DISABLED,
      .callback = NULL},
   },
   .cr2  =  STM32_TIM_CR2_CCDS,
@@ -191,6 +194,22 @@ void     dshotStop(DSHOTDriver *driver)
   pwmStop(driver->config->pwmp);
   dmaStopTransfert(&driver->dmap);
   dmaStop(&driver->dmap);
+}
+
+
+void dshotRestart(DSHOTDriver *driver)
+{
+  const bool dmaOk = dmaStart(&driver->dmap, &driver->dma_conf);
+  chDbgAssert(dmaOk == true, "dshot dma start error");
+
+  pwmStart(driver->config->pwmp, &driver->pwm_conf);
+  driver->config->pwmp->tim->DCR = DCR_DBL | DCR_DBA(driver->config->pwmp); // enable bloc register DMA transaction
+  pwmChangePeriod(driver->config->pwmp, DSHOT_PWM_PERIOD);
+
+  for (size_t j=0; j<DSHOT_CHANNELS; j++) {
+    pwmEnableChannel(driver->config->pwmp, j, 0);
+    driver->dshotMotors.dp[j] =  makeDshotPacket(0,0);
+  }
 }
 
 
@@ -251,6 +270,8 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
     chDbgAssert(false, "dshotSetThrottle index error");
   }
 
+  // some dangerous special commands need to be repeated 6 times
+  // to avoid catastrophic failure
   uint8_t repeat;
   switch (specmd) {
     case DSHOT_CMD_SPIN_DIRECTION_1:
@@ -261,7 +282,7 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
     case DSHOT_CMD_SETTINGS_REQUEST:
     case DSHOT_CMD_AUDIO_STREAM_MODE_ON_OFF:
     case DSHOT_CMD_SILENT_MODE_ON_OFF:
-      repeat = 10;
+      repeat = 6;
       break;
     default:
       repeat = 1;
@@ -269,7 +290,7 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
 
   while (repeat--) {
     dshotSendFrame(driver);
-    chThdSleepMilliseconds(1);
+    chThdSleepMicroseconds(500);
   }
 }
 
@@ -314,10 +335,15 @@ void dshotSendFrame(DSHOTDriver *driver)
     }
 
     buildDshotDmaBuffer(driver);
-    dmaStartTransfert(&driver->dmap,
-                      &driver->config->pwmp->tim->DMAR,
-                      driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
-
+    if (driver->config->bidir == true) {
+      dmaTransfert(&driver->dmap,
+		   &driver->config->pwmp->tim->DMAR,
+		   driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
+    } else {
+      dmaStartTransfert(&driver->dmap,
+			&driver->config->pwmp->tim->DMAR,
+			driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
+    }
   }
 }
 
@@ -377,6 +403,18 @@ DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
 #                | |     | |    | |   \ V /  | (_| | \ |_   |  __/
 #                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|
 */
+
+static void setCrc4(DshotPacket *dp)
+{
+  // compute checksum
+  dp->crc = 0;
+  uint16_t csum = (dp->throttle << 1) | dp->telemetryRequest;
+  for (int i = 0; i < 3; i++) {
+    dp->crc ^=  csum;   // xor data by nibbles
+    csum >>= 4;
+  }
+}
+
 static DshotPacket makeDshotPacket(const uint16_t _throttle, const bool tlmRequest)
 {
   DshotPacket dp = {.throttle = _throttle,
@@ -384,13 +422,7 @@ static DshotPacket makeDshotPacket(const uint16_t _throttle, const bool tlmReque
                     .crc = 0
                    };
 
-  // compute checksum
-  uint16_t csum = (_throttle << 1) | dp.telemetryRequest;
-  for (int i = 0; i < 3; i++) {
-    dp.crc ^=  csum;   // xor data by nibbles
-    csum >>= 4;
-  }
-
+  setCrc4(&dp);
   return dp;
 }
 
@@ -413,13 +445,10 @@ static void buildDshotDmaBuffer(DSHOTDriver *driver)
   
   for (size_t chanIdx = 0; chanIdx < DSHOT_CHANNELS; chanIdx++) {
     // compute checksum
-    DshotPacket *const dp = &dsp->dp[chanIdx];
-    dp->crc = 0;
-    uint16_t csum = (dp->throttle << 1) | dp->telemetryRequest;
-    for (int i = 0; i < 3; i++) {
-      dp->crc ^=  csum;   // xor data by nibbles
-      csum >>= 4;
-    }
+    DshotPacket * const dp  = &dsp->dp[chanIdx];
+    setCrc4(dp);
+    if (driver->config->bidir == true)
+      dp->crc = ~dp->crc; // crc is inverted when dshot bidir protocol is choosed
     // generate pwm frame
     for (size_t bitIdx = 0; bitIdx < DSHOT_BIT_WIDTHS; bitIdx++) {
       const uint16_t value = dp->rawFrame &

@@ -473,8 +473,10 @@ const char* getGpioName (const ioportid_t p)
 #if (!defined STM32L422xx) && (!defined STM32L432xx)
   _GPIOTEST(GPIOD);
   _GPIOTEST(GPIOE);
+#if (!defined STM32F411xE)
   _GPIOTEST(GPIOF);
   _GPIOTEST(GPIOG);
+#endif
 #endif
   _GPIOTEST(GPIOH);
 
@@ -547,12 +549,14 @@ int _kill(int pid, int sig) {
 #endif
 void *__dso_handle = 0;
 
-
-__attribute__((weak, noreturn))
-void __cxa_pure_virtual(void) {
-  osalSysHalt("Pure virtual function call.");
-  while(true);
+#ifdef __cplusplus
+extern "C" {
+  __attribute__((weak, noreturn))
+  void __cxa_pure_virtual(void) {
+    osalSysHalt("pure virtual");
+  }
 }
+#endif
 
 
 // legacy

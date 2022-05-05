@@ -355,12 +355,12 @@ typedef struct  {
 
 
   /**
-   * @brief   DMA priority (1 .. 4)
+   * @brief   DMA priority (0 .. 3) lowest to highest
    */
   uint8_t		dma_priority;
 
   /**
-   * @brief   DMA IRQ priority (2 .. 7)
+   * @brief   DMA IRQ priority (3 .. 15) highest to lowest
    */
   uint8_t		irq_priority;
 
@@ -543,6 +543,7 @@ void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 		      DMA_Stream_TypeDef *registers);
 #endif  
 static  inline dmastate_t dmaGetState(DMADriver *dmap) {return dmap->state;}
+static  inline size_t dmaGetTransactionCounter(DMADriver *dmap) {return dmaStreamGetTransactionSize(dmap->dmastream);}
 
 #if  STM32_DMA_USE_DOUBLE_BUFFER
 /**
