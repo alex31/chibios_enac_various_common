@@ -217,7 +217,7 @@ my $family;
 
 
 GetOptions (\%options, 'no-pp-pin', 'no-pp-line', 'no-adcp-in', 'no-error', 'kikadsymb',
-	    'find=s', 'dma=s', 'mcu=s', 'help');
+	    'find=s', 'dma=s', 'mcu=s', 'mxd=s', 'help');
 usage() if exists  $options{help};
 
 
@@ -246,6 +246,9 @@ if (exists $options{'no-adcp-in'}) {
 }
 
 addPluginsRootDir();
+#unshift(@CubeMXRootDir, $options{mxd}) if exists  $options{mxd};
+@CubeMXRootDir = ($options{mxd}) if exists  $options{mxd};
+
 my ($CUBE_ROOT) = grep (-d $_, @CubeMXRootDir);
 die "unable to find STM32CubeMX root dir\n" unless defined $CUBE_ROOT;
 my $boardFile;
@@ -1153,7 +1156,8 @@ sub fillGpioAlternateInfo ($$$)
 	next unless (defined $cf) and ($cf =~ /^GPIO-/);
 	my $name = $ip->getAttribute ('Name');
 	my $version =  $ip->getAttribute ('Version');
-	$gpioPath = $CUBE_ROOT . "/db/mcu/IP/$name-${version}_Modes.xml";
+	$gpioPath = "${CUBE_ROOT}/db/mcu/IP/$name-${version}_Modes.xml";
+	$gpioPath = "${CUBE_ROOT}/mcu/IP/$name-${version}_Modes.xml" unless -e $gpioPath;
 #	say "DBG> gpioPath = $gpioPath";
 	last;
     }
@@ -1327,7 +1331,8 @@ sub fillDmaByFun ($$)
 	next unless (defined $cf) and ($cf =~ /[BD]?DMA$/);
 	my $name = $ip->getAttribute ('Name');
 	$version =  $ip->getAttribute ('Version');
-	$dmaPath = $CUBE_ROOT . "/db/mcu/IP/$name-${version}_Modes.xml";
+	$dmaPath = "${CUBE_ROOT}/db/mcu/IP/$name-${version}_Modes.xml";
+	$dmaPath = "${CUBE_ROOT}/mcu/IP/$name-${version}_Modes.xml" unless -e $dmaPath;
 #	say "DBG> dmaPath = $dmaPath version = $version cf=$cf";
 #	last;
     }
@@ -1490,7 +1495,8 @@ sub getMcus($)
 {
     my $filter = shift;
     $filter =~ s/.*M32//;
-    my $mcuDir = $CUBE_ROOT . "/db/mcu";
+    my $mcuDir = -e "${CUBE_ROOT}/db/mcu" ? "${CUBE_ROOT}/db/mcu" : "${CUBE_ROOT}/mcu";
+    say "DBG> mcuDir = $mcuDir";
     my @mcus;
 
     opendir (my $dh, $mcuDir) || return;
@@ -1513,7 +1519,7 @@ sub getMcus($)
 sub getdataFromCubeMx ($)
 {
     my $mcu = shift;;
-    my $mcuDir = $CUBE_ROOT . "/db/mcu";
+    my $mcuDir = -e "${CUBE_ROOT}/db/mcu" ? "${CUBE_ROOT}/db/mcu" : "${CUBE_ROOT}/mcu";
     my $mcuPath = $mcuDir . "/$mcu.xml";
 
     die "you should supply MCU_MODEL = mcu_name at top of config.cfg file\n" . 
