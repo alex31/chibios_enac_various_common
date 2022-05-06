@@ -522,8 +522,7 @@ extern "C" {
 			  const mdmatriggersource_t trigger_src,
 			  const void *source, void *dest, const size_t block_len,
 			  void *mask_data_register,
-			  const uint32_t mask_address_register
-			  );
+			  const uint32_t mask_address_register);
   void mdmaLinkLoop(MDMADriver *mdmap, const size_t index);
   // low level driver
   void mdma_lld_set_common_registers(MDMADriver *mdmap);
