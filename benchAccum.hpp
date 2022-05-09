@@ -15,7 +15,9 @@ public:
   void  startMonitor();
   void  stopMonitor();
   ACC_T getTotalMicroSeconds();
-  ACC_T getAverageMicroSeconds();
+  ACC_T getTotalSysticks();
+  uint32_t getAverageMicroSeconds();
+  uint32_t getAverageNanoSeconds();
   ACC_T getMinMicroSeconds();
   ACC_T getMaxMicroSeconds();
   
@@ -29,7 +31,7 @@ private:
 
   ACC_T totalSysTick = {};
   ACC_T startMonitorTime = {};
-  uint32_t numCall = {};
+  ACC_T numCall = {};
   typename std::conditional<recMinMax, minmax_t, empty_t>::type minmax;
 } ;
 
@@ -64,13 +66,25 @@ void  benchAccum<ACC_T, recMinMax>::stopMonitor()
 }
 
 template<typename ACC_T, bool recMinMax>
+ACC_T benchAccum<ACC_T, recMinMax>::getTotalSysticks()
+{
+  return totalSysTick;
+}
+
+template<typename ACC_T, bool recMinMax>
 ACC_T benchAccum<ACC_T, recMinMax>::getTotalMicroSeconds()
 {
   return RTC2US(STM32_SYSCLK, totalSysTick);
 }
 
 template<typename ACC_T, bool recMinMax>
-ACC_T benchAccum<ACC_T, recMinMax>::getAverageMicroSeconds()
+uint32_t benchAccum<ACC_T, recMinMax>::getAverageNanoSeconds()
+{
+  return RTC2US(STM32_SYSCLK, totalSysTick * 1000UL) / numCall;
+}
+
+template<typename ACC_T, bool recMinMax>
+uint32_t benchAccum<ACC_T, recMinMax>::getAverageMicroSeconds()
 {
   return RTC2US(STM32_SYSCLK, totalSysTick) / numCall;
 }
