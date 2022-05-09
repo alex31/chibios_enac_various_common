@@ -217,7 +217,7 @@ my $family;
 
 
 GetOptions (\%options, 'no-pp-pin', 'no-pp-line', 'no-adcp-in', 'no-error', 'kikadsymb',
-	    'find=s', 'dma=s', 'mcu=s', 'help');
+	    'find=s', 'dma=s', 'mcu=s', 'opd=s', 'help');
 usage() if exists  $options{help};
 
 
@@ -315,6 +315,8 @@ if (exists  $options{find}) {
 }
 
 if (exists  $options{dma}) {
+    die "ERROR : open pin description database does not contain any DMA information" .
+	", install CubeMX from STMicroelectronics\n" if exists $options{opd};
     findDmaByFunction ($options{dma});
     exit (0);
 }
@@ -1153,14 +1155,17 @@ sub fillGpioAlternateInfo ($$$)
 	next unless (defined $cf) and ($cf =~ /^GPIO-/);
 	my $name = $ip->getAttribute ('Name');
 	my $version =  $ip->getAttribute ('Version');
-	$gpioPath = $CUBE_ROOT . "/db/mcu/IP/$name-${version}_Modes.xml";
-#	say "DBG> gpioPath = $gpioPath";
+	$gpioPath = $CUBE_ROOT . "/mcu/IP/$name-${version}_Modes.xml";
+	say "DBG> gpioPath = $gpioPath";
 	last;
     }
     
     my $xpc = XML::LibXML::XPathContext->new;
-    $xpc->registerNs('mcd', 'http://mcd.rou.st.com/modules.php?name=mcu');
-    
+    if (exists($options{opd})) {
+	$xpc->registerNs('mcd', 'http://dummy.com');
+    } else {
+	$xpc->registerNs('mcd', 'http://mcd.rou.st.com/modules.php?name=mcu');
+    }
     my $gdom = XML::LibXML->load_xml(location => $gpioPath);
     my @refp = $xpc->findnodes('//mcd:RefParameter', $gdom);
     foreach my $refp (@refp) {
@@ -1327,7 +1332,7 @@ sub fillDmaByFun ($$)
 	next unless (defined $cf) and ($cf =~ /[BD]?DMA$/);
 	my $name = $ip->getAttribute ('Name');
 	$version =  $ip->getAttribute ('Version');
-	$dmaPath = $CUBE_ROOT . "/db/mcu/IP/$name-${version}_Modes.xml";
+	$dmaPath = $CUBE_ROOT . "/mcu/IP/$name-${version}_Modes.xml";
 #	say "DBG> dmaPath = $dmaPath version = $version cf=$cf";
 #	last;
     }
@@ -1345,7 +1350,8 @@ sub fillDmaV1ByFun ($$)
     my %requestByPeriph;
 
     my @dmaChannels;
-
+    return unless -d $dmaPath;
+    
     my $xpc = XML::LibXML::XPathContext->new;
     $xpc->registerNs('mcd', 'http://mcd.rou.st.com/modules.php?name=mcu');
     my $ddom = XML::LibXML->load_xml(location => $dmaPath);
@@ -1420,6 +1426,7 @@ sub fillDmaV2ByFun ($$)
 
     my @dmaChannels;
 
+    return unless -d $dmaPath;
     my $xpc = XML::LibXML::XPathContext->new;
     $xpc->registerNs('mcd', 'http://mcd.rou.st.com/modules.php?name=mcu');
     my $ddom = XML::LibXML->load_xml(location => $dmaPath);
@@ -1490,7 +1497,7 @@ sub getMcus($)
 {
     my $filter = shift;
     $filter =~ s/.*M32//;
-    my $mcuDir = $CUBE_ROOT . "/db/mcu";
+    my $mcuDir = $CUBE_ROOT . "/mcu";
     my @mcus;
 
     opendir (my $dh, $mcuDir) || return;
@@ -1513,7 +1520,7 @@ sub getMcus($)
 sub getdataFromCubeMx ($)
 {
     my $mcu = shift;;
-    my $mcuDir = $CUBE_ROOT . "/db/mcu";
+    my $mcuDir = $CUBE_ROOT . "/mcu";
     my $mcuPath = $mcuDir . "/$mcu.xml";
 
     die "you should supply MCU_MODEL = mcu_name at top of config.cfg file\n" . 
@@ -1662,13 +1669,19 @@ sub addPluginsRootDir()
     my $root = shift;
     return unless exists $ENV{HOME};
 
+    foreach my $rootDir (@CubeMXRootDir) {
+	$rootDir .= '/db' if -d "${rootDir}/db";
+    }
+    
     foreach my $pluginDir (@CubeMXPluginRootDir) {
 	opendir (my $dh, $pluginDir) || next;
 	my @candidates = sort grep ($_ =~ /com.st.microxplorer.rcp_/, readdir($dh));
 	close $dh;
 	push @CubeMXRootDir, "$pluginDir/$candidates[-1]" if @candidates;
-#	say "DBG>  $pluginDir/$candidates[-1]" if @candidates;
+	#	say "DBG>  $pluginDir/$candidates[-1]" if @candidates;
     }
+
+    unshift(@CubeMXRootDir, $options{opd}) if exists $options{opd};
 }
 
 # Famille : STM32 = famille de microcontrôleur basé sur les processeurs ARM Cortex-M 32-bit
