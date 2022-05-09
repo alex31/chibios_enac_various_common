@@ -978,14 +978,17 @@ sub usage ()
           $x do not generate board.h
 	: $0 --dma=tok cfgFile : display DMA parameters in a form directy suitable for mcuconf.h for 
           $x                             each function wich matches tocken, 
-          $x do not generate board.h
+          $x                     do not generate board.h
 	: $0 --mcu=regexp  : display all MCU whose name match regexp
-          $x do not generate board.h
+          $x                 do not generate board.h
 	: $0 --mcu=mcuname --find=tok,tok,... : display AF for each pins capable of function wich matches all tockens, 
-          $x do not generate board.h
+          $x                                    do not generate board.h
 	: $0 --mcu=mcuname --dma=tok  : display DMA parameters in a form directy suitable for mcuconf.h for 
           $x                             each function wich matches tocken, 
-          $x do not generate board.h
+          $x                            do not generate board.h
+        : $0 --opd=path_to_opd : use BSD licensed Open Pin Database instead of CubeMX one. This is mutually exclusive
+          $x                     with --dma as opd does not conbtain DMA definition. Opd can be installed by cloning STM
+          $x                     git repository : git clone https://github.com/STMicroelectronics/STM32_open_pin_data.git
 EOL
 exit (-1);
 }
@@ -1156,7 +1159,7 @@ sub fillGpioAlternateInfo ($$$)
 	my $name = $ip->getAttribute ('Name');
 	my $version =  $ip->getAttribute ('Version');
 	$gpioPath = $CUBE_ROOT . "/mcu/IP/$name-${version}_Modes.xml";
-	say "DBG> gpioPath = $gpioPath";
+#	say "DBG> gpioPath = $gpioPath";
 	last;
     }
     
