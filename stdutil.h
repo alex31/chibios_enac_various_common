@@ -45,6 +45,10 @@
 
 //#define DEBUG_MB 1
 
+#ifndef CONSOLE_DEV_USB
+#define CONSOLE_DEV_USB FALSE
+#endif
+
 #if defined CONSOLE_DEV_SD || (CONSOLE_DEV_USB == TRUE)
 extern BaseSequentialStream *chp;
 #endif
