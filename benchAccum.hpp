@@ -80,13 +80,13 @@ ACC_T benchAccum<ACC_T, recMinMax>::getTotalMicroSeconds()
 template<typename ACC_T, bool recMinMax>
 uint32_t benchAccum<ACC_T, recMinMax>::getAverageNanoSeconds()
 {
-  return RTC2US(STM32_SYSCLK, totalSysTick * 1000UL) / numCall;
+  return RTC2US(static_cast<ACC_T>(STM32_SYSCLK), totalSysTick * 1000UL) / numCall;
 }
 
 template<typename ACC_T, bool recMinMax>
 uint32_t benchAccum<ACC_T, recMinMax>::getAverageMicroSeconds()
 {
-  return RTC2US(STM32_SYSCLK, totalSysTick) / numCall;
+  return RTC2US(static_cast<ACC_T>(STM32_SYSCLK), totalSysTick) / numCall;
 }
 
 template<typename ACC_T, bool recMinMax>

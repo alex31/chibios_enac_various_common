@@ -862,16 +862,21 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
   if ((flags & (STM32_DMA_ISR_TEIF | STM32_DMA_ISR_DMEIF | feif_msk)) != 0U) {
     /* DMA, this could help only if the DMA tries to access an unmapped
        address space or violates alignment rules.*/
-    const dmaerrormask_t err =
+    dmaerrormask_t err =
       ( (flags & STM32_DMA_ISR_TEIF)  ? DMA_ERR_TRANSFER_ERROR : 0UL) |
-      ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL) |
-      ( (flags & feif_msk)  ? DMA_ERR_FIFO_ERROR : 0UL)
-#if STM32_DMA_ADVANCED
-      | ( getFCR_FS(dmap) == (0b100 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_EMPTY: 0UL) 
-      | ( getFCR_FS(dmap) == (0b101 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_FULL: 0UL)
-#endif
-      ;
+      ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL);
 
+    if (dmap->config->fifo != 0U) {
+#if STM32_DMA_ADVANCED
+      dmaerrormask_t fserr = 
+	( (flags & feif_msk)  ? DMA_ERR_FIFO_ERROR : 0UL) |
+	( getFCR_FS(dmap) == (0b100 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_EMPTY: 0UL) |
+	( getFCR_FS(dmap) == (0b101 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_FULL: 0UL) ;
+      err |= fserr;
+#endif
+    }
+      
+    
     _dma_isr_error_code(dmap, err);
   } else {
     /* It is possible that the transaction has already be reset by the
