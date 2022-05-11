@@ -216,6 +216,7 @@ static const I2cMasterConfig * getMasterConfigFromDriver (I2CDriver *i2cd)
     return i2c4 ;
 #endif
 
+  chSysHalt("wrong i2cd driver");
   return NULL;
 }
  
@@ -938,6 +939,10 @@ static bool   i2cMasterResetBus (I2CDriver *i2cd)
   i2cStop (i2cd);
   bool res = i2cMasterUnhangBus (i2cd);
   i2cMasterSetModePeriphI2c (i2cd);
+  const I2cMasterConfig* i2cMcfg = getMasterConfigFromDriver (i2cd);
+  if (i2cMcfg == NULL)
+    return false;
+  
   i2cStart(i2cd, getMasterConfigFromDriver(i2cd)->i2ccfg);
   return res;
 }
@@ -966,6 +971,9 @@ static bool i2cMasterUnhangBus (I2CDriver *i2cd)
 {
   const I2cMasterConfig* i2cMcfg = getMasterConfigFromDriver (i2cd);
   bool sdaReleased;
+
+  if (i2cMcfg == NULL)
+    return false;
   
   palSetLineMode (i2cMcfg->sda, PAL_MODE_INPUT); 
   sdaReleased = palReadLine (i2cMcfg->sda) == PAL_HIGH;
@@ -1000,7 +1008,8 @@ static bool i2cMasterUnhangBus (I2CDriver *i2cd)
 static void i2cMasterSetModePeriphI2c (I2CDriver *i2cd)
 {
   const I2cMasterConfig* i2cMcfg = getMasterConfigFromDriver (i2cd);
-  
+  if (i2cMcfg == NULL)
+    return;
   palSetLineMode (i2cMcfg->scl, 
 		 PAL_MODE_ALTERNATE(i2cMcfg->alternateFunction) | PAL_STM32_OTYPE_OPENDRAIN |
 		 PAL_STM32_OSPEED_HIGHEST | PAL_STM32_PUPDR_PULLUP);
