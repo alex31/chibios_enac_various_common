@@ -30,8 +30,10 @@ private:
   };
 
   ACC_T totalSysTick = {};
-  ACC_T startMonitorTime = {};
+  rtcnt_t startMonitorTime = {};
   ACC_T numCall = {};
+  static ACC_T rtc2ns(ACC_T systicks);
+  static ACC_T rtc2us(ACC_T systicks);
   typename std::conditional<recMinMax, minmax_t, empty_t>::type minmax;
 } ;
 
@@ -71,34 +73,53 @@ ACC_T benchAccum<ACC_T, recMinMax>::getTotalSysticks()
   return totalSysTick;
 }
 
+#define RTC2USLL(freq, n) ((((n) - 1ULL) / ((freq) / 1000000ULL)) + 1ULL)
+template<typename ACC_T, bool recMinMax>
+ACC_T benchAccum<ACC_T, recMinMax>::rtc2ns(ACC_T systicks)
+{
+  if constexpr (sizeof(ACC_T) <= 32) 
+    return RTC2US(STM32_SYSCLK, systicks * 1000UL);
+  else
+    return RTC2USLL(static_cast<ACC_T>(STM32_SYSCLK), systicks * 1000ULL);
+}
+
+template<typename ACC_T, bool recMinMax>
+ACC_T benchAccum<ACC_T, recMinMax>::rtc2us(ACC_T systicks)
+{
+  if constexpr (sizeof(ACC_T) <= 32) 
+    return RTC2US(STM32_SYSCLK, systicks);
+  else
+    return RTC2USLL(static_cast<ACC_T>(STM32_SYSCLK), systicks);
+}
+
 template<typename ACC_T, bool recMinMax>
 ACC_T benchAccum<ACC_T, recMinMax>::getTotalMicroSeconds()
 {
-  return RTC2US(STM32_SYSCLK, totalSysTick);
+  return rtc2us(totalSysTick);
 }
 
 template<typename ACC_T, bool recMinMax>
 uint32_t benchAccum<ACC_T, recMinMax>::getAverageNanoSeconds()
 {
-  return RTC2US(static_cast<ACC_T>(STM32_SYSCLK), totalSysTick * 1000UL) / numCall;
+  return rtc2ns(totalSysTick) / numCall;
 }
 
 template<typename ACC_T, bool recMinMax>
 uint32_t benchAccum<ACC_T, recMinMax>::getAverageMicroSeconds()
 {
-  return RTC2US(static_cast<ACC_T>(STM32_SYSCLK), totalSysTick) / numCall;
+   return rtc2us(totalSysTick) / numCall;
 }
 
 template<typename ACC_T, bool recMinMax>
 ACC_T benchAccum<ACC_T, recMinMax>::getMinMicroSeconds()
 {
   static_assert(recMinMax == true, "enable recMinMax in template parameter");
-  return RTC2US(STM32_SYSCLK, minmax.minSysTick);
+  return rtc2us(minmax.minSysTick);
 }
 
 template<typename ACC_T, bool recMinMax>
 ACC_T benchAccum<ACC_T, recMinMax>::getMaxMicroSeconds()
 {
   static_assert(recMinMax == true, "enable recMinMax in template parameter");
-  return RTC2US(STM32_SYSCLK, minmax.maxSysTick);
+  return rtc2us(minmax.maxSysTick);
 }
