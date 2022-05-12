@@ -335,15 +335,9 @@ void dshotSendFrame(DSHOTDriver *driver)
     }
 
     buildDshotDmaBuffer(driver);
-    if (driver->config->bidir == true) {
-      dmaTransfert(&driver->dmap,
-		   &driver->config->pwmp->tim->DMAR,
-		   driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
-    } else {
-      dmaStartTransfert(&driver->dmap,
-			&driver->config->pwmp->tim->DMAR,
-			driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
-    }
+    dmaTransfert(&driver->dmap,
+		 &driver->config->pwmp->tim->DMAR,
+		 driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
   }
 }
 
