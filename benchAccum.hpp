@@ -77,7 +77,7 @@ ACC_T benchAccum<ACC_T, recMinMax>::getTotalSysticks()
 template<typename ACC_T, bool recMinMax>
 ACC_T benchAccum<ACC_T, recMinMax>::rtc2ns(ACC_T systicks)
 {
-  if constexpr (sizeof(ACC_T) <= 32) 
+  if constexpr (sizeof(ACC_T) <= 4) 
     return RTC2US(STM32_SYSCLK, systicks * 1000UL);
   else
     return RTC2USLL(static_cast<ACC_T>(STM32_SYSCLK), systicks * 1000ULL);
@@ -86,7 +86,7 @@ ACC_T benchAccum<ACC_T, recMinMax>::rtc2ns(ACC_T systicks)
 template<typename ACC_T, bool recMinMax>
 ACC_T benchAccum<ACC_T, recMinMax>::rtc2us(ACC_T systicks)
 {
-  if constexpr (sizeof(ACC_T) <= 32) 
+  if constexpr (sizeof(ACC_T) <= 4) 
     return RTC2US(STM32_SYSCLK, systicks);
   else
     return RTC2USLL(static_cast<ACC_T>(STM32_SYSCLK), systicks);
