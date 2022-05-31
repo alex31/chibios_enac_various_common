@@ -4,6 +4,7 @@ use Modern::Perl '2020';
 use feature ':5.30';
 no warnings 'experimental::smartmatch';
 use List::Util qw(min max);
+use File::Basename;
 
 #         _ __                   _
 #        | '_ \                 | |
@@ -209,6 +210,7 @@ sub openSourceFiles($)
     my $bn = shift;
     my $headerName = "${bn}.h";
     my $implName = "${bn}.c";
+    my $baseHeaderName = basename($headerName);
     open(my $headerFh, ">", $headerName) or die "cannot open > $headerName: $!";
     open(my $implFh, ">", $implName) or die "cannot open > $implName: $!";
 
@@ -221,7 +223,7 @@ sub openSourceFiles($)
 typedef struct FdsDriver FdsDriver;
 EOL
 
-    print $implFh "#include \"$headerName\"\n\n";
+    print $implFh "#include \"$baseHeaderName\"\n\n";
     print $implFh <<EOL;
 /*
     This code has been generated from API description
