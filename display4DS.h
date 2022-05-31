@@ -18,8 +18,9 @@ extern "C" {
 #define FDS_LINK_DRIVER UARTDriver
 #endif
   
-  typedef struct FdsConfig  FdsConfig;
-  enum FdsConfig_Device {GOLDELOX, PICASO, DIABLO16, PIXXI, AUTO_4DS, TERM_VT100}; 
+  typedef struct FdsDriver  FdsDriver;
+  enum FdsDriver_Device {FDS_GOLDELOX, FDS_PICASO, FDS_DIABLO16, FDS_PIXXI, FDS_AUTO,
+    FDS_TERM_VT100}; 
   enum FdsTextAttribute {FDS_RESET_ATTRIB=0,
     FDS_BOLD=16, FDS_ITALIC=32, FDS_INVERSE=64, FDS_UNDERLINE=128};
   enum FdsScreenOrientation {FDS_LANDSCAPE=0, FDS_LANDSCAPE_REVERSE,
@@ -37,75 +38,75 @@ typedef struct {
 #define CMD_NOT_IMPL 0xbaba
 
   
-bool fdsStart (FdsConfig *fdsConfig,  FDS_LINK_DRIVER *fds, const uint32_t baud,
-		ioline_t reset, enum FdsConfig_Device dev);
-void fdsHardReset (FdsConfig *fdsConfig);
-bool fdsIsCorrectDevice (FdsConfig *fdsConfig);
-void fdsAcquireLock (FdsConfig *fdsConfig);
-void fdsReleaseLock (FdsConfig *fdsConfig);
+bool fdsStart (FdsDriver *fdsConfig,  FDS_LINK_DRIVER *fds, const uint32_t baud,
+		ioline_t reset, enum FdsDriver_Device dev);
+void fdsHardReset (FdsDriver *fdsConfig);
+bool fdsIsCorrectDevice (FdsDriver *fdsConfig);
+void fdsAcquireLock (FdsDriver *fdsConfig);
+void fdsReleaseLock (FdsDriver *fdsConfig);
 
 // replace escape color sequence by color command for respective backend
 // ESC c 0 à 9 : couleur index of background and foreground
 // replace escape n by carriage return, line feed
-bool fdsPrintFmt (FdsConfig *fdsConfig, const char *txt, ...)
+bool fdsPrintFmt (FdsDriver *fdsConfig, const char *txt, ...)
   __attribute__ ((format (printf, 2, 3)));
 ;
-bool fdsPrintBuffer (FdsConfig *fdsConfig, const char *buffer);
-void fdsGetVersion (FdsConfig *fdsConfig, char *buffer, const size_t buflen);
-void fdsChangeBgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b);
-void fdsSetTextFgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b);
-void fdsSetTextBgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b);
-void fdsSetTextBgColorTable (FdsConfig *fdsConfig, uint8_t colorIndex, 
+bool fdsPrintBuffer (FdsDriver *fdsConfig, const char *buffer);
+void fdsGetVersion (FdsDriver *fdsConfig, char *buffer, const size_t buflen);
+void fdsChangeBgColor (FdsDriver *fdsConfig, uint8_t r, uint8_t g, uint8_t b);
+void fdsSetTextFgColor (FdsDriver *fdsConfig, uint8_t r, uint8_t g, uint8_t b);
+void fdsSetTextBgColor (FdsDriver *fdsConfig, uint8_t r, uint8_t g, uint8_t b);
+void fdsSetTextBgColorTable (FdsDriver *fdsConfig, uint8_t colorIndex, 
 			      uint8_t r, uint8_t g, uint8_t b);
-void fdsSetTextFgColorTable (FdsConfig *fdsConfig,  uint8_t colorIndex, 
+void fdsSetTextFgColorTable (FdsDriver *fdsConfig,  uint8_t colorIndex, 
 			      uint8_t r, uint8_t g, uint8_t b);
-void fdsUseColorIndex (FdsConfig *fdsConfig, uint8_t colorIndex);
-void fdsSetTextOpacity (FdsConfig *fdsConfig, bool opaque);
-void fdsSetTextAttributeMask (FdsConfig *fdsConfig, enum FdsTextAttribute attrib);
-void fdsSetTextGap (FdsConfig *fdsConfig, uint8_t xgap, uint8_t ygap);
-void fdsSetLuminosity (FdsConfig *fdsConfig, uint8_t luminosity);
-void fdsSetTextSizeMultiplier (FdsConfig *fdsConfig, uint8_t xmul, uint8_t ymul);
-void fdsSetScreenOrientation (FdsConfig *fdsConfig, enum FdsScreenOrientation orientation);
-void fdsGotoXY (FdsConfig *fdsConfig, uint8_t x, uint8_t y);
-void fdsGotoX (FdsConfig *fdsConfig, uint8_t x);
-uint8_t fdsGetX (const FdsConfig *fdsConfig);
-uint8_t fdsGetY (const FdsConfig *fdsConfig);
-void fdsGotoNextLine (FdsConfig *fdsConfig);
-void fdsClearScreen (FdsConfig *fdsConfig);
-bool fdsInitSdCard (FdsConfig *fdsConfig);
-void fdsDrawPoint (FdsConfig *fdsConfig, const uint16_t x, 
+void fdsUseColorIndex (FdsDriver *fdsConfig, uint8_t colorIndex);
+void fdsSetTextOpacity (FdsDriver *fdsConfig, bool opaque);
+void fdsSetTextAttributeMask (FdsDriver *fdsConfig, enum FdsTextAttribute attrib);
+void fdsSetTextGap (FdsDriver *fdsConfig, uint8_t xgap, uint8_t ygap);
+void fdsSetLuminosity (FdsDriver *fdsConfig, uint8_t luminosity);
+void fdsSetTextSizeMultiplier (FdsDriver *fdsConfig, uint8_t xmul, uint8_t ymul);
+void fdsSetScreenOrientation (FdsDriver *fdsConfig, enum FdsScreenOrientation orientation);
+void fdsGotoXY (FdsDriver *fdsConfig, uint8_t x, uint8_t y);
+void fdsGotoX (FdsDriver *fdsConfig, uint8_t x);
+uint8_t fdsGetX (const FdsDriver *fdsConfig);
+uint8_t fdsGetY (const FdsDriver *fdsConfig);
+void fdsGotoNextLine (FdsDriver *fdsConfig);
+void fdsClearScreen (FdsDriver *fdsConfig);
+bool fdsInitSdCard (FdsDriver *fdsConfig);
+void fdsDrawPoint (FdsDriver *fdsConfig, const uint16_t x, 
 		    const uint16_t y, const uint8_t colorIndex);
-void fdsDrawLine (FdsConfig *fdsConfig, 
+void fdsDrawLine (FdsDriver *fdsConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
 		   const uint8_t colorIndex);
-void fdsDrawRect (FdsConfig *fdsConfig, 
+void fdsDrawRect (FdsDriver *fdsConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
 		   const bool filled, const uint8_t colorIndex);
-void fdsDrawPolyLine (FdsConfig *fdsConfig, 
+void fdsDrawPolyLine (FdsDriver *fdsConfig, 
 		       const uint16_t len,
 		       const PolyPoint * const pp,
 		       const uint8_t colorIndex);
-void fdsScreenCopyPaste (FdsConfig *fdsConfig, 
+void fdsScreenCopyPaste (FdsDriver *fdsConfig, 
 			  const uint16_t xs, const uint16_t ys, 
 			  const uint16_t xd, const uint16_t yd,
 			  const uint16_t width, const uint16_t height);
-void fdsEnableTouch (FdsConfig *fdsConfig, bool enable);
-uint16_t fdsTouchGetStatus (FdsConfig *fdsConfig);
-uint16_t fdsTouchGetXcoord (FdsConfig *fdsConfig);
-uint16_t fdsTouchGetYcoord (FdsConfig *fdsConfig);
-void fdsListSdCardDirectory (FdsConfig *fdsConfig);
-void fdsSetSoundVolume (FdsConfig *fdsConfig, uint8_t percent);
-void fdsPlayWav (FdsConfig *fdsConfig, const char* fileName);
-//void fdsPlayBeep (FdsConfig *fdsConfig, uint8_t note, uint16_t duration);
-uint32_t fdsOpenFile  (FdsConfig *fdsConfig, const char* fileName, uint16_t *handle);
-void fdsCloseFile (FdsConfig *fdsConfig, const uint16_t handle);
-void fdsDisplayGci  (FdsConfig *fdsConfig, const uint16_t handle, uint32_t offset);
-bool fdsCallFunction(FdsConfig *fdsConfig, uint16_t handle, uint16_t *retVal, const size_t numArgs, ...);
-bool fdsFileRun(FdsConfig *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...);
-bool fdsFileExec(FdsConfig *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...);
-bool fdsSetBaud (FdsConfig *fdsConfig, uint32_t baud);
+void fdsEnableTouch (FdsDriver *fdsConfig, bool enable);
+uint16_t fdsTouchGetStatus (FdsDriver *fdsConfig);
+uint16_t fdsTouchGetXcoord (FdsDriver *fdsConfig);
+uint16_t fdsTouchGetYcoord (FdsDriver *fdsConfig);
+void fdsListSdCardDirectory (FdsDriver *fdsConfig);
+void fdsSetSoundVolume (FdsDriver *fdsConfig, uint8_t percent);
+void fdsPlayWav (FdsDriver *fdsConfig, const char* fileName);
+//void fdsPlayBeep (FdsDriver *fdsConfig, uint8_t note, uint16_t duration);
+uint32_t fdsOpenFile  (FdsDriver *fdsConfig, const char* fileName, uint16_t *handle);
+void fdsCloseFile (FdsDriver *fdsConfig, const uint16_t handle);
+void fdsDisplayGci  (FdsDriver *fdsConfig, const uint16_t handle, uint32_t offset);
+bool fdsCallFunction(FdsDriver *fdsConfig, uint16_t handle, uint16_t *retVal, const size_t numArgs, ...);
+bool fdsFileRun(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...);
+bool fdsFileExec(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...);
+bool fdsSetBaud (FdsDriver *fdsConfig, uint32_t baud);
 FdsStatus fdsGetStatus(void);
 #define fds_clampColor(r,v,b) ((uint16_t) ((r & 0x1f) <<11 | (v & 0x3f) << 5 | (b & 0x1f)))
 #define fds_colorDecTo16b(r,v,b) (fds_clampColor((r*31/100), (v*63/100), (b*31/100)))
@@ -136,7 +137,7 @@ static inline Color24 mkColor24 (uint8_t r, uint8_t g, uint8_t b) {
 
 
 
-struct FdsConfig {
+struct FdsDriver {
 #if FDS_DISPLAY_USE_SD
   SerialConfig serialConfig;
   BaseSequentialStream *serial;
@@ -148,7 +149,7 @@ struct FdsConfig {
   //  ioportid_t rstGpio;
   //  uint32_t rstPin;
   ioline_t rstLine;
-  enum FdsConfig_Device deviceType;
+  enum FdsDriver_Device deviceType;
   // =============
   uint16_t bg;
   Color24 tbg[COLOR_TABLE_SIZE]; 

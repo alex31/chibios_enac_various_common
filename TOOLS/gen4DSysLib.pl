@@ -49,7 +49,7 @@ my %dispatchFnTable = (
     );
 
 
-my @familyNames = qw/GOLDELOX PICASO DIABLO16 PIXXI/;
+my @familyNames = qw/FDS_GOLDELOX FDS_PICASO FDS_DIABLO16 FDS_PIXXI/;
 
 #          __ _   _            _               _
 #         / _` | | |          | |             | |
@@ -218,7 +218,7 @@ sub openSourceFiles($)
 #include <ch.h>
 #include <hal.h>
 
-typedef struct FdsConfig FdsConfig;
+typedef struct FdsDriver FdsDriver;
 EOL
 
     print $implFh "#include \"$headerName\"\n\n";
@@ -227,7 +227,7 @@ EOL
     This code has been generated from API description
     All hand modifications will be lost at next generation 
 */
-static bool gfx_polyxxx(const FdsConfig *fdsConfig, uint16_t cmd, uint16_t n, const uint16_t vx[], const uint16_t vy[], uint16_t color)
+static bool gfx_polyxxx(const FdsDriver *fds, uint16_t cmd, uint16_t n, const uint16_t vx[], const uint16_t vy[], uint16_t color)
 {
  struct {
   uint16_t cmd;
@@ -241,20 +241,20 @@ static bool gfx_polyxxx(const FdsConfig *fdsConfig, uint16_t cmd, uint16_t n, co
   uint8_t ack;
   } response;
   
-  fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 		     (uint8_t *) &command1, sizeof(command1),
 		     NULL, 0);
 
-  fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 		     (uint8_t *) vx, sizeof(vx[0]) * n,
 		     NULL, 0);
 
-  fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 		     (uint8_t *) vy, sizeof(vy[0]) * n,
 		     NULL, 0);
 
   color = __builtin_bswap16(color);
-  return fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  return fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 		     (uint8_t *) &color, sizeof(color),
 		     (uint8_t *) &response, sizeof(response)) != 0;
 }
@@ -347,9 +347,9 @@ sub codeGenFunction($$)
     print $implFh <<EOL;
 
 {
-  RET_UNLESS_INIT_BOOL(fdsConfig);
-  RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
+  RET_UNLESS_INIT_BOOL(fds);
+  RET_UNLESS_4DSYS_BOOL(fds);
+  static const uint16_t cmds[FDS_AUTO] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
 				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
@@ -362,7 +362,7 @@ EOL
   my $structState = ST_OPEN;
   $currSD = " struct {\n  uint16_t cmd;\n";
   $currTransmit =
-      "   stus =  fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,\n" .
+      "   stus =  fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,\n" .
       "                     (uint8_t *) &command1, sizeof(command1),\n";
   #	  "	                NULL, 0) ;\n"
   
@@ -376,19 +376,19 @@ EOL
 	  if ($structState == ST_OPEN) {
 	      $structState = ST_CLOSE;
 	      $currSD .= "}  __attribute__ ((__packed__)) $structName = {";
-	      $currSD .= " .cmd = cmds[fdsConfig->deviceType],\n" if $structName eq "command1";
+	      $currSD .= " .cmd = cmds[fds->deviceType],\n" if $structName eq "command1";
 	      $currSD .= join(",\n  ", map(".$_->[P_VAR] = __builtin_bswap16($_->[P_VAR]) ", @regular));
 	      $currSD .= "};\n";
 	      $structName++;
 	  }
 	  $currTransmit .= "	                NULL, 0)  != 0;\n";
-	  $currTransmit .= "   stus =  fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,\n" .
+	  $currTransmit .= "   stus =  fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,\n" .
 	      "                     (uint8_t *) $inArg->[P_VAR], strlen($inArg->[P_VAR]) + 1,\n";
       } else { # regular
 	  if ($structState == ST_CLOSE) {
 	      $currSD .=  "struct {\n";
 	      $currTransmit .= "	                NULL, 0)  != 0;\n";
-	      $currTransmit .= "   stus =  fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,\n" .
+	      $currTransmit .= "   stus =  fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,\n" .
 		  "                     (uint8_t *) &$structName, sizeof($structName),\n";
 	      
 	      $structState = ST_OPEN;
@@ -400,13 +400,13 @@ EOL
   #      say ("========");
   if ($structState == ST_OPEN) {
       $currSD .= "}  __attribute__ ((__packed__)) $structName = {";
-      $currSD .= " .cmd = cmds[fdsConfig->deviceType],\n" if $structName eq "command1";
+      $currSD .= " .cmd = cmds[fds->deviceType],\n" if $structName eq "command1";
       $currSD .= join(",\n  ", map(".$_->[P_VAR] = __builtin_bswap16($_->[P_VAR]) ", @regular));
       $currSD .= "};\n";
   }
   if (not $giveBackString) {
       if ($fixSize ne '0') {
-	  $currTransmit .= "(uint8_t *) &response, sizeof(response) - (fdsConfig->deviceType == GOLDELOX ?  $fixSize  : 0)) != 0;\n";
+	  $currTransmit .= "(uint8_t *) &response, sizeof(response) - (fds->deviceType == FDS_GOLDELOX ?  $fixSize  : 0)) != 0;\n";
       } else {
 	  $currTransmit .= "(uint8_t *) &response, sizeof(response)) != 0;\n";
       }
@@ -421,7 +421,7 @@ EOL
  }
  const size_t dynSize =  MIN(getResponseAsUint16((uint8_t *) str),  $varLenName-1);
  $varLenName = dynSize;
- stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+ stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 			       NULL, 0,
 			       (uint8_t *) str, dynSize) == dynSize;
   if (!stus) {
@@ -455,7 +455,7 @@ EOL
 #   uint16_t cmd;
 #   $inDecl
 # } __attribute__ ((__packed__)) command1 = {
-#   .cmd = cmds[fdsConfig->deviceType]$initSep
+#   .cmd = cmds[fds->deviceType]$initSep
 #   $inInit
 # };	
 # EOL
@@ -475,7 +475,7 @@ EOL
       say $implFh $currTransmit;
  } else {
     print $implFh <<EOL;
-    stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+    stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 		     (uint8_t *) &command1, sizeof(command1),
 		     NULL, 0) == 0; 
 EOL
@@ -483,7 +483,7 @@ EOL
 
   if ((scalar(@outP) > 1) and  (not $giveBackString)) {
       my @paramOut = getParamOut($fnEntryRef);
-      say $fh "if (fdsConfig->deviceType != GOLDELOX) {\n"  if ($fixSize ne '0');
+      say $fh "if (fds->deviceType != FDS_GOLDELOX) {\n"  if ($fixSize ne '0');
       say $fh join(";\n  ", map("  if ($_->[P_VAR] != NULL) \n       *$_->[P_VAR] = __builtin_bswap16(response.$_->[P_VAR]);",
 				grep($_->[P_VAR] ne 'ack', @paramOut)));
       say $fh '';
@@ -505,21 +505,21 @@ sub codeGenPolyFunction($$)
     my @outP = map(getProtoParam($_, P_IN), getParamOut($fnEntryRef));
     my $check = '';
     if (grep($_ eq 'CMD_NOT_IMPL', @{$fnEntryRef->[F_CMD]})) {
-	$check = "osalDbgAssert(cmds[fdsConfig->deviceType] != CMD_NOT_IMPL, " .
+	$check = "osalDbgAssert(cmds[fds->deviceType] != CMD_NOT_IMPL, " .
 	         "\"function $fnEntryRef->[F_NAME] unimplemented for this screen\");";
     }
     print $implFh <<EOL;
-bool $fnEntryRef->[F_NAME](const FdsConfig *fdsConfig, uint16_t n, const uint16_t vx[], const uint16_t vy[], uint16_t color)
+bool $fnEntryRef->[F_NAME](const FdsDriver *fds, uint16_t n, const uint16_t vx[], const uint16_t vy[], uint16_t color)
 {
-  RET_UNLESS_INIT_BOOL(fdsConfig);
-  RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
+  RET_UNLESS_INIT_BOOL(fds);
+  RET_UNLESS_4DSYS_BOOL(fds);
+  static const uint16_t cmds[FDS_AUTO] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
 				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
   $check
-  return gfx_polyxxx(fdsConfig,
-	      cmds[fdsConfig->deviceType],
+  return gfx_polyxxx(fds,
+	      cmds[fds->deviceType],
 	      n, vx, vy, color);
 
 }
@@ -531,11 +531,11 @@ sub codeGenImgBlitFunction($$)
 {
     my ($fh, $fnEntryRef) = @_;
     print $implFh <<EOL;
-bool img_blitComtoDisplay(const FdsConfig *fdsConfig, uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *  data)
+bool img_blitComtoDisplay(const FdsDriver *fds, uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *  data)
 {
-  RET_UNLESS_INIT_BOOL(fdsConfig);
-  RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
+  RET_UNLESS_INIT_BOOL(fds);
+  RET_UNLESS_4DSYS_BOOL(fds);
+  static const uint16_t cmds[FDS_AUTO] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
 				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
@@ -546,7 +546,7 @@ bool img_blitComtoDisplay(const FdsConfig *fdsConfig, uint16_t x, uint16_t y, ui
   uint16_t  y;
   uint16_t  width;
   uint16_t  height;
-}  __attribute__ ((__packed__)) command1 = { .cmd = cmds[fdsConfig->deviceType],
+}  __attribute__ ((__packed__)) command1 = { .cmd = cmds[fds->deviceType],
   .x = __builtin_bswap16(x) ,
   .y = __builtin_bswap16(y) ,
   .width = __builtin_bswap16(width) ,
@@ -557,11 +557,11 @@ bool img_blitComtoDisplay(const FdsConfig *fdsConfig, uint16_t x, uint16_t y, ui
   uint8_t ack;
   } __attribute__ ((__packed__)) response;
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL, "function img_blitComtoDisplay unimplemented for this screen");
-   fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+   fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
                      (uint8_t *) &command1, sizeof(command1),
 		      NULL, 0);
 
-   stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
                      (uint8_t *) data, sizeof(*data) * width * height,
 	             (uint8_t *) &response, sizeof(response)) != 0;
 
@@ -576,11 +576,11 @@ sub codeGenFileCallFunction($$)
 {
     my ($fh, $fnEntryRef) = @_;
     print $implFh <<EOL;
-bool file_callFunction(const FdsConfig *fdsConfig, uint16_t handle, uint16_t n,
+bool file_callFunction(const FdsDriver *fds, uint16_t handle, uint16_t n,
                        const uint16_t *args, uint16_t *value) {
-  RET_UNLESS_INIT_BOOL(fdsConfig);
-  RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
+  RET_UNLESS_INIT_BOOL(fds);
+  RET_UNLESS_4DSYS_BOOL(fds);
+  static const uint16_t cmds[FDS_AUTO] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
 				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
@@ -591,7 +591,7 @@ bool file_callFunction(const FdsConfig *fdsConfig, uint16_t handle, uint16_t n,
     uint16_t cmd;
     uint16_t handle;
     uint16_t n;
-  } __attribute__((__packed__)) command1 = {.cmd = cmds[fdsConfig->deviceType],
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
                                             .handle = __builtin_bswap16(handle),
                                             .n = __builtin_bswap16(n)};
 
@@ -601,10 +601,10 @@ bool file_callFunction(const FdsConfig *fdsConfig, uint16_t handle, uint16_t n,
   } __attribute__((__packed__)) response;
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_callFunction unimplemented for this screen");
-  fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 		     (uint8_t *)&command1, sizeof(command1),
 		     NULL, 0);
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
                             (uint8_t *)args, n * sizeof(*args),
                             (uint8_t *)&response, sizeof(response)) != 0;
 
@@ -620,11 +620,11 @@ sub codeGenFileRunFunction($$)
 {
     my ($fh, $fnEntryRef) = @_;
     print $implFh <<EOL;
- bool file_run(const FdsConfig *fdsConfig, const char *filename, uint16_t n,
+ bool file_run(const FdsDriver *fds, const char *filename, uint16_t n,
               const uint16_t *args, uint16_t *value) {
-  RET_UNLESS_INIT_BOOL(fdsConfig);
-  RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
+  RET_UNLESS_INIT_BOOL(fds);
+  RET_UNLESS_4DSYS_BOOL(fds);
+  static const uint16_t cmds[FDS_AUTO] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
 				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
@@ -633,7 +633,7 @@ sub codeGenFileRunFunction($$)
   struct {
     uint16_t cmd;
   } __attribute__((__packed__)) command1 = {
-      .cmd = cmds[fdsConfig->deviceType],
+      .cmd = cmds[fds->deviceType],
   };
   struct {
     uint16_t n;
@@ -646,15 +646,15 @@ sub codeGenFileRunFunction($$)
   } __attribute__((__packed__)) response;
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_run unimplemented for this screen");
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
                          (uint8_t *)&command1, sizeof(command1), NULL, 0) != 0;
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
                             (uint8_t *)filename, strlen(filename) + 1,
 			    NULL, 0) != 0;
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
                             (uint8_t *)&command2, sizeof(command2),
 			    NULL, 0);
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__, (uint8_t *)args,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)args,
                             n * sizeof(*args), (uint8_t *)&response,
                             sizeof(response)) != 0;
 
@@ -670,11 +670,11 @@ sub codeGenFileWriteFunction($$)
 {
     my ($fh, $fnEntryRef) = @_;
     print $implFh <<EOL;
- bool file_write(const FdsConfig *fdsConfig, uint16_t size, const uint8_t *source,
+ bool file_write(const FdsDriver *fds, uint16_t size, const uint8_t *source,
                 uint16_t handle, uint16_t *count) {
-  RET_UNLESS_INIT_BOOL(fdsConfig);
-  RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
+  RET_UNLESS_INIT_BOOL(fds);
+  RET_UNLESS_4DSYS_BOOL(fds);
+  static const uint16_t cmds[FDS_AUTO] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
 				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
@@ -685,7 +685,7 @@ sub codeGenFileWriteFunction($$)
     uint16_t cmd;
     uint16_t size;
   } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fdsConfig->deviceType],
+  command1 = {.cmd = cmds[fds->deviceType],
               .size = __builtin_bswap16(size)};
 
   struct {
@@ -698,13 +698,13 @@ sub codeGenFileWriteFunction($$)
   } __attribute__((__packed__)) response;
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_write unimplemented for this screen");
-  fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 		     (uint8_t *)&command1, sizeof(command1),
                      NULL, 0);
-  fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 		     source, size, NULL,
 		     0);
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
 			    (uint8_t *)&command2, sizeof(command2),
 			    (uint8_t *)&response, sizeof(response));
   
@@ -720,11 +720,11 @@ sub codeGenFileExecFunction($$)
 {
     my ($fh, $fnEntryRef) = @_;
     print $implFh <<EOL;
- bool file_exec(const FdsConfig *fdsConfig, const char *filename, uint16_t n,
+ bool file_exec(const FdsDriver *fds, const char *filename, uint16_t n,
                 const uint16_t *args, uint16_t *value) {
-  RET_UNLESS_INIT_BOOL(fdsConfig);
-  RET_UNLESS_4DSYS_BOOL(fdsConfig);
-  static const uint16_t cmds[AUTO_4DS] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
+  RET_UNLESS_INIT_BOOL(fds);
+  RET_UNLESS_4DSYS_BOOL(fds);
+  static const uint16_t cmds[FDS_AUTO] = {__builtin_bswap16($fnEntryRef->[F_CMD]->[0]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[1]),
 					  __builtin_bswap16($fnEntryRef->[F_CMD]->[2]),
 				          __builtin_bswap16($fnEntryRef->[F_CMD]->[3])};
@@ -733,7 +733,7 @@ sub codeGenFileExecFunction($$)
   struct {
     uint16_t cmd;
   } __attribute__((__packed__)) command1 = {
-      .cmd = cmds[fdsConfig->deviceType],
+      .cmd = cmds[fds->deviceType],
   };
   struct {
     uint16_t n;
@@ -746,15 +746,15 @@ sub codeGenFileExecFunction($$)
   } __attribute__((__packed__)) response;
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_run unimplemented for this screen");
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
                          (uint8_t *)&command1, sizeof(command1), NULL, 0) != 0;
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
                             (uint8_t *)filename, strlen(filename) + 1,
 			    NULL, 0) != 0;
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__,
                             (uint8_t *)&command2, sizeof(command2),
 			    NULL, 0);
-  stus = fdsTransmitBuffer(fdsConfig, __FUNCTION__, __LINE__, (uint8_t *)args,
+  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)args,
                             n * sizeof(*args), (uint8_t *)&response,
                             sizeof(response)) != 0;
 
@@ -770,7 +770,7 @@ sub codeGenPrototype($$)
 {
     my ($fh, $fnEntryRef) = @_;
     my @inP = map(getProtoParam($_, P_IN), getParamIn($fnEntryRef));
-    my $protoargsIn = 'const FdsConfig *fdsConfig' ;
+    my $protoargsIn = 'const FdsDriver *fds' ;
     $protoargsIn .= (', ' .  join(', ', @inP)) if scalar(@inP);
     my @outP = map(getProtoParam($_, P_OUT), getParamOut($fnEntryRef));
     my $protoargsOut = scalar(@outP) ? join(', ', @outP) : '';
@@ -780,40 +780,40 @@ sub codeGenPrototype($$)
 sub codeGenPolyPrototype($$)
 {
     my ($fh, $fnEntryRef) = @_;
-    print $fh "bool $fnEntryRef->[F_NAME](const FdsConfig *fdsConfig, uint16_t n, const uint16_t vx[], const uint16_t vy[], uint16_t color)";
+    print $fh "bool $fnEntryRef->[F_NAME](const FdsDriver *fds, uint16_t n, const uint16_t vx[], const uint16_t vy[], uint16_t color)";
 }
     
 sub codeGenImgBlitPrototype($$)
 {
     my ($fh, $fnEntryRef) = @_;
-    print $fh "bool img_blitComtoDisplay(const FdsConfig *fdsConfig, uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *  data)";
+    print $fh "bool img_blitComtoDisplay(const FdsDriver *fds, uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *  data)";
 }
     
 sub codeGenFileCallPrototype($$)
 {
     my ($fh, $fnEntryRef) = @_;
-    print $fh "bool file_callFunction(const FdsConfig *fdsConfig, uint16_t handle, uint16_t n,\n" . 
+    print $fh "bool file_callFunction(const FdsDriver *fds, uint16_t handle, uint16_t n,\n" . 
                        "const uint16_t *args, uint16_t *value)";
 }
     
 sub codeGenFileRunPrototype($$)
 {
     my ($fh, $fnEntryRef) = @_;
-    print $fh "bool file_run(const FdsConfig *fdsConfig, const char *filename, uint16_t n,\n" .
+    print $fh "bool file_run(const FdsDriver *fds, const char *filename, uint16_t n,\n" .
               "const uint16_t *args, uint16_t *value)"
 }
     
 sub codeGenFileExecPrototype($$)
 {
     my ($fh, $fnEntryRef) = @_;
-    print $fh "bool file_exec(const FdsConfig *fdsConfig, const char *filename, uint16_t n,\n" .
+    print $fh "bool file_exec(const FdsDriver *fds, const char *filename, uint16_t n,\n" .
               "const uint16_t *args, uint16_t *value)"
 }
     
 sub codeGenFileWritePrototype($$)
 {
     my ($fh, $fnEntryRef) = @_;
-    print $fh "bool file_write(const FdsConfig *fdsConfig, uint16_t size, const uint8_t *source,\n" .
+    print $fh "bool file_write(const FdsDriver *fds, uint16_t size, const uint8_t *source,\n" .
               "uint16_t handle, uint16_t *count)"
 }
     

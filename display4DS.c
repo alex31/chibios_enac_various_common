@@ -17,30 +17,30 @@ const uint32_t readTimout = TIME_MS2I(500);
 static FdsStatus fdsStatus = FDS_OK;
 
 
-static uint32_t fdsTransmitBuffer (const FdsConfig *oc, const char* fct, const uint32_t line,
+static uint32_t fdsTransmitBuffer (const FdsDriver *oc, const char* fct, const uint32_t line,
 					 const uint8_t *outBuffer, const size_t outSize,
 					 uint8_t *inBuffer, const size_t inSize);
 #if FDS_DISPLAY_USE_SD
-static uint32_t fdsReceiveAnswer (const FdsConfig *oc, uint8_t *response, const size_t size,
+static uint32_t fdsReceiveAnswer (const FdsDriver *oc, uint8_t *response, const size_t size,
 				   const char* fct, const uint32_t line);
 static void sendVt100Seq (BaseSequentialStream *serial, const char *fmt, ...);
 #else
 static void sendVt100Seq (UARTDriver *serial, const char *fmt, ...);
-static void fdsStartReceiveAnswer (const FdsConfig *oc, uint8_t *response, const size_t size,
+static void fdsStartReceiveAnswer (const FdsDriver *oc, uint8_t *response, const size_t size,
 				     const char* fct, const uint32_t line);
-static uint32_t fdsWaitReceiveAnswer (const FdsConfig *oc, size_t *size,
+static uint32_t fdsWaitReceiveAnswer (const FdsDriver *oc, size_t *size,
 					const char* fct, const uint32_t line);
 #endif
-static bool findDeviceType (FdsConfig *fdsConfig);
+static bool findDeviceType (FdsDriver *fdsConfig);
 
 #if CH_DBG_ENABLE_ASSERTS 
 #define RET_UNLESS_INIT(fdsCfg)    {if (fdsIsInitialised(fdsCfg) == false) return ;}
-#define RET_UNLESS_4DSYS(fdsCfg)  {if (fdsCfg->deviceType == TERM_VT100) return ;}
-#define RET_UNLESS_GOLDELOX(fdsCfg)  {if (fdsCfg->deviceType != GOLDELOX) return ;}
+#define RET_UNLESS_4DSYS(fdsCfg)  {if (fdsCfg->deviceType == FDS_TERM_VT100) return ;}
+#define RET_UNLESS_GOLDELOX(fdsCfg)  {if (fdsCfg->deviceType != FDS_GOLDELOX) return ;}
 
 #define RET_UNLESS_INIT_BOOL(fdsCfg)    {if (fdsIsInitialised(fdsCfg) == false) return false;}
-#define RET_UNLESS_4DSYS_BOOL(fdsCfg)  {if (fdsCfg->deviceType == TERM_VT100) return false;}
-#define RET_UNLESS_GOLDELOX_BOOL(fdsCfg)  {if (fdsCfg->deviceType != GOLDELOX) return false;}
+#define RET_UNLESS_4DSYS_BOOL(fdsCfg)  {if (fdsCfg->deviceType == FDS_TERM_VT100) return false;}
+#define RET_UNLESS_GOLDELOX_BOOL(fdsCfg)  {if (fdsCfg->deviceType != FDS_GOLDELOX) return false;}
 #else
 #define RET_UNLESS_INIT(fdsCfg)
 #define RET_UNLESS_4DSYS(fdsCfg)
@@ -51,14 +51,14 @@ static bool findDeviceType (FdsConfig *fdsConfig);
 #define RET_UNLESS_GOLDELOX_BOOL(fdsCfg)
 #endif
 
-static bool fdsIsInitialised (const FdsConfig *fdsConfig) ;
-static void fdsScreenSaverTimout (const FdsConfig *fdsConfig, uint16_t timout);
-static void fdsPreInit (FdsConfig *fdsConfig, uint32_t baud);
-static uint32_t fdsGetFileError  (const FdsConfig *fdsConfig);
-static bool fdsFileSeek  (const FdsConfig *fdsConfig, const uint16_t handle, const uint32_t offset);
-static uint16_t fgColorIndexTo16b (const FdsConfig *fdsConfig, const uint8_t colorIndex);
+static bool fdsIsInitialised (const FdsDriver *fdsConfig) ;
+static void fdsScreenSaverTimout (const FdsDriver *fdsConfig, uint16_t timout);
+static void fdsPreInit (FdsDriver *fdsConfig, uint32_t baud);
+static uint32_t fdsGetFileError  (const FdsDriver *fdsConfig);
+static bool fdsFileSeek  (const FdsDriver *fdsConfig, const uint16_t handle, const uint32_t offset);
+static uint16_t fgColorIndexTo16b (const FdsDriver *fdsConfig, const uint8_t colorIndex);
 static uint8_t colorDimmed (const uint8_t channel, const uint8_t luminosity);
-static uint16_t fdsTouchGet (const FdsConfig *fdsConfig, uint16_t mode);
+static uint16_t fdsTouchGet (const FdsDriver *fdsConfig, uint16_t mode);
 static uint16_t getResponseAsUint16 (const uint8_t *buff);
 #if FDS_DISPLAY_USE_UART
 static void uartStartRead (UARTDriver *serial, uint8_t *response, 
@@ -73,7 +73,7 @@ static uint8_t colorDimmed (const uint8_t channel, const uint8_t luminosity)
 }
 
 
-static void fdsPreInit (FdsConfig *fdsConfig, uint32_t baud)
+static void fdsPreInit (FdsDriver *fdsConfig, uint32_t baud)
 {
   fdsConfig->bg = fds_colorDecTo16b(0,0,0);
   fdsConfig->tbg[0] = mkColor24 (0,0,0);
@@ -93,8 +93,8 @@ static void fdsPreInit (FdsConfig *fdsConfig, uint32_t baud)
   fdsConfig->serialConfig.cr3 = 0;
 }
 
-bool fdsStart (FdsConfig *fdsConfig,  FDS_LINK_DRIVER *fds, const uint32_t baud,
-		ioline_t rstLine, enum FdsConfig_Device dev)
+bool fdsStart (FdsDriver *fdsConfig,  FDS_LINK_DRIVER *fds, const uint32_t baud,
+		ioline_t rstLine, enum FdsDriver_Device dev)
 {
   fdsConfig->rstLine = rstLine;
   fdsConfig->deviceType = dev;
@@ -103,7 +103,7 @@ bool fdsStart (FdsConfig *fdsConfig,  FDS_LINK_DRIVER *fds, const uint32_t baud,
 
 
   fdsPreInit(fdsConfig,
-	       fdsConfig->deviceType == TERM_VT100 ? baud : 9600);
+	       fdsConfig->deviceType == FDS_TERM_VT100 ? baud : 9600);
   chMtxObjectInit(&(fdsConfig->omutex));
 #if FDS_DISPLAY_USE_SD
   fdsConfig->serial = (BaseSequentialStream *) fds;
@@ -130,13 +130,13 @@ bool fdsStart (FdsConfig *fdsConfig,  FDS_LINK_DRIVER *fds, const uint32_t baud,
   fdsScreenSaverTimout(fdsConfig, 20000);
   
   // use greater speed
-  if ((fdsConfig->deviceType != TERM_VT100) && (baud != 9600))
+  if ((fdsConfig->deviceType != FDS_TERM_VT100) && (baud != 9600))
     return fdsSetBaud(fdsConfig, baud);
   return true;
 }
 
 
-void fdsHardReset (FdsConfig *fdsConfig)
+void fdsHardReset (FdsDriver *fdsConfig)
 {
 
   RET_UNLESS_4DSYS(fdsConfig);
@@ -148,18 +148,18 @@ void fdsHardReset (FdsConfig *fdsConfig)
 }
 
 
-bool fdsIsInitialised (const FdsConfig *fdsConfig)
+bool fdsIsInitialised (const FdsDriver *fdsConfig)
 {
   return (fdsConfig->serial != NULL);
 }
 
-void fdsAcquireLock (FdsConfig *fdsConfig)
+void fdsAcquireLock (FdsDriver *fdsConfig)
 { 
   RET_UNLESS_INIT(fdsConfig);
   chMtxLock(&(fdsConfig->omutex));
 }
 
-void fdsReleaseLock (FdsConfig *fdsConfig)
+void fdsReleaseLock (FdsDriver *fdsConfig)
 { 
   RET_UNLESS_INIT(fdsConfig);
   (void) fdsConfig;
@@ -167,7 +167,7 @@ void fdsReleaseLock (FdsConfig *fdsConfig)
 }
 
 
-void fdsGetVersion (FdsConfig *fdsConfig, char *buffer, const size_t buflen)
+void fdsGetVersion (FdsDriver *fdsConfig, char *buffer, const size_t buflen)
 {
   RET_UNLESS_4DSYS(fdsConfig);
 
@@ -199,7 +199,7 @@ void fdsGetVersion (FdsConfig *fdsConfig, char *buffer, const size_t buflen)
 }
 
 
-bool fdsSetBaud (FdsConfig *fdsConfig, uint32_t baud)
+bool fdsSetBaud (FdsDriver *fdsConfig, uint32_t baud)
 {
   uint32_t actualbaudRate; 
   uint16_t baudCode = 0;
@@ -209,7 +209,7 @@ bool fdsSetBaud (FdsConfig *fdsConfig, uint32_t baud)
   RET_UNLESS_INIT_BOOL(fdsConfig);
   
   switch (fdsConfig->deviceType) {
-  case DIABLO16: {
+  case FDS_DIABLO16: {
     switch(baud) {
     case 110    : baudCode = 0x0;  actualbaudRate = 110; break;
     case 300    : baudCode = 0x1;  actualbaudRate = 300; break;
@@ -237,7 +237,7 @@ bool fdsSetBaud (FdsConfig *fdsConfig, uint32_t baud)
   }
     break;
 
-  case PICASO: {
+  case FDS_PICASO: {
     switch(baud) {
     case 110    : baudCode = 0x0;  actualbaudRate = 110; break;
     case 300    : baudCode = 0x1;  actualbaudRate = 300; break;
@@ -264,7 +264,7 @@ bool fdsSetBaud (FdsConfig *fdsConfig, uint32_t baud)
     fdsConfig->serialConfig.speed = actualbaudRate; 
   }
     break;
-  case GOLDELOX: {
+  case FDS_GOLDELOX: {
     switch(baud) {
     case 110    : baudCode =  27271;  	actualbaudRate = 110; break;
     case 300    : baudCode =  9999;  	actualbaudRate = 300; break;
@@ -318,7 +318,7 @@ bool fdsSetBaud (FdsConfig *fdsConfig, uint32_t baud)
 }
 
 
-bool fdsPrintFmt (FdsConfig *fdsConfig, const char *fmt, ...)
+bool fdsPrintFmt (FdsDriver *fdsConfig, const char *fmt, ...)
 {
   char buffer[120];
   char *token, *curBuf;
@@ -385,19 +385,19 @@ bool fdsPrintFmt (FdsConfig *fdsConfig, const char *fmt, ...)
   return ret;
 }
 
-bool fdsPrintBuffer (FdsConfig *fdsConfig, const char *buffer)
+bool fdsPrintBuffer (FdsDriver *fdsConfig, const char *buffer)
 {
   RET_UNLESS_INIT_BOOL(fdsConfig);
   bool ret = false;
   switch(fdsConfig->deviceType) {
-  case GOLDELOX :
-  case PICASO :
-  case DIABLO16 : 
+  case FDS_GOLDELOX :
+  case FDS_PICASO :
+  case FDS_DIABLO16 : 
     ret = txt_moveCursor(fdsConfig, fdsConfig->curYpos, fdsConfig->curXpos);
     if (ret ==  true)
       ret = txt_putStr(fdsConfig, buffer, NULL);
     break;
-  case TERM_VT100 : 
+  case FDS_TERM_VT100 : 
     sendVt100Seq(fdsConfig->serial, "%d;%dH",  fdsConfig->curYpos+1, fdsConfig->curXpos+1);
     #if FDS_DISPLAY_USE_SD
     directchprintf(fdsConfig->serial, buffer);
@@ -411,7 +411,7 @@ bool fdsPrintBuffer (FdsConfig *fdsConfig, const char *buffer)
   return ret;
 }
 
-void fdsChangeBgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
+void fdsChangeBgColor (FdsDriver *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsConfig);
   
@@ -422,36 +422,36 @@ void fdsChangeBgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
 } 
 
 
-void fdsSetTextBgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
+void fdsSetTextBgColor (FdsDriver *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsConfig);
 
   fdsConfig->tbg[0] = mkColor24(r,g,b);
   switch(fdsConfig->deviceType) {
-  case GOLDELOX :
-  case PICASO : 
-  case DIABLO16 :
+  case FDS_GOLDELOX :
+  case FDS_PICASO : 
+  case FDS_DIABLO16 :
     txt_bgColour(fdsConfig,  fds_colorDecTo16b(r,g,b), NULL);
     break;
-  case TERM_VT100 : 
+  case FDS_TERM_VT100 : 
     sendVt100Seq(fdsConfig->serial, "48;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
     break;
   default: osalSysHalt("incorrect fdsConfig->deviceType");
   } 
 }
 
-void fdsSetTextFgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
+void fdsSetTextFgColor (FdsDriver *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsConfig);
   
   fdsConfig->fg[0] = mkColor24(r,g,b);
   switch(fdsConfig->deviceType) {
-  case GOLDELOX :
-  case PICASO : 
-  case DIABLO16 :
+  case FDS_GOLDELOX :
+  case FDS_PICASO : 
+  case FDS_DIABLO16 :
     txt_fgColour(fdsConfig,  fds_colorDecTo16b(r,g,b), NULL);
     break;
-  case TERM_VT100 : 
+  case FDS_TERM_VT100 : 
     sendVt100Seq(fdsConfig->serial, "38;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
     break;
   default: osalSysHalt("incorrect fdsConfig->deviceType");
@@ -460,7 +460,7 @@ void fdsSetTextFgColor (FdsConfig *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
 
 
 
-void fdsSetTextBgColorTable (FdsConfig *fdsConfig, uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
+void fdsSetTextBgColorTable (FdsDriver *fdsConfig, uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsConfig);
   if (++colorIndex >= COLOR_TABLE_SIZE) return;
@@ -468,7 +468,7 @@ void fdsSetTextBgColorTable (FdsConfig *fdsConfig, uint8_t colorIndex, uint8_t r
   fdsConfig->tbg[colorIndex] = mkColor24(r,g,b);
 }
 
-void fdsSetTextFgColorTable (FdsConfig *fdsConfig,  uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
+void fdsSetTextFgColorTable (FdsDriver *fdsConfig,  uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsConfig);
   if (++colorIndex >= COLOR_TABLE_SIZE) return;
@@ -476,12 +476,12 @@ void fdsSetTextFgColorTable (FdsConfig *fdsConfig,  uint8_t colorIndex, uint8_t 
   fdsConfig->fg[colorIndex] = mkColor24(r,g,b);
 }
 
-void fdsUseColorIndex (FdsConfig *fdsConfig, uint8_t colorIndex)
+void fdsUseColorIndex (FdsDriver *fdsConfig, uint8_t colorIndex)
 {
   RET_UNLESS_INIT(fdsConfig);
   if (++colorIndex >= COLOR_TABLE_SIZE) return;
   fdsConfig->colIdx = colorIndex;
-  if (fdsConfig->deviceType != TERM_VT100) {
+  if (fdsConfig->deviceType != FDS_TERM_VT100) {
     if (fdsConfig->fg[0].rgb != fdsConfig->fg[colorIndex].rgb)  {
       fdsSetTextFgColor(fdsConfig, colorDimmed(fdsConfig->fg[colorIndex].r, fdsConfig->luminosity), 
 			 colorDimmed(fdsConfig->fg[colorIndex].g, fdsConfig->luminosity),
@@ -504,59 +504,59 @@ void fdsUseColorIndex (FdsConfig *fdsConfig, uint8_t colorIndex)
 }
 
 
-void fdsSetTextOpacity (FdsConfig *fdsConfig, bool opaque)
+void fdsSetTextOpacity (FdsDriver *fdsConfig, bool opaque)
 {
-  if (fdsConfig->deviceType == GOLDELOX)
+  if (fdsConfig->deviceType == FDS_GOLDELOX)
     txt_opacity(fdsConfig, opaque, NULL);
 }
 
 
-void fdsSetTextAttributeMask (FdsConfig *fdsConfig, enum FdsTextAttribute attrib)
+void fdsSetTextAttributeMask (FdsDriver *fdsConfig, enum FdsTextAttribute attrib)
 {
   txt_attributes(fdsConfig, attrib, NULL);
 }
 
-void fdsSetTextGap (FdsConfig *fdsConfig, uint8_t xgap, uint8_t ygap)
+void fdsSetTextGap (FdsDriver *fdsConfig, uint8_t xgap, uint8_t ygap)
 {
   txt_xgap(fdsConfig, xgap, NULL);
   txt_ygap(fdsConfig, ygap, NULL);
 }
 
-void fdsSetTextSizeMultiplier (FdsConfig *fdsConfig, uint8_t xmul, uint8_t ymul)
+void fdsSetTextSizeMultiplier (FdsDriver *fdsConfig, uint8_t xmul, uint8_t ymul)
 {
   txt_widthMult(fdsConfig, xmul, NULL);
   txt_heightMult(fdsConfig, ymul, NULL);
 }
 
-void fdsSetScreenOrientation (FdsConfig *fdsConfig, enum FdsScreenOrientation orientation)
+void fdsSetScreenOrientation (FdsDriver *fdsConfig, enum FdsScreenOrientation orientation)
 {
   gfx_screenMode(fdsConfig, orientation, NULL);
 }
 
 
-void fdsGotoXY (FdsConfig *fdsConfig, uint8_t x, uint8_t y)
+void fdsGotoXY (FdsDriver *fdsConfig, uint8_t x, uint8_t y)
 {  
   RET_UNLESS_INIT(fdsConfig);
 
    fdsConfig->curXpos=x;
    fdsConfig->curYpos=y;
 
-   if (fdsConfig->deviceType == TERM_VT100) {
+   if (fdsConfig->deviceType == FDS_TERM_VT100) {
      sendVt100Seq(fdsConfig->serial, "%d;%dH", y+1,x+1);
    } 
 }
 
-void fdsGotoX (FdsConfig *fdsConfig, uint8_t x)
+void fdsGotoX (FdsDriver *fdsConfig, uint8_t x)
 {  
   RET_UNLESS_INIT(fdsConfig);
 
   fdsConfig->curXpos=x;
-  if (fdsConfig->deviceType == TERM_VT100) {
+  if (fdsConfig->deviceType == FDS_TERM_VT100) {
     sendVt100Seq(fdsConfig->serial, "%d;%dH", fdsConfig->curYpos+1,x+1);
   }
 }
 
-uint8_t fdsGetX  (const FdsConfig *fdsConfig)
+uint8_t fdsGetX  (const FdsDriver *fdsConfig)
 {  
   if (fdsIsInitialised(fdsConfig) == false)
     return 0;
@@ -564,7 +564,7 @@ uint8_t fdsGetX  (const FdsConfig *fdsConfig)
   return fdsConfig->curXpos;
 }
 
-uint8_t fdsGetY  (const FdsConfig *fdsConfig)
+uint8_t fdsGetY  (const FdsDriver *fdsConfig)
 {  
   if (fdsIsInitialised(fdsConfig) == false)
     return 0;
@@ -572,48 +572,48 @@ uint8_t fdsGetY  (const FdsConfig *fdsConfig)
   return fdsConfig->curYpos;
 }
 
-void fdsGotoNextLine (FdsConfig *fdsConfig)
+void fdsGotoNextLine (FdsDriver *fdsConfig)
 {  
   RET_UNLESS_INIT(fdsConfig);
 
   fdsConfig->curXpos=0;
   fdsConfig->curYpos++;
-  if (fdsConfig->deviceType == TERM_VT100) {
+  if (fdsConfig->deviceType == FDS_TERM_VT100) {
     sendVt100Seq(fdsConfig->serial, "B");
     //    chprintf(fdsConfig->serial, "\r\n");
   }
 }
 
-void fdsSetLuminosity (FdsConfig *fdsConfig, uint8_t luminosity)
+void fdsSetLuminosity (FdsDriver *fdsConfig, uint8_t luminosity)
 {
   fdsConfig->luminosity = luminosity;
   //  fdsUseColorIndex(fdsConfig, fdsConfig->colIdx);
 }
 
 
-bool fdsIsCorrectDevice (FdsConfig *fdsConfig)
+bool fdsIsCorrectDevice (FdsDriver *fdsConfig)
 {
   if (fdsIsInitialised(fdsConfig) == false) 
     return false;
 
-  if (fdsConfig->deviceType == TERM_VT100) 
+  if (fdsConfig->deviceType == FDS_TERM_VT100) 
     return true;
 
-  if (fdsConfig->deviceType == AUTO_4DS) 
+  if (fdsConfig->deviceType == FDS_AUTO) 
     return findDeviceType(fdsConfig);
   else
     return (gfx_cls(fdsConfig) && gfx_cls(fdsConfig));
 }
 
-static bool findDeviceType (FdsConfig *fdsConfig)
+static bool findDeviceType (FdsDriver *fdsConfig)
 {
   if (fdsIsInitialised(fdsConfig) == false) 
     return false;
 
-  if (fdsConfig->deviceType == TERM_VT100) 
+  if (fdsConfig->deviceType == FDS_TERM_VT100) 
     return true;
 
-  for (enum FdsConfig_Device type=GOLDELOX; type <= DIABLO16; type++) {
+  for (enum FdsDriver_Device type=FDS_GOLDELOX; type <= FDS_DIABLO16; type++) {
     fdsConfig->deviceType = type;
     if (fdsIsCorrectDevice(fdsConfig)) {
       DebugTrace("find correct device type = %u", type);
@@ -625,11 +625,11 @@ static bool findDeviceType (FdsConfig *fdsConfig)
   return false;
 }
 
-void fdsClearScreen (FdsConfig *fdsConfig)
+void fdsClearScreen (FdsDriver *fdsConfig)
 {
   RET_UNLESS_INIT(fdsConfig);
 
-  if (fdsConfig->deviceType == TERM_VT100) {
+  if (fdsConfig->deviceType == FDS_TERM_VT100) {
     sendVt100Seq(fdsConfig->serial, "2J");
   } else {
     gfx_cls(fdsConfig);
@@ -637,7 +637,7 @@ void fdsClearScreen (FdsConfig *fdsConfig)
 }
 
 
-void fdsDrawPoint (FdsConfig *fdsConfig, const uint16_t x, const uint16_t y, 
+void fdsDrawPoint (FdsDriver *fdsConfig, const uint16_t x, const uint16_t y, 
 		    const uint8_t colorIndex)
 {
   RET_UNLESS_INIT(fdsConfig);
@@ -647,7 +647,7 @@ void fdsDrawPoint (FdsConfig *fdsConfig, const uint16_t x, const uint16_t y,
 }
 
 
-void fdsDrawLine (FdsConfig *fdsConfig, 
+void fdsDrawLine (FdsDriver *fdsConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2, 
 		   const uint8_t colorIndex)
@@ -658,7 +658,7 @@ void fdsDrawLine (FdsConfig *fdsConfig,
   gfx_line(fdsConfig, x1, y1, x2, y2, fg);
 }
 
-void fdsDrawRect (FdsConfig *fdsConfig, 
+void fdsDrawRect (FdsDriver *fdsConfig, 
 		   const uint16_t x1, const uint16_t y1, 
 		   const uint16_t x2, const uint16_t y2,
 		   const bool filled,
@@ -673,7 +673,7 @@ void fdsDrawRect (FdsConfig *fdsConfig,
     gfx_rectangleFilled(fdsConfig, x1, y1, x2, y2, fg);
  }
 
-void fdsDrawPolyLine (FdsConfig *fdsConfig, 
+void fdsDrawPolyLine (FdsDriver *fdsConfig, 
 		       const uint16_t len,
 		       const PolyPoint * const pp,
 		       const uint8_t colorIndex)
@@ -699,7 +699,7 @@ void fdsDrawPolyLine (FdsConfig *fdsConfig,
   API available for PICASO and DIABLO, not for GOLDELOX 
 
  */
-void fdsScreenCopyPaste (FdsConfig *fdsConfig, 
+void fdsScreenCopyPaste (FdsDriver *fdsConfig, 
 			  const uint16_t xs, const uint16_t ys, 
 			  const uint16_t xd, const uint16_t yd,
 			  const uint16_t width, const uint16_t height)
@@ -709,12 +709,12 @@ void fdsScreenCopyPaste (FdsConfig *fdsConfig,
 }
 
 
-void fdsEnableTouch (FdsConfig *fdsConfig, bool enable)
+void fdsEnableTouch (FdsDriver *fdsConfig, bool enable)
 {
    touch_set(fdsConfig, enable ? 0x00 : 0x01);
 }
 
-static uint16_t fdsTouchGet (const FdsConfig *fdsConfig, uint16_t mode)
+static uint16_t fdsTouchGet (const FdsDriver *fdsConfig, uint16_t mode)
 {
   if (fdsIsInitialised(fdsConfig) == false) 
     return 0xff;
@@ -725,17 +725,17 @@ static uint16_t fdsTouchGet (const FdsConfig *fdsConfig, uint16_t mode)
 }
 
 
-uint16_t fdsTouchGetStatus (FdsConfig *fdsConfig)
+uint16_t fdsTouchGetStatus (FdsDriver *fdsConfig)
 {
   return fdsTouchGet(fdsConfig, 0);
 }
 
-uint16_t fdsTouchGetXcoord (FdsConfig *fdsConfig)
+uint16_t fdsTouchGetXcoord (FdsDriver *fdsConfig)
 {
   return fdsTouchGet(fdsConfig, 1);
 }
 
-uint16_t fdsTouchGetYcoord (FdsConfig *fdsConfig)
+uint16_t fdsTouchGetYcoord (FdsDriver *fdsConfig)
 {
   return fdsTouchGet(fdsConfig, 2);
 }
@@ -743,7 +743,7 @@ uint16_t fdsTouchGetYcoord (FdsConfig *fdsConfig)
 
 
 
-bool fdsInitSdCard (FdsConfig *fdsConfig)
+bool fdsInitSdCard (FdsDriver *fdsConfig)
 { 
   if (fdsIsInitialised(fdsConfig) == false) return false;
 
@@ -760,7 +760,7 @@ bool fdsInitSdCard (FdsConfig *fdsConfig)
   return (status != 0);
 }
 
-void fdsListSdCardDirectory (FdsConfig *fdsConfig)
+void fdsListSdCardDirectory (FdsDriver *fdsConfig)
 {
   RET_UNLESS_INIT(fdsConfig);
   bool remainFile = true;
@@ -784,20 +784,20 @@ void fdsListSdCardDirectory (FdsConfig *fdsConfig)
 }
 
 
-void fdsSetSoundVolume (FdsConfig *fdsConfig, uint8_t percent)
+void fdsSetSoundVolume (FdsDriver *fdsConfig, uint8_t percent)
 {
   percent = MIN (100, percent);
   percent = (uint8_t) (percent + 27);
   snd_volume(fdsConfig, percent);
 }
 
-void fdsPlayWav (FdsConfig *fdsConfig, const char* fileName)
+void fdsPlayWav (FdsDriver *fdsConfig, const char* fileName)
 {  
   file_playWAV(fdsConfig, fileName, NULL);
 }
 
 // No buzzer on our OLED-96-G2
-/* void fdsPlayBeep (FdsConfig *fdsConfig, uint8_t note, uint16_t duration) */
+/* void fdsPlayBeep (FdsDriver *fdsConfig, uint8_t note, uint16_t duration) */
 /* {   */
 /*   RET_UNLESS_INIT(fdsConfig); */
 /*   RET_UNLESS_GOLDELOX(fdsConfig); */
@@ -805,7 +805,7 @@ void fdsPlayWav (FdsConfig *fdsConfig, const char* fileName)
 /* 	0, note, twoBytesFromWord(duration)); */
 /* } */
 
-uint32_t fdsOpenFile (FdsConfig *fdsConfig, const char* fileName, uint16_t *handle)
+uint32_t fdsOpenFile (FdsDriver *fdsConfig, const char* fileName, uint16_t *handle)
 {
   if (fdsIsInitialised(fdsConfig) == false) return 0;
 
@@ -814,14 +814,14 @@ uint32_t fdsOpenFile (FdsConfig *fdsConfig, const char* fileName, uint16_t *hand
 }
 
 
-void fdsCloseFile (FdsConfig *fdsConfig, const uint16_t handle)
+void fdsCloseFile (FdsDriver *fdsConfig, const uint16_t handle)
 {
   file_close(fdsConfig, handle, NULL);
 }
 
 
 
-void fdsDisplayGci (FdsConfig *fdsConfig, const uint16_t handle, uint32_t offset)
+void fdsDisplayGci (FdsDriver *fdsConfig, const uint16_t handle, uint32_t offset)
 {
   uint16_t errno;
   if (fdsFileSeek (fdsConfig, handle, offset)) {
@@ -838,7 +838,7 @@ void fdsDisplayGci (FdsConfig *fdsConfig, const uint16_t handle, uint32_t offset
 /* va_start(argp, format); */
 /* char char_to_print = va_arg(argp, int); */
 
-bool fdsCallFunction(FdsConfig *fdsConfig, uint16_t handle, uint16_t *retVal, const size_t numArgs, ...)
+bool fdsCallFunction(FdsDriver *fdsConfig, uint16_t handle, uint16_t *retVal, const size_t numArgs, ...)
 {
     uint16_t args[numArgs];
     va_list argp;
@@ -849,7 +849,7 @@ bool fdsCallFunction(FdsConfig *fdsConfig, uint16_t handle, uint16_t *retVal, co
     return file_callFunction(fdsConfig, handle, numArgs, args, retVal);
 }
 
-bool fdsFileRun(FdsConfig *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...)
+bool fdsFileRun(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...)
 {
     uint16_t args[numArgs];
     va_list argp;
@@ -860,7 +860,7 @@ bool fdsFileRun(FdsConfig *fdsConfig, const char *filename, uint16_t *retVal, co
     return file_run(fdsConfig, filename, numArgs, args, retVal);
 }
 
-bool fdsFileExec(FdsConfig *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...)
+bool fdsFileExec(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...)
 {
     uint16_t args[numArgs];
     va_list argp;
@@ -892,13 +892,13 @@ static uint16_t getResponseAsUint16 (const uint8_t *buffer)
   return __builtin_bswap16(*(uint16_t *) (buffer+1));
 }
 
-static  uint16_t fgColorIndexTo16b (const FdsConfig *fdsConfig, const uint8_t colorIndex) {
+static  uint16_t fgColorIndexTo16b (const FdsDriver *fdsConfig, const uint8_t colorIndex) {
   const Color24 fg = fdsConfig->fg[colorIndex];
   
   return (fds_colorDecTo16b(fg.r, fg.g, fg.b));
 }
 
-static void fdsScreenSaverTimout (const FdsConfig *fdsConfig, uint16_t timout)
+static void fdsScreenSaverTimout (const FdsDriver *fdsConfig, uint16_t timout)
 {
   RET_UNLESS_INIT(fdsConfig);
   RET_UNLESS_GOLDELOX(fdsConfig);
@@ -906,7 +906,7 @@ static void fdsScreenSaverTimout (const FdsConfig *fdsConfig, uint16_t timout)
   misc_screenSaverTimeout(fdsConfig, timout);
 }
 
-static uint32_t fdsGetFileError  (const FdsConfig *fdsConfig)
+static uint32_t fdsGetFileError  (const FdsDriver *fdsConfig)
 {
   if (fdsIsInitialised(fdsConfig) == false) return 0;
   uint16_t errno;
@@ -915,7 +915,7 @@ static uint32_t fdsGetFileError  (const FdsConfig *fdsConfig)
   return errno;
 }
 
-static bool fdsFileSeek  (const FdsConfig *fdsConfig, const uint16_t handle, const uint32_t offset)
+static bool fdsFileSeek  (const FdsDriver *fdsConfig, const uint16_t handle, const uint32_t offset)
 {
   if (fdsIsInitialised(fdsConfig) == false) return false;
 
@@ -933,7 +933,7 @@ static bool fdsFileSeek  (const FdsConfig *fdsConfig, const uint16_t handle, con
 }
 
 #if FDS_DISPLAY_USE_SD
-static uint32_t fdsReceiveAnswer (const FdsConfig *oc, uint8_t *response, const size_t size,
+static uint32_t fdsReceiveAnswer (const FdsDriver *oc, uint8_t *response, const size_t size,
 				   const char* fct, const uint32_t line)
 {
   (void) fct;
@@ -956,7 +956,7 @@ static uint32_t fdsReceiveAnswer (const FdsConfig *oc, uint8_t *response, const 
 
 #if FDS_DISPLAY_USE_UART
 
-static void fdsStartReceiveAnswer (const FdsConfig *oc, uint8_t *response, const size_t size,
+static void fdsStartReceiveAnswer (const FdsDriver *oc, uint8_t *response, const size_t size,
 				    const char* fct, const uint32_t line)
 {
   (void) fct;
@@ -968,7 +968,7 @@ static void fdsStartReceiveAnswer (const FdsConfig *oc, uint8_t *response, const
   uartStartRead(serial, response, size);
 }
 
-static uint32_t fdsWaitReceiveAnswer (const FdsConfig *oc, size_t *size,
+static uint32_t fdsWaitReceiveAnswer (const FdsDriver *oc, size_t *size,
 				       const char* fct, const uint32_t line)
 
 {
@@ -993,7 +993,7 @@ static uint32_t fdsWaitReceiveAnswer (const FdsConfig *oc, size_t *size,
 #endif
 
 
-static uint32_t fdsTransmitBuffer (const FdsConfig *oc, const char* fct, const uint32_t line,
+static uint32_t fdsTransmitBuffer (const FdsDriver *oc, const char* fct, const uint32_t line,
 				    const uint8_t *outBuffer, const size_t outSize,
 				    uint8_t *inBuffer, const size_t inSize)
 {
