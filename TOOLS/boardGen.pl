@@ -1328,6 +1328,7 @@ sub fillDmaByFun ($$)
 
     my $dmaPath;
     my $version;
+    
    # find the gpio file defining AF number of functions
     my @ips = $domRef->getElementsByTagName("IP");
     foreach my $ip (@ips) {
@@ -1353,7 +1354,7 @@ sub fillDmaV1ByFun ($$)
     my %requestByPeriph;
 
     my @dmaChannels;
-    return unless -d $dmaPath;
+    return unless -e $dmaPath;
     
     my $xpc = XML::LibXML::XPathContext->new;
     $xpc->registerNs('mcd', 'http://mcd.rou.st.com/modules.php?name=mcu');
@@ -1429,7 +1430,7 @@ sub fillDmaV2ByFun ($$)
 
     my @dmaChannels;
 
-    return unless -d $dmaPath;
+    return unless -e $dmaPath;
     my $xpc = XML::LibXML::XPathContext->new;
     $xpc->registerNs('mcd', 'http://mcd.rou.st.com/modules.php?name=mcu');
     my $ddom = XML::LibXML->load_xml(location => $dmaPath);
