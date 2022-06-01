@@ -231,6 +231,11 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
     case 0x2001 : mcu_revid_chr = '3'; break;
     }
     break;
+ case  0x431 : mcu_devid_str = "STM32F41x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    }
+    break;
   case  0x449 : mcu_devid_str = "STM32F74x and STM32F75x";
     switch (mcu_revid) {
     case 0x1000 : mcu_revid_chr = 'A'; break;
