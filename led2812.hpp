@@ -221,11 +221,12 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 			  {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
 			  {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
 			  },
-	    .cr2  =  STM32_TIM_CR2_CCDS, 
+	    .cr2  =  STM32_TIM_CR2_CCDS,
+	    .bdtr = 0,
 	    .dier =  STM32_TIM_DIER_UDE
   };
 
-  dmaCfg =  {
+  dmaCfg = {
 	     .stream = stream,
 	     .channel = channel,
 	     .inc_peripheral_addr = false,
@@ -238,7 +239,7 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 	     .irq_priority = 12,
 	     .psize = elemSize(),//sizeof(uint16_t),
 	     .msize = elemSize(),
-#ifdef __DCACHE_PRESENT
+#if defined __DCACHE_PRESENT &&  __DCACHE_PRESENT
 	     .activate_dcache_sync = false,
 #endif
 	     .pburst = 0,
