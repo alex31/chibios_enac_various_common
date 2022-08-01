@@ -521,7 +521,8 @@ bool dma_lld_start(DMADriver *dmap, bool allocate_stream)
   uint32_t psize_msk, msize_msk;
 
   const DMAConfig *cfg = dmap->config;
-
+  osalDbgAssert(PORT_IRQ_IS_VALID_KERNEL_PRIORITY(cfg->irq_priority),
+		"illegal IRQ priority");
   switch (cfg->psize) {
   case 1 : psize_msk = STM32_DMA_CR_PSIZE_BYTE; break;
   case 2 : psize_msk = STM32_DMA_CR_PSIZE_HWORD; break;
