@@ -84,7 +84,7 @@ void ssd1306_SendI2c(const uint8_t *buffer, size_t buff_size)
 {
 	chMtxLock(&i2cMtx);
 
-	msg_t status = i2cMasterTransmitTimeout(&I2CD1, SSD1306_I2C_ADDR, buffer, buff_size, NULL, 0, 100);
+	msg_t status = i2cMasterTransmitTimeout(&SSD1306_I2CD, SSD1306_I2C_ADDR, buffer, buff_size, NULL, 0, 100);
 	if (status != MSG_OK) {DebugTrace("SSD1306 I2C write error %ld", status);}
 
 	chMtxUnlock(&i2cMtx);
