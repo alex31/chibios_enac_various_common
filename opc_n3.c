@@ -19,6 +19,7 @@ _Static_assert(sizeof(OPCN3FwConf) == 167);
 _Static_assert(sizeof(OPCN3Histogram) == 86);
 _Static_assert(sizeof(OPCN3PMData) == 14);
 
+static inline void wait1ms(void) {chThdSleepMilliseconds(1);}
 static inline void wait10ms(void) {chThdSleepMilliseconds(10);}
 static inline void wait100ms(void) {chThdSleepMilliseconds(100);}
 static inline void wait10us(void) {chThdSleepMicroseconds(10);}
@@ -75,7 +76,7 @@ static bool sendCommandByte(OPCN3Driver *drv, Command command)
 {
   uint8_t status;
   size_t tries = 0;
-  uint32_t bigLoopTries = 3;
+  size_t bigLoopTries = 3;
 
   while (true) {
     status = spiTransaction(drv->opcn3Cfg->spid, command);
@@ -84,7 +85,10 @@ static bool sendCommandByte(OPCN3Driver *drv, Command command)
 	return false; // status must be ready or busy otherwise there is malfunction
       }
       if (++tries < 20) {
+	spiUnselect(drv->opcn3Cfg->spid);
 	wait10ms();
+	spiSelect(drv->opcn3Cfg->spid);
+	wait1ms();
       } else {
 	if (--bigLoopTries == 0)
 	  return false;
@@ -92,7 +96,6 @@ static bool sendCommandByte(OPCN3Driver *drv, Command command)
 	tries = 0;
       }
     } else {
-      // TODO : is is needed here ? =>   wait10ms();
       break; // success
     }
   }
