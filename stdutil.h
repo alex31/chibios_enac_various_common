@@ -489,7 +489,7 @@ static inline  uint16_t revbit16 (uint16_t value)
   uint32_t result=0;
   
   asm volatile ("rbit %0, %1" : "=r" (result) : "r" (value) );
-  return(result>>16U);
+  return((uint16_t) result>>16U);
 }
 
 static inline  uint8_t revbit8 (uint8_t value)
@@ -497,7 +497,7 @@ static inline  uint8_t revbit8 (uint8_t value)
   uint32_t result=0;
   
   asm volatile ("rbit %0, %1" : "=r" (result) : "r" (value) );
-  return(result>>24U);
+  return((uint8_t) result>>24U);
 }
 
 // STM UUID
