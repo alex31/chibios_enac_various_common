@@ -532,15 +532,16 @@ bool sdioConnect (void)
   /* chThdSleepMilliseconds(100); */
 
 
-  sdcStart(&SDCD1, NULL);   
-  while (sdcConnect(&SDCD1) != OSAL_SUCCESS) {
+  sdcStart(&SDCD1, NULL);
+  uint32_t count = 10;
+  while ((sdcConnect(&SDCD1) != OSAL_SUCCESS) && count--) {
     chThdSleepMilliseconds(100);
     DebugTrace ("sdcConnect still not connected");
   }
 
   //  DebugTrace ("SDC START");
   
-  return TRUE;
+  return count != 0;
 }
 
 
