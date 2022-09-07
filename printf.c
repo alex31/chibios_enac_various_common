@@ -410,14 +410,15 @@ unsigned_common:
 }
 #endif
 
-void directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
+int directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
 #if CHPRINTF_USE_STDLIB
   uint8_t buffer[CHPRINTF_BUFFER_SIZE];
   const uint32_t len = _vsnprintf_r(&reent, (char *) buffer,
 				    CHPRINTF_BUFFER_SIZE, fmt, ap);
   streamWrite(chp, buffer, len);
+  return len,
 #else
-  _chvsnprintf(NULL, chp, 0, fmt, ap);
+  return _chvsnprintf(NULL, chp, 0, fmt, ap);
 #endif
 }
 
@@ -429,20 +430,20 @@ int chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap) {
 #endif
 }
 
-void chsnprintf(char *buffer, size_t size, const char *fmt, ...) 
+int chsnprintf(char *buffer, size_t size, const char *fmt, ...) 
 {
   va_list ap;
   
   va_start(ap, fmt);
 #if CHPRINTF_USE_STDLIB
-  _vsnprintf_r(&reent, buffer, size, fmt, ap);
+  return _vsnprintf_r(&reent, buffer, size, fmt, ap);
 #else
-  _chvsnprintf(buffer, NULL, size, fmt, ap);
+  return _chvsnprintf(buffer, NULL, size, fmt, ap);
 #endif
   va_end(ap);
 }
 
-void directchprintf(BaseSequentialStream *chp, const char *fmt, ...) 
+int directchprintf(BaseSequentialStream *chp, const char *fmt, ...) 
 {
   va_list ap;
 
@@ -451,8 +452,9 @@ void directchprintf(BaseSequentialStream *chp, const char *fmt, ...)
   uint8_t buffer[CHPRINTF_BUFFER_SIZE];
   const uint32_t len = _vsnprintf_r(&reent, (char *) buffer, CHPRINTF_BUFFER_SIZE, fmt, ap);
   streamWrite(chp, buffer, len);
+  return len;
 #else
-  _chvsnprintf(NULL, chp, 0, fmt, ap);
+  return _chvsnprintf(NULL, chp, 0, fmt, ap);
 #endif
 
   va_end(ap);
