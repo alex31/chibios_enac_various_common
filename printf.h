@@ -26,8 +26,7 @@
  * @{
  */
 
-#ifndef _PRINTF_H_
-#define _PRINTF_H_
+#pragma once
 
 #include <stdarg.h>
 #include <ch.h>
@@ -42,22 +41,21 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-  int directchprintf(BaseSequentialStream *chp, const char *fmt, ...);
+  int directchprintf(BaseSequentialStream *chp, const char *fmt, ...)
+    __attribute__ ((format (printf, 2, 3)));
   int directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap);
-  //  __attribute__ ((format (printf, 2, 3)));
   int  chvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap);
-  int chsnprintf(char *buffer, size_t size, const char *fmt, ...);
-  // __attribute__ ((format (printf, 3, 4)));
+  int chsnprintf(char *buffer, size_t size, const char *fmt, ...)
+    __attribute__ ((format (printf, 3, 4)));
   void chprintf(BaseSequentialStream *lchp, const char *fmt, ...)
     __attribute__ ((format (printf, 2, 3)));
   void chvprintf(BaseSequentialStream *lchp, const char *fmt, va_list ap);
-  void smchsnprintf(char *buffer, size_t size, const char *fmt, ...);
+  void smchsnprintf(char *buffer, size_t size, const char *fmt, ...)
+    __attribute__ ((format (printf, 3, 4)));
   void smchvsnprintf(char *buffer, size_t size, const char *fmt, va_list ap);
   
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _PRINTF_H_ */
 
 /** @} */
