@@ -416,7 +416,7 @@ int directchvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
   const uint32_t len = _vsnprintf_r(&reent, (char *) buffer,
 				    CHPRINTF_BUFFER_SIZE, fmt, ap);
   streamWrite(chp, buffer, len);
-  return len,
+  return len;
 #else
   return _chvsnprintf(NULL, chp, 0, fmt, ap);
 #endif

@@ -525,8 +525,10 @@ extern const StmUuid *stmUuid;
 
 extern "C++" {
 
+#if CH_CFG_USE_HEAP
 #include "cpp_heap_alloc.hpp"
-
+#endif
+  
 static inline bool operator!=(const Vec3f& a, const Vec3f& b)
 {
   return !vec3fIsEqual(&a, &b);
