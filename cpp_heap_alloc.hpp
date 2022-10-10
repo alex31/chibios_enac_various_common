@@ -4,23 +4,14 @@
 
 #ifdef __cplusplus
 extern "C++" {
-// inline void* operator new( size_t size) noexcept {
-//   void *p =  malloc_m (size);
-//   DebugTrace("new %p", p);
-//   return p;
-// }
 
 #if defined(__cpp_exceptions) 
-inline void* operator new[]( size_t size)  { return malloc_m (size); }
+inline void* operator new(size_t size)  { return malloc_m (size); }
 #else
-inline void* operator new[]( size_t size) noexcept { return malloc_m (size); }
+inline void* operator new(size_t size) noexcept { return malloc_m (size); }
 #endif
 
-inline void operator delete( void *p) noexcept {
-  //  DebugTrace("delete %p", p);
-  //  chThdSleepMilliseconds(50);
-  free_m (p);
-}
+inline void operator delete( void *p) noexcept {free_m (p);}
 inline void operator delete[]( void *p) noexcept  { free_m (p); }
 inline void operator delete( void *p, size_t s) noexcept { (void) s; free_m (p); }
 inline void operator delete[]( void *p, size_t s) noexcept  {  (void) s; free_m (p); }
