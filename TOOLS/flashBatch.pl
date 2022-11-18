@@ -81,14 +81,22 @@ unless (exists $options{ftdi}) {
 		    @com = ('/bin/st-flash', 'write', $programFile, '0x08000000');
 		}
 		when (BMP) {
-		    @com = ("$ENV{HOME}/BIN/bmpflash", $programFile);
+		    if (-x "$ENV{HOME}/BIN/bmpflash") {
+			@com = ("$ENV{HOME}/BIN/bmpflash", $programFile);
+		    } elsif (-x "/usr/local/bin/bmpflash") {
+			@com = ("/usr/local/bin/bmpflash", $programFile);
+		    } else {
+			die "bmpflash not found\n";
+		    }
 		}
 	    }
 	    
 	    say "Device detected, will flash : " . join(', ', @com);
 	    sleep 1;
 	    system(@com);
-	    system('/bin/paplay', '/usr/share/sounds/Oxygen-Sys-App-Positive.ogg');
+	    system('/bin/paplay',
+		   '/usr/share/sounds/Oxygen-Sys-App-Positive.ogg')
+		if -x '/bin/paplay';
 	    say "flash done, you can unplug, hit ctrl-C when finish";
 	}
     }
