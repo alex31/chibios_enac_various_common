@@ -9,6 +9,7 @@
 #include <limits>
 #include <typeinfo>
 #include <cmath>
+#include "stdutil.h"
 
 
 namespace tuple_foreach
@@ -254,3 +255,5 @@ struct SizeOf < TFirst, TRemaining ... >
 };
 
 //Used as const int size = SizeOf<int, char, double>::Value; // 4 + 1 + 8 = 13
+
+
