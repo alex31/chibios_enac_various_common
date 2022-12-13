@@ -94,10 +94,10 @@ unless (exists $options{ftdi}) {
 	    say "Device detected, will flash : " . join(', ', @com);
 	    sleep 1;
 	    system(@com);
+	    say "flash done, you can unplug, hit ctrl-C when finish";
 	    system('/bin/paplay',
 		   '/usr/share/sounds/Oxygen-Sys-App-Positive.ogg')
 		if -x '/bin/paplay';
-	    say "flash done, you can unplug, hit ctrl-C when finish";
 	}
     }
 } else {
