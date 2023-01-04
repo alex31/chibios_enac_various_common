@@ -5,6 +5,7 @@
 use Modern::Perl '2020';
 use feature ':5.30';
 use Cwd 'abs_path';
+use Getopt::Long;
 no warnings 'experimental::smartmatch';
 
 use constant  CHIBIOS_ROOT =>
@@ -23,7 +24,14 @@ sub appendLocalDefMcuconf($\@); #mcuconf path, ref to array local defs
 
 sub updtateXconf($$$); #conf file, updater dir, scriptName
 
+my %options;
+GetOptions (\%options, 'hal', 'make', 'ch', 'mcu', 'all');
 
+die ("should specifie -all, or combination of -hal, -ch, -mcu\n")
+    unless %options;
+
+$options{make} = $options{hal} = $options{ch} = $options{mcu} = 1
+    if exists $options{all};
 
 my $dos2unix = -e '/usr/bin/dos2unix' ? '/usr/bin/dos2unix' : '/bin/dos2unix';
 my @mcuconfScripts = getMcuconfMatchingScripts();
@@ -39,14 +47,20 @@ my $projPath = abs_path('.');
 say "project path is $projPath";
 say "will use $mcuconfScripts[0]";
 
-updateMakefile();
+updateMakefile()
+    if exists $options{make};
 my @localDefs = getLocalDefMcuconf(MCUCONF);
-updtateXconf("$projPath/cfg/halconf.h", CHIBIOS_UPDATER, UP_HAL);
-updtateXconf("$projPath/cfg/chconf.h", CHIBIOS_UPDATER, UP_CHRT);
-updtateXconf("$projPath/cfg/mcuconf.h", CHIBIOS_UPDATER, $mcuconfScripts[0]);
+updtateXconf("$projPath/cfg/halconf.h", CHIBIOS_UPDATER, UP_HAL)
+    if exists $options{hal};
+updtateXconf("$projPath/cfg/chconf.h", CHIBIOS_UPDATER, UP_CHRT)
+    if exists $options{ch};
+updtateXconf("$projPath/cfg/mcuconf.h", CHIBIOS_UPDATER, $mcuconfScripts[0])
+    if exists $options{ch};
 
 chdir($projPath);
-appendLocalDefMcuconf(MCUCONF, @localDefs);
+appendLocalDefMcuconf(MCUCONF, @localDefs)
+        if exists $options{ch};
+
 
 sub getMcuFamilies()
 {
