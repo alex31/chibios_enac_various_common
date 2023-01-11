@@ -69,8 +69,8 @@ unless (exists $options{ftdi}) {
 	    my $devName = $device->get_sysname();
 	    
 	    my ($devIndex) = $devName =~ m/(\d+)$/;
-	    next if ($devIndex % 2) == 0;
-	    
+
+	    next if ($devIndex % 2) == 0 && exists $options{bmp};
 	    say sprintf ("%s %s", $action, $device->get_devnode());
 	    
 	    next unless ($action eq 'add');
