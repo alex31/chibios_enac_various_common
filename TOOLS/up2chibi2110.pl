@@ -5,6 +5,7 @@
 use Modern::Perl '2020';
 use feature ':5.30';
 use Cwd 'abs_path';
+use Getopt::Long;
 no warnings 'experimental::smartmatch';
 
 use constant  CHIBIOS_ROOT =>
@@ -13,17 +14,27 @@ use constant  CHIBIOS_UPDATER => CHIBIOS_ROOT . "tools/updater/";
 use constant UP_CHRT => 'update_chconf_rt.sh';
 use constant UP_HAL => 'update_halconf.sh';
 use constant MCUCONF => 'cfg/mcuconf.h';
+use constant HALCONF => 'cfg/halconf.h';
 
 sub updateMakefile();
 sub getMcuFamilies();
 sub getMcuconfScripts();
 sub getMcuconfMatchingScripts();
-sub getLocalDefMcuconf($); #mcuconf path, return array of line
-sub appendLocalDefMcuconf($\@); #mcuconf path, ref to array local defs
+sub getLocalConf($); #mcuconf path, return array of line
+sub appendLocalConf($\@); #mcuconf path, ref to array local defs
 
 sub updtateXconf($$$); #conf file, updater dir, scriptName
 
+my %options;
+GetOptions (\%options, 'make', 'hal', 'ch', 'mcu');
 
+my ($make, $hal, $ch, $mcu) = (1) x 4;
+($make, $hal, $ch, $mcu) = (0) x 4 if %options;
+
+$make = 1 if exists $options{make};
+$hal = 1 if exists $options{hal};
+$ch = 1 if exists $options{ch};
+$mcu = 1 if exists $options{mcu};
 
 my $dos2unix = -e '/usr/bin/dos2unix' ? '/usr/bin/dos2unix' : '/bin/dos2unix';
 my @mcuconfScripts = getMcuconfMatchingScripts();
@@ -39,14 +50,16 @@ my $projPath = abs_path('.');
 say "project path is $projPath";
 say "will use $mcuconfScripts[0]";
 
-updateMakefile();
-my @localDefs = getLocalDefMcuconf(MCUCONF);
-updtateXconf("$projPath/cfg/halconf.h", CHIBIOS_UPDATER, UP_HAL);
-updtateXconf("$projPath/cfg/chconf.h", CHIBIOS_UPDATER, UP_CHRT);
-updtateXconf("$projPath/cfg/mcuconf.h", CHIBIOS_UPDATER, $mcuconfScripts[0]);
+updateMakefile() if $make;
+my @mcuLocalDefs = getLocalConf(MCUCONF);
+my @halLocalDefs = getLocalConf(HALCONF);
+updtateXconf("$projPath/cfg/halconf.h", CHIBIOS_UPDATER, UP_HAL) if $hal;
+updtateXconf("$projPath/cfg/chconf.h", CHIBIOS_UPDATER, UP_CHRT) if $ch;
+updtateXconf("$projPath/cfg/mcuconf.h", CHIBIOS_UPDATER, $mcuconfScripts[0]) if $mcu;
 
 chdir($projPath);
-appendLocalDefMcuconf(MCUCONF, @localDefs);
+appendLocalConf(MCUCONF, @mcuLocalDefs) if $mcu;;
+appendLocalConf(HALCONF, @halLocalDefs) if $hal;;
 
 sub getMcuFamilies()
 {
@@ -107,7 +120,7 @@ sub updtateXconf($$$) #conf file, updater dir, scriptName
     system(@com);
 }
 
-sub getLocalDefMcuconf($) #mcuconf path, return array of line
+sub getLocalConf($) #mcuconf path, return array of line
 {
     my $mcuconf = shift;
     my @defs;
@@ -120,14 +133,16 @@ sub getLocalDefMcuconf($) #mcuconf path, return array of line
     while (my $l= <$fh>) {
 	$markFound = 1 if $l =~ /\/\/\s*local defs/;
 	push(@defs, $l) if $markFound;
+	$markFound = 0 if $l =~ /\/\/\s*END\s*local defs/;
     }
+    
     close($fh);
 #    say(sprintf("DBG5 > %s\n", join(', ', @defs)));
     return @defs;
 }
 
 
-sub appendLocalDefMcuconf($\@) #mcuconf path, return array of line
+sub appendLocalConf($\@) #mcuconf path, return array of line
 {
     my ($mcuconf, $defsRef) = @_;
     my @finalContent;    
@@ -137,12 +152,17 @@ sub appendLocalDefMcuconf($\@) #mcuconf path, return array of line
     open(my $fh, "<",  $mcuconf) or
 	die sprintf("cannot open < %s: $!\n", $mcuconf);
 
-
+    my $lastLine;
+    
     while (my $l= <$fh>) {
-	push(@finalContent, $l) unless $l =~ /#endif.*MCUCONF_H/;
+	if ($l =~ /#endif.*CONF_H/) {
+	    $lastLine = $l;
+	} else {
+	    push(@finalContent, $l) 
+	}
     }
     close($fh);
-    push(@finalContent, @$defsRef);
+    push(@finalContent, @$defsRef, $lastLine);
     
     open($fh, ">",  $mcuconf) or
 	die sprintf("cannot open > %s: $!\n", $mcuconf);
