@@ -4,19 +4,30 @@
 #include "crc16_modbus.h"
 
 typedef enum {
-  CMD_POWER = 0x03, CMD_READ_STATUS = 0x13, CMD_FANLASER = 0x42,
-  CMD_BINWEIGHT = 0x05, CMD_READ_INFO = 0x3F, CMD_READ_SERIAL = 0x10,
-  CMD_READ_FWVER = 0x12, CMD_READ_CONF = 0x3C, CMD_WRITE_CONF = 0x3A,
-  CMD_HISTOGRAM = 0x30, CMD_READ_PM = 0x32, CMD_SAVE_CONF = 0x43,
-  CMD_CHECKSTATUS = 0xCF, CMD_RESET = 0x06, CMD_BOOTLOADER = 0x41
+  CMD_POWER = 0x03,
+  CMD_LASERPOWER = 0x04,
+  CMD_BINWEIGHT = 0x05,
+  CMD_RESET = 0x06,
+  CMD_READ_SERIAL = 0x10,
+  CMD_READ_FWVER = 0x12,
+  CMD_HISTOGRAM = 0x30,
+  CMD_READ_PM = 0x32,
+  CMD_WRITE_CONF = 0x3A,
+  CMD_READ_CONF = 0x3C,  
+  CMD_READ_INFO = 0x3F,
+  CMD_BOOTLOADER = 0x41,
+  CMD_SAVE_CONF = 0x43,
+  CMD_CHECKSTATUS = 0xCF
 } Command;
 
 typedef enum {OPCR2_BUSY = 0x31, OPCR2_READY = 0xF3} OpcR2Avail;
 
+#define INFO_SERIAL_LEN 60U
+
 _Static_assert(sizeof(Option) == 1);
 _Static_assert(sizeof(Command) == 1);
-_Static_assert(sizeof(OPCR2FwConf) == 167);
-_Static_assert(sizeof(OPCR2Histogram) == 86);
+_Static_assert(sizeof(OPCR2FwConf) == 180);
+_Static_assert(sizeof(OPCR2Histogram) == 64);
 _Static_assert(sizeof(OPCR2PMData) == 14);
 
 static inline void wait1ms(void) {chThdSleepMilliseconds(1);}
@@ -25,6 +36,7 @@ static inline void wait100ms(void) {chThdSleepMilliseconds(100);}
 static inline void wait10us(void) {chThdSleepMicroseconds(10);}
 static inline void wait100us(void) {chThdSleepMicroseconds(100);}
 static inline void wait2s(void) {chThdSleepSeconds(2);}
+static inline void wait6s(void) {chThdSleepSeconds(6);}
 static bool sendCommandByte(OPCR2Driver *drv, uint8_t commandByte);
 static bool readBuffer(OPCR2Driver *drv, Command command, uint8_t *buffer,
 		       size_t len);
@@ -56,14 +68,8 @@ OPCR2Status OPCR2Start(OPCR2Driver *drv, const OPCR2Config *cfg)
   chThdSleepMilliseconds(10);
   spiStart(cfg->spid, &drv->spiCfg);
 
-  if (OPCR2SendPower(drv, LASER_ON) != OPCR2_OK) {
+  if (OPCR2SendPower(drv, FAN_LASER_ON) != OPCR2_OK) {
     drv->status = OPCR2_NOT_RESPONDING;
-    goto end;
-  }
-
-  if (OPCR2SendPower(drv, FAN_ON) != OPCR2_OK) {
-    drv->status = OPCR2_NOT_RESPONDING;
-    OPCR2SendPower(drv, LASER_OFF);
     goto end;
   }
    
@@ -147,35 +153,34 @@ OPCR2Status OPCR2SendPower(OPCR2Driver *drv, Option option)
   }
   spiUnselect(drv->opcr2Cfg->spid);
   switch (option) {
-  case FAN_OFF : wait10ms(); break;
-  case FAN_ON : wait2s(); break;
-  case LASER_OFF : wait10ms(); break;
-  case LASER_ON : wait100us(); break;
+  case FAN_LASER_OFF : wait10ms(); break;
+  case FAN_LASER_ON : wait6s(); break;
   }
   return statusOk ? OPCR2_OK :  OPCR2_NOT_RESPONDING;
 }
 
-
-// we dont offer to modify laser power as it necessitate calibration
-// fan power modulation is useful in very dusty environment
-OPCR2Status OPCR2SetFanPower(OPCR2Driver *drv, uint8_t power)
+OPCR2Status OPCR2SetLaserPower(OPCR2Driver *drv, uint8_t laserDac)
 {
   spiSelect(drv->opcr2Cfg->spid);
-  const bool statusOk = sendCommandByte(drv, CMD_FANLASER);
+  const bool statusOk = sendCommandByte(drv, CMD_LASERPOWER);
 
   if (statusOk) {
     wait10us();
     spiTransaction(drv->opcr2Cfg->spid, 0);
     wait10us();
-    spiTransaction(drv->opcr2Cfg->spid, power);
+    spiTransaction(drv->opcr2Cfg->spid, laserDac);
   }
   
   spiUnselect(drv->opcr2Cfg->spid);
   return statusOk;
 }
 
+
 OPCR2Status OPCR2SetBinWeighting(OPCR2Driver *drv, uint8_t weight)
 {
+  if (weight > 10) {
+    return  OPCR2_INVALID_PARAM;
+  }
   spiSelect(drv->opcr2Cfg->spid);
   const bool statusOk = sendCommandByte(drv, CMD_BINWEIGHT);
   if (statusOk) {
@@ -186,19 +191,19 @@ OPCR2Status OPCR2SetBinWeighting(OPCR2Driver *drv, uint8_t weight)
   return statusOk;
 }
 
-OPCR2Status OPCR2ReadInfo(OPCR2Driver *drv, char info[61])
+OPCR2Status OPCR2ReadInfo(OPCR2Driver *drv, char info[INFO_SERIAL_LEN+1])
 {
   const bool statusOk = readBuffer(drv, CMD_READ_INFO, (uint8_t *) info,
-				   60);
-  info[60] = 0;
+				   INFO_SERIAL_LEN);
+  info[INFO_SERIAL_LEN] = 0;
   return statusOk ? OPCR2_OK :  OPCR2_NOT_RESPONDING;
 }
 
-OPCR2Status OPCR2ReadSerial(OPCR2Driver *drv, char serial[61])
+OPCR2Status OPCR2ReadSerial(OPCR2Driver *drv, char serial[INFO_SERIAL_LEN+1])
 {
   const bool statusOk = readBuffer(drv, CMD_READ_SERIAL, (uint8_t *) serial,
-				   60);
-  serial[60] = 0;
+				   INFO_SERIAL_LEN);
+  serial[INFO_SERIAL_LEN] = 0;
   return statusOk ? OPCR2_OK :  OPCR2_NOT_RESPONDING;
 }
 
@@ -211,7 +216,7 @@ OPCR2Status OPCR2WriteFwConf(OPCR2Driver *drv, const OPCR2FwConf *conf)
 
 OPCR2Status OPCR2SaveConf(OPCR2Driver *drv)
 {
-  const uint8_t unlock[5] = {0x3f, 0x3c,0x3f, 0x3c, 0x43}; 
+  const uint8_t unlock[5] = {0x3f, 0x3c, 0x3f, 0x3c, 0x43}; 
   const bool statusOk = writeBuffer(drv, CMD_SAVE_CONF, unlock,
 				   sizeof(unlock));
   return statusOk ? OPCR2_OK :  OPCR2_NOT_RESPONDING;
@@ -248,7 +253,6 @@ OPCR2Status OPCR2Reset(OPCR2Driver *drv)
   return statusOk ? OPCR2_OK :  OPCR2_NOT_RESPONDING; \
 }
 
-OPCR2_DECL_READ(OPCR2ReadDacAndPowerStatus, CMD_READ_STATUS, OPCR2DacAndPowerStatus);
 OPCR2_DECL_READ(OPCR2ReadFwVersion, CMD_READ_FWVER, OPCR2FwVersion);
 OPCR2_DECL_READ(OPCR2ReadFwConf, CMD_READ_CONF, OPCR2FwConf);
 static OPCR2_DECL_READ(OPCR2ReadHistogram_r, CMD_HISTOGRAM, OPCR2Histogram);
