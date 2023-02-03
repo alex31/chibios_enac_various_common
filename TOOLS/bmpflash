@@ -113,6 +113,7 @@ my $gdbInitRun;
 if (not $useOpenOcd) {
     $gdbAttachForDebug = <<EOL;
     target extended-remote $bmpdev
+    monitor connect dis
     monitor version
     monitor swdp_scan
     set mem inaccessible-by-default off
@@ -121,10 +122,11 @@ EOL
     
     $gdbEraseFlash = <<EOL;
     target extended-remote $bmpdev
+    monitor connect en
     monitor version
-#monitor swdp_scan
-#attach 1
-    monitor erase
+    monitor swdp_scan
+    attach 1
+    monitor erase_mass
 EOL
 	
 	$gdbInitDebug = <<EOL;
@@ -141,6 +143,7 @@ EOL
 	
 	$gdbInitFlash = <<EOL;
         target extended-remote $bmpdev
+        monitor connect en
 	monitor version
 	monitor swdp_scan
 	attach 1
