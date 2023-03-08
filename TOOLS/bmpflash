@@ -47,7 +47,7 @@ END {
     unlink GDBINIT_PATH if -e GDBINIT_PATH && not exists $options{keep};
 }
 
-GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s', 'o743');
+GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s', 'o743', 'o432');
 usage () if exists  $options{help};
 
 my $gdbPath = which('arm-none-eabi-gdb') // which('gdb-multiarch');
@@ -57,6 +57,8 @@ die "please install arm-none-eabi-gdb or gdb-multiarch" unless defined $gdbPath;
 my $bmpdev;
 $options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_h743zi.cfg'
     if exists  $options{o743};
+$options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_l4.cfg'
+    if exists  $options{o432};
 if (!exists  $options{device}) {
     if (-e BMPDEV) {
 	$bmpdev = BMPDEV;
@@ -88,7 +90,7 @@ if (!exists  $options{device}) {
     } elsif (($bmpdev !~ /\w+:\d+/) and ($bmpdev !~ /openocd/)) {
 	die "not recognised device format $bmpdev\n";
     } else {
-	$useOpenOcd = 1;
+	$useOpenOcd = 1 if $bmpdev =~ /openocd/;
     }
 }
 
