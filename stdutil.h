@@ -60,7 +60,7 @@ extern SerialUSBDriver SDU1;
 
 #if defined TRACE && (defined CONSOLE_DEV_SD || (CONSOLE_DEV_USB == TRUE))
 #include "printf.h"
-#define DebugTrace(fmt, ...) chprintf (chp, fmt "\r\n", ## __VA_ARGS__ )
+#define DebugTrace(fmt, ...) if (chp) {chprintf (chp, fmt "\r\n", ## __VA_ARGS__ );}
 #else
 #define DebugTrace(...) 
 #endif // TRACE
