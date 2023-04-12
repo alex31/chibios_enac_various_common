@@ -230,29 +230,6 @@ static void  sendFrameWithCrc(ModbusDriver *mdp, const uint8_t bufLen)
   mdp->opTimestamp = chVTGetSystemTimeX();
 }
 
-/*
-static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
-					 const uint8_t nominalBuffLen,
-					 const uint8_t errorBufflen)
-{
-  const size_t maxBufLen = nominalBuffLen > errorBufflen ? nominalBuffLen : errorBufflen;
-  const size_t maxblcrc = maxBufLen + 2U;
-  const size_t blcrc = nominalBuffLen + 2U;
-  const size_t readLen = sdReadTimeout(mdp->config->sd, mdp->ioBuffer, maxblcrc,
-				       TIME_MS2I(100));
-  mdp->opTimestamp = chVTGetSystemTimeX();
-  if (readLen != blcrc) {
-    DebugTrace("error readLen = %u instead of %u", readLen, blcrc);
-    return readLen ? MODBUS_ARG_ERROR : MODBUS_NO_ANSWER;
-  }
-  uint16_t *recCrc = (uint16_t *) (mdp->ioBuffer + nominalBuffLen);
-  const uint16_t localCrc = modbus_crc16(mdp->ioBuffer, nominalBuffLen);
-  if (localCrc != *recCrc) {
-    DebugTrace("local Crc 0x%x != received Crc 0x%x", localCrc, *recCrc);
-  }
-  return *recCrc == localCrc ? MODBUS_OK : MODBUS_CRC_ERROR;
-}
-*/
 static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
 					 const uint8_t nominalBuffLen,
 					 const ModbusFunction expectedFunction)
@@ -263,7 +240,7 @@ static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
 				       TIME_MS2I(100));
   mdp->opTimestamp = chVTGetSystemTimeX();
   if (readLen != blcrc) {
-    DebugTrace("error readLen = %u instead of %u", readLen, blcrc);
+    //    DebugTrace("error readLen = %u instead of %u", readLen, blcrc);
     return readLen ? MODBUS_ARG_ERROR : MODBUS_NO_ANSWER;
   }
   if (mdp->ioBuffer[1] != expectedFunction) {
@@ -276,7 +253,7 @@ static ModbusStatus  receiveFrameWithCrc(ModbusDriver *mdp,
   uint16_t *recCrc = (uint16_t *) (mdp->ioBuffer + nominalBuffLen);
   const uint16_t localCrc = modbus_crc16(mdp->ioBuffer, nominalBuffLen);
   if (localCrc != *recCrc) {
-    DebugTrace("local Crc 0x%x != received Crc 0x%x", localCrc, *recCrc);
+    //    DebugTrace("local Crc 0x%x != received Crc 0x%x", localCrc, *recCrc);
   }
   return *recCrc == localCrc ? MODBUS_OK : MODBUS_CRC_ERROR;
 }
