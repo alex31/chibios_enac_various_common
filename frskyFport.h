@@ -7,7 +7,6 @@
 /*
   TODO
 
-  * voir si la radio peut emettre une alarme sonore sur seuil de la batterie de l'UAV
   * fichier de config pour rendre le code portable en utilisant des pointeurs sur fonction ?
   * tester en logique inverse sur MCU qui supporte la logique inverse
 
