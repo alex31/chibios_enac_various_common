@@ -63,7 +63,7 @@ static SerialConfig fportSerialConfig = {
   .speed = 115200,
   .cr1 = 0, // 8 bits, no parity, one stop bit
   .cr2 = USART_CR2_STOP1_BITS, 
-  .cr3 = USART_CR3_HDSEL // half duplex
+  //  .cr3 = USART_CR3_HDSEL // half duplex
 };
 
 /*
@@ -206,117 +206,16 @@ void fportTelemetryUpDataMultiplexed(FPORTDriver *fportp, const fportAppId appId
 static void receivingLoopThread (void *arg)
 {
   FPORTDriver *fportp = (FPORTDriver *) arg;
-  uint8_t msgBuf[FPORT_CONTROL_LEN + 2]; // +1 for len, +1 for checksum
 
 #if FPORT_MAX_DATAIDS > 0
   FPORT_DownlinkFrame fportDL;
   FPORT_UplinkFrame ufrm;
 #endif
   
-  while(!chThdShouldTerminateX()) {
-    memset(msgBuf, 0, sizeof(msgBuf));
-  wait_for_header:
-    const int byteOrErr = sdGetTimeout(fportp->config->sd, TIME_MS2I(100));
-    if (byteOrErr < 0) {
-      fportp->errorMsk |= FPORT_TIMEOUT;
-      continue;
-    }
-    const uint8_t byte = byteOrErr & 0Xff;
-    if (byte != FPORT_START_STOP)
-      continue;
-  got_header:
-    const uint8_t len = sdGet(fportp->config->sd); 
-    switch (len) {
-    case FPORT_START_STOP : goto got_header;
-    case FPORT_CONTROL_LEN  : break;
-#if FPORT_MAX_DATAIDS == 0
-      // ignore downlink message and do not answer to theses
-    case FPORT_DOWNLINK_LEN : goto wait_for_header:
-#else
-    case FPORT_DOWNLINK_LEN : break;
-#endif      
-    default: {
-      fportp->errorMsk |= FPORT_MALFORMED_FRAME;
-      goto wait_for_header;
-    }
-    }
-    // acquire message, take care of byte stuffing
-    msgBuf[0] = len;
-    uint8_t bufIdx = 1;
-    while(true) {
-      uint8_t data = sdGet(fportp->config->sd);
-      //      chprintf(chp, "[%u:0x%x], ", bufIdx, data);
-      if (data == FPORT_START_STOP)
-	break; // end of message
-      if (data == FPORT_ESCAPE) { // unstuff escape sequence
-	data = sdGet(fportp->config->sd) ^ FPORT_ESCAPE_DIFF;
-	if ((data != FPORT_START_STOP) && (data != FPORT_ESCAPE)) {
-	  fportp->errorMsk |= FPORT_MALFORMED_FRAME;
-	  goto  wait_for_header;
-	}
-      }
-      msgBuf[bufIdx] = data;
-      if (bufIdx++ >= sizeof(msgBuf)) {
-	fportp->errorMsk |= FPORT_MALFORMED_FRAME;
-	goto  wait_for_header;
-      } 
-    }
-    
-    // get the message, verify checksum
-    if (len == FPORT_CONTROL_LEN) {
-      if (is_checksum8_ok(msgBuf, FPORT_CONTROL_LEN + 2)) {
-	decodeFportControlMsg(msgBuf + 1, &fportp->lastFrame);
-	if (fportp->config->ctrlMsgCb != NULL)
-	  fportp->config->ctrlMsgCb(fportp);
-	if (fportp->lastFrame.flags & FPORT_FLAG_FRAME_LOST)
-	  fportp->errorMsk |= FPORT_RADIO_LINK_LOST;
-	if (fportp->lastFrame.flags & FPORT_FLAG_FAILSAFE)
-	  fportp->errorMsk |= FPORT_FAILSAFE;
-      } else {
-	fportp->errorMsk |= FPORT_CRC_ERROR;
-      }
-      if ((fportp->config->errCb != NULL) && fportp->errorMsk)
-	fportp->config->errCb(fportp);
-    }
-#if FPORT_MAX_DATAIDS > 0
-    else {
-      if (is_checksum8_ok(msgBuf, FPORT_DOWNLINK_LEN + 2)) {
-	const systime_t now = chVTGetSystemTimeX();
-	static FPORT_UplinkFrame aliveUfrm = {
-	  .type = TYPE_UPLINK,
-	  .prime = PRIM_NOT_READY,
-	  .appId = FPORT_DATAID_NULL,
-	  .v = {.u32 = 0}};
-	decodeFportDownlinkMsg(msgBuf + 1, &fportDL);
-	fportp->errorMsk |= FPORT_OK;
-	if (fportDL.prime == PRIM_DATA) {
-	  // the receiver ask for a telemetry frame
-	  const fportAppIdPair pair = fportTelemetryUpGetNextPair(fportp);
-	  chThdSleepUntilWindowed(now, now + TIME_US2I(FPORT_ANSWER_DELAY_US));
-	  if (pair.key == FPORT_DATAID_UNDEF) {
-	    // not data to send : send alive frame
-	    sendFportUplinkMsg(fportp, &aliveUfrm);
-	  } else {
-	    ufrm = (FPORT_UplinkFrame) {
-	      .type = TYPE_UPLINK,
-	      .prime = PRIM_DATA,
-	      .appId = pair.key,
-	      .v = pair.value};
-	    sendFportUplinkMsg(fportp, &ufrm);
-	  }
-	} else {
-	  // the receiver does congestion control and cannot aford to
-	  // manage a data frame : send alive frame
-	  sendFportUplinkMsg (fportp, &aliveUfrm);
-	  //	  DebugTrace(".");
-	}
-	//	DebugTrace("pair = 0x%x, %lu", pair.key, pair.value.u32);
-      } else {
-	fportp->errorMsk |= FPORT_CRC_ERROR;
-      }
-    }
-#endif
-  }
+  while(true) {
+     sdGet(fportp->config->sd);
+
+ }
 }
 
 
