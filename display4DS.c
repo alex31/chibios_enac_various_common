@@ -845,7 +845,8 @@ bool fdsCallFunction(FdsDriver *fdsConfig, uint16_t handle, uint16_t *retVal, co
     va_start(argp, numArgs);
     for (size_t i=0; i< numArgs; i++) {
       args[i] = va_arg(argp, int);
-    } 
+    }
+    va_end(argp);
     return file_callFunction(fdsConfig, handle, numArgs, args, retVal);
 }
 
@@ -856,7 +857,8 @@ bool fdsFileRun(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, co
     va_start(argp, numArgs);
     for (size_t i=0; i< numArgs; i++) {
       args[i] = va_arg(argp, int);
-    } 
+    }
+    va_end(argp);
     return file_run(fdsConfig, filename, numArgs, args, retVal);
 }
 
@@ -867,7 +869,8 @@ bool fdsFileExec(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, c
     va_start(argp, numArgs);
     for (size_t i=0; i< numArgs; i++) {
       args[i] = va_arg(argp, int);
-    } 
+    }
+    va_end(argp);
     return file_exec(fdsConfig, filename, numArgs, args, retVal);
 }
 

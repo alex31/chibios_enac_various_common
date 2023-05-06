@@ -249,7 +249,7 @@ inline static void terminal_newline (microrl_t * pThis)
 // 0 value not supported!!! just make empty string
 static void u16bit_to_str (unsigned int nmb, char * buf)
 {
-  char tmp_str [6] = {0,};
+  char tmp_str [8] = {0,};
   int i = 0;
   if (nmb <= 0xFFFF) {
     while (nmb > 0) {
