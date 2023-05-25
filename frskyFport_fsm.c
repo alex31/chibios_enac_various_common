@@ -120,7 +120,11 @@ size_t	 fportGetNextReadLen(const FportFsmContext *context)
     retLen = 1U;
   }
 
-  return retLen ? retLen : 1U;
+  return retLen ?
+    retLen <= FPORT_CONTROL_AND_DOWNLINK_FRAME_LENGTH ?
+       retLen
+       : FPORT_CONTROL_AND_DOWNLINK_FRAME_LENGTH
+    : 1U;
 }
 
 
