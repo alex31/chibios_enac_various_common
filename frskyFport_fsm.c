@@ -2,6 +2,7 @@
 #include <string.h>
 #include <math.h>
 
+
 #define FPORT_START_STOP 0x7EU
 #define FPORT_ESCAPE 0x7DU
 #define FPORT_ESCAPE_DIFF 0x20U
@@ -285,10 +286,11 @@ static FportErrorMask fportFeedFsmManageReceivedDownlinkMsg(FportFsmContext *con
 	  .appId = pair.key,
 	  .v = pair.value
 	};
-	const size_t upMsgLen = makeFportUplinkMsgWithStuffing(&ufrm, context->msgBuf,
-							       sizeof(context->msgBuf));
-	if (context->config->tlmSendCb != nullptr)
+	if (context->config->tlmSendCb != nullptr) {
+	  const size_t upMsgLen = makeFportUplinkMsgWithStuffing(&ufrm, context->msgBuf,
+								 sizeof(context->msgBuf));
 	  context->config->tlmSendCb(context->msgBuf, upMsgLen, context->config->optArg);
+	}
       }
     } else {
       // the receiver does congestion control and cannot aford to
