@@ -87,7 +87,9 @@ extern "C" {
      *          Old USARTv1 peripheral (F1, F2, F4 ...) cannot invert the signal and a 
      *          receiver that provide uninverted signal (R-XSR, R9M, etc) must be used
      */
+#ifdef USART_CR2_RXINV
     bool	 driverShouldInvert;
+#endif
   } FPORTConfig;
   
 
