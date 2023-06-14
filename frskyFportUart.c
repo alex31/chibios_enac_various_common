@@ -62,16 +62,11 @@ void fportUartStart(FPORTDriver *fportp, const FPORTConfig *configp)
   
   fportContextInit(&fportp->context, &fsmContextConfig);
 
-#ifndef USART_CR2_RXINV
-  // USARTv1 without level inversion capability
-  // signal must have been inverted by external device
-  chDbgAssert(configp->driverShouldInvert == false,
-	      "fonction not available on UARTv1 device (F4xx)");
-#else
+#ifdef USART_CR2_RXINV
   if (configp->driverShouldInvert == true)
     fportUartConfig.cr2 |= (USART_CR2_RXINV | USART_CR2_TXINV);
 #endif
-
+  
   uartStart(configp->uart, &fportUartConfig);
 }
 

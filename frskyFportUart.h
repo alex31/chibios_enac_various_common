@@ -4,18 +4,6 @@
 #include <hal.h>
 #include "frskyFportAppId.h"
 #include "frskyFport_fsm.h"
-/*
-  TODO
-
-
-  LOW PRIORITY ENHANCEMENTS
-  * API pour abonnement à des messages de telemetrie down with payload (pas encore
-  utilisé par betafligh ou ardupilot, à creuser)
-  * utilisation du DMA pour être moins gourmand en temps de cycle
-    sur F7/H7/G4 ou autres STM récents avec UART qui fait du symbol detect pour arreter 
-    la transaction  (voir si SIO dait faire ?) 
-    + est-ce qu'il serait possible de faire du hardware assisted byte stuffing ?
-*/
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,17 +11,6 @@ extern "C" {
 
 
 
- /**
-   * @brief   enable jam control on half dupplex line when emitting
-   * @details if enabled, readback what is emitted to detect if the 
-   *          rxtx line is busy or jammed when sending telemetry
-   *          use more ram and cpu, useful in debug mode, 
-   *          not in release mode
-   */
-#ifndef FPORT_TX_READBACK_DOCHECK
-#define FPORT_TX_READBACK_DOCHECK false
-#endif
- 
   /**
    * @brief    forward declaration of FPORTDriver type used in callback functions
    */
@@ -79,6 +56,7 @@ extern "C" {
 
     int16_t	 middlePoint;
 
+#ifdef USART_CR2_RXINV
     /**
      * @brief   fport *could* use an inverted signal compared to standard usart (idle is low) 
      *          inform the driver is the elecrical signal has already been inverted
@@ -88,6 +66,7 @@ extern "C" {
      *          receiver that provide uninverted signal (R-XSR, R9M, etc) must be used
      */
     bool	 driverShouldInvert;
+#endif
   } FPORTConfig;
   
 
