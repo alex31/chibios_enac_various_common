@@ -35,6 +35,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+  // forward declaration
+  typedef struct FportFsmContext_s FportFsmContext;
   
   /**
    * @brief  kind of errors that can be returned by the driver
@@ -62,8 +65,7 @@ extern "C" {
    /**
    * @brief    function pointer use for (received) control message callback
    */
-  typedef struct Fport_ControlFrame_s Fport_ControlFrame;
-  typedef void (*FportControlFnPtr) (const Fport_ControlFrame *, void *optArg);
+  typedef void (*FportControlFnPtr) (const FportFsmContext *);
   
   /**
    * @brief  private internal steps of the FSM 
@@ -87,7 +89,7 @@ extern "C" {
   /**
    * @brief  control frame sent by controller
    */
-   struct Fport_ControlFrame_s {
+   typedef struct {
     /**
      * @brief   array of signed number in the range -1024 + 1023
      */
@@ -98,7 +100,7 @@ extern "C" {
     uint8_t type;
     uint8_t flags;
     uint8_t rssi;
-   };
+   } Fport_ControlFrame;
 
   /**
    * @brief  fields value, 32 bit fixed point value
@@ -160,7 +162,7 @@ extern "C" {
   /**
    * @brief   Structure representing context for the Fport FSM
    */
-  typedef struct {
+  struct FportFsmContext_s {
     /**
      * @brief  pointer to configuration
      * @notes  beware to supply a pointer that whill remain valid (should not be on the stack)
@@ -209,7 +211,7 @@ extern "C" {
       uint8_t appIdsSize;
       uint8_t nextIdToSent;
     };
-  } FportFsmContext;
+  };
 
   
 

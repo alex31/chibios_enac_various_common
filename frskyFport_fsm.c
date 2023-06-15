@@ -253,7 +253,7 @@ static FportErrorMask fportFeedFsmManageReceivedControlMsg(FportFsmContext *cont
   if (is_checksum8_ok(context->msgBuf, FPORT_CONTROL_LEN + 2)) {
     decodeFportControlMsg(context->msgBuf + 1, &context->lastFrame);
     if (context->config->ctrlReceiveCb != NULL)
-      context->config->ctrlReceiveCb(&context->lastFrame, context->config->optArg);
+      context->config->ctrlReceiveCb(context);
     if (context->lastFrame.flags & FPORT_FLAG_FRAME_LOST)
       errorMsk |= FPORT_RADIO_LINK_LOST;
     if (context->lastFrame.flags & FPORT_FLAG_FAILSAFE)

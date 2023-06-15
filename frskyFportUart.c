@@ -15,7 +15,7 @@
 static void receivingLoopThread (void *arg);
 static void sendTelemetryAfter300Us(const void *buffer, size_t len,
 				    void *optArg);
-static void newControlMsg(const Fport_ControlFrame *, void *optArg);
+static void newControlMsg(const FportFsmContext *context);
 
 
 static UARTConfig fportUartConfig = {
@@ -177,9 +177,9 @@ static void sendTelemetryAfter300Us(const void *buffer, size_t len,
   chThdSleepMicroseconds(350);
 }
 
-static void newControlMsg(const Fport_ControlFrame *, void *optArg)
+static void newControlMsg(const FportFsmContext *context)
 {
-  FPORTDriver *fportp = (FPORTDriver *) optArg;
+  FPORTDriver *fportp = (FPORTDriver *) context->config->optArg;
   if (fportp->config->ctrlMsgCb != nullptr)
     fportp->config->ctrlMsgCb(fportp);
 }
