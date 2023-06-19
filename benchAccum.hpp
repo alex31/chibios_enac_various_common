@@ -6,8 +6,7 @@
 #include <limits>
 
 
-template<typename ACC_T, bool recMinMax=false>
-requires std::unsigned_integral<ACC_T>
+template<std::unsigned_integral ACC_T, bool recMinMax=false>
 class benchAccum {
 public:
   benchAccum() {reset();}
@@ -38,7 +37,7 @@ private:
 } ;
 
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
 void  benchAccum<ACC_T, recMinMax>::reset()
 {
   totalSysTick = 0;
@@ -49,13 +48,13 @@ void  benchAccum<ACC_T, recMinMax>::reset()
   }
 }
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
 void  benchAccum<ACC_T, recMinMax>::startMonitor()
 {
   startMonitorTime = chSysGetRealtimeCounterX();
 }
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
 void  benchAccum<ACC_T, recMinMax>::stopMonitor()
 {
   const ACC_T diff = chSysGetRealtimeCounterX() - startMonitorTime;
@@ -67,14 +66,14 @@ void  benchAccum<ACC_T, recMinMax>::stopMonitor()
   }
 }
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
 ACC_T benchAccum<ACC_T, recMinMax>::getTotalSysticks()
 {
   return totalSysTick;
 }
 
 #define RTC2USLL(freq, n) ((((n) - 1ULL) / ((freq) / 1000000ULL)) + 1ULL)
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
 ACC_T benchAccum<ACC_T, recMinMax>::rtc2ns(ACC_T systicks)
 {
   if constexpr (sizeof(ACC_T) <= 4) 
@@ -83,7 +82,7 @@ ACC_T benchAccum<ACC_T, recMinMax>::rtc2ns(ACC_T systicks)
     return RTC2USLL(static_cast<ACC_T>(STM32_SYSCLK), systicks * 1000ULL);
 }
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
 ACC_T benchAccum<ACC_T, recMinMax>::rtc2us(ACC_T systicks)
 {
   if constexpr (sizeof(ACC_T) <= 4) 
@@ -92,32 +91,37 @@ ACC_T benchAccum<ACC_T, recMinMax>::rtc2us(ACC_T systicks)
     return RTC2USLL(static_cast<ACC_T>(STM32_SYSCLK), systicks);
 }
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
+
 ACC_T benchAccum<ACC_T, recMinMax>::getTotalMicroSeconds()
 {
   return rtc2us(totalSysTick);
 }
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
+
 uint32_t benchAccum<ACC_T, recMinMax>::getAverageNanoSeconds()
 {
   return rtc2ns(totalSysTick) / numCall;
 }
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
+
 uint32_t benchAccum<ACC_T, recMinMax>::getAverageMicroSeconds()
 {
    return rtc2us(totalSysTick) / numCall;
 }
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
+
 ACC_T benchAccum<ACC_T, recMinMax>::getMinMicroSeconds()
 {
   static_assert(recMinMax == true, "enable recMinMax in template parameter");
   return rtc2us(minmax.minSysTick);
 }
 
-template<typename ACC_T, bool recMinMax>
+template<std::unsigned_integral ACC_T, bool recMinMax>
+
 ACC_T benchAccum<ACC_T, recMinMax>::getMaxMicroSeconds()
 {
   static_assert(recMinMax == true, "enable recMinMax in template parameter");
