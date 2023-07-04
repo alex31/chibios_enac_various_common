@@ -321,7 +321,7 @@ msg_t sdp3xSend(const Sdp3xDriver *sdpp, const Sdp3xCommand cmd)
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(sdpp->i2cp);
 #endif
-#if __DCACHE_PRESENT != 0
+#if defined(__DCACHE_PRESENT) && __DCACHE_PRESENT != 0
   const Sdp3xCommand CACHE_ALIGNED(alCmd) = cmd;
   msg_t status = i2cMasterCacheTransmitTimeout(sdpp->i2cp, sdpp->slaveAddr,
 					       (uint8_t *) &alCmd, sizeof(alCmd),
