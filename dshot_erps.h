@@ -3,6 +3,9 @@
 #include <ch.h>
 #include <hal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef union  {
   struct {
@@ -20,8 +23,12 @@ typedef struct {
 
 
 
-const DshotErps* setFromFrame(DshotErps *derpsp, uint32_t frame);
-const DshotErps* setFromRpm(DshotErps *derpsp, uint32_t rpm);
-uint32_t getRpm(const DshotErps *derpsp) ;
-inline uint32_t getFrame(const DshotErps *derpsp) {return derpsp->ef;}
-bool checkCrc4(const DshotErps *derpsp);
+const DshotErps* DshotErpsSetFromFrame(DshotErps *derpsp, uint32_t frame);
+const DshotErps* DshotErpsSetFromRpm(DshotErps *derpsp, uint32_t rpm);
+uint32_t DshotErpsGetRpm(const DshotErps *derpsp) ;
+inline uint32_t DshotErpsGetFrame(const DshotErps *derpsp) {return derpsp->ef;}
+bool DshotErpsCheckCrc4(const DshotErps *derpsp);
+
+#ifdef __cplusplus
+}
+#endif

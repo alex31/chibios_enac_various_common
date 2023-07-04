@@ -26,7 +26,7 @@ extern "C" {
     /**
      * @brief   hardware timer pointer (example : &STM32_TIM1)
      */
-    stm32_tim_t * const timer;
+    stm32_tim_t *timer;
     TimICCallbackCapture_t capture_cb;
     TimICCallbackOverflow_t overflow_cb;
     enum TimICMode	mode;
@@ -96,8 +96,10 @@ extern "C" {
    * @brief stop and release the timer. After stop, any operation on timicp
    *        will result in undefined behavior and probably hardware fault
    */
-  void timIcStop(TimICDriver *timicp);
+   void timIcStop(TimICDriver *timicp);
 
+   void timIcRccEnable(const TimICDriver * const timicp);
+   void timIcRccDisable(const TimICDriver * const timicp);
 
 
 

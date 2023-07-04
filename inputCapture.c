@@ -6,8 +6,6 @@ enum  TimICChannel {TIMIC_CH1=1<<0, TIMIC_CH2=1<<1, TIMIC_CH3=1<<2, TIMIC_CH4=1<
 static const TimICDriver*  driverByTimerIndex[6] = {NULL};
 
 
-static void rccEnable(const TimICDriver * const timicp);
-static void rccDisable(const TimICDriver * const timicp);
 static void input_capture_lld_serve_interrupt(const TimICDriver * const timicp) __attribute__((unused));
 static void _input_capture_isr_invoke_capture_cb(const TimICDriver * const timicp, uint32_t channel);
 static void _input_capture_isr_invoke_overflow_cb(const TimICDriver * const timicp);
@@ -29,7 +27,7 @@ void timIcStart(TimICDriver *timicp, const TimICConfig *configp)
   timicp->config = configp;
   stm32_tim_t * const timer = timicp->config->timer;
   chMtxObjectInit(&timicp->mut);
-  rccEnable(timicp);
+  timIcRccEnable(timicp);
   timicp->channel = 0;
   if (timicp->config->active & (CH1_RISING_EDGE | CH1_FALLING_EDGE | CH1_BOTH_EDGES))
     timicp->channel |= TIMIC_CH1;
@@ -228,7 +226,7 @@ void timIcStop(TimICDriver *timicp)
 {
   osalDbgAssert(timicp->state != TIMIC_STOP, "state error");
   chMtxLock(&timicp->mut);
-  rccDisable(timicp);
+  timIcRccDisable(timicp);
   timIcObjectInit(timicp);
   chMtxUnlock(&timicp->mut);
   timicp->state = TIMIC_STOP;
@@ -238,7 +236,7 @@ void timIcStop(TimICDriver *timicp)
 
 
 
-static void rccEnable(const TimICDriver * const timicp)
+void timIcRccEnable(const TimICDriver * const timicp)
 {
   const stm32_tim_t * const timer = timicp->config->timer;
   const bool use_isr = timicp->config->capture_cb || timicp->config->overflow_cb;
@@ -383,7 +381,7 @@ static void rccEnable(const TimICDriver * const timicp)
   }
 };
 
-static void rccDisable(const TimICDriver * const timicp)
+void timIcRccDisable(const TimICDriver * const timicp)
 {
   const stm32_tim_t * const timer = timicp->config->timer;
 #ifdef TIM1

@@ -33,26 +33,26 @@ static  void packetToFrame(DshotErps *derpsp);
 
 
 
-const DshotErps* setFromFrame(DshotErps *derpsp, uint32_t frame)
+const DshotErps* DshotErpsSetFromFrame(DshotErps *derpsp, uint32_t frame)
 {
   derpsp->ef = frame;
   frameToPacket(derpsp);
   return derpsp;
 }
 
-const DshotErps* setFromRpm(DshotErps *derpsp, uint32_t rpm)
+const DshotErps* DshotErpsSetFromRpm(DshotErps *derpsp, uint32_t rpm)
 {
   uint32_t eperiod = ((uint32_t) 60e6f) / rpm;
   setFromEperiod(derpsp, eperiod);
   return derpsp;
 }
 
-uint32_t getRpm(const DshotErps *derpsp)
+uint32_t DshotErpsGetRpm(const DshotErps *derpsp)
 {
   return ((uint32_t) 60e6f) / getEperiod(derpsp);
 }
 
-bool checkCrc4(const DshotErps *derpsp)
+bool DshotErpsCheckCrc4(const DshotErps *derpsp)
 {
    return (crc4(derpsp->ep.rawFrame) == derpsp->ep.crc);
 }
