@@ -37,7 +37,7 @@ static inline void wait10us(void) {chThdSleepMicroseconds(10);}
 static inline void wait100us(void) {chThdSleepMicroseconds(100);}
 static inline void wait2s(void) {chThdSleepSeconds(2);}
 static inline void wait6s(void) {chThdSleepSeconds(6);}
-static bool sendCommandByte(OPCR2Driver *drv, uint8_t commandByte);
+static bool sendCommandByte(OPCR2Driver *drv, Command command);
 static bool readBuffer(OPCR2Driver *drv, Command command, uint8_t *buffer,
 		       size_t len);
 static bool writeBuffer(OPCR2Driver *drv, Command command, const uint8_t *buffer,
