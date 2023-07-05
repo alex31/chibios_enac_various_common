@@ -2,9 +2,8 @@
 #define _MICRORL_H_
 
 #include "microrlConfig.h"
+#include <stdbool.h>
 
-#define true  1
-#define false 0
 
  /* define the Key codes */
 #define KEY_NUL 0 /**< ^@ Null character */
