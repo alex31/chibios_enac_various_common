@@ -61,12 +61,13 @@ static const GPTConfig gptCfg =  {
 };
 
 
-void dshotRpmCaptureStart(DshotRpmCapture *drcp, const DshotRpmCaptureConfig *cfg)
+void dshotRpmCaptureStart(DshotRpmCapture *drcp, const DshotRpmCaptureConfig *cfg,
+			  stm32_tim_t	  *timer)
 {
   memset(drcp, 0, sizeof(*drcp));
   drcp->config = cfg;
   drcp->icCfg = timicCfgSkel;
-  drcp->icCfg.timer = drcp->config->timer;
+  drcp->icCfg.timer = timer;
   initCache(drcp);
 }
 
@@ -199,13 +200,13 @@ static void initCache(DshotRpmCapture *drcp)
     dmaStart(&drcp->dmads[i], &drcp->dmaCfgs[i]);
   }
 
-  timerDmaCache_cache(&drcp->cache, &drcp->dmads[0], cfg->timer);
+  timerDmaCache_cache(&drcp->cache, &drcp->dmads[0], drcp->icCfg.timer);
   dshotRpmCaptureStop(drcp);
 } 
 
 static void startCapture(DshotRpmCapture *drcp)
 {
-  timerDmaCache_restore(&drcp->cache, &drcp->dmads[0], drcp->config->timer);
+  timerDmaCache_restore(&drcp->cache, &drcp->dmads[0], drcp->icCfg.timer);
   timIcStartCapture(&drcp->icd);
 }
 

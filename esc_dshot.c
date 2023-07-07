@@ -97,7 +97,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   chDbgAssert(config->dma_command != NULL, ".dma_buf must reference valid DshotDmaBuffer object");
 
 #if DSHOT_BIDIR
-  dshotRpmCaptureStart(&driver->rpm_capture, &config->dma_capt_cfg);
+  dshotRpmCaptureStart(&driver->rpm_capture, &config->dma_capt_cfg, config->pwmp->tim);
 #endif
   
   memset((void *) config->dma_command, 0, sizeof(*(config->dma_command)));

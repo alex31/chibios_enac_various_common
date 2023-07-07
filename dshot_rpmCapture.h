@@ -51,7 +51,6 @@ typedef struct  {
 } DshotRpmCaptureDmaBuffer;
 
 typedef struct  {
-  stm32_tim_t		*timer;
   GPTDriver		*gptd;
   DshotDmaStreamChan    dma_streams[DSHOT_CHANNELS];
   DshotRpmCaptureDmaBuffer *dma_capture;
@@ -77,7 +76,8 @@ typedef struct
 
 
 
-void dshotRpmCaptureStart(DshotRpmCapture *drcp, const DshotRpmCaptureConfig *cfg);
+void dshotRpmCaptureStart(DshotRpmCapture *drcp, const DshotRpmCaptureConfig *cfg,
+			  stm32_tim_t	  *timer);
 void dshotRpmCaptureStop(DshotRpmCapture *drcp);
 void dshotRpmCatchErps(DshotRpmCapture *drcp);
 void dshotRpmTrace(DshotRpmCapture *drcp, uint8_t index);
