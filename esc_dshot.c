@@ -71,6 +71,10 @@ static void buildDshotDmaBuffer(DSHOTDriver *driver);
 static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed);
 static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen);
 static noreturn void dshotTlmRec (void *arg);
+#if DSHOT_BIDIR
+static void processBidirErpm(DSHOTDriver *driver);
+#endif
+
 //static void dmaErrCb(DMADriver *dmap, dmaerrormask_t err);
 /*
 #                         _ __    _
@@ -90,8 +94,13 @@ static noreturn void dshotTlmRec (void *arg);
  */
 void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 {
-  chDbgAssert(config->dma_buf != NULL, ".dma_buf must reference valid DshotDmaBuffer object");
-  memset((void *) config->dma_buf, 0, sizeof(*(config->dma_buf)));
+  chDbgAssert(config->dma_command != NULL, ".dma_buf must reference valid DshotDmaBuffer object");
+
+#if DSHOT_BIDIR
+  dshotRpmCaptureStart(&driver->rpm_capture, &config->dma_capt_cfg);
+#endif
+  
+  memset((void *) config->dma_command, 0, sizeof(*(config->dma_command)));
   const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
   /* DebugTrace("timerWidthInBytes = %u; mburst = %u", */
   /* 	     timerWidthInBytes, */
@@ -105,7 +114,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   };
 
   // when dshot is bidir, the polarity is inverted
-  const uint32_t pwmPolarity = config->bidir ? PWM_OUTPUT_ACTIVE_LOW : PWM_OUTPUT_ACTIVE_HIGH;
+  static const uint32_t pwmPolarity = DSHOT_BIDIR ? PWM_OUTPUT_ACTIVE_LOW : PWM_OUTPUT_ACTIVE_HIGH;
 
   driver->config = config;
   driver->dma_conf = (DMAConfig) {
@@ -325,6 +334,9 @@ void dshotSendThrottles(DSHOTDriver *driver, const  uint16_t throttles[DSHOT_CHA
 void dshotSendFrame(DSHOTDriver *driver)
 {
   if (driver->dmap.state == DMA_READY) {
+#if DSHOT_BIDIR
+    const tprio_t currentPrio = chThdSetPriority(HIGHPRIO);
+#endif
     if ((driver->config->tlm_sd != NULL) &&
         (driver->dshotMotors.onGoingQry == false)) {
       driver->dshotMotors.onGoingQry = true;
@@ -337,7 +349,15 @@ void dshotSendFrame(DSHOTDriver *driver)
     buildDshotDmaBuffer(driver);
     dmaTransfert(&driver->dmap,
 		 &driver->config->pwmp->tim->DMAR,
-		 driver->config->dma_buf, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
+		 driver->config->dma_command, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
+    
+#if DSHOT_BIDIR
+    dshotStop(driver);
+    dshotRpmCatchErps(&driver->rpm_capture);
+    processBidirErpm(driver);
+    dshotRestart(driver);
+    chThdSetPriority(currentPrio);
+#endif
   }
 }
 
@@ -384,8 +404,18 @@ DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
 }
 
 
-
-
+#if DSHOT_BIDIR
+uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index)
+{
+  chDbgAssert(index < DSHOT_CHANNELS, "index check failed");
+   DshotErpsSetFromFrame(&driver->erps,  driver->rpms_frame[index]);
+   if (DshotErpsCheckCrc4(&driver->erps)) {
+     return DshotErpsGetRpm(&driver->erps);
+   } else {
+     return DSHOT_BIDIR_ERR_CRC;
+   }
+}
+#endif
 
 
 
@@ -434,15 +464,16 @@ static inline void setDshotPacketTlm(DshotPacket *const dp, const bool tlmReques
 static void buildDshotDmaBuffer(DSHOTDriver *driver)
 {
   DshotPackets *const dsp = &driver->dshotMotors;
-  DshotDmaBuffer *const dma =  driver->config->dma_buf;
+  DshotDmaBuffer *const dma =  driver->config->dma_command;
   const size_t timerWidth = getTimerWidth(driver->config->pwmp);
   
   for (size_t chanIdx = 0; chanIdx < DSHOT_CHANNELS; chanIdx++) {
     // compute checksum
     DshotPacket * const dp  = &dsp->dp[chanIdx];
     setCrc4(dp);
-    if (driver->config->bidir == true)
-      dp->crc = ~dp->crc; // crc is inverted when dshot bidir protocol is choosed
+#if DSHOT_BIDIR
+    dp->crc = ~dp->crc; // crc is inverted when dshot bidir protocol is choosed
+#endif
     // generate pwm frame
     for (size_t bitIdx = 0; bitIdx < DSHOT_BIT_WIDTHS; bitIdx++) {
       const uint16_t value = dp->rawFrame &
@@ -487,6 +518,14 @@ static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen)
 }
 
 
+#if DSHOT_BIDIR
+static void processBidirErpm(DSHOTDriver *driver)
+{
+  for (size_t idx = 0; idx < DSHOT_CHANNELS; idx++) {
+    driver->rpms_frame[idx] = dshotRpmGetFrame(&driver->rpm_capture, idx);
+  }
+}
+#endif
 
 
 /*

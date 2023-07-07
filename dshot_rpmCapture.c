@@ -86,13 +86,13 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   if (ts == 0)
     ts = chVTGetSystemTimeX();
 
-  memset(drcp->config->capture->dma_buf, 0, sizeof(drcp->config->capture->dma_buf));
-  _Static_assert(sizeof(drcp->config->capture->dma_buf) == sizeof(uint16_t) *
+  memset(drcp->config->dma_capture->dma_buf, 0, sizeof(drcp->config->dma_capture->dma_buf));
+  _Static_assert(sizeof(drcp->config->dma_capture->dma_buf) == sizeof(uint16_t) *
 		 DSHOT_CHANNELS * (DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN));
 
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     dmaStartTransfert(&drcp->dmads[i], &drcp->icd.config->timer->CCR[i],
-		      drcp->config->capture->dma_buf[i], DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN);
+		      drcp->config->dma_capture->dma_buf[i], DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN);
   }
 
   osalSysLock();
@@ -114,7 +114,7 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   stopCapture(drcp);
 
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
-    drcp->rpms[i] = processErpsDmaBuffer(drcp->config->capture->dma_buf[i],
+    drcp->rpms[i] = processErpsDmaBuffer(drcp->config->dma_capture->dma_buf[i],
 					 DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN -
 					 dmaGetTransactionCounter(&drcp->dmads[i]));
   }
@@ -130,10 +130,10 @@ void dshotRpmTrace(DshotRpmCapture *drcp, uint8_t index)
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     if ((index != 0xff) && (index != i))
       continue;
-    uint16_t cur = drcp->config->capture->dma_buf[i][0];
+    uint16_t cur = drcp->config->dma_capture->dma_buf[i][0];
     for (size_t j = 1; j < DSHOT_DMA_DATA_LEN; j++) {
-      const uint16_t  dur = drcp->config->capture->dma_buf[i][j] - cur;
-      cur = drcp->config->capture->dma_buf[i][j];
+      const uint16_t  dur = drcp->config->dma_capture->dma_buf[i][j] - cur;
+      cur = drcp->config->dma_capture->dma_buf[i][j];
       chprintf(chp, "[%u] %u, ", i, dur);
     }
     DebugTrace("");
@@ -180,8 +180,8 @@ static void buildDmaConfig(DshotRpmCapture *drcp)
   
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     drcp->dmaCfgs[i] = skel;
-    drcp->dmaCfgs[i].stream = drcp->config->dmaStreams[i].stream;
-    drcp->dmaCfgs[i].channel = drcp->config->dmaStreams[i].channel;
+    drcp->dmaCfgs[i].stream = drcp->config->dma_streams[i].stream;
+    drcp->dmaCfgs[i].channel = drcp->config->dma_streams[i].channel;
   }
 }
 

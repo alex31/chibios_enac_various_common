@@ -3,9 +3,9 @@
 #include <ch.h>
 #include <hal.h>
 #include "inputCapture.h"
-#include "esc_dshot.h"
 #include "hal_stm32_dma.h"
 #include "timerDmaCache.h"
+#include "esc_dshot_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,8 +53,8 @@ typedef struct  {
 typedef struct  {
   stm32_tim_t		*timer;
   GPTDriver		*gptd;
-  DshotDmaStreamChan    dmaStreams[DSHOT_CHANNELS];
-  DshotRpmCaptureDmaBuffer *capture;
+  DshotDmaStreamChan    dma_streams[DSHOT_CHANNELS];
+  DshotRpmCaptureDmaBuffer *dma_capture;
 } DshotRpmCaptureConfig;
 
 

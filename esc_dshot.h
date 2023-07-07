@@ -5,7 +5,10 @@
 #include "hal_stm32_dma.h"
 #include "esc_dshot_config.h"
 
-
+#if DSHOT_BIDIR
+#include "dshot_rpmCapture.h"
+#include "dshot_erps.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +24,7 @@ extern "C" {
 					 DSHOT_POST_FRAME_SILENT_SYNC_BITS )
 #define DSHOT_PRE_FRAME_SILENT_SYNC_BITS  2U 
 #define DSHOT_POST_FRAME_SILENT_SYNC_BITS 2U
-
+#define DSHOT_BIDIR_ERR_CRC		 UINT32_MAX
 /**
  * @brief   special value for index : send order to all channels
  * @note    could be used as index in dshotSetThrottle and
@@ -96,7 +99,7 @@ typedef struct {
 }  __attribute__ ((__packed__)) DshotTelemetryFrame ;
 
 
-  /**
+/**
  * @brief   telemetry with timestamp
  */
 typedef struct {
@@ -143,10 +146,13 @@ typedef struct  {
   SerialDriver	*tlm_sd;
 
   /**
-   * @brief dshot dma buffer, sgould be defined in a non Dcached region
+   * @brief dshot dma buffer, should be defined in a non Dcached region
    */
-  DshotDmaBuffer *dma_buf;
-  bool		 bidir;
+  DshotDmaBuffer *dma_command;
+#if DSHOT_BIDIR
+  DshotRpmCaptureConfig dma_capt_cfg;
+#endif
+
 #if DSHOT_SPEED == 0
   uint16_t speed_khz;
 #endif
@@ -174,6 +180,9 @@ void     dshotSendSpecialCommand(DSHOTDriver *driver, const uint8_t index, const
 uint32_t dshotGetCrcErrorCount(const DSHOTDriver *driver);
 uint32_t dshotGetTelemetryFrameCount(const DSHOTDriver *driver);
 DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index);
+#if DSHOT_BIDIR
+  uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index);
+#endif
 
 
 /*
@@ -251,6 +260,11 @@ struct  DSHOTDriver {
 #if DSHOT_SPEED == 0
   uint16_t bit0Duty;
   uint16_t bit1Duty;
+#endif
+#if DSHOT_BIDIR
+  DshotRpmCapture rpm_capture;
+  DshotErps	  erps;
+  uint32_t	  rpms_frame[DSHOT_CHANNELS];
 #endif
   /**
    * @brief stack working area for dshot telemetry thread
