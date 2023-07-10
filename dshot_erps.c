@@ -1,5 +1,8 @@
 #include "dshot_erps.h"
 
+
+
+
 static const uint8_t gcrNibble[16] = {
   0x19, 0x1B, 0x12, 0x13, 0x1D, 0x15, 0x16, 0x17,
   0x1A, 0x09, 0x0A, 0x0B, 0x1E, 0x0D, 0x0E, 0x0F};
@@ -57,17 +60,11 @@ bool DshotErpsCheckCrc4(const DshotErps *derpsp)
    return (crc4(derpsp->ep.rawFrame) == derpsp->ep.crc);
 }
 
-
-
-
-
-
 static uint8_t crc4(uint16_t val)
 {
   val >>= 4;
   return ~(val ^ (val >> 4) ^ (val >> 8)) & 0x0F;
 }
-
 
 static DshotEPeriodPacket eperiodToPacked(const uint32_t eperiod)
 {

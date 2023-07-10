@@ -7,27 +7,54 @@
 extern "C" {
 #endif
 
-typedef union  {
-  struct {
-    uint16_t crc:4;
-    uint16_t mantisse:9;
-    uint16_t exponent:3;
-  };
-  uint16_t rawFrame;
-} DshotEPeriodPacket;
-
-typedef struct {
-  DshotEPeriodPacket ep; // 16 bits packet
-  uint32_t	     ef; // 21 bits frame
-} DshotErps;
-
-
-
-const DshotErps* DshotErpsSetFromFrame(DshotErps *derpsp, uint32_t frame);
-const DshotErps* DshotErpsSetFromRpm(DshotErps *derpsp, uint32_t rpm);
-uint32_t DshotErpsGetRpm(const DshotErps *derpsp) ;
-inline uint32_t DshotErpsGetFrame(const DshotErps *derpsp) {return derpsp->ef;}
-bool DshotErpsCheckCrc4(const DshotErps *derpsp);
+  typedef enum  {
+    EDT_NOTEDT=0x0,
+    EDT_TEMP=0x2, EDT_VOLT=0x4, EDT_CURRENT=0x6,
+    EDT_DBG1=0x8, EDT_DBG2=0xA, EDT_DBG3=0xC,
+    EDT_STATE=0xE
+  } EdtType;
+  
+  
+  typedef union  {
+    struct {
+      uint16_t crc:4;
+      union  {
+	struct {
+	  uint16_t mantisse:9;
+	  uint16_t exponent:3;
+	};
+	// for Extended DShot Telemetry (EDT)
+	struct {
+	  uint8_t  edt_value:8;
+	  EdtType  edt_type:4;
+	};
+      };
+    };
+    uint16_t rawFrame;
+  } DshotEPeriodPacket;
+  
+  typedef struct {
+    DshotEPeriodPacket ep; // 16 bits packet
+    uint32_t	     ef; // 21 bits frame
+  } DshotErps;
+  
+  
+  
+  const DshotErps* DshotErpsSetFromFrame(DshotErps *derpsp, uint32_t frame);
+  const DshotErps* DshotErpsSetFromRpm(DshotErps *derpsp, uint32_t rpm);
+  uint32_t DshotErpsGetRpm(const DshotErps *derpsp) ;
+  bool DshotErpsCheckCrc4(const DshotErps *derpsp);
+  static inline uint32_t DshotErpsGetFrame(const DshotErps *derpsp) {return derpsp->ef;}
+  static inline bool DshotErpsIsEdt(const DshotErps *derpsp)
+        {return (derpsp->ep.rawFrame & 0x300) == 0x200;}
+  static inline EdtType DshotErpsEdtType(const DshotErps *derpsp)
+	{return derpsp->ep.edt_type;}
+  static inline uint8_t DshotErpsEdtTempCentigrade(const DshotErps *derpsp)
+	{return derpsp->ep.edt_value;}
+  static inline uint16_t DshotErpsEdtDeciVolts(const DshotErps *derpsp)
+	{return derpsp->ep.edt_value * 10U / 4U;}
+  static inline uint16_t DshotErpsEdtCurrentAmp(const DshotErps *derpsp)
+	{return derpsp->ep.edt_value;}
 
 #ifdef __cplusplus
 }

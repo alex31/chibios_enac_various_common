@@ -25,6 +25,7 @@ extern "C" {
 #define DSHOT_PRE_FRAME_SILENT_SYNC_BITS  2U 
 #define DSHOT_POST_FRAME_SILENT_SYNC_BITS 2U
 #define DSHOT_BIDIR_ERR_CRC		 UINT32_MAX
+#define DSHOT_BIDIR_TLM_EDT		 (UINT32_MAX-1U)
 /**
  * @brief   special value for index : send order to all channels
  * @note    could be used as index in dshotSetThrottle and

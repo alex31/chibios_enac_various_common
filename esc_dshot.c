@@ -108,9 +108,9 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 
   static const SerialConfig  tlmcfg =  {
     .speed = DSHOT_TELEMETRY_BAUD,
-    .cr1 = 0,                                      // pas de parité
+    .cr1 = 0,                          // pas de parité
     .cr2 = USART_CR2_STOP1_BITS,       // 1 bit de stop
-    .cr3 = 0                                       // pas de controle de flux hardware (CTS, RTS)
+    .cr3 = 0                           // pas de controle de flux hardware (CTS, RTS)
   };
 
   // when dshot is bidir, the polarity is inverted
@@ -403,6 +403,21 @@ DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
   return tlm;
 }
 
+static void updateTelemtryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tlm)
+{
+  switch(DshotErpsEdtType(erps)) {
+  case EDT_TEMP:
+    tlm->frame.temp = DshotErpsEdtTempCentigrade(erps); break;
+    
+  case EDT_VOLT:
+    tlm->frame.voltage = DshotErpsEdtDeciVolts(erps) * 10U; break;
+    
+  case EDT_CURRENT:
+    tlm->frame.current = DshotErpsEdtCurrentAmp(erps) * 100U; break;
+    
+  default: {};
+  }
+}
 
 #if DSHOT_BIDIR
 uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index)
@@ -410,6 +425,13 @@ uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index)
   chDbgAssert(index < DSHOT_CHANNELS, "index check failed");
    DshotErpsSetFromFrame(&driver->erps,  driver->rpms_frame[index]);
    if (DshotErpsCheckCrc4(&driver->erps)) {
+     if (DshotErpsIsEdt(&driver->erps)) {
+       if (driver->config->tlm_sd != NULL) {
+	 DshotTelemetry *tlm = &driver->dshotMotors.dt[index];
+	 updateTelemtryFromBidirEdt(&driver->erps, tlm);
+       }
+       return DSHOT_BIDIR_TLM_EDT;
+     }
      return DshotErpsGetRpm(&driver->erps);
    } else {
      return DSHOT_BIDIR_ERR_CRC;
@@ -437,6 +459,9 @@ static void setCrc4(DshotPacket *dp)
     dp->crc ^=  csum;   // xor data by nibbles
     csum >>= 4;
   }
+#if DSHOT_BIDIR
+  dp->crc = ~(dp->crc); // crc is inverted when dshot bidir protocol is choosed
+#endif
 }
 
 static DshotPacket makeDshotPacket(const uint16_t _throttle, const bool tlmRequest)
@@ -471,9 +496,6 @@ static void buildDshotDmaBuffer(DSHOTDriver *driver)
     // compute checksum
     DshotPacket * const dp  = &dsp->dp[chanIdx];
     setCrc4(dp);
-#if DSHOT_BIDIR
-    dp->crc = ~dp->crc; // crc is inverted when dshot bidir protocol is choosed
-#endif
     // generate pwm frame
     for (size_t bitIdx = 0; bitIdx < DSHOT_BIT_WIDTHS; bitIdx++) {
       const uint16_t value = dp->rawFrame &
