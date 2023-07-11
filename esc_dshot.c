@@ -2,8 +2,9 @@
 #include <stdnoreturn.h>
 #include <math.h>
 #include <string.h>
+#ifdef TRACE
 #include "stdutil.h"
-
+#endif
 
 /*
   TODO:
@@ -36,6 +37,10 @@
 
 #ifndef DSHOT_TELEMETRY_BAUD
 #define DSHOT_TELEMETRY_BAUD 115200
+#endif
+
+#ifndef DSHOT_BIDIR_EXTENTED_TELEMETRY
+#define DSHOT_BIDIR_EXTENTED_TELEMETRY	FALSE
 #endif
 
 			                  // after pwm init
@@ -78,7 +83,10 @@ static noreturn void dshotTlmRec (void *arg);
 #if DSHOT_BIDIR
 static void processBidirErpm(DSHOTDriver *driver);
 #endif
-
+#if DSHOT_BIDIR_EXTENTED_TELEMETRY
+static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tlm);
+#endif
+  
 //static void dmaErrCb(DMADriver *dmap, dmaerrormask_t err);
 /*
 #                         _ __    _
@@ -407,7 +415,8 @@ DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
   return tlm;
 }
 
-static void updateTelemtryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tlm)
+#if DSHOT_BIDIR_EXTENTED_TELEMETRY
+static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tlm)
 {
   switch(DshotErpsEdtType(erps)) {
   case EDT_TEMP:
@@ -422,6 +431,7 @@ static void updateTelemtryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tl
   default: {};
   }
 }
+#endif
 
 #if DSHOT_BIDIR
 uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index)
@@ -429,13 +439,15 @@ uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index)
   chDbgAssert(index < DSHOT_CHANNELS, "index check failed");
    DshotErpsSetFromFrame(&driver->erps,  driver->rpms_frame[index]);
    if (DshotErpsCheckCrc4(&driver->erps)) {
+#if DSHOT_BIDIR_EXTENTED_TELEMETRY
      if (DshotErpsIsEdt(&driver->erps)) {
-       if (driver->config->tlm_sd != NULL) {
+       if (driver->config->tlm_sd == NULL) {
 	 DshotTelemetry *tlm = &driver->dshotMotors.dt[index];
-	 updateTelemtryFromBidirEdt(&driver->erps, tlm);
+	 updateTelemetryFromBidirEdt(&driver->erps, tlm);
        }
        return DSHOT_BIDIR_TLM_EDT;
      }
+#endif
      return DshotErpsGetRpm(&driver->erps);
    } else {
      return DSHOT_BIDIR_ERR_CRC;

@@ -57,17 +57,7 @@ uint32_t DshotErpsGetRpm(const DshotErps *derpsp)
 
 bool DshotErpsCheckCrc4(const DshotErps *derpsp)
 {
-#ifdef TRACE
-  const uint8_t recCrc = derpsp->ep.crc;
-  const uint8_t calcCrc =  crc4(derpsp->ep.rawFrame);
-  if (recCrc != calcCrc) {
-    DebugTrace("rec 0x%x != calc 0x%x", recCrc, calcCrc);
-    return false;
-  } 
-  return true;
-#else
    return (crc4(derpsp->ep.rawFrame) == derpsp->ep.crc);
-#endif
 }
 
 static uint8_t crc4(uint16_t val)
@@ -159,6 +149,7 @@ static  uint32_t getEperiod(const DshotErps *derpsp)
 static  void frameToPacket(DshotErps *derpsp)
 {
   derpsp->ep.rawFrame = eperiodDecode(derpsp->ef);
+  //  DebugTrace("DBG> 0x%lx => 0x%x", derpsp->ef, derpsp->ep.rawFrame);
 }
 
 static  void packetToFrame(DshotErps *derpsp)

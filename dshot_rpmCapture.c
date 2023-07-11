@@ -99,14 +99,14 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   osalSysLock();
   // dma end callback will resume the thread upon completion of ALL dma transaction
   // else, the timeout will take care of thread resume
-  static const sysinterval_t timeoutUs = 35U + (120U * 150U / DSHOT_SPEED);
-  palSetLine(LINE_LA_DBG_1);
+  static const sysinterval_t timeoutUs = 25U + (120U * 150U / DSHOT_SPEED);
+  //  palSetLine(LINE_LA_DBG_1);
   gptStartOneShotI(drcp->config->gptd, timeoutUs);
-  palClearLine(LINE_LA_DBG_1);
+  //  palClearLine(LINE_LA_DBG_1);
   chThdSuspendS(&drcp->dmads[0].thread);
-  palSetLine(LINE_LA_DBG_1);
-  chSysPolledDelayX(1);
-  palClearLine(LINE_LA_DBG_1);
+  //  palSetLine(LINE_LA_DBG_1);
+  //  chSysPolledDelayX(1);
+  //  palClearLine(LINE_LA_DBG_1);
 
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) 
     dmaStopTransfertI(&drcp->dmads[i]);
