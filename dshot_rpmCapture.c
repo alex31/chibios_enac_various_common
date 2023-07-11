@@ -99,7 +99,7 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   osalSysLock();
   // dma end callback will resume the thread upon completion of ALL dma transaction
   // else, the timeout will take care of thread resume
-  static const sysinterval_t timeoutUs = 25U + (120U * 150U / DSHOT_SPEED);
+  static const sysinterval_t timeoutUs = 35U + (120U * 150U / DSHOT_SPEED);
   palSetLine(LINE_LA_DBG_1);
   gptStartOneShotI(drcp->config->gptd, timeoutUs);
   palClearLine(LINE_LA_DBG_1);
@@ -248,7 +248,7 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
   // there can be several high bits hidden in the trailing high level signal
   for (size_t j=bitIndex; j <= frameLen; j++) 
     erpsVal |= (1U << (frameLen - j));
-  //DebugTrace("bit index = %u; erpsVal = 0x%lx", bitIndex, erpsVal);
+  //  DebugTrace("bit index = %u; erpsVal = 0x%lx", bitIndex, erpsVal);
   return erpsVal;
 }
 

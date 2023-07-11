@@ -34,6 +34,10 @@
 #define DSHOT_SPEED 300
 #endif
 
+#ifndef DSHOT_TELEMETRY_BAUD
+#define DSHOT_TELEMETRY_BAUD 115200
+#endif
+
 			                  // after pwm init
 #if DSHOT_SPEED != 0 // statically defined
 #   define DSHOT_FREQ (DSHOT_SPEED*1000)

@@ -1,5 +1,5 @@
 #include "dshot_erps.h"
-
+#include "stdutil.h"
 
 
 
@@ -57,13 +57,23 @@ uint32_t DshotErpsGetRpm(const DshotErps *derpsp)
 
 bool DshotErpsCheckCrc4(const DshotErps *derpsp)
 {
+#ifdef TRACE
+  const uint8_t recCrc = derpsp->ep.crc;
+  const uint8_t calcCrc =  crc4(derpsp->ep.rawFrame);
+  if (recCrc != calcCrc) {
+    DebugTrace("rec 0x%x != calc 0x%x", recCrc, calcCrc);
+    return false;
+  } 
+  return true;
+#else
    return (crc4(derpsp->ep.rawFrame) == derpsp->ep.crc);
+#endif
 }
 
 static uint8_t crc4(uint16_t val)
 {
   val >>= 4;
-  return ~(val ^ (val >> 4) ^ (val >> 8)) & 0x0F;
+  return (~(val ^ (val >> 4) ^ (val >> 8))) & 0x0F;
 }
 
 static DshotEPeriodPacket eperiodToPacked(const uint32_t eperiod)
