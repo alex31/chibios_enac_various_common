@@ -225,15 +225,22 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
   uint_fast8_t bitIndex = 0;
   uint_fast16_t prec = capture[0];
   
-  for (size_t i = 1; i < dmaLen; i++) {
+  for (size_t i = 1U; i < dmaLen; i++) {
     const uint_fast16_t len = capture[i] - prec;
     prec = capture[i];
     // GRC encoding garanties that there can be no more than 3 consecutives bits at the same level
-    const uint_fast8_t nbConsecutives =  ((len + (ERPS_BIT1_DUTY / 2)) /  ERPS_BIT1_DUTY) % 4;
+    const uint_fast8_t nbConsecutives =  ((len + (ERPS_BIT1_DUTY / 2U)) /  ERPS_BIT1_DUTY) /*% 4U*/;
     
     if (bit) {
-      for (size_t j = bitIndex; j < bitIndex + nbConsecutives; j++) 
-	erpsVal |= (1U << (frameLen - j));
+      // TODO : bench between the commented loop or the manually unrolled loop actually compiled
+      //      for (size_t j = bitIndex; j < bitIndex + nbConsecutives; j++) 
+      //	erpsVal |= (1U << (frameLen - j));
+      switch(nbConsecutives) {
+      case 1U:	erpsVal |= (0b001 << (frameLen - bitIndex)); break;
+      case 2U:	erpsVal |= (0b011 << (frameLen - bitIndex - 1U)); break;
+      case 3U:	erpsVal |= (0b111 << (frameLen - bitIndex - 2U)); break;
+      default: break;
+      }
       // On F4 : 2.0 ns pour above coden 2.3ns for commented code 
       // for (size_t j = frameLen - bitIndex; j > frameLen - bitIndex - nbConsecutives; j--) 
       // 	erpsVal |= (1U << j);

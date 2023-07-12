@@ -99,11 +99,11 @@ static uint32_t greyDecode(const uint32_t num)
 static uint32_t grcEncode(uint32_t from)
 {
   uint32_t ret = 0;
-  for (size_t i = 0; i < 4; i++) {
+  for (size_t i = 0U; i < 4U; i++) {
     //   printf("nibble %u from = 0x%x to = 0x%x\n", 
     //   i, from & 0xf, gcrNibble[from & 0xf]);
     ret |= (gcrNibble[from & 0xf] << (i*5));
-    from >>= 4;
+    from >>= 4U;
   }
   return ret;
 }
@@ -111,7 +111,7 @@ static uint32_t grcEncode(uint32_t from)
 static uint32_t grcDecode(uint32_t from)
 {
   uint32_t ret = 0;
-  for (size_t i = 0; i < 4; i++) {
+  for (size_t i = 0; i < 4U; i++) {
     const uint32_t nibble = grcNibbleInv[from & 0x1f];
     if (nibble == 0xff) {
       ret = 0x0;
@@ -119,8 +119,8 @@ static uint32_t grcDecode(uint32_t from)
     }
     //   printf("nibble %u from = 0x%x to = 0x%x\n", 
     //   i, from & 0xf, gcrNibble[from & 0xf]);
-    ret |= (nibble << (i * 4));
-    from >>= 5;
+    ret |= (nibble << (i << 2U));
+    from >>= 5U;
   }
   return ret;
 }
