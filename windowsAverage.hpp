@@ -19,8 +19,8 @@ template <typename T, size_t N, typename L=Lock::None>
 class WindowAverage
 {
 public:
-  using SAS = std::conditional<sizeof(T) <= 16, int32_t, int64_t>::type;
-  using UAS = std::conditional<sizeof(T) <= 16, uint32_t, uint64_t>::type;
+  using SAS = std::conditional<sizeof(T) <= 2U, int32_t, int64_t>::type;
+  using UAS = std::conditional<sizeof(T) <= 2U, uint32_t, uint64_t>::type;
   using A = std::conditional<std::is_signed<T>::value, SAS, UAS>::type;
   WindowAverage (void);
   void push (const T i);
