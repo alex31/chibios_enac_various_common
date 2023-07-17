@@ -20,6 +20,10 @@ static void gptCb(GPTDriver *gptd);
 static volatile dmaerrormask_t lastErr;
 static volatile uint32_t       dmaErrs = 0;
 
+#if !defined __GNUC__ || __GNUC__ < 13
+#define nullptr NULL
+#endif
+
 
 
 static const struct  {
@@ -37,8 +41,8 @@ static const struct  {
 };
 
 static const TimICConfig timicCfgSkel = {
-	  .timer = NULL,
-	  .capture_cb = NULL,
+	  .timer = nullptr,
+	  .capture_cb = nullptr,
 	  .overflow_cb = nullptr,
 	  .mode = TIMIC_INPUT_CAPTURE,
 	  .active = activeDier[DSHOT_CHANNELS-1].active,
