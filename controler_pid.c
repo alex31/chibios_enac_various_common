@@ -12,6 +12,22 @@
 #include "hal.h"
 #include "stdutil.h"
 
+static inline timecnt_t timediff(timecnt_t start, timecnt_t stop) {
+#if  defined CONTROLER_PID_HIRES_TIMER
+  return rtcntDiff(start, stop); 
+#else
+  return chTimeDiffX(start, stop); 
+#endif
+}
+
+static inline float diff2seconds(timecnt_t diff) {
+#if  defined CONTROLER_PID_HIRES_TIMER
+  return ((float)diff) / STM32_SYSCLK;
+#else
+  return TIME_I2US(diff) / 1e6f ;
+#endif
+}
+
 static void  pidAdjustCoeffs (ControlerPid* cpid);
 
 
@@ -48,23 +64,23 @@ void pidInit (ControlerPid* cpid, volatile float* Input,
 bool pidCompute(ControlerPid* cpid)
 {
   if(!cpid->inAuto) return false;
-  const rtcnt_t now = chSysGetRealtimeCounterX();
-  const rtcnt_t timeChange = rtcntDiff (cpid->lastTime, now);
-  cpid->SampleTime = timeChange;
+  const timecnt_t now = chSysGetRealtimeCounterX();
+  const timecnt_t timeChange = timediff(cpid->lastTime, now);
+  cpid->sampleTime = timeChange;
   pidAdjustCoeffs (cpid);
   /*Compute all the working error variables*/
   const float input = *(cpid->myInput);
   const float error = *(cpid->mySetpoint) - input;
-  cpid->ITerm += (cpid->ki * error);
-  if (cpid->ITerm > cpid->outMax) {
-    cpid->ITerm= cpid->outMax;
-  } else if (cpid->ITerm < cpid->outMin) {
-    cpid->ITerm= cpid->outMin;
+  cpid->iTerm += (cpid->ki * error);
+  if (cpid->iTerm > cpid->outMax) {
+    cpid->iTerm= cpid->outMax;
+  } else if (cpid->iTerm < cpid->outMin) {
+    cpid->iTerm= cpid->outMin;
   }
   const float dInput = (input - cpid->lastInput);
   
   /*Compute PID Output*/
-  float output = cpid->kp * error + cpid->ITerm- cpid->kd * dInput;
+  float output = (cpid->kp * error) + cpid->iTerm - (cpid->kd * dInput);
   
   if(output > cpid->outMax) {
     output = cpid->outMax;
@@ -102,9 +118,9 @@ void pidSetTunings(ControlerPid* cpid, float Kp, float Ki, float Kd)
 
 static void  pidAdjustCoeffs (ControlerPid* cpid)
 {
-  const float SampleTimeInSec = ((float)cpid->SampleTime) / STM32_SYSCLK ;  
-  cpid->ki = cpid->dispKi * SampleTimeInSec;
-  cpid->kd = cpid->dispKd / SampleTimeInSec;
+  const float sampleTimeInSec = diff2seconds(cpid->sampleTime);
+  cpid->ki = cpid->dispKi * sampleTimeInSec;
+  cpid->kd = cpid->dispKd / sampleTimeInSec;
  
   if (cpid->controllerDirection == PID_REVERSE)   {
     cpid->ki = (0.0f - cpid->ki);
@@ -138,10 +154,10 @@ void pidSetOutputLimits(ControlerPid* cpid, float Min, float Max)
        *(cpid->myOutput) = cpid->outMin;
      }
 	 
-     if(cpid->ITerm > cpid->outMax) {
-       cpid->ITerm= cpid->outMax;
-     } else if(cpid->ITerm < cpid->outMin) {
-       cpid->ITerm= cpid->outMin;
+     if(cpid->iTerm > cpid->outMax) {
+       cpid->iTerm= cpid->outMax;
+     } else if(cpid->iTerm < cpid->outMin) {
+       cpid->iTerm= cpid->outMin;
      }
    }
 }
@@ -173,12 +189,12 @@ void pidSetMode(ControlerPid* cpid, PidMode Mode)
  ******************************************************************************/ 
 void pidInitialize(ControlerPid* cpid)
 {
-  cpid->ITerm = *(cpid->myOutput);
+  cpid->iTerm = *(cpid->myOutput);
   cpid->lastInput = *(cpid->myInput);
-  if(cpid->ITerm > cpid->outMax) {
-    cpid->ITerm = cpid->outMax;
-  } else if(cpid->ITerm < cpid->outMin) {
-    cpid->ITerm = cpid->outMin;
+  if(cpid->iTerm > cpid->outMax) {
+    cpid->iTerm = cpid->outMax;
+  } else if(cpid->iTerm < cpid->outMin) {
+    cpid->iTerm = cpid->outMin;
   }
 }
 
@@ -208,5 +224,5 @@ float pidGetKi(ControlerPid* cpid){ return  cpid->dispKi;}
 float pidGetKd(ControlerPid* cpid){ return  cpid->dispKd;}
 PidMode pidGetMode(ControlerPid* cpid){ return  cpid->inAuto ? PID_AUTOMATIC : PID_MANUAL;}
 PidDirection pidGetDirection(ControlerPid* cpid){ return cpid->controllerDirection;}
-rtcnt_t pidGetSampleTime (ControlerPid* cpid){ return cpid->SampleTime;}
+timecnt_t pidGetSampleTime (ControlerPid* cpid){ return cpid->sampleTime;}
 

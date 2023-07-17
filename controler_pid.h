@@ -3,6 +3,21 @@
 #include "ch.h"
 #include "hal.h"
 
+#if !defined CONTROLER_PID_HIRES_TIMER && \
+    !defined CONTROLER_PID_LOWRES_TIMER
+#define CONTROLER_PID_LOWRES_TIMER
+#endif
+#if defined CONTROLER_PID_HIRES_TIMER && \
+    defined CONTROLER_PID_LOWRES_TIMER
+#error "only one of  CONTROLER_PID_HIRES_TIMER or " \
+       "CONTROLER_PID_LOWRES_TIMER can be defined"
+#endif
+
+#if  defined CONTROLER_PID_HIRES_TIMER
+typedef rtcnt_t   timecnt_t;
+#else
+typedef systime_t timecnt_t;
+#endif
 
 typedef enum {PID_AUTOMATIC=0b1, PID_MANUAL=0b10} PidMode;
 typedef enum {PID_DIRECT=0b100, PID_REVERSE=0b1000} PidDirection;
@@ -24,10 +39,10 @@ typedef struct
   volatile float *mySetpoint;           //   PID, freeing the user from having to constantly tell us
   //   what these values are.  with pointers we'll just know.
   
-  volatile rtcnt_t  lastTime;
-  volatile float ITerm, lastInput;
+  volatile timecnt_t  lastTime;
+  volatile float iTerm, lastInput;
   
-  volatile rtcnt_t SampleTime;
+  volatile timecnt_t sampleTime;
   volatile float outMin, outMax;
   bool inAuto;
 } ControlerPid;
@@ -81,7 +96,7 @@ PidMode  pidGetMode(ControlerPid*);			  //  inside the PID.
 PidDirection  pidGetDirection(ControlerPid*);		  //
 
 void  pidInitialize(ControlerPid*);
-rtcnt_t pidGetSampleTime (ControlerPid* cpid);
+timecnt_t pidGetSampleTime (ControlerPid* cpid);
 
 #ifdef __cplusplus
 }
