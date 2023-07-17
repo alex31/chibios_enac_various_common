@@ -48,7 +48,7 @@ msg_t sdp3xSend(const Sdp3xDriver *sdpp, const Sdp3xCommand cmd);
    is available after 8ms;.-small accuracy deviations (few %of reading) 
    can occur during the next 12ms. */
 #define FIRST_READ_TIMOUT_MS 10U
-#define I2C_TIMOUT_MS 100U
+#define I2C_TIMOUT_100MS TIME_MS2I(100U)
 
 /*
 #                         _ __    _          
@@ -108,7 +108,7 @@ msg_t  sdp3xRequest(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 #endif
   status = i2cMasterCacheReceiveTimeout(sdpp->i2cp, sdpp->slaveAddr,
 				   (uint8_t *) &meas, sizeof(meas),
-				   I2C_TIMOUT_MS);
+				   I2C_TIMOUT_100MS);
   
   if (status != MSG_OK) {
     restartI2c(sdpp->i2cp);
@@ -158,7 +158,7 @@ msg_t  sdp3xWakeup(Sdp3xDriver *sdpp)
   // so we send 1 byte, sensor will no ack : status will be error
   msg_t status =  i2cMasterTransmitTimeout(sdpp->i2cp, sdpp->slaveAddr,
 					   dummy, sizeof(dummy),
-					   NULL, 0, I2C_TIMOUT_MS) ;
+					   NULL, 0, I2C_TIMOUT_100MS) ;
   if (status != MSG_OK) {
     restartI2c(sdpp->i2cp);
   }
@@ -189,7 +189,7 @@ msg_t  sdp3xGeneralReset(I2CDriver *i2cp)
 
   msg_t status = i2cMasterCacheTransmitTimeout(i2cp, SDP3X_GENERAL_RESET_ADDRESS,
 					  command, sizeof(command),
-					  NULL, 0, I2C_TIMOUT_MS) ;
+					  NULL, 0, I2C_TIMOUT_100MS) ;
   if (status != MSG_OK) {
     restartI2c(i2cp);
   }
@@ -232,7 +232,7 @@ msg_t  sdp3xFetch(Sdp3xDriver *sdpp, const Sdp3xRequest request)
 #endif
   status = i2cMasterCacheReceiveTimeout(sdpp->i2cp, sdpp->slaveAddr,
 				   (uint8_t *) &meas, len,
-				   I2C_TIMOUT_MS);
+				   I2C_TIMOUT_100MS);
   
   if (status != MSG_OK) {
     restartI2c(sdpp->i2cp);
@@ -286,7 +286,7 @@ msg_t  sdp3xGetIdent(Sdp3xDriver *sdpp, Sdp3xIdent *id)
 #endif
   msg_t status = i2cMasterCacheReceiveTimeout(sdpp->i2cp, sdpp->slaveAddr,
 					 (uint8_t *) &rid, sizeof(rid),
-					 I2C_TIMOUT_MS);
+					 I2C_TIMOUT_100MS);
   if (status != MSG_OK) {
     restartI2c(sdpp->i2cp);
 #if I2C_USE_MUTUAL_EXCLUSION
@@ -325,11 +325,11 @@ msg_t sdp3xSend(const Sdp3xDriver *sdpp, const Sdp3xCommand cmd)
   const Sdp3xCommand CACHE_ALIGNED(alCmd) = cmd;
   msg_t status = i2cMasterCacheTransmitTimeout(sdpp->i2cp, sdpp->slaveAddr,
 					       (uint8_t *) &alCmd, sizeof(alCmd),
-					       NULL, 0, I2C_TIMOUT_MS) ;
+					       NULL, 0, I2C_TIMOUT_100MS) ;
 #else
   msg_t status = i2cMasterCacheTransmitTimeout(sdpp->i2cp, sdpp->slaveAddr,
 					       (uint8_t *) &cmd, sizeof(cmd),
-					       NULL, 0, I2C_TIMOUT_MS) ;
+					       NULL, 0, I2C_TIMOUT_100MS) ;
 #endif
   if (status != MSG_OK) 
     restartI2c(sdpp->i2cp);
