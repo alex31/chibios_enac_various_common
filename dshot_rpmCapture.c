@@ -118,11 +118,20 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   osalSysUnlock();
   stopCapture(drcp);
 
+#ifdef DSHOT_STATISTICS
+  const rtcnt_t start = chSysGetRealtimeCounterX();
+#endif
+
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     drcp->rpms[i] = processErpsDmaBuffer(drcp->config->dma_capture->dma_buf[i],
 					 DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN -
 					 dmaGetTransactionCounter(&drcp->dmads[i]));
   }
+#ifdef DSHOT_STATISTICS
+  const rtcnt_t stop = chSysGetRealtimeCounterX();
+  drcp->nbDecode += DSHOT_CHANNELS;
+  drcp->accumDecodeTime += (stop - start);
+#endif
 
 #if defined(DFREQ) && (DFREQ < 10) && (DFREQ != 0)
   DebugTrace("dma out on %s", msg == MSG_OK ? "completion" : "timeout");
@@ -220,7 +229,7 @@ static void stopCapture(DshotRpmCapture *drcp)
    timIcRccDisable(&drcp->icd);
 }
 
-// naive implementation, there is a need for a more inspired one
+
 static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
 {
   static const size_t frameLen = 20U;
@@ -233,7 +242,7 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
     const uint_fast16_t len = capture[i] - prec;
     prec = capture[i];
     // GRC encoding garanties that there can be no more than 3 consecutives bits at the same level
-    const uint_fast8_t nbConsecutives =  ((len + (ERPS_BIT1_DUTY / 2U)) /  ERPS_BIT1_DUTY) /*% 4U*/;
+    const uint_fast8_t nbConsecutives =  ((len + (ERPS_BIT1_DUTY / 2U)) /  ERPS_BIT1_DUTY) % 4U;
     
     if (bit) {
       // TODO : bench between the commented loop or the manually unrolled loop actually compiled
@@ -245,11 +254,6 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
       case 3U:	erpsVal |= (0b111 << (frameLen - bitIndex - 2U)); break;
       default: break;
       }
-      // On F4 : 2.0 ns pour above coden 2.3ns for commented code 
-      // for (size_t j = frameLen - bitIndex; j > frameLen - bitIndex - nbConsecutives; j--) 
-      // 	erpsVal |= (1U << j);
-      
-      //            DebugTrace("bitIndex = %u; nbConsecutives 1 = %u, [%lx]", bitIndex, nbConsecutives, erpsVal);
     } else {
       //            DebugTrace("bitIndex = %u; nbConsecutives 0 = %u, [%lx]", bitIndex, nbConsecutives, erpsVal);
     }
@@ -262,36 +266,6 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
   //  DebugTrace("bit index = %u; erpsVal = 0x%lx", bitIndex, erpsVal);
   return erpsVal;
 }
-
-// this version must be benchmarked with above version, should be faster
-// on cortexM7 superscalar unit (F7, H7) but slower on cortexM4 (all but F7, H7)
-// static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
-// {
-//   static const size_t frameLen = 20U;
-//   uint32_t erpsVal = 0;
-//   uint_fast32_t bit = 0x0;
-//   uint_fast8_t bitIndex = 0;
-//   uint_fast16_t prec = capture[0];
-  
-//   for (size_t i = 1U; i < dmaLen; i++) {
-//     const uint_fast16_t len = capture[i] - prec;
-//     prec = capture[i];
-//     // GRC encoding garanties that there can be no more than 3 consecutives bits at the same level
-//     const uint_fast8_t nbConsecutives =  (len + (ERPS_BIT1_DUTY / 2)) /  ERPS_BIT1_DUTY;
-    
-//     for (size_t j=bitIndex; j < bitIndex + nbConsecutives; j++) {
-// 	     erpsVal |= ((1U << (frameLen - j)) & bit);
-//     }  
-//     bit ^= 0xffffffffU; 
-//     bitIndex += nbConsecutives;
-//   }
-//   // there can be several high bits hidden in the trailing high level signal
-//   for (size_t j=bitIndex; j <= frameLen; j++) 
-//     erpsVal |= (1U << (frameLen - j));
-//   //DebugTrace("bit index = %u; erpsVal = 0x%lx", bitIndex, erpsVal);
-//   return erpsVal;
-// }
-
 
 static void dmaErrCb(DMADriver *, dmaerrormask_t em)
 {

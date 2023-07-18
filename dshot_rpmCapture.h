@@ -72,6 +72,10 @@ typedef struct
   DMADriver	 	dmads[DSHOT_CHANNELS];
   TimerDmaCache	 	cache;
   uint32_t		rpms[DSHOT_CHANNELS];
+#ifdef DSHOT_STATISTICS
+  uint64_t		accumDecodeTime;
+  uint32_t		nbDecode;
+#endif
 } DshotRpmCapture;
 
 
@@ -85,6 +89,11 @@ static inline uint32_t dshotRpmGetFrame(const DshotRpmCapture *drcp, uint8_t ind
   return drcp->rpms[index];
 }
 uint32_t dshotRpmGetDmaErr(void) ;
+#ifdef DSHOT_STATISTICS
+static inline uint32_t getAverageDecodeTimeNs(DshotRpmCapture *drcp) {
+  return (drcp->accumDecodeTime * 1e9f) / STM32_SYSCLK / drcp->nbDecode;
+}
+#endif
 
 
 #ifdef __cplusplus
