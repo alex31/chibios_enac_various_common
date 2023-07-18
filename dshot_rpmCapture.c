@@ -118,7 +118,7 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   osalSysUnlock();
   stopCapture(drcp);
 
-#ifdef DSHOT_STATISTICS
+#if DSHOT_STATISTICS
   const rtcnt_t start = chSysGetRealtimeCounterX();
 #endif
 
@@ -127,7 +127,7 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
 					 DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN -
 					 dmaGetTransactionCounter(&drcp->dmads[i]));
   }
-#ifdef DSHOT_STATISTICS
+#if DSHOT_STATISTICS
   const rtcnt_t stop = chSysGetRealtimeCounterX();
   drcp->nbDecode += DSHOT_CHANNELS;
   drcp->accumDecodeTime += (stop - start);
@@ -204,7 +204,6 @@ static void initCache(DshotRpmCapture *drcp)
   const DshotRpmCaptureConfig *cfg = drcp->config;
   timIcObjectInit(&drcp->icd);
   timIcStart(&drcp->icd, &drcp->icCfg);
-  gptStart(cfg->gptd, &gptCfg);
   cfg->gptd->dshotRpmCaptured = drcp; // user data in GPT driver
 
   buildDmaConfig(drcp);
@@ -219,6 +218,7 @@ static void initCache(DshotRpmCapture *drcp)
 
 static void startCapture(DshotRpmCapture *drcp)
 {
+  gptStart(drcp->config->gptd, &gptCfg);
   timerDmaCache_restore(&drcp->cache, &drcp->dmads[0], drcp->icCfg.timer);
   timIcStartCapture(&drcp->icd);
 }
@@ -227,6 +227,7 @@ static void stopCapture(DshotRpmCapture *drcp)
 {
    timIcStopCapture(&drcp->icd);
    timIcRccDisable(&drcp->icd);
+   gptStop(drcp->config->gptd);
 }
 
 

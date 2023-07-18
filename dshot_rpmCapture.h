@@ -85,11 +85,14 @@ void dshotRpmCaptureStart(DshotRpmCapture *drcp, const DshotRpmCaptureConfig *cf
 void dshotRpmCaptureStop(DshotRpmCapture *drcp);
 void dshotRpmCatchErps(DshotRpmCapture *drcp);
 void dshotRpmTrace(DshotRpmCapture *drcp, uint8_t index);
+uint32_t dshotRpmGetDmaErr(void) ;
 static inline uint32_t dshotRpmGetFrame(const DshotRpmCapture *drcp, uint8_t index) {
   return drcp->rpms[index];
 }
-uint32_t dshotRpmGetDmaErr(void) ;
-#ifdef DSHOT_STATISTICS
+static inline GPTDriver * getGptd(const DshotRpmCapture *drcp) {
+  return drcp->config->gptd;
+}
+#if DSHOT_STATISTICS
 static inline uint32_t getAverageDecodeTimeNs(DshotRpmCapture *drcp) {
   return (drcp->accumDecodeTime * 1e9f) / STM32_SYSCLK / drcp->nbDecode;
 }
