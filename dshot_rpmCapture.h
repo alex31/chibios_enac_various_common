@@ -93,7 +93,7 @@ static inline GPTDriver * getGptd(const DshotRpmCapture *drcp) {
   return drcp->config->gptd;
 }
 #if DSHOT_STATISTICS
-static inline uint32_t getAverageDecodeTimeNs(DshotRpmCapture *drcp) {
+static inline uint32_t  dshotRpmGetAverageDecodeTimeNs(DshotRpmCapture *drcp) {
   return (drcp->accumDecodeTime * 1e9f) / STM32_SYSCLK / drcp->nbDecode;
 }
 #endif

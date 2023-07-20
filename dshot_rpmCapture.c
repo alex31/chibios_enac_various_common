@@ -55,7 +55,7 @@ static const TimICConfig timicCfgSkel = {
 /*
 this driver need additional field in gptDriver structure (in halconf.h): 
 one should add following line in the GPT section of halconf.h :
-#define GPT_DRIVER_EXT_FIELDS void *dshotRpmCaptured;
+#define GPT_DRIVER_EXT_FIELDS void *user_data;
 */
 static const GPTConfig gptCfg =  {
   .frequency    = 1'000'000, // 1MHz
@@ -204,7 +204,7 @@ static void initCache(DshotRpmCapture *drcp)
   const DshotRpmCaptureConfig *cfg = drcp->config;
   timIcObjectInit(&drcp->icd);
   timIcStart(&drcp->icd, &drcp->icCfg);
-  cfg->gptd->dshotRpmCaptured = drcp; // user data in GPT driver
+  cfg->gptd->user_data = drcp; // user data in GPT driver
 
   buildDmaConfig(drcp);
   for (size_t i=0; i < DSHOT_CHANNELS; i++) {
@@ -277,7 +277,7 @@ static void dmaErrCb(DMADriver *, dmaerrormask_t em)
 static void gptCb(GPTDriver *gptd)
 {
   chSysLockFromISR();
-  DshotRpmCapture *drcd = (DshotRpmCapture *) gptd->dshotRpmCaptured;
+  DshotRpmCapture *drcd = (DshotRpmCapture *) gptd->user_data;
   chThdResumeI(&drcd->dmads[0].thread, MSG_TIMEOUT);
   chSysUnlockFromISR();
 }
