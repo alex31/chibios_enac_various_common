@@ -162,10 +162,7 @@ uint32_t arm_rol(uint32_t v, const uint32_t sh) {
 #if (CH_KERNEL_MAJOR == 2)
 static inline halrtcnt_t rtcntDiff (const halrtcnt_t start, const  halrtcnt_t stop) 
 {
-  if (stop > start) 
     return stop - start;
-  else
-    return start - stop; 
 }
 
 
