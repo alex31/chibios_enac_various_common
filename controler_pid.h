@@ -13,7 +13,7 @@
        "CONTROLER_PID_LOWRES_TIMER can be defined"
 #endif
 
-#if  defined CONTROLER_PID_HIRES_TIMER
+#ifdef CONTROLER_PID_HIRES_TIMER
 typedef rtcnt_t   timecnt_t;
 #else
 typedef systime_t timecnt_t;

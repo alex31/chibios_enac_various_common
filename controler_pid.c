@@ -28,6 +28,15 @@ static inline float diff2seconds(timecnt_t diff) {
 #endif
 }
 
+static inline timecnt_t timegetnow(void) {
+#if  defined CONTROLER_PID_HIRES_TIMER
+  return chSysGetRealtimeCounterX();
+#else
+  return chVTGetSystemTimeX();
+#endif
+}
+
+
 static void  pidAdjustCoeffs (ControlerPid* cpid);
 
 
@@ -51,7 +60,7 @@ void pidInit (ControlerPid* cpid, volatile float* Input,
     pidSetControllerDirection(cpid, ControllerDirection);
     pidSetTunings(cpid, Kp, Ki, Kd);
 
-    cpid->lastTime = chSysGetRealtimeCounterX();				
+    cpid->lastTime = timegetnow();
 }
  
  
@@ -64,7 +73,7 @@ void pidInit (ControlerPid* cpid, volatile float* Input,
 bool pidCompute(ControlerPid* cpid)
 {
   if(!cpid->inAuto) return false;
-  const timecnt_t now = chSysGetRealtimeCounterX();
+  const timecnt_t now = timegetnow();
   const timecnt_t timeChange = timediff(cpid->lastTime, now);
   cpid->sampleTime = timeChange;
   pidAdjustCoeffs (cpid);
@@ -129,10 +138,6 @@ static void  pidAdjustCoeffs (ControlerPid* cpid)
 }
 
   
-/* SetSampleTime(...) *********************************************************
- * sets the period, in Milliseconds, at which the calculation is performed	
- ******************************************************************************/
- 
 /* SetOutputLimits(...)****************************************************
  *     This function will be used far more often than SetInputLimits.  while
  *  the input to the controller will generally be in the 0-1023 range (which is
