@@ -364,11 +364,6 @@ void dshotSendFrame(DSHOTDriver *driver)
 		 driver->config->dma_command, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
     
 #if DSHOT_BIDIR
-#if  STM32_SYSCLK > 168'000'000
-    // F7 is a bit too fast :-)
-    // better use the gpt timer using asynchronous API
-    chSysPolledDelayX(US2RTC(STM32_SYSCLK, 10));
-#endif
     dshotStop(driver);
     dshotRpmCatchErps(&driver->rpm_capture);
     processBidirErpm(driver);
