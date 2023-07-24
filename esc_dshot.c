@@ -82,6 +82,7 @@ static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen);
 static noreturn void dshotTlmRec (void *arg);
 #if DSHOT_BIDIR
 static void processBidirErpm(DSHOTDriver *driver);
+static void     dshotRestart(DSHOTDriver *driver);
 #endif
 #if DSHOT_BIDIR_EXTENTED_TELEMETRY
 static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tlm);
@@ -217,8 +218,15 @@ void     dshotStop(DSHOTDriver *driver)
   dmaStop(&driver->dmap);
 }
 
-
-void dshotRestart(DSHOTDriver *driver)
+#if DSHOT_BIDIR
+/**
+ * @brief   restart the driver in outgoing mode
+ *          
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @api
+ */
+static void dshotRestart(DSHOTDriver *driver)
 {
   const bool dmaOk = dmaStart(&driver->dmap, &driver->dma_conf);
   chDbgAssert(dmaOk == true, "dshot dma start error");
@@ -232,7 +240,7 @@ void dshotRestart(DSHOTDriver *driver)
     driver->dshotMotors.dp[j] =  makeDshotPacket(0,0);
   }
 }
-
+#endif
 
 /**
  * @brief   prepare throttle order for specified ESC
@@ -434,6 +442,15 @@ static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *t
 #endif
 
 #if DSHOT_BIDIR
+/**
+ * @brief   return last received telemetry ERPM data
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @param[in] index     channel : [0..3]
+ * @return    erpm or special values DSHOT_BIDIR_ERR_CRC, DSHOT_BIDIR_TLM_EDT
+ * @note     special values DSHOT_BIDIR_ERR_CRC, DSHOT_BIDIR_TLM_EDT
+ *	     must be checked after every call to dshotGetRpm     
+ */
 uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index)
 {
   chDbgAssert(index < DSHOT_CHANNELS, "index check failed");

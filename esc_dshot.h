@@ -23,13 +23,25 @@ extern "C" {
 					 DSHOT_PRE_FRAME_SILENT_SYNC_BITS + \
 					 DSHOT_POST_FRAME_SILENT_SYNC_BITS )
 #define DSHOT_PRE_FRAME_SILENT_SYNC_BITS  2U
-#if  defined STM32F7XX
+
+
+/**
+ * @brief   number of trailing LOW bits in DMA control frame
+ * @note    must be bigger for cortexm7 MCU which are way faster
+ */
+#if defined STM32F7XX || defined STM32H7XX
 #define DSHOT_POST_FRAME_SILENT_SYNC_BITS 4U
 #else
 #define DSHOT_POST_FRAME_SILENT_SYNC_BITS 2U
 #endif
+
+/**
+ * @brief  special values returned by dshotGetRpm function
+ * @note   must be checked after each call to dshotGetRpm
+ */
 #define DSHOT_BIDIR_ERR_CRC		 UINT32_MAX
 #define DSHOT_BIDIR_TLM_EDT		 (UINT32_MAX-1U)
+
 /**
  * @brief   special value for index : send order to all channels
  * @note    could be used as index in dshotSetThrottle and
@@ -154,11 +166,19 @@ typedef struct  {
    * @brief dshot dma buffer, should be defined in a non Dcached region
    */
   DshotDmaBuffer *dma_command;
+
 #if DSHOT_BIDIR
+ /**
+   * @brief DshotRpmCapture configuration structure when DSHOT_BIDIR is enabled
+   */
   DshotRpmCaptureConfig dma_capt_cfg;
 #endif
 
 #if DSHOT_SPEED == 0
+ /**
+   * @brief	dynamic dshot speed, when speed id not known at compilation
+   * @note	incompatible with BIDIR
+   */
   uint16_t speed_khz;
 #endif
 #if __DCACHE_PRESENT
@@ -176,7 +196,6 @@ typedef struct  {
 
 void     dshotStart(DSHOTDriver *driver, const DSHOTConfig *config);
 void     dshotStop(DSHOTDriver *driver);
-void     dshotRestart(DSHOTDriver *driver);
 void     dshotSetThrottle(DSHOTDriver *driver, const uint8_t index, const uint16_t throttle);
 void     dshotSendFrame(DSHOTDriver *driver);
 void     dshotSendThrottles(DSHOTDriver *driver, const uint16_t throttles[DSHOT_CHANNELS]);
@@ -267,8 +286,19 @@ struct  DSHOTDriver {
   uint16_t bit1Duty;
 #endif
 #if DSHOT_BIDIR
+  /**
+   * @brief object managing capture of erpm frame 
+   *	    using timer in input capture mode dans one dma stream 
+   *        for each channels
+   */
   DshotRpmCapture rpm_capture;
+  /**
+   * @brief object managing decoding of erpm frame
+   */
   DshotErps	  erps;
+  /**
+   * @brief half decoded rpms frame
+   */
   uint32_t	  rpms_frame[DSHOT_CHANNELS];
 #endif
   /**
@@ -276,6 +306,9 @@ struct  DSHOTDriver {
    */
   THD_WORKING_AREA(waDshotTlmRec, 512);
 
+  /**
+   * @brief object managing dma control frame for outgoing command
+   */
   DshotPackets dshotMotors;
 };
 

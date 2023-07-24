@@ -2,6 +2,11 @@
 #include <string.h>
 #include <stdutil.h>
 
+
+#if DSHOT_SPEED == 0
+#error dynamic dshot speed is not yet implemented in DSHOT BIDIR
+#endif
+
 static const float TIM_FREQ_MHZ = (STM32_SYSCLK/1E6d);
 static const float bit1t_us = TIM_FREQ_MHZ * 6.67d * 4 / 5;
 static const float speed_factor = DSHOT_SPEED / 150;
