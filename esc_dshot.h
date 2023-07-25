@@ -153,23 +153,23 @@ typedef struct  {
   uint8_t	dma_channel;
 
   /**
-   * @brief PWM driver that feed up to 4 dshot lines
+   * @brief : PWM driver that feed up to 4 dshot lines
    */
   PWMDriver	*pwmp;
 
   /**
-   * @brief if non null : dshot telemetry serial driver
+   * @brief : if non null : dshot telemetry serial driver
    */
   SerialDriver	*tlm_sd;
 
   /**
-   * @brief dshot dma buffer, should be defined in a non Dcached region
+   * @brief : dshot dma buffer, should be defined in a non Dcached region
    */
   DshotDmaBuffer *dma_command;
 
 #if DSHOT_BIDIR
  /**
-   * @brief DshotRpmCapture configuration structure when DSHOT_BIDIR is enabled
+   * @brief : DshotRpmCapture configuration structure when DSHOT_BIDIR is enabled
    */
   DshotRpmCaptureConfig dma_capt_cfg;
 #endif

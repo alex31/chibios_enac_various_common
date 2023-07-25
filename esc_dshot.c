@@ -99,7 +99,7 @@ static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *t
 */
 
 /**
- * @brief   Configures and activates the DSHOT peripheral.
+ * @brief   Configures and activates the DSHOT driver.
  *
  * @param[in] driver    pointer to the @p DSHOTDriver object
  * @param[in] config    pointer to the @p DSHOTConfig object.
@@ -205,7 +205,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
 }
 
 /**
- * @brief   stop the DSHOT peripheral and free the 
+ * @brief   stop the DSHOT driver and free the 
  *          related resources : pwm driver and dma driver.
  *
  * @param[in] driver    pointer to the @p DSHOTDriver object

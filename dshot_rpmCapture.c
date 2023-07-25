@@ -1,18 +1,19 @@
 #include "dshot_rpmCapture.h"
 #include <string.h>
+#if DSHOT_STATISTICS
 #include <stdutil.h>
-
+#endif
 
 #if DSHOT_SPEED == 0
 #error dynamic dshot speed is not yet implemented in DSHOT BIDIR
 #endif
 
-static const float TIM_FREQ_MHZ = (STM32_SYSCLK/1E6d);
+static const float TIM_FREQ_MHZ = (STM32_SYSCLK / 1e6d);
 static const float bit1t_us = TIM_FREQ_MHZ * 6.67d * 4 / 5;
 static const float speed_factor = DSHOT_SPEED / 150;
 
 static const uint32_t  ERPS_BIT1_DUTY = bit1t_us / speed_factor;
-static const uint32_t  TIM_PRESCALER = 1;
+static const uint32_t  TIM_PRESCALER = 1U;
 
 static void startCapture(DshotRpmCapture *drcp);
 static void stopCapture(DshotRpmCapture *drcp);
@@ -22,8 +23,10 @@ static void buildDmaConfig(DshotRpmCapture *drcp);
 static void dmaErrCb(DMADriver *dmad, dmaerrormask_t em);
 static void gptCb(GPTDriver *gptd);
 
+#if DSHOT_STATISTICS
 static volatile dmaerrormask_t lastErr;
 static volatile uint32_t       dmaErrs = 0;
+#endif
 
 #if !defined __GNUC__ || __GNUC__ < 13
 #define nullptr NULL
@@ -54,7 +57,7 @@ static const TimICConfig timicCfgSkel = {
 	  .dier = activeDier[DSHOT_CHANNELS-1].dier,
 	  .dcr = 0, // direct access, not using DMAR
 	  .prescaler = TIM_PRESCALER,
-	  .arr =  (uint32_t) ((TIM_FREQ_MHZ * 25) + (ERPS_BIT1_DUTY * 20)) // silent + frame length
+	  .arr =  (uint32_t) ((TIM_FREQ_MHZ * 25U) + (ERPS_BIT1_DUTY * 20U)) // silent + frame length
 };
 
 /*
@@ -62,6 +65,13 @@ this driver need additional field in gptDriver structure (in halconf.h):
 one should add following line in the GPT section of halconf.h :
 #define GPT_DRIVER_EXT_FIELDS void *user_data;
 */
+#ifndef GPT_DRIVER_EXT_FIELDS
+#error dshot rpmcapture driver involve defining #define GPT_DRIVER_EXT_FIELDS void *user_data; in halconf.h
+#else
+// redefine at the needed value to trigger error if defined with another value
+#define GPT_DRIVER_EXT_FIELDS void *user_data; 
+#endif
+
 static const GPTConfig gptCfg =  {
   .frequency    = 1'000'000, // 1MHz
   .callback     = &gptCb,
@@ -70,6 +80,14 @@ static const GPTConfig gptCfg =  {
 };
 
 
+/**
+ * @brief   Configures and activates the DSHOT ERPS CAPTURE driver.
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @param[in] cfg     pointer to the @p DshotRpmCaptureConfig object.
+ * @param[in] timer   pointer to the underlying timer (same one used to output control frame)
+ * @api
+ */
 void dshotRpmCaptureStart(DshotRpmCapture *drcp, const DshotRpmCaptureConfig *cfg,
 			  stm32_tim_t	  *timer)
 {
@@ -80,15 +98,37 @@ void dshotRpmCaptureStart(DshotRpmCapture *drcp, const DshotRpmCaptureConfig *cf
   initCache(drcp);
 }
 
+/**
+ * @brief   stop the the DSHOT ERPS CAPTURE driver.
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @api
+ */
 void dshotRpmCaptureStop(DshotRpmCapture *drcp)
 {
   stopCapture(drcp);
 }
 
+#if DSHOT_STATISTICS
+/**
+ * @brief   return dma error counter
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @api
+ */
 uint32_t dshotRpmGetDmaErr(void) {
-  return dmaErrs;
+return dmaErrs;
 }
+#endif
 
+
+/**
+ * @brief   capture the DSHOT ERPS frame(s) : one frame for each DSHOT_CHANNELS
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @note    synchronous API, when it returns, the erpm data is available
+ * @api
+ */
 void dshotRpmCatchErps(DshotRpmCapture *drcp)
 {
   startCapture(drcp);
@@ -144,6 +184,14 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
 
 }
 
+#if DSHOT_STATISTICS
+/**
+ * @brief   trace content of DMA buffer for tuning
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @param[in] index   index of channel [0 .. 4]
+ * @api
+ */
 void dshotRpmTrace(DshotRpmCapture *drcp, uint8_t index)
 {
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
@@ -159,7 +207,7 @@ void dshotRpmTrace(DshotRpmCapture *drcp, uint8_t index)
   }
   DebugTrace("");
 }
-
+#endif
 
 
 /*
@@ -171,6 +219,12 @@ void dshotRpmTrace(DshotRpmCapture *drcp, uint8_t index)
 #                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|        
 */
 
+/**
+ * @brief  build dma configuration structure
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @private
+ */
 static void buildDmaConfig(DshotRpmCapture *drcp)
 {
   static const DMAConfig skel = (DMAConfig) {
@@ -204,6 +258,12 @@ static void buildDmaConfig(DshotRpmCapture *drcp)
   }
 }
 
+/**
+ * @brief  build dma and timer registers cache
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @private
+ */
 static void initCache(DshotRpmCapture *drcp)
 {
   const DshotRpmCaptureConfig *cfg = drcp->config;
@@ -221,6 +281,12 @@ static void initCache(DshotRpmCapture *drcp)
   dshotRpmCaptureStop(drcp);
 } 
 
+/**
+ * @brief  start the DMA capture
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @private
+ */
 static void startCapture(DshotRpmCapture *drcp)
 {
   gptStart(drcp->config->gptd, &gptCfg);
@@ -228,6 +294,12 @@ static void startCapture(DshotRpmCapture *drcp)
   timIcStartCapture(&drcp->icd);
 }
 
+/**
+ * @brief  stop the DMA capture
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @private
+ */
 static void stopCapture(DshotRpmCapture *drcp)
 {
    timIcStopCapture(&drcp->icd);
@@ -236,6 +308,12 @@ static void stopCapture(DshotRpmCapture *drcp)
 }
 
 
+/**
+ * @brief  convert DMA buffer full of pulse length into raw ERPS frame
+ *
+ * @param[in] drcp    pointer to the @p DshotRpmCapture object
+ * @private
+ */
 static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
 {
   static const size_t frameLen = 20U;
@@ -249,20 +327,13 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
     prec = capture[i];
     // GRC encoding garanties that there can be no more than 3 consecutives bits at the same level
     // made some test to replace division by multiplication + shift without any speed gain
-    const uint_fast8_t nbConsecutives =  (len + (ERPS_BIT1_DUTY / 2U)) /  ERPS_BIT1_DUTY; // M4::opt-> 1818ns
-    //const uint_fast16_t lenWithMargin = len + ERPS_BIT1_DUTY / 2U;
-    //const uint_fast8_t nbConsecutives =  (lenWithMargin * (65536U / ERPS_BIT1_DUTY)) >> 16U; // M4::opt-> 1824ns
+    const uint_fast8_t nbConsecutives =  (len + (ERPS_BIT1_DUTY / 2U)) /  ERPS_BIT1_DUTY; 
     if (bit) {
-      // TODO : bench between the commented loop or the manually unrolled loop actually compiled
-      //      for (size_t j = bitIndex; j < bitIndex + nbConsecutives; j++) 
-      //	erpsVal |= (1U << (frameLen - j));
       switch(nbConsecutives) {
       case 1U:	erpsVal |= (0b001 << (frameLen - bitIndex)); break;
       case 2U:	erpsVal |= (0b011 << (frameLen - bitIndex - 1U)); break;
       default:  erpsVal |= (0b111 << (frameLen - bitIndex - 2U)); break;
       }
-    } else {
-      //            DebugTrace("bitIndex = %u; nbConsecutives 0 = %u, [%lx]", bitIndex, nbConsecutives, erpsVal);
     }
     bit = ~bit; // flip bit
     bitIndex += nbConsecutives;
@@ -284,12 +355,31 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
   return erpsVal;
 }
 
+/**
+ * @brief  dma error ISR : 
+ *
+ * @param[in] drcp    pointer to the @p DMADriver
+ * @param[in] em      error mask
+ * @note	      does nothing if DSHOT_STATISTICS == FALSE
+ * @private
+ */
 static void dmaErrCb(DMADriver *, dmaerrormask_t em)
 {
+#if DSHOT_STATISTICS
   lastErr = em;
   dmaErrs++;
+#else
+  (void) em;
+#endif
 }
 
+/**
+ * @brief  dma timeout ISR : 
+ *
+ * @param[in] gptd    pointer to the @p GPTDriver that trigger the timeout
+ * @note	      does nothing if DSHOT_STATISTICS == FALSE
+ * @private
+ */
 static void gptCb(GPTDriver *gptd)
 {
   chSysLockFromISR();
