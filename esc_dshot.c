@@ -2,17 +2,9 @@
 #include <stdnoreturn.h>
 #include <math.h>
 #include <string.h>
-#ifdef TRACE
 #include "stdutil.h"
-#endif
-
-/*
-  TODO:
-
-  ° TEST special code sending
 
 
- */
 
 
 /*
@@ -23,7 +15,7 @@
 #                | (_| |  |  __/ | |   | |  | | | | | |  \ |_   | |  | (_) | | | | |
 #                 \__,_|   \___| |_|   |_|  |_| |_| |_|   \__|  |_|   \___/  |_| |_|
 */
-#define PWM_FREQ         (STM32_SYSCLK/2000) // the timer will beat @84Mhz on STM32F4
+#define PWM_FREQ         (STM32_SYSCLK/2000U) // the timer will beat @84Mhz on STM32F4
 #define TICKS_PER_PERIOD 1000             // that let use any timer :
 			                  // does not care if linked to PCLK1 or PCLK2
 			                  // tick_per_period will be dynamically calculated
@@ -43,7 +35,7 @@
 #define DSHOT_BIDIR_EXTENTED_TELEMETRY	FALSE
 #endif
 
-			                  // after pwm init
+
 #if DSHOT_SPEED != 0 // statically defined
 #   define DSHOT_FREQ (DSHOT_SPEED*1000)
 #   define DSHOT_BIT0_DUTY (DSHOT_PWM_PERIOD * 373 / 1000)
@@ -61,7 +53,7 @@
 #define DCR_DBA(pwmd)                 (((uint32_t *) (&pwmd->tim->CCR) - ((uint32_t *) pwmd->tim)))
 
 
-#define DSHOT_MAX_VALUE ((1<<11)-1) // 11 bits used to send command, so maximum value is 2047
+#define DSHOT_MAX_VALUE ((1U<<11U)-1U) // 11 bits used to send command, so maximum value is 2047
 
 
 /*
@@ -115,9 +107,6 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   
   memset((void *) config->dma_command, 0, sizeof(*(config->dma_command)));
   const size_t timerWidthInBytes = getTimerWidth(config->pwmp);
-  /* DebugTrace("timerWidthInBytes = %u; mburst = %u", */
-  /* 	     timerWidthInBytes, */
-  /* 	     DSHOT_DMA_BUFFER_SIZE % (timerWidthInBytes * 4) ? 0U : 4U); */
 
   static const SerialConfig  tlmcfg =  {
     .speed = DSHOT_TELEMETRY_BAUD,
