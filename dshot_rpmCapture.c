@@ -248,8 +248,10 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
     const uint_fast16_t len = capture[i] - prec;
     prec = capture[i];
     // GRC encoding garanties that there can be no more than 3 consecutives bits at the same level
-    const uint_fast8_t nbConsecutives =  ((len + (ERPS_BIT1_DUTY / 2U)) /  ERPS_BIT1_DUTY) % 4U;
-    
+    // made some test to replace division by multiplication + shift without any speed gain
+    const uint_fast8_t nbConsecutives =  (len + (ERPS_BIT1_DUTY / 2U)) /  ERPS_BIT1_DUTY; // M4::opt-> 1818ns
+    //const uint_fast16_t lenWithMargin = len + ERPS_BIT1_DUTY / 2U;
+    //const uint_fast8_t nbConsecutives =  (lenWithMargin * (65536U / ERPS_BIT1_DUTY)) >> 16U; // M4::opt-> 1824ns
     if (bit) {
       // TODO : bench between the commented loop or the manually unrolled loop actually compiled
       //      for (size_t j = bitIndex; j < bitIndex + nbConsecutives; j++) 
@@ -257,18 +259,27 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
       switch(nbConsecutives) {
       case 1U:	erpsVal |= (0b001 << (frameLen - bitIndex)); break;
       case 2U:	erpsVal |= (0b011 << (frameLen - bitIndex - 1U)); break;
-      case 3U:	erpsVal |= (0b111 << (frameLen - bitIndex - 2U)); break;
-      default: break;
+      default:  erpsVal |= (0b111 << (frameLen - bitIndex - 2U)); break;
       }
     } else {
       //            DebugTrace("bitIndex = %u; nbConsecutives 0 = %u, [%lx]", bitIndex, nbConsecutives, erpsVal);
     }
-    bit = bit ^ 0x1U; // flip bit
+    bit = ~bit; // flip bit
     bitIndex += nbConsecutives;
   }
   // there can be several high bits hidden in the trailing high level signal
   for (size_t j=bitIndex; j <= frameLen; j++) 
     erpsVal |= (1U << (frameLen - j));
+  
+  // alternative implementation for the trailing high level signal
+  // slower on M4
+  /* switch(frameLen - bitIndex) { */
+  /* case 0U: erpsVal |= 0b001; break; */
+  /* case 1U: erpsVal |= 0b011; break; */
+  /* case 2U: erpsVal |= 0b111; break; */
+  /* default: erpsVal |= 0b1111; break; */
+  /* } */
+  
   //  DebugTrace("bit index = %u; erpsVal = 0x%lx", bitIndex, erpsVal);
   return erpsVal;
 }
