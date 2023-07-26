@@ -14,7 +14,7 @@
 
 static inline timecnt_t timediff(timecnt_t start, timecnt_t stop) {
 #if  defined CONTROLER_PID_HIRES_TIMER
-  return rtcntDiff(start, stop); 
+  return stop - start;
 #else
   return chTimeDiffX(start, stop); 
 #endif
