@@ -436,10 +436,40 @@ static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *t
  *
  * @param[in] driver    pointer to the @p DSHOTDriver object
  * @param[in] index     channel : [0..3]
+ * @return    eperiod or special values DSHOT_BIDIR_ERR_CRC, DSHOT_BIDIR_TLM_EDT
+ * @note     ° special values DSHOT_BIDIR_ERR_CRC, DSHOT_BIDIR_TLM_EDT
+ *	     must be checked after every call to dshotGetEperiod     
+ *           ° this fonction is less cpu intensive than dshotGetRpm
+ */
+uint32_t dshotGetEperiod(DSHOTDriver *driver, const uint32_t index)
+{
+  chDbgAssert(index < DSHOT_CHANNELS, "index check failed");
+   DshotErpsSetFromFrame(&driver->erps,  driver->rpms_frame[index]);
+   if (DshotErpsCheckCrc4(&driver->erps)) {
+#if DSHOT_BIDIR_EXTENTED_TELEMETRY
+     if (DshotErpsIsEdt(&driver->erps)) {
+       if (driver->config->tlm_sd == NULL) {
+	 DshotTelemetry *tlm = &driver->dshotMotors.dt[index];
+	 updateTelemetryFromBidirEdt(&driver->erps, tlm);
+       }
+       return DSHOT_BIDIR_TLM_EDT;
+     }
+#endif
+     return DshotErpsGetEperiod(&driver->erps);
+   } else {
+     return DSHOT_BIDIR_ERR_CRC;
+   }
+}
+/**
+ * @brief   return last received telemetry ERPM data
+ *
+ * @param[in] driver    pointer to the @p DSHOTDriver object
+ * @param[in] index     channel : [0..3]
  * @return    erpm or special values DSHOT_BIDIR_ERR_CRC, DSHOT_BIDIR_TLM_EDT
  * @note     special values DSHOT_BIDIR_ERR_CRC, DSHOT_BIDIR_TLM_EDT
  *	     must be checked after every call to dshotGetRpm     
  */
+
 uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index)
 {
   chDbgAssert(index < DSHOT_CHANNELS, "index check failed");

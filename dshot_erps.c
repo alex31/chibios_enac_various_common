@@ -30,7 +30,6 @@ static uint32_t eperiodDecode(const uint32_t frame);
 
 
 static  void setFromEperiod(DshotErps *derpsp, uint32_t eperiod);
-static  uint32_t getEperiod(const DshotErps *derpsp);
 static  void frameToPacket(DshotErps *derpsp);
 static  void packetToFrame(DshotErps *derpsp);
 
@@ -62,17 +61,32 @@ const DshotErps* DshotErpsSetFromRpm(DshotErps *derpsp, uint32_t rpm)
   return derpsp;
 }
 
+/**
+ * @brief   return eperiod from mantisse and exponent
+ *
+ * @param[in] derpsp    pointer to the @p DshotErps object
+ * @return eperiod in microseconds
+ * @note   getEperiod avoid a division and is more cpu friendly than getRpm
+ * @private
+ */
+uint32_t DshotErpsGetEperiod(const DshotErps *derpsp)
+{
+  return derpsp->ep.mantisse << derpsp->ep.exponent;
+}
+
 
 /**
  * @brief   calculate and return rpm
  *
  * @param[in] derpsp    pointer to the @p DshotErps object
  * @return    rotational speed in RPM
+ * @note      involve a division, which is a cpu cycle hog, If you can
+              use getEperiod instead, it will be less calculus intensive
  * @api
  */
 uint32_t DshotErpsGetRpm(const DshotErps *derpsp)
 {
-  return ((uint32_t) 60e6f) / getEperiod(derpsp);
+  return ((uint32_t) 60e6f) / DshotErpsGetEperiod(derpsp);
 }
 
 /**
@@ -229,18 +243,6 @@ static  void setFromEperiod(DshotErps *derpsp, uint32_t eperiod)
 {
   derpsp->ep = eperiodToPacked(eperiod);
   packetToFrame(derpsp);
-}
-
-/**
- * @brief   calculate eperiod from mantisse and exponent
- *
- * @param[in] derpsp    pointer to the @p DshotErps object
- * @return eperiod in microseconds
- * @private
- */
-static  uint32_t getEperiod(const DshotErps *derpsp)
-{
-  return derpsp->ep.mantisse << derpsp->ep.exponent;
 }
 
 /**

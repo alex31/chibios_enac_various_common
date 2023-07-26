@@ -59,7 +59,8 @@ _Static_assert(sizeof(DshotEPeriodTelemetry) == sizeof(uint16_t), "DshotEPeriodT
   
   const DshotErps* DshotErpsSetFromFrame(DshotErps *derpsp, uint32_t frame);
   const DshotErps* DshotErpsSetFromRpm(DshotErps *derpsp, uint32_t rpm);
-  uint32_t DshotErpsGetRpm(const DshotErps *derpsp) ;
+  uint32_t DshotErpsGetEperiod(const DshotErps *derpsp);
+  uint32_t DshotErpsGetRpm(const DshotErps *derpsp);
   bool DshotErpsCheckCrc4(const DshotErps *derpsp);
 
 /**

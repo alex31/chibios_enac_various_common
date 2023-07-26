@@ -205,7 +205,8 @@ uint32_t dshotGetCrcErrorCount(const DSHOTDriver *driver);
 uint32_t dshotGetTelemetryFrameCount(const DSHOTDriver *driver);
 DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index);
 #if DSHOT_BIDIR
-  uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index);
+uint32_t dshotGetEperiod(DSHOTDriver *driver, const uint32_t index);
+uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index);
 #endif
 
 
