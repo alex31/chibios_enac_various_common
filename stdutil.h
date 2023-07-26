@@ -14,14 +14,9 @@
 //#define TRACE_PWM 1
 //#define TRACE_IOMODE 1
 
-#if (CH_KERNEL_MAJOR == 2)
-#define WORKING_AREA_ARRAY(s, n, al) stkalign_t s[al] [THD_WA_SIZE(n) \
-						       / sizeof(stkalign_t)]
-#else
 #define THD_WORKING_AREA_ARRAY(s, n, al) stkalign_t s[al] [THD_WORKING_AREA_SIZE(n) \
 						       / sizeof(stkalign_t)]
 #define SYSTEM_CLOCK_MHZ (STM32_PLLN_VALUE/STM32_PLLP_VALUE)
-#endif
 
 
 #define ARRAY_LEN(a) (sizeof(a)/sizeof(a[0]))
@@ -159,37 +154,9 @@ uint32_t arm_rol(uint32_t v, const uint32_t sh) {
 }
 
 
-#if (CH_KERNEL_MAJOR == 2)
-static inline halrtcnt_t rtcntDiff (const halrtcnt_t start, const  halrtcnt_t stop) 
-{
-    return stop - start;
-}
-
-
-static inline bool_t isTimerExpiredAndRearm (halrtcnt_t *timer, const halrtcnt_t interval)
-{
-  if (halIsCounterWithin (*timer, *timer+interval)) {
-    return false;
-  } else {
-    *timer =  halGetCounterValue();
-    return true;
-  }
-}
-
-
-static inline halrtcnt_t halCounterDiff (const halrtcnt_t begin, const halrtcnt_t end)
-{
-  return   (end > begin) ? end-begin : (UINT32_MAX-begin) + end;
-}
-
-static inline halrtcnt_t halCounterDiffNow (const halrtcnt_t begin)
-{
-  return halCounterDiff (begin, halGetCounterValue());
-}
-#else // (CH_KERNEL_MAJOR > 2)
 static inline rtcnt_t rtcntDiff (const rtcnt_t start, const  rtcnt_t stop) 
 {
-  return (stop > start) ? stop - start : start - stop; 
+  return stop - start;
 }
 
 static inline rtcnt_t rtcntDiffNow (const rtcnt_t begin)
@@ -201,7 +168,7 @@ static inline rtcnt_t rtcntDiffNow (const rtcnt_t begin)
 __attribute__ ((deprecated))
 static inline rtcnt_t halCounterDiffNow (const rtcnt_t begin) 
 {
-  return rtcntDiffNow (begin);
+  return rtcntDiffNow(begin);
 }
 
 __attribute__ ((deprecated))
@@ -221,8 +188,6 @@ static inline bool isTimerExpiredAndRearm (rtcnt_t *timer, const rtcnt_t interva
   }
 }
 
-
-#endif // (CH_KERNEL_MAJOR == 2)
 
 // optimised counting bits routine from https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#Other-Builtins
 /*
@@ -390,21 +355,13 @@ F7
 #define IN_BCKP_SECTION(var) var __attribute__ ((section(BCKP_SECTION "_init"), aligned(8)))
  
   
-#if (CH_KERNEL_MAJOR == 2)
-#if CH_USE_HEAP || CH_HEAP_USE_TLSF
-  size_t initHeap (void);
-  size_t getHeapFree (void);
-  void *malloc_m (size_t size);
-  void free_m(void *p);
-#endif
-#else
 #if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
   size_t initHeap (void);
   size_t getHeapFree (void);
   void *malloc_m (size_t size);
   void free_m(void *p);
 #endif
-#endif
+
 
 // c++20 define std::lerp
 #if (! defined(__cplusplus)) || __cplusplus <= 201703L
@@ -458,9 +415,8 @@ char *binary_fmt(uintmax_t x, const int fill);
 uint16_t fletcher16 (uint8_t const *data, size_t bytes);
 float powi(int x, int y) ;
 const char* getGpioName (const ioportid_t p);
-#if (CH_KERNEL_MAJOR > 2)
-  int32_t get_stack_free (const thread_t *tp);
-#endif
+int32_t get_stack_free (const thread_t *tp);
+
 
 #if HAL_USE_PWM 
 __attribute__((const))

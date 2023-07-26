@@ -84,22 +84,6 @@ float powi(int x, int y)
 }   
 
 
-#if (CH_KERNEL_MAJOR == 2)
-
-#if   CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
-
-#ifndef CH_HEAP_SIZE
-#error CH_HEAP_SIZE should be defined if  CH_USE_HEAP or CH_HEAP_USE_TLSF are defined
-#endif
-
-#if (! defined CH_HEAP_USE_TLSF) || (CH_HEAP_USE_TLSF == 0)
-static uint8_t ccmHeapBuffer[CH_HEAP_SIZE] __attribute__ ((section(STD_SECTION), aligned(8))) ;
-MemoryHeap ccmHeap;
-#endif
-
-#endif // if CH_USE_HEAP || CH_HEAP_USE_TLSF
-
-#else // (CH_KERNEL_MAJOR > 2)
 
 #if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
 
@@ -114,7 +98,6 @@ memory_heap_t ccmHeap;
 #endif
 
 #endif // #if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
-#endif // if (CH_KERNEL_MAJOR == 2)
 
 
 #if CH_CFG_USE_HEAP
@@ -127,16 +110,8 @@ size_t initHeap (void)
   return stat.mfree;
 #else
   size_t size;
-#if (CH_KERNEL_MAJOR == 2)
-  chHeapInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
-  chHeapStatus(&ccmHeap, &size);
-#elif (CH_KERNEL_MAJOR == 3)
-  chHeapObjectInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
-  chHeapStatus(&ccmHeap, &size);
-#else
   chHeapObjectInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
   chHeapStatus(&ccmHeap, &size, NULL);
-#endif
   return size;
 #endif
 }
@@ -149,11 +124,7 @@ size_t getHeapFree (void)
   return stat.mfree;
 #else
   size_t size;
-#if (CH_KERNEL_MAJOR <= 3)
-  chHeapStatus(&ccmHeap, &size);
-#else
   chHeapStatus(&ccmHeap, &size, NULL);
-#endif
   return size;
 #endif
 }
@@ -505,7 +476,6 @@ char *binary_fmt(uintmax_t x, int fill)
 }
 #undef FMT_BUF_SIZE // don't pollute namespace
 
-#if (CH_KERNEL_MAJOR >= 3)
 #if CH_CFG_USE_DYNAMIC
 int32_t get_stack_free (const thread_t *tp)
 {
@@ -524,7 +494,6 @@ int32_t get_stack_free (const thread_t *tp)
   const int32_t freeBytes =  index * (int32_t) sizeof(long long);
   return freeBytes;
 }
-#endif
 #endif
 
 __attribute__((used))
