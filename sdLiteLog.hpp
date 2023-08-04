@@ -117,7 +117,7 @@ protected:
     FIL* const  fil;
     bool shouldSync=false;
     mutable binary_semaphore_t sem =
-      _BSEMAPHORE_DATA(sem, false);
+      __BSEMAPHORE_DATA(sem, false);
   };
 
   static constexpr size_t NO_BORROW = 0U; 

@@ -346,8 +346,8 @@ msg_t icm20600_init (Icm20600Data *imu, Icm20600Config* initParam);
 void icm20600_setGyroLpf (Icm20600Data *imu, const uint8_t lpf);
 void icm20600_setAccelLpf (Icm20600Data *imu, const uint8_t lpf);
 void icm20600_setSampleRate (Icm20600Data *imu, const uint32_t rate);
-void icm20600_setGyroFsr (Icm20600Data *imu, const uint8_t fsr);
-void icm20600_setAccelFsr (Icm20600Data *imu, const uint8_t fsr);
+void icm20600_setGyroFsr (Icm20600Data *imu, const Icm20600_gyroConf fsr);
+void icm20600_setAccelFsr (Icm20600Data *imu, const Icm20600_accelConf fsr);
 void icm20600_fetch(Icm20600Data *imu);
 
 // temp in celcius degree, gyro in rad/s, accel in m/s², 
