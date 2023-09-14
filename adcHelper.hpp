@@ -6,29 +6,60 @@
 #include <concepts>
 #include <expected>
 #include <utility>
-#include <bit>
 #include <cstring>
 #include <array>
 #include <numeric>
 
-#if defined STM32F4XX	    
-
-#elif  defined STM32F7XX
-
-
+#if defined STM32F4XX or defined STM32F7XX
+#define ADC_IS_ADCV2
 #elif (defined (STM32L431xx) || defined (STM32L432xx) || defined (STM32L433xx) || defined (STM32L442xx) || defined (STM32L443xx))
-#error "stm32L4 not yet supported"
+#define ADC_IS_ADCV3
+#error "stm32L4 (ADCv3) not yet supported"
+//
+#elif defined(STM32H723xx) || defined(STM32H725xx)  ||	\
+      defined(STM32H730xx) || defined(STM32H730xxQ) ||	\
+    defined(STM32H733xx) || defined(STM32H735xx)  ||	\
+    defined(STM32H742xx) || defined(STM32H743xx)  ||	\
+    defined(STM32H745xx) || defined(STM32H745xG)  ||	\
+    defined(STM32H747xx) || defined(STM32H747xG)  ||	\
+    defined(STM32H750xx) || defined(STM32H753xx)  ||	\
+    defined(STM32H755xx) || defined(STM32H757xx)  ||	\
+    defined(STM32H7A3xx) || defined(STM32H7A3xxQ) ||	\
+    defined(STM32H7B0xx) || defined(STM32H7B0xxQ) ||	\
+  defined(STM32H7B3xx) || defined(STM32H7B3xxQ)
+#error "stm32H7 (ADCv4) not yet supported"
+#define ADC_IS_ADCV4
 #else
-#error "unknow stm32 family not yet supported"							    
+#error "unknow stm32 family not yet supported"
 #endif
 
 /*
   TODO:
-  ° test sur maquette
   ° impl L4 et H7
 
  */
 
+/*
+ Example of use :
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+  static constexpr auto adccfgExp =  AdcCGroup::get(AdcCGroup::Modes::Continuous,
+					  AdcCGroup::Channels::C01,  AdcCGroup::Cycles::C480,
+					  AdcCGroup::Channels::C02,  AdcCGroup::Cycles::C480,
+					  adcEndCb,
+					  (ADCConversionGroup) {
+					       .htr = 1000,
+					       .ltr = 2000},
+					   AdcCGroup::SampleFrequency(10'000),
+					   AdcCGroup::ExtSels::TIM8_TRGO);
+ #pragma GCC diagnostic pop
+ ADCHELPER_STATIC_CHECK(adccfgExp);
+ static constexpr ADCConversionGroup adccfg = *adccfgExp;
+ static constexpr size_t ADC_GRP1_NUM_CHANNELS = adccfg.num_channels;
+
+
+ */
 namespace AdcCGroup {
 
   constexpr std::array<uint16_t, 8> nbCycles = {3,15,28,56,84,112,144,480};
@@ -42,7 +73,11 @@ namespace AdcCGroup {
 		     C144, C480};
 
   enum class Channels {IN0=ADC_CHANNEL_IN0, IN1, IN2, IN3, IN4, IN5, IN6, IN7, IN8, IN9,
-    IN10, IN11, IN12, IN13, IN14, IN15, IN16, IN17, IN18};
+    IN10, IN11, IN12, IN13, IN14, IN15, IN16, IN17, IN18,
+    A00=IN0, A01=IN1, A02=IN2, A03=IN3, A04=IN4, A05=IN5, A06=IN6, A07=IN7,
+    B00=IN8, B01=IN9,
+    C00=IN10, C01=IN11, C02=IN12, C03=IN13, C04=IN14, C05=IN15,
+    SENSOR=IN16, VREFINT=IN17, VBAT=IN18};
 
   enum class ExtSels {TIM1_CH1, TIM1_CH2, TIM1_CH3, TIM2_CH2, TIM2_CH3, TIM2_CH4,
     TIM2_TRGO, TIM3_CH1, TIM3_TRGO, TIM4_CH4, TIM5_CH1, TIM5_CH2,
@@ -112,8 +147,11 @@ namespace AdcCGroup {
 
   constexpr Context
   modifyConversionGroup(Channels ch, Context context) {
+    // internal cycles are by default 480, not the last value used
+    const Cycles defaultsCycles = std::to_underlying(ch) >= 16 ?
+                                  Cycles::C480 : context.lastCycles;
     context.status |= setSQR(context.cgroup, context.sequenceIndex,
-			     std::to_underlying(ch),  context.lastCycles);
+			     std::to_underlying(ch), defaultsCycles);
     context.cycleBySeq[context.sequenceIndex++] =
       nbCycles[std::to_underlying(context.lastCycles)] + cyclesToStart;
     context.lastChannel = ch;
@@ -189,7 +227,7 @@ namespace AdcCGroup {
 						 context.cycleBySeq.end(), 0);
     if (context.sampleFrequency and (totalCycles >=  (STM32_ADCCLK / context.sampleFrequency)))
       context.status |= Status::sampleCycleOverload;
-    
+
     if (context.status != Status::Ok)
       return std::unexpected(context.status);
     else
@@ -257,10 +295,10 @@ namespace AdcCGroup {
   }
 
 #define __INTERNAL_ADCHELPER_STATIC_CHECK(val,cond)	\
-  constexpr auto meet##cond = [val] -> bool { \
+  constexpr auto meet##cond##val = [] -> bool { \
     return  val.has_value() || \
       (val.error() & AdcCGroup::Status::cond) == AdcCGroup::Status::Ok;}; \
-  static_assert(meet##cond(), "AdcCGroup initialization error : " #cond)
+  static_assert(meet##cond##val(), "AdcCGroup initialization error : " #cond)
 
 #define  ADCHELPER_STATIC_CHECK(val) \
   __INTERNAL_ADCHELPER_STATIC_CHECK(val, InvalidChannel); \
