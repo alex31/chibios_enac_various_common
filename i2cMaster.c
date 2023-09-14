@@ -29,16 +29,16 @@ extern BaseSequentialStream *chp;
 static bool chkErrorI2cMaster (I2CDriver *i2cd);
 static const I2cMasterConfig * getMasterConfigFromDriver (I2CDriver *i2cd);
 
-#ifdef I2C_USE_HMC5883L
+#if defined I2C_USE_HMC5883L && I2C_USE_HMC5883L
 static msg_t  i2cMasterControlForHMC5883L_SLV2 (I2CDriver *i2cd);
 #endif
 
-#if I2C_USE_MPL3115A2
+#if defined I2C_USE_MPL3115A2 && I2C_USE_MPL3115A2
 static msg_t  i2cMasterControlForMPL3115A2_SLV_RW_01 (I2CDriver *i2cd);
 #endif
 
 static bool i2cMasterResetBus (I2CDriver *i2cd);
-static void restartI2c(I2CDriver *i2cp);
+//static void restartI2c(I2CDriver *i2cp);
 static bool i2cMasterUnhangBus (I2CDriver *i2cd);
 static void   i2cMasterSetModePeriphI2c (I2CDriver *i2cd);
 static msg_t  i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  
@@ -630,7 +630,7 @@ static msg_t   i2cMasterControlForHMC5883L_SLV2 (I2CDriver *i2cd)
 }
 #endif
 
-#if I2C_USE_MPL3115A2
+#if defined I2C_USE_MPL3115A2 && I2C_USE_MPL3115A2
 static msg_t   i2cMasterControlForMPL3115A2_SLV_RW_01 (I2CDriver *i2cd)
 {
   msg_t status = MSG_OK;
@@ -947,14 +947,14 @@ static bool   i2cMasterResetBus (I2CDriver *i2cd)
   return res;
 }
 
-static void restartI2c(I2CDriver *i2cp)
-{
-  const I2CConfig *cfg = i2cp->config;
-  i2cStop(i2cp);
-  chThdSleepMilliseconds(1); 
-  i2cStart(i2cp, cfg);
-  chThdSleepMilliseconds(1); 
-}
+/* static void restartI2c(I2CDriver *i2cp)  */
+/* { */
+/*   const I2CConfig *cfg = i2cp->config; */
+/*   i2cStop(i2cp); */
+/*   chThdSleepMilliseconds(1);  */
+/*   i2cStart(i2cp, cfg); */
+/*   chThdSleepMilliseconds(1);  */
+/* } */
 
 
 /* static const I2cMasterConfig i2c1 = { */

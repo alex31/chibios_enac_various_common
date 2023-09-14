@@ -1,4 +1,4 @@
-#if I2C_USE_MPL3115A2
+#if defined I2C_USE_MPL3115A2 && I2C_USE_MPL3115A2
 
 #include "i2cPeriphMPL3115A2.h"
 

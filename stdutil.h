@@ -161,7 +161,7 @@ static inline rtcnt_t rtcntDiff (const rtcnt_t start, const  rtcnt_t stop)
 
 static inline rtcnt_t rtcntDiffNow (const rtcnt_t begin)
 {
-  return rtcntDiff (begin, chSysGetRealtimeCounterX());
+  return rtcntDiff(begin, chSysGetRealtimeCounterX());
 }
 
 // old api name, for compatibility only

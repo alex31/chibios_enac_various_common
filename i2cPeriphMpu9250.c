@@ -330,7 +330,7 @@ msg_t mpu9250AddSlv_Ak8963 (Mpu9250Data *imu, Ak8963Data *compass)
   return status;		      
 }
 
-#if I2C_USE_MPL3115A2
+#if defined I2C_USE_MPL3115A2 && I2C_USE_MPL3115A2
 msg_t mpu9250AddSlv_MPL3115A2 (Mpu9250Data *imu, MPL3115A2Data *baro) 
 {
   msg_t status = MSG_OK;
