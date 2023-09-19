@@ -10,33 +10,12 @@
 #include <array>
 #include <numeric>
 
-#if defined STM32F4XX or defined STM32F7XX
-#define ADC_IS_ADCV2
-#elif (defined (STM32L431xx) || defined (STM32L432xx) || defined (STM32L433xx) || defined (STM32L442xx) || defined (STM32L443xx))
-#define ADC_IS_ADCV3
-#error "stm32L4 (ADCv3) not yet supported"
-//
-#elif defined(STM32H723xx) || defined(STM32H725xx)  ||	\
-      defined(STM32H730xx) || defined(STM32H730xxQ) ||	\
-    defined(STM32H733xx) || defined(STM32H735xx)  ||	\
-    defined(STM32H742xx) || defined(STM32H743xx)  ||	\
-    defined(STM32H745xx) || defined(STM32H745xG)  ||	\
-    defined(STM32H747xx) || defined(STM32H747xG)  ||	\
-    defined(STM32H750xx) || defined(STM32H753xx)  ||	\
-    defined(STM32H755xx) || defined(STM32H757xx)  ||	\
-    defined(STM32H7A3xx) || defined(STM32H7A3xxQ) ||	\
-    defined(STM32H7B0xx) || defined(STM32H7B0xxQ) ||	\
-  defined(STM32H7B3xx) || defined(STM32H7B3xxQ)
-#error "stm32H7 (ADCv4) not yet supported"
-#define ADC_IS_ADCV4
-#else
-#error "unknow stm32 family not yet supported"
+#if not defined STM32F4XX and not STM32F7XX
+#error "this ADCV2 driver is specific to STM32F4 and STM32F7"
 #endif
 
 /*
   TODO:
-  ° impl L4 et H7
-
  */
 
 /*
@@ -63,7 +42,7 @@
 namespace AdcCGroup {
 
   constexpr std::array<uint16_t, 8> nbCycles = {3,15,28,56,84,112,144,480};
-  constexpr uint16_t cyclesToStart = 15;
+  constexpr uint16_t cyclesToSwitch = 15;
   
   enum class Status {Ok=0, InvalidChannel=1<<0, InvalidSequence=1<<1,
     InvalidInternalCycles=1<<2, sampleCycleOverload=1<<3,
@@ -98,7 +77,7 @@ namespace AdcCGroup {
     Cycles lastCycles = Cycles::C480;
     Status status = Status::Ok;
     Modes mode = Modes::OneShot;
-    std::array<uint16_t, 28> cycleBySeq = {};
+    std::array<uint16_t, 16> cycleBySeq = {};
     uint32_t sampleFrequency = 0;
   };
 
@@ -141,7 +120,7 @@ namespace AdcCGroup {
     context.lastCycles = c;
     context.status |= setSMPR(context.cgroup, std::to_underlying(context.lastChannel),
 			      std::to_underlying(c));
-    context.cycleBySeq[context.sequenceIndex] = nbCycles[std::to_underlying(c)] + cyclesToStart;
+    context.cycleBySeq[context.sequenceIndex] = nbCycles[std::to_underlying(c)] + cyclesToSwitch;
     return context;
   }
 
@@ -153,7 +132,7 @@ namespace AdcCGroup {
     context.status |= setSQR(context.cgroup, context.sequenceIndex,
 			     std::to_underlying(ch), defaultsCycles);
     context.cycleBySeq[context.sequenceIndex++] =
-      nbCycles[std::to_underlying(context.lastCycles)] + cyclesToStart;
+      nbCycles[std::to_underlying(context.lastCycles)] + cyclesToSwitch;
     context.lastChannel = ch;
     return context;
   }
