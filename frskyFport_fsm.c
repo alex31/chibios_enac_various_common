@@ -2,7 +2,6 @@
 #include <string.h>
 #include <math.h>
 
-
 #define FPORT_START_STOP 0x7EU
 #define FPORT_ESCAPE 0x7DU
 #define FPORT_ESCAPE_DIFF 0x20U
@@ -58,6 +57,8 @@ static size_t fportTelemetryGetAppIdIdx(FportFsmContext *context, const fportApp
 static fportAppIdPair fportTelemetryUpGetNextPair(FportFsmContext *context);
 #endif
 
+static FportErrorMask errorMsk = FPORT_OK;
+
 void	        fportContextInit(FportFsmContext *context, const FportFsmContextConfig *cfg)
 {
   memset(context, 0, sizeof(*context));
@@ -82,10 +83,9 @@ void	        fportContextInit(FportFsmContext *context, const FportFsmContextCon
 
 FportErrorMask fportFeedFsm(FportFsmContext *context, const void *buffer, size_t len)
 {
-  FportErrorMask error = FPORT_OK;
   for (size_t i=0; i<len; i++)
-    error |= fportFeedFsmOneByte(context, ((const uint8_t *)buffer)[i]);
-  return error;
+    errorMsk |= fportFeedFsmOneByte(context, ((const uint8_t *)buffer)[i]);
+  return errorMsk;
 }
 
 
@@ -159,7 +159,7 @@ static FportErrorMask fportFeedFsmOneByte(FportFsmContext *context, uint8_t byte
 	.escaped = false
       };
     }
-    return FPORT_OK;
+    return errorMsk;
   }
     
     /*
@@ -190,7 +190,7 @@ static FportErrorMask fportFeedFsmOneByte(FportFsmContext *context, uint8_t byte
 
     }
     context->lastLen = context->msgBuf[context->state.writeIdx++] = byte;
-    return FPORT_OK;
+    return errorMsk;
   }
 
     /*
@@ -210,12 +210,12 @@ static FportErrorMask fportFeedFsmOneByte(FportFsmContext *context, uint8_t byte
 	return FPORT_MALFORMED_FRAME;
       }
       context->msgBuf[context->state.writeIdx++] = unescaped;
-      return FPORT_OK;
+      return errorMsk;
     }
     
     if (byte == FPORT_ESCAPE) {
       context->state.escaped = true;
-      return FPORT_OK;
+      return errorMsk;
     }
     if (byte == FPORT_START_STOP) {
       context->state.step = FPORT_FSM_WAIT_HEADER;
@@ -227,7 +227,7 @@ static FportErrorMask fportFeedFsmOneByte(FportFsmContext *context, uint8_t byte
       context->state.step = FPORT_FSM_WAIT_HEADER;
       return FPORT_MALFORMED_FRAME;
     } else {
-      return FPORT_OK;
+      return errorMsk;
     }
   }
     
@@ -249,15 +249,18 @@ static FportErrorMask fportFeedFsmManageReceivedMsg(FportFsmContext *context)
 
 static FportErrorMask fportFeedFsmManageReceivedControlMsg(FportFsmContext *context)
 {
-  FportErrorMask errorMsk = FPORT_OK;
   if (is_checksum8_ok(context->msgBuf, FPORT_CONTROL_LEN + 2)) {
     decodeFportControlMsg(context->msgBuf + 1, &context->lastFrame);
     if (context->config->ctrlReceiveCb != NULL)
       context->config->ctrlReceiveCb(context);
-    if (context->lastFrame.flags & FPORT_FLAG_FRAME_LOST)
-      errorMsk |= FPORT_RADIO_LINK_LOST;
-    if (context->lastFrame.flags & FPORT_FLAG_FAILSAFE)
-      errorMsk |= FPORT_FAILSAFE;
+    if (context->lastFrame.flags & (FPORT_FLAG_FRAME_LOST | FPORT_FLAG_FAILSAFE)) {
+      if (context->lastFrame.flags & FPORT_FLAG_FRAME_LOST)
+	errorMsk |= FPORT_RADIO_LINK_LOST;
+      if (context->lastFrame.flags & FPORT_FLAG_FAILSAFE)
+	errorMsk |= FPORT_FAILSAFE;
+    } else {
+      errorMsk = FPORT_OK;
+    }
   } else {
     errorMsk |= FPORT_CRC_ERROR;
   }
@@ -302,7 +305,7 @@ static FportErrorMask fportFeedFsmManageReceivedDownlinkMsg(FportFsmContext *con
     return FPORT_CRC_ERROR;
   }
   
-  return FPORT_OK;
+  return errorMsk;
 }
 
 
