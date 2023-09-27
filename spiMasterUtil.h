@@ -23,7 +23,8 @@
 
 //    spiPolledExchange(spid, regAdr | 0x80);				
 
-
+static inline void spiWriteRegister(SPIDriver *spid, const uint8_t regAddr,
+				    const uint8_t regVal);
 
 static inline void spiReadRegisters(SPIDriver *spid, const uint8_t regAddr,
 				    uint8_t *r_array, const size_t r_arrayLen)
@@ -59,16 +60,25 @@ static inline void spiModifyRegister(SPIDriver *spid, const uint8_t regAddr,
 {
   uint8_t reg = spiReadOneRegister(spid, regAddr);
   MODIFY_REG(reg, clearMask, setMask);
-  SPI_WRITE_REGISTERS(spid, regAddr, reg);
+  spiWriteRegister(spid, regAddr, reg);
 }
 
 static inline void spiSetBitsRegister(SPIDriver *spid, const uint8_t regAddr, const uint8_t setMask)
 {
   uint8_t reg = spiReadOneRegister(spid, regAddr);
   reg |= setMask;
-  SPI_WRITE_REGISTERS(spid, regAddr, reg);
+  spiWriteRegister(spid, regAddr, reg);
 }
 
+static inline void spiWriteRegister(SPIDriver *spid, const uint8_t regAddr,
+				    const uint8_t regVal)
+{
+    spiSelect(spid);							
+    uint8_t CACHE_ALIGNED(w_array[2]) = {regAddr, regVal};		
+    cacheBufferFlush(w_array, 1);				
+    spiSend(spid, sizeof(w_array), w_array);				
+    spiUnselect(spid);							
+}
 
 #define SPI_READ_REGISTERS(spid, regAdr, r_array)   {		\
     spiReadRegisters(spid, regAdr, r_array, sizeof(r_array));	\
