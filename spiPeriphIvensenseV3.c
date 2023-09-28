@@ -37,11 +37,29 @@ msg_t inv3Init(Inv3Driver *inv3d, const Inv3Config* cfg)
   inv3d->gyroScale = gyroScaleValues[cfg->gyroScale >> GYRO_FS_SHIFT];
   inv3d->accScale = accScaleValues[cfg->accelScale >> ACCEL_FS_SHIFT];
   setBank(inv3d, INV3_BANK(INV3REG_INTF_CONFIG0));
+
+  // when using fifo and interruptions, two resets are needed to avoid
+  // device stall
+  for (int i=0; i < 2; i++) {
+    spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_DEVICE_CONFIG),
+		     BIT_DEVICE_CONFIG_SOFT_RESET_CONFIG);
+    chThdSleepMilliseconds(1); // wait 1ms after soft reset
+  }
+
+  // if odr is >= 4hz, INT_CONFIG1 must be configured
+  // in all case, INT_ASYNC_RESET bit must be cleared
+
+  spiWriteRegister(inv3d->config->spid,  INV3_REG(INV3REG_INT_CONFIG0),
+		   FIFO_FULL_CLEAR_STATUS_AND_FIFO_READ |
+		   FIFO_THRESHOLD_CLEAR_STATUS_AND_FIFO_READ |
+		   DATA_READY_CLEAR_STATUS_AND_REG_READ);
   
-  spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_DEVICE_CONFIG),
-		      BIT_DEVICE_CONFIG_SOFT_RESET_CONFIG);
-  chThdSleepMilliseconds(1); // wait 1ms after soft reset
- 
+  spiWriteRegister(inv3d->config->spid,  INV3_REG(INV3REG_INT_CONFIG1),
+		   inv3d->config->commonOdr <= COMMON_ODR_4KHZ ?
+		   // 4KHz or more
+		   BIT_INT_TDEASSERT_ODR4KPLUS |  INT_TPULSE_DURATION_ODR4KPLUS :
+		   // less than 4KHz
+		   0);
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_INT_SOURCE0),
 		  BIT_UI_DRDY_INT1_EN);
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_INT_CONFIG),
@@ -160,8 +178,8 @@ static void  inv3InitFifo(Inv3Driver *inv3d)
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_FIFO_CONFIG),
 		   FIFO_CONFIG_MODE_STREAM_TO_FIFO);
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_FIFO_CONFIG1),
-		   BIT_FIFO_CONFIG1_ACCEL_EN | BIT_FIFO_CONFIG1_GYRO_EN
-		   | BIT_FIFO_CONFIG1_TEMP_EN |  BIT_FIFO_CONFIG1_WM_GT_TH |
+		   BIT_FIFO_CONFIG1_ACCEL_EN | BIT_FIFO_CONFIG1_GYRO_EN |
+		   BIT_FIFO_CONFIG1_TEMP_EN |
 		   BIT_FIFO_CONFIG1_RESUME_PARTIAL_RD);
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_FIFO_CONFIG2),
 		   watermarkBytes & 0xff);
@@ -169,8 +187,6 @@ static void  inv3InitFifo(Inv3Driver *inv3d)
 		   (watermarkBytes >> 8) & 0x0f);
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_INT_SOURCE0),
 		   BIT_FIFO_THS_INT1_EN);
-
-
 }
 
 uint16_t inv3PopFifo (Inv3Driver *inv3d)
@@ -182,7 +198,7 @@ uint16_t inv3PopFifo (Inv3Driver *inv3d)
   if ((fifoCount >= sizeof(Inv3Packet3)) && (fifoCount <= 2080)) {
     spiDirectReadRegisters(inv3d->config->spid, INV3REG_FIFO_DATA,
 			   (uint8_t *) inv3d->config->fifoBuffer->fifoBuf,
-			   fifoCount + (2U * sizeof(Inv3Packet3)));
+			   fifoCount);
   } 
   inv3d->config->fifoBuffer->fifoCount = fifoCount;
   return fifoCount;
