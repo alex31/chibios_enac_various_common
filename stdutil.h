@@ -23,13 +23,13 @@
 
 // use gcc block evaluation to avoid multiple evaluation of a and b
 #define MAX(a,b)		\
-  ({ typeof (a) _aa = (a);	\
-    typeof (b) _bb = (b);	\
+  ({ const typeof (a) _aa = (a);	\
+    const typeof (b) _bb = (b);	\
     _aa > _bb ? _aa : _bb; })
 
 #define MIN(a,b) \
-  ({ typeof (a) _a = (a);	\
-    typeof (b) _b = (b);	\
+  ({ const typeof (a) _a = (a);	\
+    const typeof (b) _b = (b);	\
     _a < _b ? _a : _b; })
 
 

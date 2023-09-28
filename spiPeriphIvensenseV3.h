@@ -16,23 +16,28 @@
 #include "stdutil.h"
 #include "invensense3_regs.h"
 
-
-typedef struct  
-{
+typedef struct {
   SPIDriver		*spid;
   Inv3Odr		commonOdr;
   Inv3GyroScale		gyroScale;
   Inv3AccelScale	accelScale;
   bool			externClockRef;
+  bool			useFifo;
+#if INVENSENSE3_USE_FIFO
+  uint8_t		watermarkPercent;
+  Inv3Packet3FifoBuffer *fifoBuffer;
+#endif  
 } Inv3Config;
 
 
-typedef struct 
-{
+typedef struct {
   const Inv3Config *config;
   Inv3Bank   currentBank;
   float accScale;
   float gyroScale;
+#if INVENSENSE3_USE_FIFO
+  uint8_t watermarkNbPacket;
+#endif
 } Inv3Driver;
 
 
@@ -56,6 +61,11 @@ void inv3SetSampleRate (Inv3Driver *inv3d, const uint32_t rate);
 // temp in celcius degree, gyro in rad/s, accel in m/s², 
 void inv3GetVal (Inv3Driver *inv3d, float *temp, 
 		      Vec3f *gyro, Vec3f *acc);
+#if INVENSENSE3_USE_FIFO
+  void inv3GetAverageVal (Inv3Driver *inv3d, float *temp, 
+		   Vec3f *gyro, Vec3f *acc);
+  uint16_t inv3PopFifo (Inv3Driver *inv3d);
+#endif
   //Inv3_interruptStatus inv3_getItrStatus  (Inv3Driver *inv3d);
 Inv3SensorType inv3GetSensorType (Inv3Driver *inv3d);
 uint8_t inv3GetStatus(Inv3Driver *inv3d);

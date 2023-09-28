@@ -29,6 +29,7 @@ static inline void spiWriteRegister(SPIDriver *spid, const uint8_t regAddr,
 static inline void spiReadRegisters(SPIDriver *spid, const uint8_t regAddr,
 				    uint8_t *r_array, const size_t r_arrayLen)
 {
+  chDbgAssert(r_arrayLen <= 128, "use spiDirectReadRegisters for large read");
   spiSelect(spid);
   const size_t w_len = r_arrayLen + 1;
   uint8_t CACHE_ALIGNED(w_array[w_len]);
@@ -40,6 +41,19 @@ static inline void spiReadRegisters(SPIDriver *spid, const uint8_t regAddr,
   spiUnselect(spid);
   
   memcpy(r_array, lr_array+1, r_arrayLen);
+}
+
+static inline void spiDirectReadRegisters(SPIDriver *spid, const uint8_t regAddr,
+					  uint8_t *r_array, const size_t r_arrayLen)
+{
+  spiSelect(spid);
+  uint8_t CACHE_ALIGNED(w_array[1]);
+  w_array[0] = regAddr | 0x80;
+  cacheBufferFlush(w_array, sizeof(w_array));
+  spiSend(spid, sizeof(w_array), w_array);
+  spiReceive(spid, r_arrayLen, r_array);
+  cacheBufferInvalidate(r_array, r_arrayLen);
+  spiUnselect(spid);
 }
 
 static inline uint8_t spiReadOneRegister(SPIDriver *spid, const uint8_t regAddr)

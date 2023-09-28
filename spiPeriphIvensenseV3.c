@@ -13,6 +13,10 @@
 static const float accScaleValues[] = {16, 8, 4, 2};
 static const float gyroScaleValues[] = {2000, 1000, 500, 250, 125, 62.5f, 31.25f, 15.625f};
 
+#if INVENSENSE3_USE_FIFO
+static void  inv3InitFifo(Inv3Driver *inv3d);
+#endif
+
 static void setBank(Inv3Driver *inv3d, Inv3Bank b)
 {
   chDbgAssert(b <= INV3_BANK4, "incorrect bank index");
@@ -57,6 +61,10 @@ msg_t inv3Init(Inv3Driver *inv3d, const Inv3Config* cfg)
 		     PIN9_CLKIN);
     setBank(inv3d, INV3_BANK(INV3REG_INTF_CONFIG0));
   }
+
+#if INVENSENSE3_USE_FIFO
+  inv3InitFifo(inv3d);
+#endif
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_PWR_MGMT0),
 		   ACCEL_MODE_LN | GYRO_MODE_LN);
   chThdSleepMilliseconds(1);
@@ -133,3 +141,81 @@ void inv3GetVal (Inv3Driver *inv3d, float *temp,
     gyro->v[i] =  transBuf.gyro[i] * inv3d->gyroScale / 32768;
   }
 }
+
+#if INVENSENSE3_USE_FIFO
+/* configure :
+     ° mode fifo : ok
+     ° packet mode 3 : ok (temperature obligatoire ?)
+     ° fifo threashold : ok
+     ° interruption for fifo threshold instead of dataready : ok
+*/
+static void  inv3InitFifo(Inv3Driver *inv3d)
+{
+  const Inv3Config* cfg = inv3d->config;
+  inv3d->watermarkNbPacket = (2048U * cfg->watermarkPercent / 100U) /
+			      sizeof(Inv3Packet3);
+  const uint16_t watermarkBytes = inv3d->watermarkNbPacket * sizeof(Inv3Packet3);
+
+  setBank(inv3d, INV3_BANK(INV3REG_FIFO_CONFIG1));
+  spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_FIFO_CONFIG),
+		   FIFO_CONFIG_MODE_STREAM_TO_FIFO);
+  spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_FIFO_CONFIG1),
+		   BIT_FIFO_CONFIG1_ACCEL_EN | BIT_FIFO_CONFIG1_GYRO_EN
+		   | BIT_FIFO_CONFIG1_TEMP_EN |  BIT_FIFO_CONFIG1_WM_GT_TH |
+		   BIT_FIFO_CONFIG1_RESUME_PARTIAL_RD);
+  spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_FIFO_CONFIG2),
+		   watermarkBytes & 0xff);
+  spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_FIFO_CONFIG3),
+		   (watermarkBytes >> 8) & 0x0f);
+  spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_INT_SOURCE0),
+		   BIT_FIFO_THS_INT1_EN);
+
+
+}
+
+uint16_t inv3PopFifo (Inv3Driver *inv3d)
+{
+  uint16_t fifoCount;
+  setBank(inv3d, INV3_BANK(INV3REG_FIFO_COUNTH));
+  spiReadRegisters(inv3d->config->spid, INV3_REG(INV3REG_FIFO_COUNTH),
+		   (uint8_t *) &fifoCount, 2U);
+  if ((fifoCount >= sizeof(Inv3Packet3)) && (fifoCount <= 2080)) {
+    spiDirectReadRegisters(inv3d->config->spid, INV3REG_FIFO_DATA,
+			   (uint8_t *) inv3d->config->fifoBuffer->fifoBuf,
+			   fifoCount + (2U * sizeof(Inv3Packet3)));
+  } 
+  inv3d->config->fifoBuffer->fifoCount = fifoCount;
+  return fifoCount;
+}
+
+void inv3GetAverageVal (Inv3Driver *inv3d, float *temp, 
+			Vec3f *gyro, Vec3f *acc)
+{
+  const Inv3Packet3FifoBuffer *pfb = inv3d->config->fifoBuffer;
+  *temp = 0;
+  size_t validPacket=0;
+  Vec3f sumAcc = {}, sumGyro = {};
+  for(size_t idx=0; idx < pfb->fifoCount / sizeof(Inv3Packet3); idx++) {
+    if (!pfb->fifoBuf[idx].fifoEmpty) {
+      validPacket++;
+      for (size_t j=0; j<3; j++) { 
+	sumAcc.v[j] += pfb->fifoBuf[idx].acc[j];
+	sumGyro.v[j] += pfb->fifoBuf[idx].gyro[j];
+      }
+      *temp += ((pfb->fifoBuf[idx].temp / 2.07f) + 25);
+    } else {
+      break;
+    }
+  }
+  *gyro = vec3fDiv(&sumGyro, validPacket);
+  *acc = vec3fDiv(&sumAcc, validPacket);
+  *temp /= validPacket;
+  for (size_t j=0; j<3; j++) {
+    acc->v[j] = acc->v[j] * 9.81f * inv3d->accScale / 32768;
+    gyro->v[j] = gyro->v[j]  * inv3d->gyroScale / 32768;
+  }
+}
+
+
+
+#endif
