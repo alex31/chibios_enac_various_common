@@ -51,26 +51,29 @@ typedef struct {
 extern "C" {
 #endif
 
-
-msg_t inv3Init (Inv3Driver *inv3d, const Inv3Config* cfg);
-void inv3SetOdr (Inv3Driver *inv3d, const Inv3Odr odr);
-void inv3SetAccelScale (Inv3Driver *inv3d, const Inv3AccelScale scale);
-void inv3SetGyroScale (Inv3Driver *inv3d, const Inv3GyroScale scale);
-void inv3SetSampleRate (Inv3Driver *inv3d, const uint32_t rate);
-
-// temp in celcius degree, gyro in rad/s, accel in m/s², 
-void inv3GetVal (Inv3Driver *inv3d, float *temp, 
-		      Vec3f *gyro, Vec3f *acc);
+  bool inv3RunSelfTest(SPIDriver *spid,
+		       Vec3f *accelDiff, Vec3f *gyroDiff,
+		       Vec3f *accelRatio, Vec3f *gyroRatio);
+  
+  msg_t inv3Init (Inv3Driver *inv3d, const Inv3Config* cfg);
+  void inv3SetOdr (Inv3Driver *inv3d, const Inv3Odr odr);
+  void inv3SetAccelScale (Inv3Driver *inv3d, const Inv3AccelScale scale);
+  void inv3SetGyroScale (Inv3Driver *inv3d, const Inv3GyroScale scale);
+  void inv3SetSampleRate (Inv3Driver *inv3d, const uint32_t rate);
+  
+  // temp in celcius degree, gyro in rad/s, accel in m/s², 
+  void inv3GetVal (Inv3Driver *inv3d, float *temp, 
+		   Vec3f *gyro, Vec3f *acc);
 #if INVENSENSE3_USE_FIFO
   void inv3GetAverageVal (Inv3Driver *inv3d, float *temp, 
-		   Vec3f *gyro, Vec3f *acc);
+			  Vec3f *gyro, Vec3f *acc);
   uint16_t inv3PopFifo (Inv3Driver *inv3d);
 #endif
   //Inv3_interruptStatus inv3_getItrStatus  (Inv3Driver *inv3d);
-Inv3SensorType inv3GetSensorType (Inv3Driver *inv3d);
-uint8_t inv3GetStatus(Inv3Driver *inv3d);
-uint8_t inv3GetClockDiv(Inv3Driver *inv3d);
-
+  Inv3SensorType inv3GetSensorType (Inv3Driver *inv3d);
+  uint8_t inv3GetStatus(Inv3Driver *inv3d);
+  uint8_t inv3GetClockDiv(Inv3Driver *inv3d);
+  
 /*
 #                 _ __                      __  __            __ _               _            
 #                | '_ \                    |  \/  |          / _` |             | |           

@@ -77,7 +77,8 @@ static inline void spiModifyRegister(SPIDriver *spid, const uint8_t regAddr,
   spiWriteRegister(spid, regAddr, reg);
 }
 
-static inline void spiSetBitsRegister(SPIDriver *spid, const uint8_t regAddr, const uint8_t setMask)
+static inline void spiSetBitsRegister(SPIDriver *spid, const uint8_t regAddr,
+				      const uint8_t setMask)
 {
   uint8_t reg = spiReadOneRegister(spid, regAddr);
   reg |= setMask;

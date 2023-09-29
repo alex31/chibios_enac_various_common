@@ -13,6 +13,10 @@
 static const float accScaleValues[] = {16, 8, 4, 2};
 static const float gyroScaleValues[] = {2000, 1000, 500, 250, 125, 62.5f, 31.25f, 15.625f};
 
+static void inv3GetRawVal (SPIDriver *spid, float *temp,  
+			   Vec3f *gyro, Vec3f *acc);
+static msg_t inv3SelfTestInit(SPIDriver *spid);
+
 #if INVENSENSE3_USE_FIFO
 static void  inv3InitFifo(Inv3Driver *inv3d);
 #endif
@@ -36,11 +40,11 @@ msg_t inv3Init(Inv3Driver *inv3d, const Inv3Config* cfg)
   inv3d->currentBank = 0;
   inv3d->gyroScale = gyroScaleValues[cfg->gyroScale >> GYRO_FS_SHIFT];
   inv3d->accScale = accScaleValues[cfg->accelScale >> ACCEL_FS_SHIFT];
-  setBank(inv3d, INV3_BANK(INV3REG_INTF_CONFIG0));
 
   // when using fifo and interruptions, two resets are needed to avoid
   // device stall
   for (int i=0; i < 2; i++) {
+    setBank(inv3d, INV3_BANK(INV3REG_INTF_CONFIG0));
     spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_DEVICE_CONFIG),
 		     BIT_DEVICE_CONFIG_SOFT_RESET_CONFIG);
     chThdSleepMilliseconds(1); // wait 1ms after soft reset
@@ -137,6 +141,29 @@ uint8_t inv3GetClockDiv(Inv3Driver *inv3d)
   return clockdiv;
 }
 
+static void inv3GetRawVal (SPIDriver *spid, float *temp, 
+			   Vec3f *gyro, Vec3f *acc)
+{
+  union {
+    uint8_t buf[14];
+    struct {
+      int16_t temp;
+      int16_t acc[3];
+      int16_t gyro[3];
+    };
+  } transBuf = {};
+  
+  spiWriteRegister(spid,  INV3REG_BANK_SEL, INV3_BANK(INV3REG_TEMP_DATA1));
+  spiReadRegisters(spid, INV3_REG(INV3REG_TEMP_DATA1),
+		   transBuf.buf, sizeof(transBuf));
+  
+  *temp = transBuf.temp;
+  for (int i=0; i<3; i++) {
+    acc->v[i] = transBuf.acc[i];
+    gyro->v[i] =  transBuf.gyro[i];
+  }
+}
+
 void inv3GetVal (Inv3Driver *inv3d, float *temp, 
 		      Vec3f *gyro, Vec3f *acc)
 {
@@ -160,6 +187,98 @@ void inv3GetVal (Inv3Driver *inv3d, float *temp,
   }
 }
 
+
+static msg_t inv3SelfTestInit(SPIDriver *spid)
+{
+  // when using fifo and interruptions, two resets are needed to avoid
+  // device stall
+  for (int i=0; i < 2; i++) {
+    spiWriteRegister(spid,  INV3REG_BANK_SEL, INV3_BANK0);
+    spiWriteRegister(spid, INV3_REG(INV3REG_DEVICE_CONFIG),
+		     BIT_DEVICE_CONFIG_SOFT_RESET_CONFIG);
+    chThdSleepMilliseconds(1); // wait 1ms after soft reset
+  }
+  
+  spiWriteRegister(spid, INV3_REG(INV3REG_ACCEL_CONFIG0),
+		   COMMON_ODR_1KHZ | ACCEL_FS_SEL_4G);
+  spiWriteRegister(spid, INV3_REG(INV3REG_GYRO_CONFIG0),
+		   COMMON_ODR_1KHZ | GYRO_FS_SEL_250DPS);
+  // set gyro and accel bandwidth to ODR/10
+  spiWriteRegister(spid, INV3_REG(INV3REG_GYRO_ACCEL_CONFIG0),
+		   0x44);
+  spiWriteRegister(spid, INV3_REG(INV3REG_INTF_CONFIG0),
+		   UI_SIFS_CFG_I2C_DIS | SENSOR_DATA_LITTLE_ENDIAN);
+  
+  spiWriteRegister(spid, INV3_REG(INV3REG_PWR_MGMT0),
+		   ACCEL_MODE_LN | GYRO_MODE_LN);
+  chThdSleepMilliseconds(1); // wait 1ms after soft reset
+  return MSG_OK;
+}
+
+bool inv3RunSelfTest(SPIDriver *spid,
+			 Vec3f *accelDiff, Vec3f *gyroDiff,
+			 Vec3f *accelRatio, Vec3f *gyroRatio)
+{
+  bool statusOk = true;
+  
+  struct {
+    float temp;
+    Vec3f gyro, acc;
+  } nominal, selftest;
+  struct {
+    uint8_t v[3];
+  } calibAcc, calibGyro;
+  Vec3f dummy;
+  *accelDiff = *gyroDiff = *accelRatio = *gyroRatio = (Vec3f){};
+  inv3SelfTestInit(spid);
+  chThdSleepMilliseconds(100);
+  
+  inv3GetRawVal(spid, &nominal.temp, &nominal.gyro, &nominal.acc);
+  // 
+  spiWriteRegister(spid, INV3_REG(INV3REG_SELF_TEST_CONFIG),
+		   SELFTEST_ENABLE_ACCEL);
+  chThdSleepMilliseconds(100);
+  inv3GetRawVal(spid, &selftest.temp, &dummy, &selftest.acc);
+  spiWriteRegister(spid, INV3_REG(INV3REG_SELF_TEST_CONFIG),
+		   SELFTEST_ENABLE_GYRO);
+  chThdSleepMilliseconds(100);
+  inv3GetRawVal(spid, &selftest.temp, &selftest.gyro, &dummy);
+  spiWriteRegister(spid, INV3_REG(INV3REG_SELF_TEST_CONFIG),
+		   SELFTEST_DISABLE);
+
+  *accelDiff = vec3fSub(&nominal.acc, &selftest.acc);
+  *accelDiff = vec3fAbs(accelDiff);
+  *gyroDiff = vec3fSub(&nominal.gyro, &selftest.gyro);
+  *gyroDiff = vec3fAbs(gyroDiff);
+
+  spiWriteRegister(spid,  INV3REG_BANK_SEL, INV3_BANK(INV3REG_XG_ST_DATA));
+  spiReadRegisters(spid, INV3_REG(INV3REG_XG_ST_DATA),
+		   calibGyro.v, sizeof(calibGyro));
+  spiWriteRegister(spid,  INV3REG_BANK_SEL, INV3_BANK(INV3REG_XA_ST_DATA));
+  spiReadRegisters(spid, INV3_REG(INV3REG_XA_ST_DATA),
+		   calibAcc.v, sizeof(calibAcc));
+
+ /*
+00> accel diff should be between 50 and 1200 mg
+00> gyro diff should be > 60 dps
+00> accel and gyro ratios should be between 50% and 150%
+ */
+  static const float minAccLimit = 0.050f * 32768 / 4;
+  static const float maxAccLimit = 1.2f * 32768 / 4;
+  static const float minGyroLimit = 60 * 32768 / 250;
+  for(size_t i=0; i<3; i++) {
+    accelRatio->v[i] =  accelDiff->v[i] / (1310.0f * powf(1.01f, calibAcc.v[i] - 1U) + 0.5f);
+    gyroRatio->v[i] =  gyroDiff->v[i] / (2620.0f * powf(1.01f, calibGyro.v[i] - 1U) + 0.5f);
+    statusOk = statusOk && (accelDiff->v[i] > minAccLimit && accelDiff->v[i] < maxAccLimit);
+    statusOk = statusOk && (gyroDiff->v[i] > minGyroLimit);
+    statusOk = statusOk && (accelRatio->v[i] > 0.5f && accelRatio->v[i] < 1.5f);
+    statusOk = statusOk && (gyroRatio->v[i] > 0.5f && gyroRatio->v[i] < 1.5f);
+  }
+  
+  spiWriteRegister(spid,  INV3REG_BANK_SEL, INV3_BANK0);
+  return statusOk;
+}
+
 #if INVENSENSE3_USE_FIFO
 /* configure :
      ° mode fifo : ok
@@ -176,7 +295,7 @@ static void  inv3InitFifo(Inv3Driver *inv3d)
 
   setBank(inv3d, INV3_BANK(INV3REG_FIFO_CONFIG1));
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_FIFO_CONFIG),
-		   FIFO_CONFIG_MODE_STREAM_TO_FIFO);
+		   FIFO_CONFIG_MODE_STREAM_TO_FIFO | BIT_FIFO_CONFIG1_TMST_FSYNC_EN);
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_FIFO_CONFIG1),
 		   BIT_FIFO_CONFIG1_ACCEL_EN | BIT_FIFO_CONFIG1_GYRO_EN |
 		   BIT_FIFO_CONFIG1_TEMP_EN |
@@ -187,6 +306,8 @@ static void  inv3InitFifo(Inv3Driver *inv3d)
 		   (watermarkBytes >> 8) & 0x0f);
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_INT_SOURCE0),
 		   BIT_FIFO_THS_INT1_EN);
+  spiSetBitsRegister(inv3d->config->spid, INV3_REG(INV3REG_TMST_CONFIG), 
+		     BIT_TMST_CONFIG_TMST_EN /*| BIT_TMST_RES*/); 
 }
 
 uint16_t inv3PopFifo (Inv3Driver *inv3d)
@@ -231,6 +352,7 @@ void inv3GetAverageVal (Inv3Driver *inv3d, float *temp,
     gyro->v[j] = gyro->v[j]  * inv3d->gyroScale / 32768;
   }
 }
+
 
 
 

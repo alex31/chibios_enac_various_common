@@ -2,6 +2,7 @@
 
 #include "ch.h"
 #include "hal.h"
+#include "math.h"
 
 #ifdef WSTRICT_CONVERSION
 #pragma GCC diagnostic warning "-Wconversion"
@@ -278,7 +279,15 @@ static inline Vec3f vec3fAdd(const Vec3f *v1, const Vec3f *v2) {
     v.v[1] = v1->v[1] / f;
     v.v[2] = v1->v[2] / f;
     return v;
-}
+  }
+  
+  static inline Vec3f vec3fAbs(const Vec3f *v1) {
+    Vec3f v;
+    v.v[0] = fabsf(v1->v[0]);
+    v.v[1] = fabsf(v1->v[1]);
+    v.v[2] = fabsf(v1->v[2]);
+    return v;
+  }
 
 
   
