@@ -9,8 +9,9 @@ typedef uint8_t  Bmp3xRequest;
 
 typedef struct {
   I2CDriver       *i2cp;
-  struct bmp3_dev bm3dev;
-  uint32_t	  settings;
+  uint8_t	  slaveAddr;
+  uint16_t	  settings_sel;
+  struct bmp3_settings settings;
 } Bmp3xxConfig;
 
 
@@ -18,6 +19,7 @@ typedef struct {
 
 typedef struct  {
   Bmp3xxConfig     *config;
+  struct bmp3_dev bmp3dev;
   struct bmp3_data measure;
 } Bmp3xxDriver;
 

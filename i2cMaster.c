@@ -38,7 +38,7 @@ static msg_t  i2cMasterControlForMPL3115A2_SLV_RW_01 (I2CDriver *i2cd);
 #endif
 
 static bool i2cMasterResetBus (I2CDriver *i2cd);
-//static void restartI2c(I2CDriver *i2cp);
+static void restartI2c(I2CDriver *i2cp);
 static bool i2cMasterUnhangBus (I2CDriver *i2cd);
 static void   i2cMasterSetModePeriphI2c (I2CDriver *i2cd);
 static msg_t  i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  
@@ -947,23 +947,23 @@ static bool   i2cMasterResetBus (I2CDriver *i2cd)
   return res;
 }
 
-/* static void restartI2c(I2CDriver *i2cp)  */
-/* { */
-/*   const I2CConfig *cfg = i2cp->config; */
-/*   i2cStop(i2cp); */
-/*   chThdSleepMilliseconds(1);  */
-/*   i2cStart(i2cp, cfg); */
-/*   chThdSleepMilliseconds(1);  */
-/* } */
+__attribute__((__unused__)) static void restartI2c(I2CDriver *i2cp)
+{
+  const I2CConfig *cfg = i2cp->config;
+  i2cStop(i2cp);
+  chThdSleepMilliseconds(1);
+  i2cStart(i2cp, cfg);
+  chThdSleepMilliseconds(1);
+}
 
 
 /* static const I2cMasterConfig i2c1 = { */
 /*   .driver = &I2CD1, */
-/*   .sdaGpio = GPIOB,     */
-/*   .sclGpio = GPIOB,   */
-/*   .sdaPin = GPIOB_I2C1_SDA,	    */
-/*   .sclPin = GPIOB_I2C1_SCL,	    */
-/*   .sdaAlt = 4,	    */
+/*   .sdaGpio = GPIOB, */
+/*   .sclGpio = GPIOB, */
+/*   .sdaPin = GPIOB_I2C1_SDA, */
+/*   .sclPin = GPIOB_I2C1_SCL, */
+/*   .sdaAlt = 4, */
 /*   .alternateFunction = 4 */
 /* }; */
 
