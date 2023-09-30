@@ -63,7 +63,7 @@ static int8_t i2cWrite (uint8_t reg_addr, const uint8_t *data, uint32_t len,
 
   const msg_t status = i2cMasterCacheTransmitTimeout(config->i2cp, config->slaveAddr,
 						     writeBuffer, wlen,
-						     NULL, 0, 100);
+						     NULL, 0, TIME_MS2I(100));
   if (status != MSG_OK) {
     restartI2c(config->i2cp);
     return BMP3_E_COMM_FAIL;
@@ -88,7 +88,7 @@ static int8_t i2cRead (uint8_t reg_addr, uint8_t *data, uint32_t len,
 
   const msg_t status = i2cMasterCacheTransmitTimeout(config->i2cp, config->slaveAddr,
 						     writeBuffer, sizeof(writeBuffer),
-						     readBuffer, len, 100);
+						     readBuffer, len, TIME_MS2I(100));
   memcpy(data, readBuffer, len);
   /* DebugTrace("read %u b @r%u", len, reg_addr); */
   /* for (size_t i=0; i<len; i++) { */
@@ -112,7 +112,7 @@ static int8_t i2cRead (uint8_t reg_addr, uint8_t *data, uint32_t len,
 
   const msg_t status = i2cMasterTransmitTimeout(config->i2cp, config->slaveAddr,
 						&reg_addr, sizeof(reg_addr),
-						data, len, 100);
+						data, len, TIME_MS2I(100));
 
   /* DebugTrace("read %u b @r%u", len, reg_addr); */
   /* for (size_t i=0; i<len; i++) { */
