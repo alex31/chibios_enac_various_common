@@ -96,7 +96,7 @@ static int8_t i2cRead (uint8_t reg_addr, uint8_t *data, uint32_t len,
   /* } */
 
   if (status != MSG_OK) {
-    restartI2c(i2cp);
+    restartI2c(config->i2cp);
     return BMP3_E_COMM_FAIL;
   }
   
