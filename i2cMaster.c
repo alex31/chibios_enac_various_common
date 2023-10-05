@@ -20,6 +20,11 @@ extern BaseSequentialStream *chp;
   no static variables unless they are const.
 */
 
+// compatibility between STM32F and STM32H macro definition of main core frequency
+#if !defined(STM32_SYSCLK) && defined(STM32_SYS_CK)
+#define STM32_SYSCLK STM32_SYS_CK
+#endif
+
 
 // compatibility between GPIOV2 and GPIOV3
 #ifdef PAL_STM32_OSPEED_HIGH
