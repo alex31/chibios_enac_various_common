@@ -22,7 +22,6 @@ typedef struct {
   Inv3GyroScale		gyroScale;
   Inv3AccelScale	accelScale;
   bool			externClockRef;
-  bool			useFifo;
 #if INVENSENSE3_USE_FIFO
   uint8_t		watermarkPercent;
   Inv3Packet3FifoBuffer *fifoBuffer;
@@ -55,7 +54,7 @@ extern "C" {
 		       Vec3f *accelDiff, Vec3f *gyroDiff,
 		       Vec3f *accelRatio, Vec3f *gyroRatio);
   
-  msg_t inv3Init (Inv3Driver *inv3d, const Inv3Config* cfg);
+  bool inv3Init (Inv3Driver *inv3d, const Inv3Config* cfg);
   void inv3SetOdr (Inv3Driver *inv3d, const Inv3Odr odr);
   void inv3SetAccelScale (Inv3Driver *inv3d, const Inv3AccelScale scale);
   void inv3SetGyroScale (Inv3Driver *inv3d, const Inv3GyroScale scale);
@@ -108,6 +107,6 @@ Inv3TestResult inv3_runSelfTests (Inv3Driver *inv3d);
 
 
 #ifdef __cplusplus
-constexpr static inline  Inv3_gyroConf operator|(Inv3_gyroConf a, Inv3_gyroConf b)
-{return static_cast<Inv3_gyroConf>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));}
+//constexpr static inline  Inv3_gyroConf operator|(Inv3_gyroConf a, Inv3_gyroConf b)
+//{return static_cast<Inv3_gyroConf>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));}
 #endif

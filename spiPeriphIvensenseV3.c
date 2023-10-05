@@ -30,7 +30,7 @@ static void setBank(Inv3Driver *inv3d, Inv3Bank b)
   }
 }
 
-msg_t inv3Init(Inv3Driver *inv3d, const Inv3Config* cfg)
+bool inv3Init(Inv3Driver *inv3d, const Inv3Config* cfg)
 {
   inv3d->config = cfg;
   chDbgAssert((cfg->gyroScale >> GYRO_FS_SHIFT) <= ARRAY_LEN(gyroScaleValues),
@@ -52,7 +52,11 @@ msg_t inv3Init(Inv3Driver *inv3d, const Inv3Config* cfg)
 
   // if odr is >= 4hz, INT_CONFIG1 must be configured
   // in all case, INT_ASYNC_RESET bit must be cleared
-
+  const  Inv3SensorType sensorType = inv3GetSensorType(inv3d);
+  if ((sensorType < INV3_WHOAMI_ICM40605) ||
+      (sensorType > INV3_WHOAMI_ICM42670))
+    goto fail;
+  
   spiWriteRegister(inv3d->config->spid,  INV3_REG(INV3REG_INT_CONFIG0),
 		   FIFO_FULL_CLEAR_STATUS_AND_FIFO_READ |
 		   FIFO_THRESHOLD_CLEAR_STATUS_AND_FIFO_READ |
@@ -91,7 +95,9 @@ msg_t inv3Init(Inv3Driver *inv3d, const Inv3Config* cfg)
 		   ACCEL_MODE_LN | GYRO_MODE_LN);
   chThdSleepMilliseconds(1);
 
-  return MSG_OK;
+  return true;
+ fail:
+  return false;
 }
 
 void inv3SetOdr (Inv3Driver *inv3d, const Inv3Odr odr)
