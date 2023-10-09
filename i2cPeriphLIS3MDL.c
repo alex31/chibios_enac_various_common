@@ -316,6 +316,7 @@ static msg_t sendConfig(Lis3mdlDriver *ldp, const Lis3mdlConfigRegister *regs)
 static msg_t writeOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, const uint8_t value)
 {
   const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg, value};
+  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
 #if I2C_USE_MUTUAL_EXCLUSION
   i2cAcquireBus(ldp->config->i2cp);
 #endif
@@ -335,6 +336,7 @@ static msg_t writeOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, const 
 static msg_t readOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, uint8_t *value)
 {
   const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg};
+  cacheBufferFlush(writeBuffer, sizeof(writeBuffer));
   uint8_t       CACHE_ALIGNED(readBuffer[32]); // 32 to use all cache line
 
 #if I2C_USE_MUTUAL_EXCLUSION
@@ -343,6 +345,7 @@ static msg_t readOneRegister(Lis3mdlDriver *ldp, const Lis3_RegAddr reg, uint8_t
   msg_t status = i2cMasterCacheTransmitTimeout(ldp->config->i2cp, ldp->config->numSlave,
 					       writeBuffer, sizeof(writeBuffer),  
 					       readBuffer, 1, 100) ;
+  cacheBufferInvalidate(readBuffer, 1);
   *value = readBuffer[0];
   if (status != MSG_OK) {
     restartI2c(ldp->config->i2cp);
