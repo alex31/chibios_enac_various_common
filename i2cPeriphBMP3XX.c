@@ -60,6 +60,7 @@ static int8_t i2cWrite (uint8_t reg_addr, const uint8_t *data, uint32_t len,
   
   writeBuffer[0] = reg_addr;
   memcpy(&writeBuffer[1], data, len);
+  cacheBufferFlush(writeBuffer, wlen);
 
   const msg_t status = i2cMasterCacheTransmitTimeout(config->i2cp, config->slaveAddr,
 						     writeBuffer, wlen,
@@ -85,10 +86,11 @@ static int8_t i2cRead (uint8_t reg_addr, uint8_t *data, uint32_t len,
    const Bmp3xxConfig *config = (Bmp3xxConfig *) userData;
   const uint8_t CACHE_ALIGNED(writeBuffer[]) = {reg_addr};
   uint8_t       CACHE_ALIGNED(readBuffer[len+32]); // +32 to isolate cache line
-
+  cacheBufferFlush(writeBuffer, 1);
   const msg_t status = i2cMasterCacheTransmitTimeout(config->i2cp, config->slaveAddr,
 						     writeBuffer, sizeof(writeBuffer),
 						     readBuffer, len, TIME_MS2I(100));
+  cacheBufferInvalidate(readBuffer, len);
   memcpy(data, readBuffer, len);
   /* DebugTrace("read %u b @r%u", len, reg_addr); */
   /* for (size_t i=0; i<len; i++) { */
@@ -128,7 +130,7 @@ static int8_t i2cRead (uint8_t reg_addr, uint8_t *data, uint32_t len,
 }
 
 
-#endif // defined STM32F7XX || defined STM32H7XX
+#endif // __DCACHE_PRESENT
 
 static void waitMicroseconds (uint32_t period, void *)
 {
