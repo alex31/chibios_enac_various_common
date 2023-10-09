@@ -183,8 +183,7 @@ EOL
 EOL
 	
     $gdbInitFlash = <<EOL;
-        target extended-remote $bmpdev
-	monitor vector_catch disable hard
+        target extended-remote $bmpdev 
 	load
 	kill
 EOL
