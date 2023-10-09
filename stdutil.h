@@ -335,8 +335,9 @@ F7
 #elif  defined STM32H7XX
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram5" 
-#define DOMAIN3_SECTION ".ram4" 
 #define DMA_SECTION ".ram3"    
+#define BDMA_SECTION ".ram4"    
+#define SDMMC_SECTION ".ram0nc"    
 #else
 #error "section defined only for STM32F3, STM32F4, STM32L4 and STM32F7"
 #endif
@@ -362,7 +363,19 @@ F7
 #define IN_BCKP_SECTION_NOINIT(var) var __attribute__ ((section(BCKP_SECTION), aligned(8)))
 #define IN_BCKP_SECTION_CLEAR(var) var __attribute__ ((section(BCKP_SECTION "_clear"), aligned(8)))
 #define IN_BCKP_SECTION(var) var __attribute__ ((section(BCKP_SECTION "_init"), aligned(8)))
- 
+
+#ifdef BDMA_SECTION
+#define		IN_BDMA_SECTION_NOINIT(var) var __attribute__ ((section(BDMA_SECTION), aligned(8)))
+#define 	IN_BDMA_SECTION_CLEAR(var) var __attribute__ ((section(BDMA_SECTION "_clear"), aligned(8)))
+#define 	IN_BDMA_SECTION(var) var __attribute__ ((section(BDMA_SECTION "_init"), aligned(8)))
+#endif
+
+#ifdef SDMMC_SECTION
+#define		IN_SDMMC_SECTION_NOINIT(var) var __attribute__ ((section(SDMMC_SECTION), aligned(8)))
+#define 	IN_SDMMC_SECTION_CLEAR(var) var __attribute__ ((section(SDMMC_SECTION "_clear"), \
+								 aligned(8)))
+#define 	IN_SDMMC_SECTION(var) var __attribute__ ((section(BDMA_SECTION "_init"), aligned(8)))
+#endif
   
 #if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
   size_t initHeap (void);
