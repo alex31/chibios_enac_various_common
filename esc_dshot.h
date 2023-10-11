@@ -27,12 +27,12 @@ extern "C" {
 
 /**
  * @brief   number of trailing LOW bits in DMA control frame
- * @note    must be bigger for cortexm7 MCU which are way faster
+ * @note    must be bigger for cortexm7 MCU which are faster
  */
 #if defined STM32F7XX || defined STM32H7XX
 #define DSHOT_POST_FRAME_SILENT_SYNC_BITS 4U
 #else
-#define DSHOT_POST_FRAME_SILENT_SYNC_BITS 2U
+#define DSHOT_POST_FRAME_SILENT_SYNC_BITS 4U // raised for AM32 ESC controller
 #endif
 
 /**
@@ -78,7 +78,9 @@ typedef enum {
     DSHOT_CMD_3D_MODE_OFF,
     DSHOT_CMD_3D_MODE_ON,
     DSHOT_CMD_SETTINGS_REQUEST, // Currently not implemented
-    DSHOT_CMD_SAVE_SETTINGS,
+    DSHOT_CMD_SAVE_SETTINGS, 
+    DSHOT_CMD_BIDIR_EDT_MODE_ON,
+    DSHOT_CMD_BIDIR_EDT_MODE_OFF,
     DSHOT_CMD_SPIN_DIRECTION_NORMAL = 20U,
     DSHOT_CMD_SPIN_DIRECTION_REVERSED = 21U,
     DSHOT_CMD_LED0_ON, // BLHeli32 only
