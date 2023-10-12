@@ -75,9 +75,9 @@ static noreturn void dshotTlmRec (void *arg);
 #if DSHOT_BIDIR
 static void processBidirErpm(DSHOTDriver *driver);
 static void     dshotRestart(DSHOTDriver *driver);
-#endif
 #if DSHOT_BIDIR_EXTENTED_TELEMETRY
 static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tlm);
+#endif
 #endif
   
 //static void dmaErrCb(DMADriver *dmap, dmaerrormask_t err);
@@ -414,7 +414,7 @@ DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
   return tlm;
 }
 
-#if DSHOT_BIDIR_EXTENTED_TELEMETRY
+#if DSHOT_BIDIR && DSHOT_BIDIR_EXTENTED_TELEMETRY
 static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tlm)
 {
   switch(DshotErpsEdtType(erps)) {
