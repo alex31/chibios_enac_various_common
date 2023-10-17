@@ -85,7 +85,22 @@ extern "C" {
   _Static_assert(sizeof(FportFsmState) == 4, "incorrect state size");
   
 
- 
+  /**
+   * @brief  the four flags fields (1 bit) that are in the control frame flags field
+   * @notes  only 4 bits a are used in the lest significant nibble, 
+   *         most significant nibble is always 0
+   */
+  typedef enum __attribute__ ((__packed__)) {
+    FPORT_FLAG_CH17 = 0x01, FPORT_FLAG_CH18 = 0x02,
+    FPORT_FLAG_FRAME_LOST = 0x04, FPORT_FLAG_FAILSAFE = 0x08, 
+  } FportFlags;
+  
+  
+  typedef enum __attribute__ ((__packed__)) {
+    TYPE_CONTROL = 0x0, TYPE_DOWNLINK = 0x01, TYPE_UPLINK = 0x81
+  } FPORT_FrameType;
+
+
   /**
    * @brief  control frame sent by controller
    */
@@ -97,8 +112,8 @@ extern "C" {
     /**
      * @brief   sbus special flags
      */
-    uint8_t type;
-    uint8_t flags;
+    FPORT_FrameType type;
+    FportFlags flags;
     uint8_t rssi;
    } Fport_ControlFrame;
 
@@ -213,18 +228,6 @@ extern "C" {
     };
   };
 
-  
-
-  /**
-   * @brief  the four flags fields (1 bit) that are in the control frame flags field
-   * @notes  only 4 bits a are used in the lest significant nibble, 
-   *         most significant nibble is always 0
-   */
-  typedef enum __attribute__ ((__packed__)) {
-    FPORT_FLAG_CH17 = 0x01, FPORT_FLAG_CH18 = 0x02,
-    FPORT_FLAG_FRAME_LOST = 0x04, FPORT_FLAG_FAILSAFE = 0x08, 
-  } FportFlags;
-  
   
 
 

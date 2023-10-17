@@ -19,9 +19,6 @@ typedef enum __attribute__ ((__packed__)) {
   PRIM_WRITE=0x31, PRIM_RESPONSE=0x32
 } FPORT_FramePrime;
 
-typedef enum __attribute__ ((__packed__)) {
-  TYPE_CONTROL = 0x0, TYPE_DOWNLINK = 0x01, TYPE_UPLINK = 0x81
-} FPORT_FrameType;
 
 
 typedef struct {
