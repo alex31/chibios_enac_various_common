@@ -122,7 +122,9 @@ typedef struct {
  * @brief   telemetry with timestamp
  */
 typedef struct {
-  DshotTelemetryFrame frame;
+  DshotTelemetryFrame frame; // fields shared by serial telemetry and EDT
+  uint8_t  stress; // EDT additionnal field
+  uint8_t  status; // EDT additionnal field
   systime_t	      ts; // timestamp of last succesfull received frame
 }  DshotTelemetry ;
 

@@ -14,9 +14,14 @@ extern "C" {
   typedef enum  {
     EDT_NOTEDT=0x0,
     EDT_TEMP=0x2, EDT_VOLT=0x4, EDT_CURRENT=0x6,
-    EDT_DBG1=0x8, EDT_DBG2=0xA, EDT_DBG3=0xC,
-    EDT_STATE=0xE
+    EDT_DBG1=0x8, EDT_DBG2=0xA, EDT_STRESS=0xC,
+    EDT_STATUS=0xE
   }  EdtType;
+
+typedef enum  {
+  EDT_STATUS_ALERT = 1<<7, EDT_STATUS_WARNING = 1<<6, EDT_STATUS_ERROR = 1<<5,
+  EDT_STATUS_MAX_STRESS_MASK=0b111<1
+  }  EdtStatus;
   
   
 /**
@@ -37,9 +42,9 @@ typedef union  {
 typedef union  {
   struct {
     uint16_t crc:4;
-    uint16_t  edt_value:8;
-    EdtType edt_type:4;
-  } __attribute__ ((__packed__)) ;
+    uint16_t edt_value:8;
+    EdtType  edt_type:4;
+  } ;
   uint16_t rawFrame;
 } DshotEPeriodTelemetry;
 
@@ -77,9 +82,10 @@ _Static_assert(sizeof(DshotEPeriodTelemetry) == sizeof(uint16_t), "DshotEPeriodT
  * @api
  */
   static inline bool DshotErpsIsEdt(const DshotErps *derpsp)  {
+    const DshotEPeriodTelemetry tm =  {.rawFrame = derpsp->ep.rawFrame};
     return 
-      ((derpsp->ep.rawFrame & 0x1000) == 0) &&
-      ((derpsp->ep.rawFrame & 0xe000) != 0);
+      ((tm.edt_type & 0b0001) == 0) &&
+      ((tm.edt_type & 0b1110) != 0);
   }
 
 /**
@@ -106,8 +112,8 @@ static inline uint8_t DshotErpsEdtTempCentigrade(const DshotErps *derpsp) {
  * @param[in] derpsp    pointer to the @p DshotErps object
  * @api
  */
-static inline uint16_t DshotErpsEdtDeciVolts(const DshotErps *derpsp) {
-  return (DshotEPeriodTelemetry) {.rawFrame = derpsp->ep.rawFrame}.edt_value * 10U / 4U;
+static inline uint16_t DshotErpsEdtCentiVolts(const DshotErps *derpsp) {
+  return (DshotEPeriodTelemetry) {.rawFrame = derpsp->ep.rawFrame}.edt_value * 100U / 4U;
 }
 /**
  * @brief   return current intensity for a current telemetry frame
@@ -116,6 +122,26 @@ static inline uint16_t DshotErpsEdtDeciVolts(const DshotErps *derpsp) {
  * @api
  */
 static inline uint16_t DshotErpsEdtCurrentAmp(const DshotErps *derpsp) {
+  return (DshotEPeriodTelemetry) {.rawFrame = derpsp->ep.rawFrame}.edt_value;
+}
+
+/**
+ * @brief   return stress value
+ *
+ * @param[in] derpsp    pointer to the @p DshotErps object
+ * @api
+ */
+static inline uint16_t DshotErpsEdtStress(const DshotErps *derpsp) {
+  return (DshotEPeriodTelemetry) {.rawFrame = derpsp->ep.rawFrame}.edt_value;
+}
+
+/**
+ * @brief   return status value
+ *
+ * @param[in] derpsp    pointer to the @p DshotErps object
+ * @api
+ */
+static inline uint16_t DshotErpsEdtStatus(const DshotErps *derpsp) {
   return (DshotEPeriodTelemetry) {.rawFrame = derpsp->ep.rawFrame}.edt_value;
 }
 

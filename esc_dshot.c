@@ -38,7 +38,7 @@
 
 #if DSHOT_SPEED != 0 // statically defined
 #   define DSHOT_FREQ (DSHOT_SPEED*1000)
-#   define DSHOT_BIT0_DUTY (DSHOT_PWM_PERIOD * 373 / 1000)
+#   define DSHOT_BIT0_DUTY (DSHOT_PWM_PERIOD * 333 / 1000)
 #   define DSHOT_BIT1_DUTY (DSHOT_BIT0_DUTY*2)
 #else			 // dynamically defined
 #   define DSHOT_FREQ (driver->config->speed_khz*1000)
@@ -72,6 +72,7 @@ static void buildDshotDmaBuffer(DSHOTDriver *driver);
 static inline uint8_t updateCrc8(uint8_t crc, uint8_t crc_seed);
 static uint8_t calculateCrc8(const uint8_t *Buf, const uint8_t BufLen);
 static noreturn void dshotTlmRec (void *arg);
+//static void dshotSendFrameNoAnswer(DSHOTDriver *driver);
 #if DSHOT_BIDIR
 static void processBidirErpm(DSHOTDriver *driver);
 static void     dshotRestart(DSHOTDriver *driver);
@@ -276,17 +277,6 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
   if (specmd > DSHOT_CMD_MAX) {
     return; // Don't apply special commands from this function
   }
-  if (index < DSHOT_CHANNELS) {
-    setDshotPacketThrottle(&driver->dshotMotors.dp[index], specmd);
-    setDshotPacketTlm(&driver->dshotMotors.dp[index], driver->config->tlm_sd != NULL);
-  } else if (index == DSHOT_ALL_MOTORS) {
-    for (uint8_t _index = 0; _index < DSHOT_CHANNELS; _index++) {
-      setDshotPacketThrottle(&driver->dshotMotors.dp[_index], specmd);
-      setDshotPacketTlm(&driver->dshotMotors.dp[_index], driver->config->tlm_sd != NULL);
-    }
-  } else {
-    chDbgAssert(false, "dshotSetThrottle index error");
-  }
 
   // some dangerous special commands need to be repeated 6 times
   // to avoid catastrophic failure
@@ -309,8 +299,21 @@ void dshotSendSpecialCommand(DSHOTDriver *driver, const  uint8_t index,
   }
 
   while (repeat--) {
+    systime_t now = chVTGetSystemTimeX();
+    if (index < DSHOT_CHANNELS) {
+      setDshotPacketThrottle(&driver->dshotMotors.dp[index], specmd);
+      setDshotPacketTlm(&driver->dshotMotors.dp[index], driver->config->tlm_sd != NULL);
+    } else if (index == DSHOT_ALL_MOTORS) {
+      for (uint8_t _index = 0; _index < DSHOT_CHANNELS; _index++) {
+	setDshotPacketThrottle(&driver->dshotMotors.dp[_index], specmd);
+	setDshotPacketTlm(&driver->dshotMotors.dp[_index], driver->config->tlm_sd != NULL);
+      }
+    } else {
+      chDbgAssert(false, "dshotSetThrottle index error");
+    }
     dshotSendFrame(driver);
-    chThdSleepMicroseconds(500);
+    if (repeat)
+      chThdSleepUntilWindowed(now, now + TIME_US2I(500));
   }
 }
 
@@ -372,6 +375,32 @@ void dshotSendFrame(DSHOTDriver *driver)
   }
 }
 
+/* static void dshotSendFrameNoAnswer(DSHOTDriver *driver) */
+/* { */
+/*   if (driver->dmap.state == DMA_READY) { */
+/* #if DSHOT_BIDIR */
+/*     const tprio_t currentPrio = chThdSetPriority(HIGHPRIO); */
+/* #endif */
+/*     if ((driver->config->tlm_sd != NULL) && */
+/*         (driver->dshotMotors.onGoingQry == false)) { */
+/*       driver->dshotMotors.onGoingQry = true; */
+/*       const msg_t index = (driver->dshotMotors.currentTlmQry + 1U) % DSHOT_CHANNELS; */
+/*       driver->dshotMotors.currentTlmQry = (uint8_t) index; */
+/*       setDshotPacketTlm(&driver->dshotMotors.dp[index], true); */
+/*       chMBPostTimeout(&driver->mb, index, TIME_IMMEDIATE); */
+/*     } */
+
+/*     buildDshotDmaBuffer(driver); */
+/*     dmaTransfert(&driver->dmap, */
+/* 		 &driver->config->pwmp->tim->DMAR, */
+/* 		 driver->config->dma_command, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS); */
+    
+/* #if DSHOT_BIDIR */
+/*     chThdSetPriority(currentPrio); */
+/* #endif */
+/*   } */
+/* } */
+
 /**
  * @brief   return number of telemetry crc error since dshotStart
  *
@@ -414,6 +443,17 @@ DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
   return tlm;
 }
 
+/*
+
+    [2] 0010 mmmm mmmm - Temperature frame in degree Celsius, just like Blheli_32 and KISS [0, 1, ..., 255]
+    [4] 0100 mmmm mmmm - Voltage frame with a step size of 0,25V [0, 0.25 ..., 63,75]
+    [6] 0110 mmmm mmmm - Current frame with a step size of 1A [0, 1, ..., 255]
+    [8] 1000 mmmm mmmm - Debug frame 1 not associated with any specific value, can be used to debug ESC firmware
+    [10] 1010 mmmm mmmm - Debug frame 2 not associated with any specific value, can be used to debug ESC firmware
+    [12] 1100 mmmm mmmm - Stress level frame [0, 1, ..., 255] (since v2.0.0)
+    [14] 1110 mmmm mmmm - Status frame: Bit[7] = alert event, Bit[6] = warning event, Bit[5] = error event, Bit[3-1] - Max. stress level [0-15] (since v2.0.0)
+
+ */
 #if DSHOT_BIDIR && DSHOT_BIDIR_EXTENTED_TELEMETRY
 static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tlm)
 {
@@ -422,13 +462,20 @@ static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *t
     tlm->frame.temp = DshotErpsEdtTempCentigrade(erps); break;
     
   case EDT_VOLT:
-    tlm->frame.voltage = DshotErpsEdtDeciVolts(erps) * 10U; break;
+    tlm->frame.voltage = DshotErpsEdtCentiVolts(erps); break;
     
   case EDT_CURRENT:
     tlm->frame.current = DshotErpsEdtCurrentAmp(erps) * 100U; break;
+
+  case EDT_STRESS:
+   tlm->stress = DshotErpsEdtStress(erps); break;
+
+  case EDT_STATUS:
+    tlm->status = DshotErpsEdtStatus(erps);break;
     
   default: {};
   }
+  tlm->ts = chVTGetSystemTimeX();
 }
 #endif
 
