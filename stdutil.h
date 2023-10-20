@@ -337,9 +337,9 @@ F7
 #define FAST_SECTION ".ram5" 
 #define DMA_SECTION ".ram3"    
 #define BDMA_SECTION ".ram4"    
-#define SDMMC_SECTION ".ram0nc"    
+#define AXIDMA_SECTION ".ram0nc"    
 #else
-#error "section defined only for STM32F3, STM32F4, STM32L4 and STM32F7"
+#error "section defined only for STM32F3, STM32F4, STM32F7, STM32L4 and STM32H7"
 #endif
 
 #if (defined __DCACHE_PRESENT) && (__DCACHE_PRESENT != 0)
