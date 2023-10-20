@@ -748,7 +748,7 @@ void  dma_lld_get_registers(DMADriver *dmap, volatile void *periphp,
 {
   dmaStreamSetPeripheral(dmap->dmastream, periphp);
 #if STM32_DMA_SUPPORTS_DMAMUX
-    dmaSetRequestSource(dmap->dmastream, dmap->config->dmamux1);
+    dmaSetRequestSource(dmap->dmastream, dmap->config->dmamux);
 #endif
 
   dmaStreamSetMemory0(dmap->dmastream, mem0p);
@@ -792,7 +792,7 @@ bool dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem0
   dmap->size = size;
   dmaStreamSetPeripheral(dmap->dmastream, periphp);
 #if STM32_DMA_SUPPORTS_DMAMUX
-  dmaSetRequestSource(dmap->dmastream, dmap->config->dmamux1);
+  dmaSetRequestSource(dmap->dmastream, dmap->config->dmamux);
 #endif
 
   dmaStreamSetMemory0(dmap->dmastream, mem0p);

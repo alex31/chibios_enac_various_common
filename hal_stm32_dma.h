@@ -289,7 +289,7 @@ typedef struct  {
    */
   uint32_t		stream;
 #if STM32_DMA_SUPPORTS_DMAMUX
-  uint32_t		dmamux1; // 4 bytes wide for mdma use
+  uint32_t		dmamux; // 4 bytes wide for mdma use
 #else
 #if    STM32_DMA_SUPPORTS_CSELR
   /**
