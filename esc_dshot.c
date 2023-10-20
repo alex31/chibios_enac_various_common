@@ -15,7 +15,15 @@
 #                | (_| |  |  __/ | |   | |  | | | | | |  \ |_   | |  | (_) | | | | |
 #                 \__,_|   \___| |_|   |_|  |_| |_| |_|   \__|  |_|   \___/  |_| |_|
 */
-#define PWM_FREQ         (STM32_SYSCLK/2000U) // the timer will beat @84Mhz on STM32F4
+#ifdef STM32H7XX
+// each H7 timer have the same max clock speed
+#define PWM_FREQ         (STM32_TIMCLK1 / 1000U) // the timer will beat @240Mhz on STM32H7
+#else
+// some F4 and F7 timers are limited to  / 2
+// others are limited to STM32_SYSCLK
+// so we take the max frequency that all timers can run
+#define PWM_FREQ         (STM32_SYSCLK / 2000U) // the timer will beat @84Mhz on STM32F4
+#endif
 #define TICKS_PER_PERIOD 1000             // that let use any timer :
 			                  // does not care if linked to PCLK1 or PCLK2
 			                  // tick_per_period will be dynamically calculated
@@ -24,24 +32,30 @@
  * Possible values are: 150, 300, 600
  */
 #ifndef DSHOT_SPEED
-#define DSHOT_SPEED 300
+#define DSHOT_SPEED 300U
 #endif
 
 #ifndef DSHOT_TELEMETRY_BAUD
-#define DSHOT_TELEMETRY_BAUD 115200
+#define DSHOT_TELEMETRY_BAUD 115200U
 #endif
 
 #ifndef DSHOT_BIDIR_EXTENTED_TELEMETRY
 #define DSHOT_BIDIR_EXTENTED_TELEMETRY	FALSE
 #endif
 
+// ESCs are quite sensitive to the DSHOT duty cycle.
+// 333 should work most of the time, but some ESC need 373
+// so this parameter can be changed in esc_dshot_config.h
+#ifndef DSHOT_BIT0_DUTY_RATIO
+#define DSHOT_BIT0_DUTY_RATIO 333U
+#endif
 
 #if DSHOT_SPEED != 0 // statically defined
 #   define DSHOT_FREQ (DSHOT_SPEED*1000)
-#   define DSHOT_BIT0_DUTY (DSHOT_PWM_PERIOD * 333 / 1000)
+#   define DSHOT_BIT0_DUTY (DSHOT_PWM_PERIOD * DSHOT_BIT0_DUTY_RATIO  / 1000U)
 #   define DSHOT_BIT1_DUTY (DSHOT_BIT0_DUTY*2)
 #else			 // dynamically defined
-#   define DSHOT_FREQ (driver->config->speed_khz*1000)
+#   define DSHOT_FREQ (driver->config->speed_khz * 1000U)
 #   define DSHOT_BIT0_DUTY (driver->bit0Duty)
 #   define DSHOT_BIT1_DUTY (driver->bit1Duty)
 #endif
@@ -122,7 +136,11 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   driver->config = config;
   driver->dma_conf = (DMAConfig) {
     .stream = config->dma_stream,
+#if STM32_DMA_SUPPORTS_DMAMUX
+    .dmamux = config->dmamux,
+#else
     .channel = config->dma_channel,
+#endif
     .dma_priority = 3,
     .irq_priority = CORTEX_MAX_KERNEL_PRIORITY + 1,
     .direction = DMA_DIR_M2P,
@@ -163,7 +181,7 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   driver->crc_errors = 0;
   driver->tlm_frame_nb = 0;
 #if DSHOT_SPEED == 0
-  driver->bit0Duty = (DSHOT_PWM_PERIOD * 373U / 1000U);
+  driver->bit0Duty = (DSHOT_PWM_PERIOD * DSHOT_BIT0_DUTY_RATIO / 1000U);
   driver->bit1Duty = (driver->bit0Duty*2U)            ;
 #endif
 

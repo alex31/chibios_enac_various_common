@@ -35,6 +35,11 @@ extern "C" {
 #define DSHOT_POST_FRAME_SILENT_SYNC_BITS 4U // raised for AM32 ESC controller
 #endif
 
+#if STM32_DMA_SUPPORTS_DMAMUX
+#define DSHOT_EMIT_STREAM_NX(tim)  STM32_DMAMUX1_TIM ## tim ## _UP
+#define DSHOT_EMIT_STREAM(tim)  DSHOT_EMIT_STREAM_NX(tim)
+#endif
+
 /**
  * @brief  special values returned by dshotGetRpm function
  * @note   must be checked after each call to dshotGetRpm
@@ -154,8 +159,12 @@ typedef struct  {
   /**
    * @brief : dma channel associated with pwm timer used to generate dshot output
    */
+#if STM32_DMA_SUPPORTS_DMAMUX
+  uint8_t	dmamux;
+#else
   uint8_t	dma_channel;
-
+#endif
+  
   /**
    * @brief : PWM driver that feed up to 4 dshot lines
    */
