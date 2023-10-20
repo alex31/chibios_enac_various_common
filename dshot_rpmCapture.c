@@ -8,12 +8,29 @@
 #error dynamic dshot speed is not yet implemented in DSHOT BIDIR
 #endif
 
+#ifdef STM32H7XX
+static const float TIM_FREQ_MHZ = (STM32_TIMCLK1 / 1e6d);
+#else
+// MUST FIXE : on F4 and F7, dshot bidir is not compatible with 84MHz timers
 static const float TIM_FREQ_MHZ = (STM32_SYSCLK / 1e6d);
+#endif
 static const float bit1t_us = TIM_FREQ_MHZ * 6.67d * 4 / 5;
 static const float speed_factor = DSHOT_SPEED / 150;
 
 static const uint32_t  ERPS_BIT1_DUTY = bit1t_us / speed_factor;
 static const uint32_t  TIM_PRESCALER = 1U;
+
+/* gpt based timout is dependant of CPU speed, because
+ the more time you spend in the ISR and context switches,
+ the less you have to wait for telemetry frame completion */
+#if defined STM32H7XX
+#define SWTICH_TO_CAPTURE_BASE_TIMOUT 36U
+#elif defined STM32F7XX
+#define SWTICH_TO_CAPTURE_BASE_TIMOUT 30U
+#else
+#define SWTICH_TO_CAPTURE_BASE_TIMOUT 25U
+#endif
+
 
 static void startCapture(DshotRpmCapture *drcp);
 static void stopCapture(DshotRpmCapture *drcp);
@@ -49,15 +66,15 @@ static const struct  {
 };
 
 static const TimICConfig timicCfgSkel = {
-	  .timer = nullptr,
-	  .capture_cb = nullptr,
-	  .overflow_cb = nullptr,
+	  .timer = NULL,
+	  .capture_cb = NULL,
+	  .overflow_cb = NULL,
 	  .mode = TIMIC_INPUT_CAPTURE,
 	  .active = activeDier[DSHOT_CHANNELS-1].active,
 	  .dier = activeDier[DSHOT_CHANNELS-1].dier,
 	  .dcr = 0, // direct access, not using DMAR
 	  .prescaler = TIM_PRESCALER,
-	  .arr =  (uint32_t) ((TIM_FREQ_MHZ * 25U) + (ERPS_BIT1_DUTY * 20U)) // silent + frame length
+	  .arr =  0xffffffff
 };
 
 /*
@@ -73,7 +90,7 @@ one should add following line in the GPT section of halconf.h :
 #endif
 
 static const GPTConfig gptCfg =  {
-  .frequency    = 1'000'000, // 1MHz
+  .frequency    = 1000U * 1000U, // 1MHz
   .callback     = &gptCb,
   .cr2 = 0,
   .dier = 0
@@ -142,21 +159,23 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
 
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     dmaStartTransfert(&drcp->dmads[i], &drcp->icd.config->timer->CCR[i],
-		      drcp->config->dma_capture->dma_buf[i], DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN);
+		      drcp->config->dma_capture->dma_buf[i],
+		      DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN);
   }
 
   osalSysLock();
   // dma end callback will resume the thread upon completion of ALL dma transaction
   // else, the timeout will take care of thread resume
-  static const sysinterval_t timeoutUs = 25U + (120U * 150U / DSHOT_SPEED);
-  //  palSetLine(LINE_LA_DBG_1);
+  static const sysinterval_t timeoutUs = SWTICH_TO_CAPTURE_BASE_TIMOUT + 
+					 (120U * 150U / DSHOT_SPEED);
+  //palSetLine(LINE_LA_DBG_1);
   gptStartOneShotI(drcp->config->gptd, timeoutUs);
   //  palClearLine(LINE_LA_DBG_1);
   chThdSuspendS(&drcp->dmads[0].thread);
   //  palSetLine(LINE_LA_DBG_1);
   //  chSysPolledDelayX(1);
   //  palClearLine(LINE_LA_DBG_1);
-
+  
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) 
     dmaStopTransfertI(&drcp->dmads[i]);
   
@@ -229,13 +248,17 @@ static void buildDmaConfig(DshotRpmCapture *drcp)
 {
   static const DMAConfig skel = (DMAConfig) {
     .stream = 0,
+#if STM32_DMA_SUPPORTS_DMAMUX
+    .dmamux = 0,
+#else
     .channel = 0,
+#endif
     .inc_peripheral_addr = false,
     .inc_memory_addr = true,
     .op_mode = DMA_ONESHOT,
-    .end_cb = nullptr,
+    .end_cb = NULL,
     .error_cb = &dmaErrCb,
-    //.error_cb = nullptr,
+    //.error_cb = NULL,
 #if STM32_DMA_USE_ASYNC_TIMOUT
     .timeout = TIME_MS2I(100),
 #endif
@@ -254,7 +277,11 @@ static void buildDmaConfig(DshotRpmCapture *drcp)
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     drcp->dmaCfgs[i] = skel;
     drcp->dmaCfgs[i].stream = drcp->config->dma_streams[i].stream;
+#if STM32_DMA_SUPPORTS_DMAMUX
+    drcp->dmaCfgs[i].dmamux = drcp->config->dma_streams[i].dmamux;
+#else
     drcp->dmaCfgs[i].channel = drcp->config->dma_streams[i].channel;
+#endif
   }
 }
 
@@ -325,9 +352,10 @@ static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
   for (size_t i = 1U; i < dmaLen; i++) {
     const uint_fast16_t len = capture[i] - prec;
     prec = capture[i];
+
     // GRC encoding garanties that there can be no more than 3 consecutives bits at the same level
     // made some test to replace division by multiplication + shift without any speed gain
-    const uint_fast8_t nbConsecutives =  (len + (ERPS_BIT1_DUTY / 2U)) /  ERPS_BIT1_DUTY; 
+    const uint_fast8_t nbConsecutives = (len + (ERPS_BIT1_DUTY / 2U)) / ERPS_BIT1_DUTY;
     if (bit) {
       switch(nbConsecutives) {
       case 1U:	erpsVal |= (0b001 << (frameLen - bitIndex)); break;

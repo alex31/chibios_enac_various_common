@@ -20,29 +20,55 @@ extern "C" {
  * @brief   macro helper to design DMA stream
  * @note    does not apply for DMAMUX MCU
  */
-#define CONCAT_NX(pre, tim, stream, channel) pre ## tim ## stream , pre ## tim ## channel
-#define DSHOTS_1STREAM(tim)  CONCAT_NX(STM32_TIM, tim, _CH1_DMA_STREAM, _CH1_DMA_CHANNEL)
-#define DSHOTS_2STREAMS(tim) CONCAT_NX(STM32_TIM, tim, _CH1_DMA_STREAM, _CH1_DMA_CHANNEL), \
-                             CONCAT_NX(STM32_TIM, tim, _CH2_DMA_STREAM, _CH2_DMA_CHANNEL)
-#define DSHOTS_3STREAMS(tim) CONCAT_NX(STM32_TIM, tim, _CH1_DMA_STREAM, _CH1_DMA_CHANNEL), \
-			     CONCAT_NX(STM32_TIM, tim, _CH2_DMA_STREAM, _CH2_DMA_CHANNEL), \
-                             CONCAT_NX(STM32_TIM, tim, _CH3_DMA_STREAM, _CH3_DMA_CHANNEL)
-#define DSHOTS_4STREAMS(tim) CONCAT_NX(STM32_TIM, tim, _CH1_DMA_STREAM, _CH1_DMA_CHANNEL), \
-			     CONCAT_NX(STM32_TIM, tim, _CH2_DMA_STREAM, _CH2_DMA_CHANNEL), \
-			     CONCAT_NX(STM32_TIM, tim, _CH3_DMA_STREAM, _CH3_DMA_CHANNEL), \
-			     CONCAT_NX(STM32_TIM, tim, _CH4_DMA_STREAM, _CH4_DMA_CHANNEL)
+#define DSHOT_CONCAT_CAPTURE_NX(pre, tim, stream, channel) pre ## tim ## stream , pre ## tim ## channel
+#define DSHOTS_1STREAM(tim)  DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH1_DMA_STREAM, _CH1_DMA_CHANNEL)
+#define DSHOTS_2STREAMS(tim) DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH1_DMA_STREAM, _CH1_DMA_CHANNEL), \
+                             DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH2_DMA_STREAM, _CH2_DMA_CHANNEL)
+#define DSHOTS_3STREAMS(tim) DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH1_DMA_STREAM, _CH1_DMA_CHANNEL), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH2_DMA_STREAM, _CH2_DMA_CHANNEL), \
+                             DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH3_DMA_STREAM, _CH3_DMA_CHANNEL)
+#define DSHOTS_4STREAMS(tim) DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH1_DMA_STREAM, _CH1_DMA_CHANNEL), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH2_DMA_STREAM, _CH2_DMA_CHANNEL), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH3_DMA_STREAM, _CH3_DMA_CHANNEL), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_TIM, tim, _CH4_DMA_STREAM, _CH4_DMA_CHANNEL)
+
+#else  // STM32_DMA_SUPPORTS_DMAMUX == true
+/**
+ * @brief   macro helper to design DMA stream
+ * @note    specific for DMAMUX MCU
+            make use of STM32_DMA_STREAM_ID_ANY auto placement
+ */
+#define DSHOT_CONCAT_CAPTURE_NX(pre, tim, event) STM32_DMA_STREAM_ID_ANY , pre ## tim ## event
+#define DSHOTS_1STREAM(tim)  DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH1)
+#define DSHOTS_2STREAMS(tim) DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH1), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH2)
+#define DSHOTS_3STREAMS(tim) DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH1), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH2), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH3)
+#define DSHOTS_4STREAMS(tim) DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH1), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH2), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH3), \
+			     DSHOT_CONCAT_CAPTURE_NX(STM32_DMAMUX1_TIM, tim, _CH4)
+#endif // STM32_DMA_SUPPORTS_DMAMUX == false
 
 #if DSHOT_CHANNELS == 1
-#define DSHOTS_STREAMS(tim)	DSHOTS_1STREAM(tim)
+#define DSHOTS_CAPTURE_STREAMS(tim)	DSHOTS_1STREAM(tim)
 #elif DSHOT_CHANNELS == 2
-#define DSHOTS_STREAMS(tim)	DSHOTS_2STREAMS(tim)
+#define DSHOTS_CAPTURE_STREAMS(tim)	DSHOTS_2STREAMS(tim)
 #elif DSHOT_CHANNELS == 3
-#define DSHOTS_STREAMS(tim)	DSHOTS_3STREAMS(tim)
+#define DSHOTS_CAPTURE_STREAMS(tim)	DSHOTS_3STREAMS(tim)
 #elif DSHOT_CHANNELS == 4
-#define DSHOTS_STREAMS(tim)	DSHOTS_4STREAMS(tim)
-#else
+#define DSHOTS_CAPTURE_STREAMS(tim)	DSHOTS_4STREAMS(tim)
+#else  // DSHOT_CHANNELS = X
 #error DSHOT_CHANNELS must be 1 to 4
+#endif // DSHOT_CHANNELS = X
+
+
+#if !defined STM32_SYSCLK && !defined STM32_SYS_CK
+#error neither  STM32_SYSCLK or STM32_SYS_CK defined
 #endif
+#if !defined STM32_SYSCLK
+#define STM32_SYSCLK STM32_SYS_CK
 #endif
 
 
@@ -52,12 +78,19 @@ extern "C" {
  */
 typedef struct  {
   uint32_t		stream;
+#if STM32_DMA_SUPPORTS_DMAMUX
+  uint8_t		dmamux;
+#else
   uint8_t		channel;
+#endif
 } DshotDmaStreamChan;
 
 
 /**
- * @brief   DMA capture buffer
+ * @brief   DMA capture	  if (errFrame > 2000) {
+	     chSysHalt("p *dshotd.config.dma_capt_cfg.dma_capture");
+	  }
+ buffer
  */
 typedef struct  {
   uint16_t	 	dma_buf[DSHOT_CHANNELS][DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN];
@@ -161,6 +194,7 @@ static inline uint32_t dshotRpmGetFrame(const DshotRpmCapture *drcp, uint8_t ind
  * @param[in] drcp    pointer to the @p DshotRpmCapture object
  * @api
  */
+
 static inline uint32_t  dshotRpmGetAverageDecodeTimeNs(DshotRpmCapture *drcp) {
   return (drcp->accumDecodeTime * 1e9f) / STM32_SYSCLK / drcp->nbDecode;
 }
