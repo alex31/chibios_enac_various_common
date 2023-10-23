@@ -632,7 +632,6 @@ static void buildDshotDmaBuffer(DSHOTDriver *driver)
     }
     // the bits for silence sync (pre and post) in case of continous sending are zeroed once at init
   }
-
 }
 
 

@@ -93,7 +93,11 @@ typedef struct  {
  buffer
  */
 typedef struct  {
-  uint16_t	 	dma_buf[DSHOT_CHANNELS][DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN];
+  __attribute__((aligned(32)))
+  uint16_t buf[DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN];
+} DshotRpmCaptureOneChannelDmaBuffer;
+typedef struct  {
+  DshotRpmCaptureOneChannelDmaBuffer dma_buf[DSHOT_CHANNELS];
 } DshotRpmCaptureDmaBuffer;
 
 /**
@@ -115,6 +119,12 @@ typedef struct  {
    *          DCACHE disabled section for F7
    */
   DshotRpmCaptureDmaBuffer *dma_capture;
+#if __DCACHE_PRESENT
+  /**
+   * @brief   DMA memory is in a cached section and need to be flushed
+   */
+  bool		 dcache_memory_in_use;
+#endif
 } DshotRpmCaptureConfig;
 
 

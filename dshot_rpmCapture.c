@@ -24,11 +24,11 @@ static const uint32_t  TIM_PRESCALER = 1U;
  the more time you spend in the ISR and context switches,
  the less you have to wait for telemetry frame completion */
 #if defined STM32H7XX
-#define SWTICH_TO_CAPTURE_BASE_TIMOUT 36U
+#define SWTICH_TO_CAPTURE_BASE_TIMOUT 38U
 #elif defined STM32F7XX
-#define SWTICH_TO_CAPTURE_BASE_TIMOUT 30U
+#define SWTICH_TO_CAPTURE_BASE_TIMOUT 32U
 #else
-#define SWTICH_TO_CAPTURE_BASE_TIMOUT 25U
+#define SWTICH_TO_CAPTURE_BASE_TIMOUT 28U
 #endif
 
 
@@ -154,12 +154,10 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
     ts = chVTGetSystemTimeX();
 
   memset(drcp->config->dma_capture->dma_buf, 0, sizeof(drcp->config->dma_capture->dma_buf));
-  _Static_assert(sizeof(drcp->config->dma_capture->dma_buf) == sizeof(uint16_t) *
-		 DSHOT_CHANNELS * (DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN));
 
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     dmaStartTransfert(&drcp->dmads[i], &drcp->icd.config->timer->CCR[i],
-		      drcp->config->dma_capture->dma_buf[i],
+		      drcp->config->dma_capture->dma_buf[i].buf,
 		      DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN);
   }
 
@@ -183,24 +181,29 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   stopCapture(drcp);
 
 #if DSHOT_STATISTICS
-  const rtcnt_t start = chSysGetRealtimeCounterX();
+  const rtcnt_t tstart = chSysGetRealtimeCounterX();
 #endif
 
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
-    drcp->rpms[i] = processErpsDmaBuffer(drcp->config->dma_capture->dma_buf[i],
+#if __DCACHE_PRESENT
+    if (drcp->config->dcache_memory_in_use == true) {
+      cacheBufferInvalidate(drcp->config->dma_capture->dma_buf[i].buf,
+			    DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN);
+    }
+#endif
+    drcp->rpms[i] = processErpsDmaBuffer(drcp->config->dma_capture->dma_buf[i].buf,
 					 DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN -
 					 dmaGetTransactionCounter(&drcp->dmads[i]));
   }
 #if DSHOT_STATISTICS
-  const rtcnt_t stop = chSysGetRealtimeCounterX();
+  const rtcnt_t tstop = chSysGetRealtimeCounterX();
   drcp->nbDecode += DSHOT_CHANNELS;
-  drcp->accumDecodeTime += (stop - start);
+  drcp->accumDecodeTime += (tstop - tstart);
 #endif
-
+  
 #if defined(DFREQ) && (DFREQ < 10) && (DFREQ != 0)
   DebugTrace("dma out on %s", msg == MSG_OK ? "completion" : "timeout");
 #endif
-
 }
 
 #if DSHOT_STATISTICS
@@ -216,10 +219,10 @@ void dshotRpmTrace(DshotRpmCapture *drcp, uint8_t index)
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     if ((index != 0xff) && (index != i))
       continue;
-    uint16_t cur = drcp->config->dma_capture->dma_buf[i][0];
+    uint16_t cur = drcp->config->dma_capture->dma_buf[i].buf[0];
     for (size_t j = 1; j < DSHOT_DMA_DATA_LEN; j++) {
-      const uint16_t  dur = drcp->config->dma_capture->dma_buf[i][j] - cur;
-      cur = drcp->config->dma_capture->dma_buf[i][j];
+      const uint16_t  dur = drcp->config->dma_capture->dma_buf[i].buf[j] - cur;
+      cur = drcp->config->dma_capture->dma_buf[i].buf[j];
       chprintf(chp, "[%u] %u, ", i, dur);
     }
     DebugTrace("");
