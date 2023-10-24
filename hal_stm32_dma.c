@@ -409,7 +409,15 @@ void dmaStopTransfertI(DMADriver *dmap)
     dmap->state = DMA_READY;
     _dma_reset_i(dmap);
   }
+}
 
+uint8_t dmaGetStreamIndex(DMADriver *dmap)
+{
+  for(uint8_t i = 0; i < 16; i++) {
+    if (dmap->dmastream == STM32_DMA_STREAM(i))
+      return i;
+  }
+  return 0xff;
 }
 
 #if (STM32_DMA_USE_WAIT == TRUE) || defined(__DOXYGEN__)
@@ -507,7 +515,6 @@ void dmaReleaseBus(DMADriver *dmap) {
   #                | |__| |  | |    | |   \ V /  |  __/ | |
   #                |_____/   |_|    |_|    \_/    \___| |_|
 */
-
 
 /**
  * @brief   Configures and activates the DMA peripheral.

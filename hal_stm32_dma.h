@@ -537,6 +537,7 @@ void  dmaStopTransfert(DMADriver *dmap);
 bool  dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p,
 			 const size_t size);
 void  dmaStopTransfertI(DMADriver *dmap);
+uint8_t dmaGetStreamIndex(DMADriver *dmap);
 #ifndef DMA_request_TypeDef
 void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 		      const size_t size,
