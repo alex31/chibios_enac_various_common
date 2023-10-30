@@ -145,7 +145,7 @@ struct FilePoolUnit {
   uint8_t writeByteSeek;
 };
 
-static  struct FilePoolUnit IN_SDMMC_DMA_SECTION (fileDes[SDLOG_NUM_FILES]) =
+static  struct FilePoolUnit IN_SDMMC_DMA_SECTION(fileDes[SDLOG_NUM_FILES]) =
 {[0 ... SDLOG_NUM_FILES-1] = {.fil = {{0}}, .inUse = false, .tagAtClose=false,
 				 .writeByteCache=NULL, .writeByteSeek=0}};
 
