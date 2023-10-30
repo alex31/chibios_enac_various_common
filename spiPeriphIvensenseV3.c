@@ -79,6 +79,10 @@ bool inv3Init(Inv3Driver *inv3d, const Inv3Config* cfg)
 		   inv3d->config->commonOdr | inv3d->config->gyroScale);
   spiWriteRegister(inv3d->config->spid, INV3_REG(INV3REG_ACCEL_CONFIG0),
 		   inv3d->config->commonOdr | inv3d->config->accelScale);
+  // fix bug in ICM40605 :
+  // https://github.com/ArduPilot/ardupilot/commit/6f25ca97740790fcdc75d40cc0f9a63f099c81b4
+  spiModifyRegister(inv3d->config->spid, INV3_REG(INV3REG_INTF_CONFIG1),
+		    FIFO_COUNT_REC, FIFO_COUNT_REC);
   if (inv3d->config->externClockRef == true) {
     spiModifyRegister(inv3d->config->spid, INV3_REG(INV3REG_INTF_CONFIG1),
 		      CLKSEL_EXTERNAL_RTC, CLKSEL_EXTERNAL_RTC);
