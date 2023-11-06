@@ -471,18 +471,18 @@ static fportAppIdPair fportTelemetryUpGetNextPair(FportFsmContext *context)
 
 uint32_t fportTranscodeLat(double lat)
 {
-  uint32_t tmpui = fabs(lat*1e7);  // now we have unsigned value and one bit to spare
+  uint32_t tmpui = fabs(lat*1e7f);  // now we have unsigned value and one bit to spare
   tmpui = (tmpui + tmpui / 2U) / 25U; // MSB=0 to code latitude
-  if (lat < 0.0)
+  if (lat < 0)
     tmpui |= 0x40000000;
   return tmpui;
 }
 
 uint32_t fportTranscodeLong(double lon)
 {
-  uint32_t  tmpui = fabs(lon*1e7);  // now we have unsigned value and one bit to spare
+  uint32_t  tmpui = fabs(lon*1e7f);  // now we have unsigned value and one bit to spare
   tmpui = ((tmpui + tmpui / 2U) / 25U) | 0x80000000; // MSB=1 to code longitude  
-  if (lon < 0.0)
+  if (lon < 0)
     tmpui |= 0x40000000;
   return tmpui;
 }
