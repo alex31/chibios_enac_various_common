@@ -10,10 +10,12 @@
 #include "tlsf_malloc.h"
 #endif
 
+#if HAL_USE_SERIAL_USB == TRUE
+SerialUSBDriver SDU1;
+#endif
 #if defined CONSOLE_DEV_SD
 BaseSequentialStream *chp = (BaseSequentialStream *) &CONSOLE_DEV_SD;
 #elif (CONSOLE_DEV_USB == TRUE)
-SerialUSBDriver SDU1;
 BaseSequentialStream *chp = (BaseSequentialStream *) &SDU1;
 #endif
  

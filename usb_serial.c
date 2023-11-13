@@ -251,7 +251,7 @@ static USBInEndpointState ep1instate;
 static USBOutEndpointState ep1outstate;
 
 /**
- * @brief   EP1 initialization structure (IN only).
+ * @brief   EP1 initialization structure (both IN and OUT).
  */
 static const USBEndpointConfig ep1config = {
   USB_EP_MODE_TYPE_BULK,
@@ -295,8 +295,6 @@ static const USBEndpointConfig ep2config = {
 static void usb_event(USBDriver *usbp, usbevent_t event) {
 
   switch (event) {
-  case USB_EVENT_RESET:
-    return;
   case USB_EVENT_ADDRESS:
     return;
   case USB_EVENT_CONFIGURED:
@@ -313,21 +311,29 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
 
     chSysUnlockFromISR();
     return;
+  case USB_EVENT_RESET:
+    /* Falls into.*/
   case USB_EVENT_UNCONFIGURED:
-    return;
+    /* Falls into.*/
   case USB_EVENT_SUSPEND:
     chSysLockFromISR();
     
     /* Disconnection event on suspend.*/
 #if (CH_KERNEL_MAJOR == 3)
-    sduDisconnectI(&SDU1);
-#elif (CH_KERNEL_MAJOR == 4)
-    sduSuspendHookI(&SDU1);
+    sduDisconnectI(SDU);
+#else
+    sduSuspendHookI(SDU);
 #endif
     
     chSysUnlockFromISR();
     return;
  case USB_EVENT_WAKEUP:
+    chSysLockFromISR();
+
+    /* Connection event on wakeup.*/
+    sduWakeupHookI(SDU);
+
+    chSysUnlockFromISR();
     return;
   case USB_EVENT_STALLED:
     return;
@@ -343,10 +349,7 @@ static void sof_handler(USBDriver *usbp)
   (void)usbp;
 
   chSysLockFromISR();
-#if (CH_KERNEL_MAJOR > 2)
-  extern SerialUSBDriver SDU1;
-  sduSOFHookI(&SDU1);
-#endif
+  sduSOFHookI(SDU);
   chSysUnlockFromISR();
 }
 

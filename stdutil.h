@@ -49,7 +49,7 @@
 extern BaseSequentialStream *chp;
 #endif
 
-#if (CONSOLE_DEV_USB == TRUE)
+#if HAL_USE_SERIAL_USB == TRUE
 extern SerialUSBDriver SDU1;
 #endif
 
