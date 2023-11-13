@@ -6,7 +6,7 @@
 #include "hal.h"
 #include "ff.h"
 #include "sdio.h"
-#include "rtcAccess.h"
+
 #include <ctype.h>
 #include "stdutil.h"
 #include "revportage.h"
@@ -170,7 +170,7 @@ struct  _SdLogBuffer {
 #endif //  SDLOG_NEED_QUEUE
 
 /* File system object */
-static IN_SDMMC_DMA_SECTION (FATFS fatfs); 
+static IN_SDMMC_DMA_SECTION(FATFS fatfs); 
 
 #ifdef SDLOG_NEED_QUEUE
 static size_t logMessageLen(const LogMessage *lm);
@@ -920,7 +920,7 @@ static msg_t thdSdLog(void *arg)
   } ;
 
   UINT bw;
-  static IN_SDMMC_DMA_SECTION_CLEAR (struct PerfBuffer perfBuffers[SDLOG_NUM_FILES]);
+  static IN_SDMMC_DMA_SECTION_CLEAR(struct PerfBuffer perfBuffers[SDLOG_NUM_FILES]);
   storageStatus = SDLOG_OK;
   chRegSetThreadName("thdSdLog");
   while (true) {
