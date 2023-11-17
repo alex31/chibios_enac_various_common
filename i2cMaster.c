@@ -871,6 +871,7 @@ static msg_t i2cWriteInPage24AA02 (I2CDriver *i2cd, const uint8_t chipAddr, cons
 #endif
 
 #include "i2cPeriphMpu9250.c"
+#include "i2cPeriphMpu20600.c"
 #include "i2cPeriphMPL3115A2.c"
 #include "i2cPeriphMS5611.c"
 #include "i2cPeriphMS45XX.c"

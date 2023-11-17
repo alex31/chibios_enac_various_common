@@ -33,6 +33,10 @@
 
  */
 
+#ifndef I2C_USE_IMU9250
+#define I2C_USE_IMU9250 0
+#endif
+
 #if I2C_USE_IMU9250
 
 #pragma once
