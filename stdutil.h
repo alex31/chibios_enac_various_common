@@ -377,7 +377,7 @@ F7
 #define		IN_SDMMC_SECTION_NOINIT(var) var __attribute__ ((section(SDMMC_SECTION), aligned(8)))
 #define 	IN_SDMMC_SECTION_CLEAR(var) var __attribute__ ((section(SDMMC_SECTION "_clear"), \
 								 aligned(8)))
-#define 	IN_SDMMC_SECTION(var) var __attribute__ ((section(BDMA_SECTION "_init"), aligned(8)))
+#define 	IN_SDMMC_SECTION(var) var __attribute__ ((section(SDMMC_SECTION "_init"), aligned(8)))
 #endif
   
 #if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
