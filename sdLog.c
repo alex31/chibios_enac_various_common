@@ -225,7 +225,7 @@ SdioError sdLogInit(uint32_t* freeSpaceInKo)
 #if FFCONF_DEF < 8000
   FRESULT rc = f_mount(0, &fatfs);
 #else
-  FRESULT rc = f_mount(&fatfs, "/", 1);
+  FRESULT rc = f_mount(&fatfs, "", 0);
 #endif
   
   if (rc != FR_OK) {
