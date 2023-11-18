@@ -192,7 +192,7 @@ void inv3GetVal (Inv3Driver *inv3d, float *temp,
   
   *temp = (transBuf.temp / 132.48f) + 25;
   for (int i=0; i<3; i++) {
-    acc->v[i] = transBuf.acc[i]  * 9.81f * inv3d->accScale / 32768;
+    acc->v[i] = transBuf.acc[i]  * 9.81f * inv3d->accScale / 16384;
     gyro->v[i] =  transBuf.gyro[i] * inv3d->gyroScale / 32768;
   }
 }

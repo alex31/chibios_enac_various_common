@@ -14,7 +14,7 @@
 #define SPI_WRITE_REGISTERS(spid, regAdr,...)   {			\
     spiSelect(spid);							\
     uint8_t CACHE_ALIGNED(w_array[]) = {regAdr, __VA_ARGS__};		\
-    cacheBufferFlush(w_array, 1);				\
+    cacheBufferFlush(w_array, 1);				        \
     spiSend(spid, sizeof(w_array), w_array);				\
     spiUnselect(spid);							\
   }
