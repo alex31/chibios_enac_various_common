@@ -19,7 +19,7 @@ static int32_t i2cWrite (void *userData, uint8_t reg_addr, uint8_t *data, uint16
   const msg_t status = i2cMasterCacheTransmitTimeout(lpsp->config->i2cp,
 						     lpsp->config->slaveAdr,
 						     writeBuffer, wlen,
-						     NULL, 0, 100);
+						     NULL, 0, TIME_MS2I(100));
   if (status != MSG_OK) {
     restartI2c(lpsp->config->i2cp);
     return MSG_RESET;
@@ -43,7 +43,7 @@ static int32_t i2cRead (void *userData, uint8_t reg_addr, uint8_t *data, uint16_
   
   const msg_t status = i2cMasterCacheTransmitTimeout(lpsp->config->i2cp, lpsp->config->slaveAdr,
 						     writeBuffer, sizeof(writeBuffer),
-						     readBuffer, len, 100);
+						     readBuffer, len, TIME_MS2I(100));
   memcpy(data, readBuffer, len);
   /* DebugTrace("read %u b @r%u", len, reg_addr); */
   /* for (size_t i=0; i<len; i++) { */
@@ -66,7 +66,7 @@ static int32_t i2cRead (void *userData, uint8_t reg_addr, uint8_t *data, uint16_
 
   const msg_t status = i2cMasterTransmitTimeout(lpsp->config->i2cp, lpsp->config->slaveAdr,
 						&reg_addr, sizeof(reg_addr),
-						data, len, 100);
+						data, len, TIME_MS2I(100));
 
   /* DebugTrace("read %u b @r%u", len, reg_addr); */
   /* for (size_t i=0; i<len; i++) { */

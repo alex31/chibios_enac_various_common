@@ -925,7 +925,7 @@ static msg_t thdSdLog(void *arg)
   chRegSetThreadName("thdSdLog");
   while (true) {
     LogMessage *lm=NULL;
-    const int32_t retLen = ( int32_t) (msgqueue_pop(&messagesQueue, (void **) &lm));
+    const int32_t retLen = (int32_t) (msgqueue_pop(&messagesQueue, (void **) &lm));
     if (retLen > 0) {
       FIL * const fo =  &fileDes[lm->op.fd].fil;
       uint8_t * const perfBuffer = perfBuffers[lm->op.fd].buffer;
@@ -935,7 +935,7 @@ static msg_t thdSdLog(void *arg)
       case FCNTL_FLUSH:
       case FCNTL_CLOSE:
 	{
-	  const uint16_t curBufFill = perfBuffers[lm->op.fd].size;
+	  const int32_t curBufFill = perfBuffers[lm->op.fd].size;
 	  if (fileDes[lm->op.fd].inUse) {
 	    if (curBufFill) {
 	      f_write(fo, perfBuffer, curBufFill, &bw);
@@ -979,11 +979,11 @@ static msg_t thdSdLog(void *arg)
 	      }
 	    }
 	    
-	    const uint16_t curBufFill = perfBuffers[lm->op.fd].size;
+	    const int32_t curBufFill = perfBuffers[lm->op.fd].size;
 	    const int32_t messLen = retLen-(int32_t) (sizeof(LogMessage));
 	    if (messLen < (SDLOG_WRITE_BUFFER_SIZE-curBufFill)) {
 	      // the buffer can accept this message
-	      memcpy(perfBuffer+curBufFill, lm->mess, (size_t) (messLen));
+	      memcpy(perfBuffer+curBufFill, lm->mess, messLen);
 	      perfBuffers[lm->op.fd].size += messLen;
 	      if (shouldSync) {
 		// should stay world aligned 
@@ -1015,7 +1015,7 @@ static msg_t thdSdLog(void *arg)
 		f_sync(fo);
 	      }
 	      
-	      memcpy(perfBuffer, &(lm->mess[stayLen]),  (uint32_t) (messLen-stayLen));
+	      memcpy(perfBuffer, &(lm->mess[stayLen]), (messLen-stayLen));
 	      perfBuffers[lm->op.fd].size = (uint16_t) (messLen-stayLen); // curBufFill
 	    }
 	    if (rc) {
