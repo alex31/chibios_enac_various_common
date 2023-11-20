@@ -118,7 +118,7 @@
 static struct _reent reent =  _REENT_INIT(reent);
 #pragma GCC diagnostic pop
 
-static msg_t   IN_STD_SECTION_CLEAR (queMbBuffer[SDLOG_QUEUE_BUCKETS]);
+static msg_t   IN_STD_SECTION_CLEAR(queMbBuffer[SDLOG_QUEUE_BUCKETS]);
 static MsgQueue messagesQueue;
 
 #define WRITE_BYTE_CACHE_SIZE 15 // limit overhead :
@@ -145,9 +145,7 @@ struct FilePoolUnit {
   uint8_t writeByteSeek;
 };
 
-static  struct FilePoolUnit IN_SDMMC_DMA_SECTION(fileDes[SDLOG_NUM_FILES]) =
-{[0 ... SDLOG_NUM_FILES-1] = {.fil = {{0}}, .inUse = false, .tagAtClose=false,
-				 .writeByteCache=NULL, .writeByteSeek=0}};
+static  struct FilePoolUnit IN_SDMMC_DMA_SECTION_CLEAR(fileDes[SDLOG_NUM_FILES]);
 
 static volatile size_t nbBytesWritten = 0;
 static SdioError storageStatus = SDLOG_OK;
