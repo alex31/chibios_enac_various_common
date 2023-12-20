@@ -135,17 +135,20 @@ size_t getHeapFree (void)
 void *malloc_m (size_t size)
 {
 #if CH_HEAP_USE_TLSF
-  //  DebugTrace ("tlsf alloc size=%d", size);
-  return tlsf_malloc_r(&HEAP_DEFAULT, size);
+  void * const ret = tlsf_malloc_r(&HEAP_DEFAULT, size);
 #else
-  return chHeapAlloc (&ccmHeap, size);
+  void * const ret = chHeapAlloc (&ccmHeap, size);
 #endif
+  /* DebugTrace("alloc size=%d => %p from %p", size, ret, chThdGetSelfX()); */
+  /* chThdSleepMilliseconds(10); */
+  return ret;
 }
 
 void free_m(void *p)
 {
+  /* DebugTrace("free %p from %p", p, chThdGetSelfX()); */
+  /* chThdSleepMilliseconds(10); */
 #if CH_HEAP_USE_TLSF
-  //  DebugTrace ("tlsf free 0x%x", p);
   tlsf_free_r(&HEAP_DEFAULT, p);
 #else
   chHeapFree (p);
