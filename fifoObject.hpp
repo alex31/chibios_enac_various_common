@@ -138,7 +138,7 @@ void ObjectFifo<T, FIFO_SIZE>::sendObjectI(T& obj, const FifoPriority p)
 template <typename T, size_t FIFO_SIZE>
 ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::receiveObject(sysinterval_t timeout)
 {
-  T *ptr;
+  T *ptr = nullptr;
   const msg_t status = chFifoReceiveObjectTimeout(&fifo,
 				    reinterpret_cast<void **>(&ptr),
 				    timeout);
