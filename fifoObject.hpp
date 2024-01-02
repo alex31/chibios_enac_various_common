@@ -14,11 +14,11 @@ class ObjectFifo
 
   
 public:
-  ObjectFifo (void);
+  ObjectFifo ();
 
   RetPair     	takeObject(const sysinterval_t timeout=TIME_INFINITE);
   RetPair     	takeObjectS(const sysinterval_t timeout=TIME_INFINITE);
-  RetPair     	takeObjectI(void);
+  RetPair     	takeObjectI();
 
   void		sendObject(T& obj, const FifoPriority p = FifoPriority::Regular);
   void   	sendObjectS(T& obj, const FifoPriority p = FifoPriority::Regular);
@@ -26,12 +26,16 @@ public:
 
   RetPair  	receiveObject(sysinterval_t timeout=TIME_INFINITE);
   RetPair  	receiveObjectS(sysinterval_t timeout=TIME_INFINITE);
-  RetPair  	receiveObjectI(void);
+  RetPair  	receiveObjectI();
 
   void   	returnObject(T& obj);
   void   	returnObjectI(T& obj);
 
-  constexpr size_t fifoLen(void) {return FIFO_SIZE;};
+  constexpr size_t fifoLen();
+  size_t	fifoUsedI();
+  size_t	fifoFreeI();
+  size_t	fifoUsed();
+  size_t	fifoFree();
   
 private:
   T msg_pool[FIFO_SIZE];
@@ -81,7 +85,7 @@ ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::takeObjectS(const sy
 }
 
 template <typename T, size_t FIFO_SIZE>
-ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::takeObjectI(void)
+ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::takeObjectI()
 {
   const auto ptrToObj = static_cast<T *> (chFifoTakeObjectI(&fifo));
   const msg_t status = ptrToObj != nullptr ? MSG_OK : MSG_TIMEOUT;
@@ -184,4 +188,38 @@ template <typename T, size_t FIFO_SIZE>
 void ObjectFifo<T, FIFO_SIZE>::returnObjectI(T& obj)
 {
   chFifoReturnObjectI(&fifo, &obj);
+}
+
+template <typename T, size_t FIFO_SIZE>
+size_t	ObjectFifo<T, FIFO_SIZE>::fifoUsedI() {return chMBGetFreeCountI(&fifo.mbx);}
+
+template <typename T, size_t FIFO_SIZE>
+size_t	ObjectFifo<T, FIFO_SIZE>::fifoFreeI() {return chMBGetUsedCountI(&fifo.mbx);}
+
+/*
+#                  __                     __                     _ 
+#                 / _|                   / /                    | |
+#                | |_ _ __ ___  ___     / /   _   _ ___  ___  __| |
+#                |  _| '__/ _ \/ _ \   / /   | | | / __|/ _ \/ _` |
+#                | | | | |  __/  __/  / /    | |_| \__ \  __/ (_| |
+#                |_| |_|  \___|\___| /_/      \__,_|___/\___|\__,_|
+#                                                                  
+#                                                                  
+*/
+
+
+template <typename T, size_t FIFO_SIZE>
+size_t	ObjectFifo<T, FIFO_SIZE>::fifoUsed() {
+  chSysLock();
+  auto ret = chMBGetUsedCountI(&fifo.mbx);
+  chSysUnlock();
+  return ret;
+}
+
+template <typename T, size_t FIFO_SIZE>
+size_t	ObjectFifo<T, FIFO_SIZE>::fifoFree() {
+  chSysLock();
+  auto ret = chMBGetFreeCountI(&fifo.mbx);
+  chSysUnlock();
+  return ret;
 }
