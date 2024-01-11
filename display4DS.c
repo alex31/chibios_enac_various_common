@@ -674,12 +674,12 @@ void fdsDrawRect (FdsDriver *fdsConfig,
  }
 
 void fdsDrawPolyLine (FdsDriver *fdsConfig, 
-		       const uint16_t len,
-		       const PolyPoint * const pp,
-		       const uint8_t colorIndex)
-  
+		      uint16_t len,
+		      const PolyPoint * const pp,
+		      const uint8_t colorIndex)
 {
   RET_UNLESS_INIT(fdsConfig);
+  if (len > 300) len = 300;
   struct {
     uint16_t vx[len];
     uint16_t vy[len];
@@ -718,7 +718,7 @@ static uint16_t fdsTouchGet (const FdsDriver *fdsConfig, uint16_t mode)
 {
   if (fdsIsInitialised(fdsConfig) == false) 
     return 0xff;
-  uint16_t value;
+  uint16_t value = 0;
   
   touch_get(fdsConfig, mode, &value);
   return value;
@@ -747,7 +747,7 @@ bool fdsInitSdCard (FdsDriver *fdsConfig)
 { 
   if (fdsIsInitialised(fdsConfig) == false) return false;
 
-  uint16_t status;
+  uint16_t status = 0;
   media_init(fdsConfig, &status);
 
   if (status != 0) {
@@ -838,8 +838,9 @@ void fdsDisplayGci (FdsDriver *fdsConfig, const uint16_t handle, uint32_t offset
 /* va_start(argp, format); */
 /* char char_to_print = va_arg(argp, int); */
 
-bool fdsCallFunction(FdsDriver *fdsConfig, uint16_t handle, uint16_t *retVal, const size_t numArgs, ...)
+bool fdsCallFunction(FdsDriver *fdsConfig, uint16_t handle, uint16_t *retVal, size_t numArgs, ...)
 {
+    if (numArgs > 128) numArgs = 128;
     uint16_t args[numArgs];
     va_list argp;
     va_start(argp, numArgs);
@@ -850,8 +851,9 @@ bool fdsCallFunction(FdsDriver *fdsConfig, uint16_t handle, uint16_t *retVal, co
     return file_callFunction(fdsConfig, handle, numArgs, args, retVal);
 }
 
-bool fdsFileRun(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...)
+bool fdsFileRun(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, size_t numArgs, ...)
 {
+    if (numArgs > 128) numArgs = 128;
     uint16_t args[numArgs];
     va_list argp;
     va_start(argp, numArgs);
@@ -862,8 +864,9 @@ bool fdsFileRun(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, co
     return file_run(fdsConfig, filename, numArgs, args, retVal);
 }
 
-bool fdsFileExec(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, const size_t numArgs, ...)
+bool fdsFileExec(FdsDriver *fdsConfig, const char *filename, uint16_t *retVal, size_t numArgs, ...)
 {
+    if (numArgs > 128) numArgs = 128;
     uint16_t args[numArgs];
     va_list argp;
     va_start(argp, numArgs);
@@ -912,7 +915,7 @@ static void fdsScreenSaverTimout (const FdsDriver *fdsConfig, uint16_t timout)
 static uint32_t fdsGetFileError  (const FdsDriver *fdsConfig)
 {
   if (fdsIsInitialised(fdsConfig) == false) return 0;
-  uint16_t errno;
+  uint16_t errno = 0;
 
   file_error(fdsConfig, &errno);
   return errno;
@@ -929,7 +932,7 @@ static bool fdsFileSeek  (const FdsDriver *fdsConfig, const uint16_t handle, con
       uint16_t hi;
     };
   } ofst = {.val = offset};
-  uint16_t status;
+  uint16_t status = 0;
   file_seek(fdsConfig, handle, ofst.hi, ofst.lo, &status);
   
   return status == 1;
