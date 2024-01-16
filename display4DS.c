@@ -237,6 +237,7 @@ bool fdsSetBaud (FdsDriver *fdsConfig, uint32_t baud)
   }
     break;
 
+  case FDS_PIXXI:
   case FDS_PICASO: {
     switch(baud) {
     case 110    : baudCode = 0x0;  actualbaudRate = 110; break;
@@ -391,6 +392,7 @@ bool fdsPrintBuffer (FdsDriver *fdsConfig, const char *buffer)
   bool ret = false;
   switch(fdsConfig->deviceType) {
   case FDS_GOLDELOX :
+  case FDS_PIXXI:
   case FDS_PICASO :
   case FDS_DIABLO16 : 
     ret = txt_moveCursor(fdsConfig, fdsConfig->curYpos, fdsConfig->curXpos);
@@ -429,6 +431,7 @@ void fdsSetTextBgColor (FdsDriver *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
   fdsConfig->tbg[0] = mkColor24(r,g,b);
   switch(fdsConfig->deviceType) {
   case FDS_GOLDELOX :
+  case FDS_PIXXI:
   case FDS_PICASO : 
   case FDS_DIABLO16 :
     txt_bgColour(fdsConfig,  fds_colorDecTo16b(r,g,b), NULL);
@@ -447,6 +450,7 @@ void fdsSetTextFgColor (FdsDriver *fdsConfig, uint8_t r, uint8_t g, uint8_t b)
   fdsConfig->fg[0] = mkColor24(r,g,b);
   switch(fdsConfig->deviceType) {
   case FDS_GOLDELOX :
+  case FDS_PIXXI:
   case FDS_PICASO : 
   case FDS_DIABLO16 :
     txt_fgColour(fdsConfig,  fds_colorDecTo16b(r,g,b), NULL);
