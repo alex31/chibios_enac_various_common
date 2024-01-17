@@ -190,6 +190,9 @@ void systemDeepSleep (void)
   PWR->CR1 =  (PWR->CR1 & (~PWR_CR1_LPMS)) | PWR_CR1_LPMS_SHUTDOWN;
 #elif defined(STM32H7XX)
   PWR->CPUCR |= PWR_CPUCR_PDDS_D1 | PWR_CPUCR_PDDS_D2 | PWR_CPUCR_PDDS_D3;
+#elif defined(STM32G4XX)
+  PWR->CR1 |= PWR_CR1_LPMS_SHUTDOWN;
+  PWR->SR1 &= PWR_SR1_WUF;
 #else
 #error neither F3XX, F4XX, F7XX, H7XX, L4XX : should be implemented
 #endif
@@ -236,6 +239,9 @@ void systemDeepSleepFromISR (void)
   PWR->CR1 =  (PWR->CR1 & (~PWR_CR1_LPMS)) | PWR_CR1_LPMS_SHUTDOWN;
 #elif defined(STM32H7XX)
   PWR->CPUCR |= PWR_CPUCR_PDDS_D1 | PWR_CPUCR_PDDS_D2 | PWR_CPUCR_PDDS_D3;
+#elif defined(STM32G4XX)
+  PWR->CR1 |= PWR_CR1_LPMS_SHUTDOWN;
+  PWR->SR1 &= PWR_SR1_WUF;
 #else
 #error neither F3XX, F4XX, F7XX, H7XX, L4XX : should be implemented
 #endif
@@ -454,7 +460,9 @@ const char* getGpioName (const ioportid_t p)
   _GPIOTEST(GPIOG);
 #endif
 #endif
+#if (!defined STM32G4XX)
   _GPIOTEST(GPIOH);
+#endif
 
   return "Unknown GPIO";
 }
@@ -490,7 +498,7 @@ int32_t get_stack_free (const thread_t *tp)
 #if (CH_KERNEL_MAJOR == 3)
   unsigned long long *stkAdr =  (unsigned long long *) ((uint8_t *) tp->p_stklimit);
 #elif (CH_KERNEL_MAJOR >= 4)
-  unsigned long long *stkAdr =  (unsigned long long *) ((uint8_t *) tp->wabase);
+  unsigned long long *stkAdr =  (unsigned long long *) tp->wabase;
 #endif
   
   while ((stkAdr[index] == 0x5555555555555555) && ( ((uint8_t *) &(stkAdr[index])) < &__ram0_end__))
