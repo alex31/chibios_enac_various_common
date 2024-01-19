@@ -57,7 +57,7 @@ static const SDCConfig sdc1bitCfg = {
   #                |_| |_| |_|      |_____|        
 */
 
-bool sdioIsCardResponding(void)
+bool sdioIsCardResponding (void)
 {
   if (SDCD1.state == BLK_READY) 
     return true;
@@ -89,11 +89,11 @@ bool sdioConnect (void)
 
   sdcStart(&SDCD1, &sdc1bitCfg);
   uint32_t count = 10;
-  while ((sdcConnect(&SDCD1) != OSAL_SUCCESS) && count--) {
+  while ((sdcConnect(&SDCD1) != OSAL_SUCCESS) && --count) {
     chThdSleepMilliseconds(100);
   }
 
-  return count != 0;
+  return SDCD1.state == BLK_READY;
 }
 
 
