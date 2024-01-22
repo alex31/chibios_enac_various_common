@@ -33,10 +33,23 @@
 #include "stdutil.h"
 #include <string.h>
 
+
+/*
+  TODO : remove all static variables in the driver to make it reentrant 
+  : should be able to operate multiple lfs mount in //
+  need a config struct
+  need a driver struct
+  need a function that return lfs from driver to directlu use lfs API
+  
+  * optionnaly use hardware assisted CRC(ethernet) calculation
+    ° H7 : DMA+CRC
+
+ */
+
 /*===========================================================================*/
 /* Module local definitions.                                                 */
 /*===========================================================================*/
-
+#define LFS_LOOKAHEAD_BUFFER_SIZE 16U
 /*===========================================================================*/
 /* Module exported variables.                                                */
 /*===========================================================================*/
@@ -46,16 +59,17 @@
 /*===========================================================================*/
 typedef struct  {
   SDCDriver *sdcd;
+  size_t blk_num;
   mutex_t mtx;
   uint8_t lfs_read_buffer[MMCSD_BLOCK_SIZE];
   uint8_t lfs_prog_buffer[MMCSD_BLOCK_SIZE];
-  uint8_t lfs_lookahead_buffer[MMCSD_BLOCK_SIZE];
+  uint8_t lfs_lookahead_buffer[LFS_LOOKAHEAD_BUFFER_SIZE];
 } lfs_sd_context;
 
 /*===========================================================================*/
 /* Module local variables.                                                   */
 /*===========================================================================*/
-static lfs_sd_context context;
+static lfs_sd_context  IN_DMA_SECTION_NOINIT(context);
 
 static struct lfs_config lfscfg = {
     /* Link to the flash device driver.*/
@@ -73,10 +87,10 @@ static struct lfs_config lfscfg = {
   .read_size          = MMCSD_BLOCK_SIZE,
   .prog_size          = MMCSD_BLOCK_SIZE,
   .block_size         = MMCSD_BLOCK_SIZE,
-  .block_count        = 4096,//4 * (2 * 1024 * 1024),
-  .block_cycles       = -1,
+  .block_count        = 0, // dynamically set from SD capacity
+  .block_cycles       = -1, // block device take care of wear leveling
   .cache_size         = MMCSD_BLOCK_SIZE,
-  .lookahead_size     = MMCSD_BLOCK_SIZE,
+  .lookahead_size     = LFS_LOOKAHEAD_BUFFER_SIZE,
   .read_buffer        = context.lfs_read_buffer,
   .prog_buffer        = context.lfs_prog_buffer,
   .lookahead_buffer   = context.lfs_lookahead_buffer,
@@ -91,30 +105,42 @@ static lfs_t lfs;
 /*===========================================================================*/
 /* Module local functions.                                                   */
 /*===========================================================================*/
-static bool sdio_start();
+static bool sdio_start(lfs_sd_context  *ctx);
 /*===========================================================================*/
 /* Module exported functions.                                                */
 /*===========================================================================*/
 
-lfs_t* lfs_sd_init(SDCDriver* sdcd)  
+lfs_t* lfs_sd_init(SDCDriver* sdcd, lfs_sd_init_t flags)  
 {
   context.sdcd = sdcd;
   chMtxObjectInit(&context.mtx);
-  if (!sdio_start())
+  int err;
+  
+  if (!sdio_start(&context))
     return nullptr;
-  int err = lfs_mount(&lfs, &lfscfg);
-  if (err < 0) {
+
+  lfscfg.block_count = context.blk_num;
+  if (flags & LFS_SD_FORMAT) {
     err = lfs_format(&lfs, &lfscfg);
     if (err < 0) {
       return nullptr;
     }
-    err = lfs_mount(&lfs, &lfscfg);
-    if (err < 0) {
-      return nullptr;
-    }
+  }
+
+  err = lfs_mount(&lfs, &lfscfg);
+  if (err < 0) {
+    return nullptr;
   }
   
   return &lfs;
+}
+
+void   lfs_sd_file_cache_init(lfs_sd_file_cache_t * const cache,
+			      struct lfs_file_config *lfs_file_cfg)
+{
+  lfs_file_cfg->buffer = cache->lfs_file_buffer;
+  lfs_file_cfg->attrs = nullptr;
+  lfs_file_cfg->attr_count = 0;
 }
 
 uint32_t lfs_crc(uint32_t crc, const void *buffer, size_t size)
@@ -135,14 +161,15 @@ uint32_t lfs_crc(uint32_t crc, const void *buffer, size_t size)
   return crc;
 }
 
-void *lfs_malloc(size_t s)
-{
-  return malloc_m(s);
+void *lfs_malloc(size_t)
+{ 
+  chSysHalt("malloc");
+  return nullptr;
 }
 
-void lfs_free(void *p)
+void lfs_free(void *)
 {
-  free_m(p);
+  chSysHalt("free");
 }
 /*
   POSSIBLE STATUS VALUE returned to LITTLEFS:
@@ -171,12 +198,12 @@ int __lfs_read_flash(const struct lfs_config *c, lfs_block_t block,
 }
 ======
 */
-static uint8_t wpBuffer[MMCSD_BLOCK_SIZE];
 
 int __lfs_sd_read(const struct lfs_config *c, lfs_block_t block,
                lfs_off_t offset, void *buffer, lfs_size_t size)
 {
-  chDbgAssert(offset < MMCSD_BLOCK_SIZE, "offset should be < MMCSD_BLOCK_SIZE");
+  chDbgAssert(offset == 0, "offset should be 0");
+  chDbgAssert(size == MMCSD_BLOCK_SIZE, "size should be MMCSD_BLOCK_SIZE");
   lfs_sd_context *ctx = (lfs_sd_context *) c->context;
   SDCDriver *sdcd = ctx->sdcd;
 
@@ -188,49 +215,18 @@ int __lfs_sd_read(const struct lfs_config *c, lfs_block_t block,
     size : size in byte
    */
 
-  // simple case : all is aligned to blocks
-  if ((offset == 0) && ((size % MMCSD_BLOCK_SIZE)) == 0) {
-    const bool sdcStatus = sdcRead(sdcd, block, buffer, size / MMCSD_BLOCK_SIZE);
-    return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
-  }
-
-  // other case, either offset and/or size is not multiple of block size
-  // we will keep size and curBuffer moving along
-  uint8_t *curBuffer = buffer;
-
-  // first block is partial : copy block to working buffer
-  // then copy what is ask to return buffer
-  bool sdcStatus = sdcRead(sdcd, block, wpBuffer, 1);
-  if (sdcStatus != HAL_SUCCESS) return  LFS_ERR_IO;
-  memcpy(curBuffer, &wpBuffer[offset], MMCSD_BLOCK_SIZE - offset);
-  curBuffer += offset;
-  size -= (MMCSD_BLOCK_SIZE-offset);
-  block++;
-
-  // all middle complete blocks if there is
-  const int32_t nbFullBlocsLeft = size / MMCSD_BLOCK_SIZE;
-  if (nbFullBlocsLeft) {
-     sdcStatus = sdcRead(sdcd, block, curBuffer, nbFullBlocsLeft);
-     if (sdcStatus != HAL_SUCCESS) return  LFS_ERR_IO;
-     curBuffer += (nbFullBlocsLeft * MMCSD_BLOCK_SIZE);
-     size -= (nbFullBlocsLeft * MMCSD_BLOCK_SIZE);
-     block += nbFullBlocsLeft;
-  }
-  
-  // last block is partial : copy block to working buffer
-  // then copy what is ask to return buffer
-   sdcStatus = sdcRead(sdcd, block, wpBuffer, 1);
-   if (sdcStatus != HAL_SUCCESS) return  LFS_ERR_IO;
-   memcpy(curBuffer, wpBuffer, size);
-  return LFS_ERR_OK;
+  const bool sdcStatus = sdcRead(sdcd, block, buffer, size / MMCSD_BLOCK_SIZE);
+  return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
 }
 
 int __lfs_sd_prog(const struct lfs_config *c, lfs_block_t block,
                lfs_off_t offset, const void *buffer, lfs_size_t size)
 {
-  chDbgAssert(offset < MMCSD_BLOCK_SIZE, "offset should be < MMCSD_BLOCK_SIZE");
+  chDbgAssert(offset == 0, "offset should be 0");
+  chDbgAssert(size == MMCSD_BLOCK_SIZE, "size should be MMCSD_BLOCK_SIZE");
+
   lfs_sd_context *ctx = (lfs_sd_context *) c->context;
-  SDCDriver * const sdcd = ctx->sdcd;
+  SDCDriver *sdcd = ctx->sdcd;
 
   if (!sdioIsConnected())
       return  LFS_ERR_IO;
@@ -240,56 +236,24 @@ int __lfs_sd_prog(const struct lfs_config *c, lfs_block_t block,
     size : size in byte
    */
 
-  // simple case : all is aligned to blocks
-  if ((offset == 0) && ((size % MMCSD_BLOCK_SIZE)) == 0) {
-    const bool sdcStatus = sdcWrite(sdcd, block, buffer, size / MMCSD_BLOCK_SIZE);
-    return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
-  }
-
-  // other case, either offset and/or size is not multiple of block size
-  // we will keep size and curBuffer moving along
-  const uint8_t *curBuffer = buffer;
-
-  // first block is partial : read block in working buffer
-  // then modify working buffer with beginning of buffer
-  // then write block
-  bool sdcStatus = sdcRead(sdcd, block, wpBuffer, 1);
-  if (sdcStatus != HAL_SUCCESS) return  LFS_ERR_IO;
-  memcpy(&wpBuffer[offset], curBuffer, MMCSD_BLOCK_SIZE - offset);
-  sdcStatus = sdcWrite(sdcd, block, wpBuffer, 1);
-  if (sdcStatus != HAL_SUCCESS) return  LFS_ERR_IO;
-  curBuffer += offset;
-  size -= (MMCSD_BLOCK_SIZE-offset);
-  block++;
-
-  // all middle complete blocks if there is
-  const int32_t nbFullBlocsLeft = size / MMCSD_BLOCK_SIZE;
-  if (nbFullBlocsLeft) {
-     sdcStatus = sdcWrite(sdcd, block, curBuffer, nbFullBlocsLeft);
-     if (sdcStatus != HAL_SUCCESS) return  LFS_ERR_IO;
-     curBuffer += (nbFullBlocsLeft * MMCSD_BLOCK_SIZE);
-     size -= (nbFullBlocsLeft * MMCSD_BLOCK_SIZE);
-     block += nbFullBlocsLeft;
-  }
-  
-  // last block is partial : read block in working buffer
-  // then modify working buffer with end of buffer
-  // then write block
-  sdcStatus = sdcRead(sdcd, block, wpBuffer, 1);
-  if (sdcStatus != HAL_SUCCESS) return  LFS_ERR_IO;
-  memcpy(wpBuffer, curBuffer, size);
-  sdcStatus = sdcWrite(sdcd, block, wpBuffer, 1);
-  if (sdcStatus != HAL_SUCCESS) return  LFS_ERR_IO;
-  
-  return LFS_ERR_OK;
+  const bool sdcStatus = sdcWrite(sdcd, block, buffer, size / MMCSD_BLOCK_SIZE);
+  return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
 }
 
-int __lfs_sd_erase(const struct lfs_config *c, lfs_block_t block)
+/* int __lfs_sd_erase(const struct lfs_config *c, lfs_block_t block) */
+/* { */
+/*   lfs_sd_context *ctx = (lfs_sd_context *) c->context; */
+/*   SDCDriver * const sdcd = ctx->sdcd; */
+/*   const bool sdcStatus = sdcErase(sdcd, block, block); */
+/*   return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO; */
+/* } */
+
+/*
+  block device should take care of erasing flash
+ */
+int __lfs_sd_erase(const struct lfs_config *, lfs_block_t )
 {
-  lfs_sd_context *ctx = (lfs_sd_context *) c->context;
-  SDCDriver * const sdcd = ctx->sdcd;
-  const bool sdcStatus = sdcErase(sdcd, block, 1);
-  return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
+  return LFS_ERR_OK;
 }
 
 int __lfs_sd_sync(const struct lfs_config *c)
@@ -326,7 +290,7 @@ int __lfs_sd_unlock(const struct lfs_config *c)
 #                |_|     |_|    |_|    \_/    \__,_|  \__|   \___|        
 */
 
-static bool sdio_start()
+static bool sdio_start(lfs_sd_context *ctx)
 {
   if  (!sdc_lld_is_card_inserted (nullptr))
     return  false;
@@ -335,7 +299,14 @@ static bool sdio_start()
     if (sdioConnect() == FALSE)
       return  false;
   
-  
+  BlockDeviceInfo bdi = {};
+  if (blkGetInfo(ctx->sdcd, &bdi)) {
+    return false;
+  }
+  ctx->blk_num = bdi.blk_num;
+
+  chDbgAssert(bdi.blk_size == MMCSD_BLOCK_SIZE,
+	      "device reported non compatible block size");
   return true;
 }
 

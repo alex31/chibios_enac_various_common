@@ -49,7 +49,10 @@
 /*===========================================================================*/
 /* Module data structures and types.                                         */
 /*===========================================================================*/
-
+typedef enum {LFS_SD_MOUNT=0, LFS_SD_FORMAT=1}  lfs_sd_init_t;
+typedef struct {
+   uint8_t lfs_file_buffer[MMCSD_BLOCK_SIZE];
+} lfs_sd_file_cache_t;
 /*===========================================================================*/
 /* Module macros.                                                            */
 /*===========================================================================*/
@@ -61,16 +64,18 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-lfs_t* lfs_sd_init(SDCDriver* sdcd);
-
-int __lfs_sd_read(const struct lfs_config *c, lfs_block_t block,
-	       lfs_off_t off, void *buffer, lfs_size_t size);
-int __lfs_sd_prog(const struct lfs_config *c, lfs_block_t block,
-	       lfs_off_t off, const void *buffer, lfs_size_t size);
-int __lfs_sd_erase(const struct lfs_config *c, lfs_block_t block);
-int __lfs_sd_sync(const struct lfs_config *c);
-int __lfs_sd_lock(const struct lfs_config *c);
-int __lfs_sd_unlock(const struct lfs_config *c);
+  lfs_t* lfs_sd_init(SDCDriver* sdcd, lfs_sd_init_t flags);
+  void   lfs_sd_file_cache_init(lfs_sd_file_cache_t * const cache,
+				struct lfs_file_config *lfs_file_cfg);
+  
+  int __lfs_sd_read(const struct lfs_config *c, lfs_block_t block,
+		    lfs_off_t off, void *buffer, lfs_size_t size);
+  int __lfs_sd_prog(const struct lfs_config *c, lfs_block_t block,
+		    lfs_off_t off, const void *buffer, lfs_size_t size);
+  int __lfs_sd_erase(const struct lfs_config *c, lfs_block_t block);
+  int __lfs_sd_sync(const struct lfs_config *c);
+  int __lfs_sd_lock(const struct lfs_config *c);
+  int __lfs_sd_unlock(const struct lfs_config *c);
 #ifdef __cplusplus
 }
 #endif
