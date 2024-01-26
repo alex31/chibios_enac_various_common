@@ -28,22 +28,26 @@
  * @{
  */
 
+
+
 #include "lfs_sd_hal.h"
 #include "sdio.h"
-#include "stdutil.h"
+//#include "stdutil.h"
 #include <string.h>
-
-
+#if STM32_CRC_PROGRAMMABLE
+#include "hal_stm32_crc_v1.h"
+#endif
 /*
   TODO :
 
-  * API plus simple et generique pour les attrib avec la fonction set_attrib
+  * compiletime option to use hardware assisted CRC(ethernet) calculation
+    ° pb si il y a 2 FS : partage du CRCDMA
 
+  * tester la taille des caches != MMCSD_BLOCK_SIZE
 
-  * optionnaly use hardware assisted CRC(ethernet) calculation
-    ° F7,H7 : DMA+CRC
+  * M2M DMA with DMAMUX enabled MCU ?
 
- */
+  */
 
 /*===========================================================================*/
 /* Module local definitions.                                                 */
@@ -83,12 +87,12 @@ static const struct lfs_config lfs_cfg_skl = {
   .unlock             = __lfs_sd_unlock,
   
   /* Block device configuration.*/
-  .read_size          = MMCSD_BLOCK_SIZE,
-  .prog_size          = MMCSD_BLOCK_SIZE,
+  .read_size          = LFS_CACHES_SIZE,
+  .prog_size          = LFS_CACHES_SIZE,
   .block_size         = MMCSD_BLOCK_SIZE,
   .block_count        = 0,  // dynamically set from SD capacity
   .block_cycles       = -1, // block device take care of wear leveling
-  .cache_size         = MMCSD_BLOCK_SIZE,
+  .cache_size         = LFS_CACHES_SIZE,
   .lookahead_size     = LFS_LOOKAHEAD_BUFFER_SIZE,
   .read_buffer        = nullptr, // dynamically set from LfsSdDriver
   .prog_buffer        = nullptr, // dynamically set from LfsSdDriver
@@ -105,6 +109,9 @@ static const struct lfs_config lfs_cfg_skl = {
 /* Module local functions.                                                   */
 /*===========================================================================*/
 static bool sdio_start(LfsSdDriver  *lfsSdd);
+#if STM32_CRC_PROGRAMMABLE
+static void init_crc(void);
+#endif
 /*===========================================================================*/
 /* Module exported functions.                                                */
 /*===========================================================================*/
@@ -115,6 +122,10 @@ lfs_t* lfsSdStart(LfsSdDriver *lfsSdd, const LfsSdConfig *cfg)
   lfsSdd->lfs_cfg = lfs_cfg_skl;
   chMtxObjectInit(&lfsSdd->mtx);
   int err;
+  
+#if STM32_CRC_PROGRAMMABLE
+  init_crc();
+#endif
   
   if (!sdio_start(lfsSdd))
     return nullptr;
@@ -142,24 +153,42 @@ lfs_t* lfsSdStart(LfsSdDriver *lfsSdd, const LfsSdConfig *cfg)
 void   lfsSdFileCacheInit(LfsSdFileCache *cache,
 			  struct lfs_file_config *lfs_file_cfg)
 {
+  lfs_file_cfg->buffer = cache->lfs_file_buffer;
+  lfs_file_cfg->attrs = nullptr;
+  lfs_file_cfg->attr_count = 0;
+}
+
+int   lfsSdSetTime(lfs_t*lfs, const char *path,
+		      LfsSdAttribType timeAttrType)
+{
   struct tm tim;
   RTCDateTime timespec;
   
   rtcGetTime(&RTCD1, &timespec);
   rtcConvertDateTimeToStructTm(&timespec, &tim, NULL);
-  cache->creationTime = mktime(&tim);
-  cache->lfsAttr = (struct lfs_attr) {
-    .type = LFS_ATTR_CREATION_TIME,
-    .buffer = &cache->creationTime,
-    .size = sizeof(cache->creationTime)
-  };
-
-  lfs_file_cfg->buffer = cache->lfs_file_buffer;
-  lfs_file_cfg->attrs = &cache->lfsAttr;
-  lfs_file_cfg->attr_count = 1;
+  const time_t creationTime = mktime(&tim);
+  return lfs_setattr(lfs, path, timeAttrType, &creationTime,
+		     sizeof(creationTime));
 }
 
+#if STM32_CRC_PROGRAMMABLE
 uint32_t lfs_crc(uint32_t crc, const void *buffer, size_t size)
+{
+  if (size == 0)
+    return crc;
+
+  //  if (size > 8)
+  //    DebugTrace("crc size = %u", size);
+  crcAcquireUnit(&CRCD1);
+  crcSetInitialValue(&CRCD1, crc);
+  crcReset(&CRCD1);
+  
+  const uint32_t rcrc = crcCalc(&CRCD1, buffer, size);
+  crcReleaseUnit(&CRCD1);
+  return rcrc;
+}
+#else
+uint32_t lfs_crc(uint32_t crc, const void * const buffer, const size_t size)
 {
   static const uint32_t rtable[16] = {0x00000000, 0x1db71064, 0x3b6e20c8,
                                       0x26d930ac, 0x76dc4190, 0x6b6b51f4,
@@ -168,7 +197,7 @@ uint32_t lfs_crc(uint32_t crc, const void *buffer, size_t size)
                                       0x9b64c2b0, 0x86d3d2d4, 0xa00ae278,
                                       0xbdbdf21c, };
   const uint8_t *data = buffer;
-
+  
   for (size_t i = 0; i < size; i++) {
     crc = (crc >> 4) ^ rtable[(crc ^ (data[i] >> 0)) & 0xf];
     crc = (crc >> 4) ^ rtable[(crc ^ (data[i] >> 4)) & 0xf];
@@ -176,6 +205,7 @@ uint32_t lfs_crc(uint32_t crc, const void *buffer, size_t size)
 
   return crc;
 }
+#endif
 
 void *lfs_malloc(size_t)
 { 
@@ -219,7 +249,7 @@ int __lfs_sd_read(const struct lfs_config *c, lfs_block_t block,
                lfs_off_t offset, void *buffer, lfs_size_t size)
 {
   chDbgAssert(offset == 0, "offset should be 0");
-  chDbgAssert(size == MMCSD_BLOCK_SIZE, "size should be MMCSD_BLOCK_SIZE");
+  chDbgAssert(size % MMCSD_BLOCK_SIZE == 0, "size should be multiple of MMCSD_BLOCK_SIZE");
   LfsSdDriver *lfsSdd = (LfsSdDriver *) c->context;
   SDCDriver *sdcd = lfsSdd->cfg->sdcd;
 
@@ -239,7 +269,7 @@ int __lfs_sd_prog(const struct lfs_config *c, lfs_block_t block,
                lfs_off_t offset, const void *buffer, lfs_size_t size)
 {
   chDbgAssert(offset == 0, "offset should be 0");
-  chDbgAssert(size == MMCSD_BLOCK_SIZE, "size should be MMCSD_BLOCK_SIZE");
+  chDbgAssert(size % MMCSD_BLOCK_SIZE == 0, "size should be multiple of MMCSD_BLOCK_SIZE");
   LfsSdDriver *lfsSdd = (LfsSdDriver *) c->context;
   SDCDriver *sdcd = lfsSdd->cfg->sdcd;
 
@@ -320,5 +350,16 @@ static bool sdio_start(LfsSdDriver  *lfsSdd)
 	      "device reported non compatible block size");
   return true;
 }
+
+#if STM32_CRC_PROGRAMMABLE
+static void init_crc(void)
+{
+  if (CRCD1.state != CRC_READY) {
+    crcInit();
+    crcObjectInit(&CRCD1);
+    crcStart(&CRCD1, nullptr);
+  }
+}
+#endif
 
 /** @} */
