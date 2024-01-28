@@ -84,12 +84,12 @@ static const struct lfs_config lfs_cfg_skl = {
   .unlock             = __lfs_sd_unlock,
   
   /* Block device configuration.*/
-  .read_size          = LFS_CACHES_SIZE,
-  .prog_size          = LFS_CACHES_SIZE,
+  .read_size          = MMCSD_BLOCK_SIZE,
+  .prog_size          = MMCSD_BLOCK_SIZE,
   .block_size         = MMCSD_BLOCK_SIZE,
   .block_count        = 0,  // dynamically set from SD capacity
   .block_cycles       = -1, // block device take care of wear leveling
-  .cache_size         = LFS_CACHES_SIZE,
+  .cache_size         = MMCSD_BLOCK_SIZE,
   .lookahead_size     = LFS_LOOKAHEAD_BUFFER_SIZE,
   .read_buffer        = nullptr, // dynamically set from LfsSdDriver
   .prog_buffer        = nullptr, // dynamically set from LfsSdDriver

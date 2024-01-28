@@ -18,15 +18,6 @@
 #define LFS_LOOKAHEAD_BUFFER_SIZE 16U
 #endif
 
-// if redefined, must me a multiple of MMCSD_BLOCK_SIZE
-#ifndef  LFS_CACHES_SIZE
-#define  LFS_CACHES_SIZE MMCSD_BLOCK_SIZE
-#endif
-
-#if (LFS_CACHES_SIZE % MMCSD_BLOCK_SIZE)
-#error "LFS_CACHES_SIZE must be a multiple of MMCSD_BLOCK_SIZE"
-#endif
-
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -52,15 +43,15 @@ typedef struct {
   size_t blk_num;
   mutex_t mtx;
   struct lfs_config lfs_cfg;
-  uint8_t lfs_read_buffer[LFS_CACHES_SIZE];
-  uint8_t lfs_prog_buffer[LFS_CACHES_SIZE];
+  uint8_t lfs_read_buffer[MMCSD_BLOCK_SIZE];
+  uint8_t lfs_prog_buffer[MMCSD_BLOCK_SIZE];
   uint8_t lfs_lookahead_buffer[LFS_LOOKAHEAD_BUFFER_SIZE];
 } LfsSdDriver;
 
 typedef struct {
   //  time_t creationTime;
   //  struct lfs_attr lfsAttr;
-  uint8_t lfs_file_buffer[LFS_CACHES_SIZE];
+  uint8_t lfs_file_buffer[MMCSD_BLOCK_SIZE];
 } LfsSdFileCache;
 /*===========================================================================*/
 /* Module macros.                                                            */
