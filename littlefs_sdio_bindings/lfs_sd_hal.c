@@ -40,12 +40,9 @@
 /*
   TODO :
 
-  * compiletime option to use hardware assisted CRC(ethernet) calculation
-    ° pb si il y a 2 FS : partage du CRCDMA
-
+  * resoudre le pb du sdcErase bug
   * tester la taille des caches != MMCSD_BLOCK_SIZE
 
-  * M2M DMA with DMAMUX enabled MCU ?
 
   */
 
@@ -285,21 +282,25 @@ int __lfs_sd_prog(const struct lfs_config *c, lfs_block_t block,
   return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
 }
 
-/* int __lfs_sd_erase(const struct lfs_config *c, lfs_block_t block) */
-/* { */
-/*   lfs_sd_context *ctx = (lfs_sd_context *) c->context; */
-/*   SDCDriver * const sdcd = ctx->sdcd; */
-/*   const bool sdcStatus = sdcErase(sdcd, block, block); */
-/*   return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO; */
-/* } */
-
-/*
-  block device should take care of erasing flash
- */
-int __lfs_sd_erase(const struct lfs_config *, lfs_block_t )
+//  block device should take care of erasing flash
+//  but in littlsfs documentation it is said that littlefs
+//  verify that blocks are acutallu erased vefore overwritting them :
+//  id commit with correct CTC are found, block will no be used
+//  so we choose to implement erase.
+int __lfs_sd_erase(const struct lfs_config *c, lfs_block_t block)
 {
-  return LFS_ERR_OK;
+  LfsSdDriver *lfsSdd = (LfsSdDriver *) c->context;
+
+  SDCDriver *sdcd = lfsSdd->cfg->sdcd;
+  const bool sdcStatus = sdcErase(sdcd, block, block + 1U);
+  return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
 }
+
+
+/* int __lfs_sd_erase(const struct lfs_config *, lfs_block_t ) */
+/* { */
+/*   return LFS_ERR_OK; */
+/* } */
 
 int __lfs_sd_sync(const struct lfs_config *c)
 {
@@ -345,6 +346,7 @@ static bool sdio_start(LfsSdDriver  *lfsSdd)
     return false;
   }
   lfsSdd->blk_num = bdi.blk_num;
+  //  DebugTrace("blk_num = %lu", bdi.blk_num);
 
   chDbgAssert(bdi.blk_size == MMCSD_BLOCK_SIZE,
 	      "device reported non compatible block size");
