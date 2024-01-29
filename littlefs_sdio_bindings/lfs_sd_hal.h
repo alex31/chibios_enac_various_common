@@ -49,8 +49,6 @@ typedef struct {
 } LfsSdDriver;
 
 typedef struct {
-  //  time_t creationTime;
-  //  struct lfs_attr lfsAttr;
   uint8_t lfs_file_buffer[MMCSD_BLOCK_SIZE];
 } LfsSdFileCache;
 /*===========================================================================*/
