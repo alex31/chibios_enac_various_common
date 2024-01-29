@@ -1,6 +1,6 @@
 /**
  * @file    lfs_sd_hal.h
- * @brief   LittleFS-HAL over SD bindings header.
+ * @brief   LittleFS-HAL over SDIO bindings header.
  *
  * @addtogroup LITTLEFS_BINDINGS
  * @{
@@ -67,7 +67,7 @@ extern "C" {
   lfs_t* lfsSdStart(LfsSdDriver *lfsSdd, const LfsSdConfig *cfg);
   void   lfsSdFileCacheInit(LfsSdFileCache *cache,
 			    struct lfs_file_config *lfs_file_cfg);
-  int   lfsSdSetTime(lfs_t*lfs, const char *path,
+  int   lfsSdSetTime(lfs_t *lfs, const char *path,
 		      LfsSdAttribType timeAttrType);
 		      
 #ifdef __cplusplus

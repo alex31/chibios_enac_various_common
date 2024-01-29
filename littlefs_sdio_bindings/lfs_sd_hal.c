@@ -21,8 +21,8 @@
  */
 
 /**
- * @file    lfs_hal.c
- * @brief   LittleFS-HAL bindings code.
+ * @file    lfs_sd_hal.c
+ * @brief   LittleFS SDC bindings code.
  *
  * @addtogroup LITTLEFS_BINDINGS
  * @{
@@ -32,17 +32,11 @@
 
 #include "lfs_sd_hal.h"
 #include "sdio.h"
-//#include "stdutil.h"
-#include <string.h>
 #if STM32_CRC_PROGRAMMABLE
 #include "hal_stm32_crc_v1.h"
 #endif
 /*
   TODO :
-
-  * resoudre le pb du sdcErase bug
-  * tester la taille des caches != MMCSD_BLOCK_SIZE
-
 
   */
 
@@ -72,7 +66,7 @@ int __lfs_sd_unlock(const struct lfs_config *c);
 /*===========================================================================*/
 
 static const struct lfs_config lfs_cfg_skl = {
-    /* Link to the flash device driver.*/
+    /* Link to the LfsSdDriver.*/
   .context            = nullptr,
   
   /* Block device operations.*/
@@ -92,8 +86,8 @@ static const struct lfs_config lfs_cfg_skl = {
   .cache_size         = MMCSD_BLOCK_SIZE,
   .lookahead_size     = LFS_LOOKAHEAD_BUFFER_SIZE,
   .read_buffer        = nullptr, // dynamically set from LfsSdDriver
-  .prog_buffer        = nullptr, // dynamically set from LfsSdDriver
-  .lookahead_buffer   = nullptr, // dynamically set from LfsSdDriver
+  .prog_buffer        = nullptr, // ...
+  .lookahead_buffer   = nullptr, // ...
   .name_max           = 0,
   .file_max           = 0,
   .attr_max           = 0,
@@ -174,8 +168,6 @@ uint32_t lfs_crc(uint32_t crc, const void *buffer, size_t size)
   if (size == 0)
     return crc;
 
-  //  if (size > 8)
-  //    DebugTrace("crc size = %u", size);
   crcAcquireUnit(&CRCD1);
   crcSetInitialValue(&CRCD1, crc);
   crcReset(&CRCD1);
@@ -214,33 +206,6 @@ void lfs_free(void *)
 {
   chSysHalt("free");
 }
-/*
-  POSSIBLE STATUS VALUE returned to LITTLEFS:
-    LFS_ERR_OK    
-    LFS_ERR_IO    
-    LFS_ERR_NOMEM 
-
-  POSSIBLE RETURN VALUE from SDC BLK API
-   HAL_SUCCESS
-   HAL_FAILED 
-======
-int __lfs_read_flash(const struct lfs_config *c, lfs_block_t block,
-               lfs_off_t off, void *buffer, lfs_size_t size) {
-  BaseFlash *flp = (BaseFlash *)c->context;
-  flash_error_t err;
-
-  err = flashRead(flp,
-                  (flash_offset_t)(block * c->block_size) + (flash_offset_t)off,
-                  (size_t)size,
-                  (uint8_t *)buffer);
-  if (err != FLASH_NO_ERROR) {
-    return LFS_ERR_IO;
-  }
-
-  return 0;
-}
-======
-*/
 
 int __lfs_sd_read(const struct lfs_config *c, lfs_block_t block,
                lfs_off_t offset, void *buffer, lfs_size_t size)
@@ -252,11 +217,6 @@ int __lfs_sd_read(const struct lfs_config *c, lfs_block_t block,
 
   if (!sdioIsConnected())
       return  LFS_ERR_IO;
-  /*
-    block : block index
-    offset : offset in the begining block
-    size : size in byte
-   */
 
   const bool sdcStatus = sdcRead(sdcd, block, buffer, size / MMCSD_BLOCK_SIZE);
   return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
@@ -272,11 +232,6 @@ int __lfs_sd_prog(const struct lfs_config *c, lfs_block_t block,
 
   if (!sdioIsConnected())
       return  LFS_ERR_IO;
-  /*
-    block : block index
-    offset : offset in the begining block
-    size : size in byte
-   */
 
   const bool sdcStatus = sdcWrite(sdcd, block, buffer, size / MMCSD_BLOCK_SIZE);
   return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
@@ -284,8 +239,8 @@ int __lfs_sd_prog(const struct lfs_config *c, lfs_block_t block,
 
 //  block device should take care of erasing flash
 //  but in littlsfs documentation it is said that littlefs
-//  verify that blocks are acutallu erased vefore overwritting them :
-//  id commit with correct CTC are found, block will no be used
+//  verify that blocks are actually erased before overwritting them :
+//  if commit with correct CTC are found, block will no be used
 //  so we choose to implement erase.
 int __lfs_sd_erase(const struct lfs_config *c, lfs_block_t block)
 {
