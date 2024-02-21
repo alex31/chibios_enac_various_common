@@ -125,14 +125,18 @@ lfs_t* lfsSdStart(LfsSdDriver *lfsSdd, const LfsSdConfig *cfg)
   lfsSdd->lfs_cfg.read_buffer = lfsSdd->lfs_read_buffer;
   lfsSdd->lfs_cfg.prog_buffer = lfsSdd->lfs_prog_buffer;
   lfsSdd->lfs_cfg.lookahead_buffer = lfsSdd->lfs_lookahead_buffer;
+
+  // workaround to "wakeup" some brands of sdcard (namely integral security)
+  // send a wrong erase commande that will not erase anything
+  sdcErase(&SDCD1, lfsSdd->blk_num, 1);
   
   if (cfg->formatDevice == true) {
+    sdcErase(&SDCD1, 0, 2);
     err = lfs_format(&lfsSdd->lfs, &lfsSdd->lfs_cfg);
     if (err < 0) {
       return nullptr;
     }
   }
-
   err = lfs_mount(&lfsSdd->lfs, &lfsSdd->lfs_cfg);
   if (err < 0) {
     return nullptr;

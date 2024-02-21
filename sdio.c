@@ -88,7 +88,7 @@ bool sdioConnect (void)
   }
 
   sdcStart(&SDCD1, &sdc1bitCfg);
-  uint32_t count = 10;
+  uint32_t count = 20;
   while ((sdcConnect(&SDCD1) != OSAL_SUCCESS) && --count) {
     chThdSleepMilliseconds(100);
   }
