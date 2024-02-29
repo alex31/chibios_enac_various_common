@@ -35,14 +35,15 @@
 #if STM32_CRC_PROGRAMMABLE
 #include "hal_stm32_crc_v1.h"
 #endif
-/*
-  TODO :
-
-  */
 
 /*===========================================================================*/
 /* Module local definitions.                                                 */
 /*===========================================================================*/
+
+#ifndef LFS_SD_HAL_ENABLE_ERASE
+#define LFS_SD_HAL_ENABLE_ERASE true
+#endif
+
 
 int __lfs_sd_read(const struct lfs_config *c, lfs_block_t block,
 		  lfs_off_t off, void *buffer, lfs_size_t size);
@@ -248,11 +249,17 @@ int __lfs_sd_prog(const struct lfs_config *c, lfs_block_t block,
 //  so we choose to implement erase.
 int __lfs_sd_erase(const struct lfs_config *c, lfs_block_t block)
 {
+#if LFS_SD_HAL_ENABLE_ERASE
   LfsSdDriver *lfsSdd = (LfsSdDriver *) c->context;
 
   SDCDriver *sdcd = lfsSdd->cfg->sdcd;
   const bool sdcStatus = sdcErase(sdcd, block, block + 1U);
   return sdcStatus == HAL_SUCCESS ? LFS_ERR_OK : LFS_ERR_IO;
+#else
+  (void) c;
+  (void) block;
+  return LFS_ERR_OK;
+#endif
 }
 
 
