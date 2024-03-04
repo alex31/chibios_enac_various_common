@@ -94,7 +94,13 @@ parseApiFile($fileName);
 #codeGenEnum($implFh);
 #codeGenCmdArray($implFh);
 codeGenAllFunctions();
+print $headerFh <<EOL;
 
+#ifdef __cplusplus
+}
+#endif
+EOL
+  
 close($headerFh);
 close($implFh);
 
@@ -219,6 +225,10 @@ sub openSourceFiles($)
 #pragma once
 #include <ch.h>
 #include <hal.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct FdsDriver FdsDriver;
 EOL

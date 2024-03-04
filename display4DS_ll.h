@@ -2,6 +2,10 @@
 #include <ch.h>
 #include <hal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct FdsDriver FdsDriver;
 
 // line : Holds a positive value for the required line position. column :Holds a
@@ -1346,3 +1350,7 @@ bool pin_set_picaso(const FdsDriver *fds, uint16_t mode, uint16_t pin,
 // Available on  FDS_DIABLO16,
 bool pin_set_diablo(const FdsDriver *fds, uint16_t mode, uint16_t pin,
                     uint16_t *status);
+
+#ifdef __cplusplus
+}
+#endif
