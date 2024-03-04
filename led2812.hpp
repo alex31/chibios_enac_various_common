@@ -162,7 +162,13 @@ template <size_t N, typename LT>
 class Led2812Strip {
 public:
   Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTiming,
-	       const uint32_t stream, const uint8_t channel);
+	       const uint32_t stream
+#if STM32_DMA_SUPPORTS_DMAMUX
+	       , const uint32_t  dmamux
+#else
+	       , const uint8_t channel
+#endif
+	       );
   LT& operator[](const size_t index) {return leds[index];};
   void emitFrame(void);
   void rotate(int32_t n);
@@ -208,7 +214,13 @@ uint8_t Led2812<T, T0H, T1H>::getColor(const ColorArray_t &colArr)
 
 template <size_t N, typename LT>
 Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTiming,
-				  const uint32_t stream, const uint8_t channel) :
+				  const uint32_t stream
+#if STM32_DMA_SUPPORTS_DMAMUX
+	       , const uint32_t  dmamux
+#else
+	       , const uint8_t channel
+#endif
+				  ) :
   ledTiming(m_ledTiming), pwmd(m_pwmd)
 {
   pwmCfg = {
@@ -226,9 +238,13 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 	    .dier =  STM32_TIM_DIER_UDE
   };
 
-  dmaCfg = {
+  dmaCfg = (DMAConfig) {
 	     .stream = stream,
+#if STM32_DMA_SUPPORTS_DMAMUX
+	     .dmamux = dmamux,
+#else
 	     .channel = channel,
+#endif
 	     .inc_peripheral_addr = false,
 	     .inc_memory_addr = true,
 	     .op_mode = DMA_ONESHOT,
