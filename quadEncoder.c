@@ -46,6 +46,14 @@ QEncoderCnt qencoderGetCNT(QEncoderDriver * const qencoderp)
   return ret;
 }
 
+uint32_t qencoderRawCNT(QEncoderDriver * const qencoderp)
+{
+  chMtxLock(&qencoderp->mut);
+  const uint32_t ret = qencoderp->config->timer->CNT;
+  chMtxUnlock(&qencoderp->mut);
+  return ret;
+}
+
 void qencoderSetCNT(QEncoderDriver *qencoderp, const uint32_t cnt)
 {
   chMtxLock(&qencoderp->mut);

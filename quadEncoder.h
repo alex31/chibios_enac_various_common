@@ -92,6 +92,14 @@ void qencoderStop(QEncoderDriver *qencoderp);
  */
 QEncoderCnt qencoderGetCNT(QEncoderDriver * const qencoderp);
 
+/**
+ * @brief   get raw counter value
+ *
+ * @param[in]  qencoderp     pointer to a @p QEncoderDriver structure
+ * @ret QEncoderCnt structure
+ */
+uint32_t qencoderRawCNT(QEncoderDriver * const qencoderp);
+
 
 
 
