@@ -510,7 +510,7 @@ int32_t get_stack_free (const thread_t *tp)
 #endif
 
 __attribute__((used))
-void _fini(void) {chSysHalt("_fini"); while(true);}
+void _fini(void) {chSysHalt("_fini"); while(true) { asm volatile ("nop");};}
 
 #if ((CH_KERNEL_MAJOR * 10 + CH_KERNEL_MINOR) < 61)
 
