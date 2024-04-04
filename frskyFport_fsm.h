@@ -59,7 +59,8 @@ extern "C" {
   /**
    * @brief    function pointer use for (sent) telemetry answer callback
    */
-  typedef void(*FportSendTelemetryAfter300UsFnPtr)(const void *buffer, size_t len,
+  typedef   __attribute__((access (read_only, 1, 2))) \
+  void(*FportSendTelemetryAfter300UsFnPtr)(const void *buffer, size_t len,
 						   void *optArg);
   
    /**
@@ -254,6 +255,7 @@ extern "C" {
                     cannot be known in advance, most message can be read in one shot, but some must be read in
                     two shots
  */
+  __attribute__((access (read_only, 2, 3)))
   FportErrorMask fportFeedFsm(FportFsmContext *context, const void *buffer, size_t len);
 
   /**
