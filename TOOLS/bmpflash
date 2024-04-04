@@ -47,7 +47,7 @@ END {
     unlink GDBINIT_PATH if -e GDBINIT_PATH && not exists $options{keep};
 }
 
-GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s', 'o743', 'o432');
+GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s', 'o743', 'o432', 'o746');
 usage () if exists  $options{help};
 
 my $gdbPath = which('arm-none-eabi-gdb') // which('gdb-multiarch');
@@ -59,6 +59,8 @@ $options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log
     if exists  $options{o743};
 $options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_l4.cfg'
     if exists  $options{o432};
+$options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/stm32f746g-disco.cfg'
+    if exists  $options{o746};
 if (!exists  $options{device}) {
     if (-e BMPDEV) {
 	$bmpdev = BMPDEV;
