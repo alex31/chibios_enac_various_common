@@ -461,3 +461,53 @@ bool	 tuneShiftByOffset(RTCDriver *rtcp, int millis)
   osalSysRestoreStatusX(sts);
   return true;
 }
+
+
+/* 
+   cannot use memcpy for the 2 following functions since
+   backup registers are volatile and must be access by dword only 
+
+   best case scenario is when data size is multiple of 4.
+   if it's not the case, an intermediate uint32 is used for 
+   the remaining bytes
+*/
+void rtcBackupWrite(const void *src, size_t n)
+{
+  const size_t rem = n % 4U;
+  n = n / 4U; 
+  chDbgAssert(n + (rem ? 1 : 0)  <= RTC_BKP_NUMBER, "exceed RTC BKP size");
+  volatile uint32_t *d = &RTC->BKP0R;
+  const uint32_t *s = (const uint32_t *) src;
+  for (size_t i = 0; i < n; i++) {
+    d[i] = s[i]; 
+  }
+  if (rem) {
+    uint32_t last = 0;
+    volatile uint8_t *db = (uint8_t *) &last;
+    const uint8_t *sb = (const uint8_t *) &s[n];
+    for (size_t j = 0; j < rem; j++) {
+      db[j] = sb[j];
+    }
+    d[n] = last;
+  }
+}
+
+void rtcBackupRead(void *dst, size_t n)
+{
+  const size_t rem = n % 4U;
+  n = n / 4U; 
+  chDbgAssert(n + (rem ? 1 : 0)  <= RTC_BKP_NUMBER, "exceed RTC BKP size");
+  volatile const uint32_t *s = &RTC->BKP0R;
+  uint32_t *d = (uint32_t *) dst;
+  for (size_t i = 0; i < n; i++) {
+    d[i] = s[i]; 
+  }
+  if (rem) {
+    const uint32_t last = s[n];
+    const uint8_t *sb = (const uint8_t *) &last;
+    uint8_t *db = (uint8_t *) &d[n];
+    for (size_t j = 0; j < rem; j++) {
+      db[j] = sb[j];
+    }
+  }
+}

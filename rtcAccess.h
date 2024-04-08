@@ -49,6 +49,12 @@ bool rtcEnablePeriodicWakeupHires (RTCDriver *rtcp, uint16_t milliseconds);
 bool rtcDisablePeriodicWakeup (RTCDriver *rtcp);
 #endif
 
+
+__attribute__((access (read_only, 1, 2)))
+void rtcBackupWrite(const void *src, size_t n);
+
+__attribute__((access (write_only, 1, 2)))
+void rtcBackupRead(void *dst, size_t n);
   
 
 #ifdef __cplusplus
