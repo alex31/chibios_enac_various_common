@@ -90,8 +90,8 @@ typedef enum {PWM_NORMAL=0, PWM_COMPLEMENTARY} PwmOutputSide;
 
 #define REINTERPRET_CAST(type, val) ({_Static_assert(sizeof(val) <= sizeof(type), \
 						    "sizeof (type) is too small");  \
-				       *((type *) (&val));}
-
+                                     *((type *) (&val));})
+#define BITSTORE(wr, rd) (wr = REINTERPRET_CAST(typeof(wr), rd))
 
 #if (CH_KERNEL_MAJOR < 7)
 #define likely(x)      __builtin_expect(!!(x), 1)
