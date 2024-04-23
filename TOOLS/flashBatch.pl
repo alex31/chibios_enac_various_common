@@ -12,13 +12,14 @@ use Getopt::Long;
 use constant NONE => 0;
 use constant STLINK => 1;
 use constant BMP => 2;
+use constant DFU => 3;
 
 sub usage();
 
 my %options;
 my $flashTool = NONE;
 
-GetOptions (\%options, 'stlink', 'bmp', 'ftdi', 'help');
+GetOptions (\%options, 'dfu', 'stlink', 'bmp', 'ftdi', 'help');
 usage() if exists  $options{help};
 usage()  unless scalar (@ARGV == 1) or exists $options{ftdi};
 
@@ -40,6 +41,8 @@ unless (exists $options{ftdi}) {
     die "$programFile is of unknow file type (neither .bin or .elf)\n" unless $flashTool != NONE;
 }
 
+$flashTool = DFU if exists $options{dfu};
+
 # get udev library version
 my $udev_version = Udev::FFI::udev_version() or
     die "Can't get udev library version: $@";
@@ -55,8 +58,14 @@ my $monitor = $udev->new_monitor() or
     die "Can't create udev monitor: $@";
  
 # add filter to monitor
-unless ($monitor->filter_by_subsystem_devtype('tty')) {
-    warn "Ouch!";
+if (exists $options{dfu}) {
+    unless ($monitor->filter_by_subsystem_devtype('usb', 'usb_device')) {
+	warn "Ouch!";
+    }
+} else {
+    unless ($monitor->filter_by_subsystem_devtype('tty')) {
+	warn "Ouch!";
+    }
 }
  
 # start monitor
@@ -88,6 +97,14 @@ unless (exists $options{ftdi}) {
 		    } else {
 			die "bmpflash not found\n";
 		    }
+		}
+		when (DFU) {
+		    my $dfuUtil;
+		    $dfuUtil = '/usr/local/bin/dfu-util' if -x '/usr/local/bin/dfu-util';
+		    $dfuUtil = '/bin/dfu-util' if -x '/bin/dfu-util';
+		    @com = ($dfuUtil, '-d', '1d50:6018', '-c',
+			    '1', '-i', '0', '-a', '0', '-s', '0x08002000:leave', '-D',
+			    $programFile);
 		}
 	    }
 	    
@@ -135,8 +152,8 @@ sub usage ()
   my ($x) = ' ' x length($0) ;
 
   print <<EOL ;
-  usage : $0 [-stlink, -bmp, -ftdi] file.bin or file.elf
-        :    if file.bin, use st-flash, if file.elf, use black magic probe (bmpflash)
+  usage : $0 [-stlink, -dfu, -bmp, -ftdi] file.bin or file.elf
+        :    if file.bin, use st-flash or dfu-util, if file.elf, use black magic probe (bmpflash)
 EOL
   exit (-1);
 }
