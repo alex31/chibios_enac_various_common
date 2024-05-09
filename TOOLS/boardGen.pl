@@ -2,14 +2,13 @@
 
 use Modern::Perl '2014';
 use feature ':5.18';
-no warnings 'experimental::smartmatch';
 use Getopt::Long;
 use String::LCSS;
 use List::Util qw(min max);
 use XML::LibXML;
 use Data::Dumper;
 use File::Basename;
-
+use Syntax::Keyword::Match;
 
 #example of use of new symbol generation feature in C/C++ program
 #to avoid mismatch between code and board.cfg
@@ -258,25 +257,25 @@ if (exists $options{'mcu'}) {
     my @matchingMcus = getMcus($mc);
     my $nbMatch = scalar(@matchingMcus);
     $nbMatch = 0 unless defined $matchingMcus[0];
-    given ($nbMatch) {
-	when (0) {
+    match ($nbMatch : ==) {
+	case (0) {
 	    say ("$mc does not match any mcu");
 	    die "exiting\n";
 	}
-	when ($nbMatch > 1) {
+	case (1) {
+	    say ("$mc match $matchingMcus[0]");
+	    $cfgParameters{MCU_MODEL} = $matchingMcus[0];
+	    demangleMcuName($cfgParameters{MCU_MODEL});
+	    getdataFromCubeMx ($cfgParameters{MCU_MODEL});
+	    $family = registerFamily();
+	}
+	default {
 	    say ("$mc does match more than one mcu, please be more specific\n");
 	    foreach my $m (@matchingMcus) {
 		print "$m : ";
 		demangleMcuName($m);
 	    }
 	    die "exiting\n";
-	}
-	when (1) {
-	    say ("$mc match $matchingMcus[0]");
-	    $cfgParameters{MCU_MODEL} = $matchingMcus[0];
-	    demangleMcuName($cfgParameters{MCU_MODEL});
-	    getdataFromCubeMx ($cfgParameters{MCU_MODEL});
-	    $family = registerFamily();
 	}
     }
 } else {
@@ -604,8 +603,8 @@ sub parseCfgFile ($)
 
     while (my $l= <$fh>) {
 	chomp $l;
-	given ($state) {
-	    when (WAIT_FOR_TYPE) {
+	match ($state : ==) {
+	    case (WAIT_FOR_TYPE) {
 		if ($l =~ m/(\w+)\s?=\s?(\S+)/) {
 		    $cfgParameters{$1} = $2;
 		} elsif ($l =~ m/^HEADER/) {
@@ -616,7 +615,7 @@ sub parseCfgFile ($)
 		}
 	    }
 
-	    when (IN_HEADER) {
+	    case (IN_HEADER) {
 		unless ($l =~ m/^CONFIG/) {
 		    push (@headerFromCfg, "$l\n");
 		} else {
@@ -628,7 +627,7 @@ sub parseCfgFile ($)
 # D13 LED1	OUTPUT	PUSHPULL HIGH FLOATING HIGH 1
 #     0         1       2         3    4       5    6
 	    
-	    when (IN_CONFIG) {
+	    case (IN_CONFIG) {
 		$l =~ s/#.*//;
 		$l =~ s|//.*||;
 		next if $l =~ /^\s*$/;
@@ -1257,11 +1256,11 @@ sub generateHardwareTableByPin ($$)
 	my $pinPosition = $pin->getAttribute ('Position');
 	my $pinType = $pin->getAttribute ('Type');
 	my $side;
-	given ($pinName) {
-	    when (/^VSS/) {$side = 'bottom';}
-	    when (/^VDD/) {$side = 'top';}
-	    when (/^P[A-M]\d{1,2}/) {$side = 'right';}
-	    default: {$side = 'left';}
+	match ($pinName : =~) {
+	    case (/^VSS/) {$side = 'bottom';}
+	    case (/^VDD/) {$side = 'top';}
+	    case (/^P[A-M]\d{1,2}/) {$side = 'right';}
+	    default {$side = 'left';}
 	}
 	$table[$pinPosition] = [$pinName, $pinType, $side];
     }
@@ -1343,9 +1342,9 @@ sub fillDmaByFun ($$)
 #	last;
     }
 
-    given ($version) {
-	when (/dma_v1/) {fillDmaV1ByFun($dmaPath, $fillDmaByFunRef);}
-	when (/dma_v2_0/) {fillDmaV2ByFun($dmaPath, $fillDmaByFunRef);}
+    match ($version : =~) {
+	case (/dma_v1/) {fillDmaV1ByFun($dmaPath, $fillDmaByFunRef);}
+	case (/dma_v2_0/) {fillDmaV2ByFun($dmaPath, $fillDmaByFunRef);}
 	default {warn "dma version $version not (yet) handled\n"}
     }
 }
@@ -1563,16 +1562,16 @@ sub getAF_byName ($$$) # line, pin, af signal (could be AFx or AF:name)
     my $af = -1;
     $pin = 'P' . $pin;
 
-    given ($afsignal) {
-	when (/^AF(\d+)/) {
+    match ($afsignal : =~) {
+	case (/^AF(\d+)/) {
 	    $af = $1;
 	}
 
-	when (/^(\d+)$/) {
+	case (/^(\d+)$/) {
 	    $af = $1;
 	}
 	
-	when (/AF:(\S+)/) {
+	case (/AF:(\S+)/) {
 	    my $altfunc = $1;
 
 
@@ -1586,7 +1585,7 @@ sub getAF_byName ($$$) # line, pin, af signal (could be AFx or AF:name)
     
     
     die "incorrect AF number $af\n"
-	unless $af ~~ [-1, 0 .. 14 ];
+	unless grep ($af == $_, (-1, 0 .. 14 ));
     
     return $af;
 }
