@@ -729,7 +729,7 @@ static uint16_t fdsTouchGet (const FdsDriver *fdsConfig, uint16_t mode)
 }
 
 
-uint16_t fdsTouchGetStatus (FdsDriver *fdsConfig)
+FdsTouchStatus fdsTouchGetStatus (FdsDriver *fdsConfig)
 {
   return fdsTouchGet(fdsConfig, 0);
 }

@@ -25,6 +25,8 @@ extern "C" {
     FDS_BOLD=16, FDS_ITALIC=32, FDS_INVERSE=64, FDS_UNDERLINE=128};
   enum FdsScreenOrientation {FDS_LANDSCAPE=0, FDS_LANDSCAPE_REVERSE,
     FDS_PORTRAIT, FDS_PORTRAIT_REVERSE};
+  typedef enum {FDS_PRESS=0, FDS_RELEASE, FDS_MOVING} FdsTouchStatus;
+
 typedef enum {FDS_OK,
 	      FDS_ERROR} FdsStatus;
 #define COLOR_TABLE_SIZE 11U
@@ -93,7 +95,7 @@ void fdsScreenCopyPaste (FdsDriver *fdsConfig,
 			  const uint16_t xd, const uint16_t yd,
 			  const uint16_t width, const uint16_t height);
 void fdsEnableTouch (FdsDriver *fdsConfig, bool enable);
-uint16_t fdsTouchGetStatus (FdsDriver *fdsConfig);
+FdsTouchStatus fdsTouchGetStatus (FdsDriver *fdsConfig);
 uint16_t fdsTouchGetXcoord (FdsDriver *fdsConfig);
 uint16_t fdsTouchGetYcoord (FdsDriver *fdsConfig);
 void fdsListSdCardDirectory (FdsDriver *fdsConfig);
