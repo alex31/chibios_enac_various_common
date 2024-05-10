@@ -2,10 +2,10 @@
 
 use Modern::Perl '2014';
 use feature ':5.18';
-no warnings 'experimental::smartmatch';
 use Getopt::Long;
 use String::LCSS;
 use List::Util qw(min max);
+use Syntax::Keyword::Match;
 
 # TODO
 #
@@ -83,8 +83,8 @@ sub parseHeader($)
     while (my $l= <$fh>) {
 	chomp $l;
 	$l =~ s/\r//;
-	given ($l) {
-	    when (/\#define\s+GPIO([A-Q])_(\w+)\s+(\d+)/) {
+	match ($l : =~) {
+	    case (/\#define\s+GPIO([A-Q])_(\w+)\s+(\d+)/) {
 		my ($port, $pinName, $pinIndex) = ($1, $2, $3);
 #		say "$port, $pinName, $pinIndex";
 		my $completeName = "GPIO" . $port . '_' . $pinName;
@@ -96,7 +96,7 @@ sub parseHeader($)
 	    }
 
 
-	    when (/\#define\s+P([A-Q])(\d+)_(\w+)/) {
+	    case (/\#define\s+P([A-Q])(\d+)_(\w+)/) {
 		my ($port, $pinIndex, $pinName) = ($1, $2, $3);
 #		say "$port, $pinName, $pinIndex";
 		my $completeName = "GPIO" . $port . '_' . $pinName;
@@ -108,61 +108,61 @@ sub parseHeader($)
 	    }
 
 
-	    when (/\#define\s+STM32([FHL]\d)(\w+)/) {
+	    case (/\#define\s+STM32([FHL]\d)(\w+)/) {
 		$mcuCore = $1;
 		$mcuFamily = $1.$2;
 		$mcuFamily =~ s/xx//;
 	    }
 	    
-	    when (/PIN_MODE_([A-Z]+)\((GPIO\w*)\)/) {
+	    case (/PIN_MODE_([A-Z]+)\((GPIO\w*)\)/) {
 		warn "not registered PIN $2\n" unless exists $pinByName->{$2};
 		$pinByName->{$2}->{MODE} = $1;
 #		say "MODE $2 is $1";
 	    }
 
-	    when (/PIN_OTYPE_([A-Z]+)\((GPIO\w*)\)/) {
+	    case (/PIN_OTYPE_([A-Z]+)\((GPIO\w*)\)/) {
 		warn "not registered PIN $2\n" unless exists $pinByName->{$2};
 		$pinByName->{$2}->{OTYPE} = $1;
 #		say "$2 is $1";
 	    }
 
-	    when (/PIN_OSPEED_([A-Z]+)\((GPIO\w*)\)/) {
+	    case (/PIN_OSPEED_([A-Z]+)\((GPIO\w*)\)/) {
 		warn "not registered PIN $2\n" unless exists $pinByName->{$2};
 		$pinByName->{$2}->{SPEED} = $1;
 #		say "$2 is $1";
 	    }
 
-	    when (/PIN_OSPEED_(\d+M)\((GPIO\w*)\)/) {
+	    case (/PIN_OSPEED_(\d+M)\((GPIO\w*)\)/) {
 		warn "not registered PIN $2\n" unless exists $pinByName->{$2};
 		$pinByName->{$2}->{SPEED} = $ospeedName{$1};
 #		say "$2 is $1";
 	    }
 
-	    when (/PIN_PUPDR_([A-Z]+)\((GPIO\w*)\)/) {
+	    case (/PIN_PUPDR_([A-Z]+)\((GPIO\w*)\)/) {
 		warn "not registered PIN $2\n" unless exists $pinByName->{$2};
 		$pinByName->{$2}->{PUPDR} = $1;
 #		say "$2 is $1";
 	    }
 
-	    when (/PIN_ODR_([A-Z]+)\((GPIO\w*)\)/) {
+	    case (/PIN_ODR_([A-Z]+)\((GPIO\w*)\)/) {
 		warn "not registered PIN $2\n" unless exists $pinByName->{$2};
 		$pinByName->{$2}->{ODR} = $1;
 #		say "$2 is $1";
 	    }
 
-	    when (/PIN_AFIO_AF\((GPIO\w*),\s*(\d+).*\)/) {
+	    case (/PIN_AFIO_AF\((GPIO\w*),\s*(\d+).*\)/) {
 		warn "not registered PIN $1\n" unless exists $pinByName->{$1};
 		$pinByName->{$1}->{AF} = $2;
 #		say "$1 is AF($2)";
 	    }
 
-	    when (/PIN_LOCKR_([A-Z]+)\((GPIO\w*)\)/) {
+	    case (/PIN_LOCKR_([A-Z]+)\((GPIO\w*)\)/) {
 		warn "not registered PIN $2\n" unless exists $pinByName->{$2};
 		$pinByName->{$2}->{LOCKR} = $1;
 #		say "$2 is $1";
 	    }
 
-	    when (/PIN_ASCR_([A-Z]+)\((GPIO\w*)\)/) {
+	    case (/PIN_ASCR_([A-Z]+)\((GPIO\w*)\)/) {
 		warn "not registered PIN $2\n" unless exists $pinByName->{$2};
 		$pinByName->{$2}->{ASCR} = $1;
 #		say "$2 is $1";
