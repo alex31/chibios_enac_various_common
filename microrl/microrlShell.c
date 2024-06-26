@@ -196,6 +196,24 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
     The device ID is:
     0x461 for STM32L496xx/4A6xx devices
     0x415 for STM32L475xx/476xx/486xx devices.
+
+    G4xx
+    Bits 31:16REV_ID[15:0] Revision identifier
+    This field indicates the revision of the device.
+	0x1000: Revision A
+	0x1001: Revision Z (Category 4 devices only)
+	0x2000: Revision B
+	0x2001: Revision Z
+	0x2002: Revision Y
+	0x2003: Revision X
+Bits 15:12 Reserved, must be kept at reset value.
+Bits 11:0 DEV_ID[11:0]: Device identifier
+The device ID is:
+	– 0x468: Category 2 devices (See Table 1: STM32G4 series memory density)
+	– 0x469: Category 3 devices (See Table 1: STM32G4 series memory density)
+	– 0x479: Category 4 devices (See Table 1: STM32G4 series memory density)
+
+
   */
   
 
@@ -283,7 +301,7 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
     case 0x2001 : mcu_revid_chr = 'Y'; break;
     }
     break;
-  case  0x415 : mcu_devid_str = "STM32L475xx/476xx/486xx devices";
+  case  0x415 : mcu_devid_str = "STM32Lde475xx/476xx/486xx";
     switch (mcu_revid) {
     case 0x1000 : mcu_revid_chr = '1'; break;
     case 0x1001 : mcu_revid_chr = '2'; break;
@@ -291,13 +309,43 @@ static void cmd_info(BaseSequentialStream *lchp, int argc,  const char * const a
     case 0x1007 : mcu_revid_chr = '4'; break;
     }
     break;
-  case  0x461 : mcu_devid_str = "STM32L496xx/4A6xx devices";
+  case  0x461 : mcu_devid_str = "STM32L496xx/4A6xx";
     switch (mcu_revid) {
     case 0x1000 : mcu_revid_chr = 'A'; break;
     case 0x2000 : mcu_revid_chr = 'B'; break;
     }
     break;
-  }
+   case  0x468 : mcu_devid_str = "STM32G431/G441";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x2000 : mcu_revid_chr = 'B'; break;
+    case 0x2001 : mcu_revid_chr = 'Z'; break;
+    case 0x2002 : mcu_revid_chr = 'Y'; break;
+    case 0x2003 : mcu_revid_chr = 'X'; break;
+    }
+    break;
+   case  0x469 : mcu_devid_str = "STM32G47x";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x2000 : mcu_revid_chr = 'B'; break;
+    case 0x2001 : mcu_revid_chr = 'Z'; break;
+    case 0x2002 : mcu_revid_chr = 'Y'; break;
+    case 0x2003 : mcu_revid_chr = 'X'; break;
+    }
+    break;
+    case  0x479 : mcu_devid_str = "STM32G49x/G4Ax";
+    switch (mcu_revid) {
+    case 0x1000 : mcu_revid_chr = 'A'; break;
+    case 0x1001 : mcu_revid_chr = 'Z'; break;
+    case 0x2000 : mcu_revid_chr = 'B'; break;
+    case 0x2001 : mcu_revid_chr = 'Z'; break;
+    case 0x2002 : mcu_revid_chr = 'Y'; break;
+    case 0x2003 : mcu_revid_chr = 'X'; break;
+    }
+    break;
+ }
   
   chprintf(lchp, "Kernel:       %s\r\n", CH_KERNEL_VERSION);
 #ifdef HAL_VERSION
