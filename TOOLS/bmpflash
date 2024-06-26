@@ -40,6 +40,8 @@ use constant REVERT_BMPDEV => ("/dev/ttyACM*", "/dev/cu.usbmodem*");
 use constant GDBINIT_PATH => "/tmp/__bmpflash.gdbinit";
 
 sub usage();
+sub getSvdLoadInstruction();
+
 my %options;
 my $useOpenOcd = 0;
 
@@ -47,7 +49,7 @@ END {
     unlink GDBINIT_PATH if -e GDBINIT_PATH && not exists $options{keep};
 }
 
-GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s', 'o743', 'o432', 'o746');
+GetOptions (\%options, 'help', 'debug', 'load', 'keep', 'attach', 'erase', 'force', 'device:s', 'o743', 'o746', 'o432', 'og4');
 usage () if exists  $options{help};
 
 my $gdbPath = which('arm-none-eabi-gdb') // which('gdb-multiarch');
@@ -61,6 +63,8 @@ $options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log
     if exists  $options{o432};
 $options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/stm32f746g-disco.cfg'
     if exists  $options{o746};
+$options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_g4.cfg'
+    if exists  $options{og4};
 if (!exists  $options{device}) {
     if (-e BMPDEV) {
 	$bmpdev = BMPDEV;
@@ -198,6 +202,7 @@ EOL
 EOL
 }
 
+$gdbAttachForDebug .= getSvdLoadInstruction();
 
 my $fhd;
 
@@ -265,4 +270,25 @@ usage : $0 -load (default) or -debug or -attach xxx.elf
       : $0 -force : do not enforce that the file name extension is .elf 
       : $0 -device=dev : specify probe device
 EOL
+}
+
+
+#                            _    _                            _
+#                           | |  | |                          | |
+#         ___   __   __   __| |  | |        ___     __ _    __| |
+#        / __|  \ \ / /  / _` |  | |       / _ \   / _` |  / _` |
+#        \__ \   \ V /  | (_| |  | |____  | (_) | | (_| | | (_| |
+#        |___/    \_/    \__,_|  |______|  \___/   \__,_|  \__,_|
+sub getSvdLoadInstruction()  {
+  my $ret = '';
+  my @svd = glob('*.svd');
+  if (@svd) {
+    if (-r '/usr/local/bin/gdb.py') {
+      $ret = "source /usr/local/bin/gdb.py\nsvd $svd[0]\n";
+    } else {
+      warn "copy gdb.py in /usr/local/bin/ to activate svd load of $svd[0]\n";
+    }
+    #      say "will add \n$ret";
+  }
+  return $ret;
 }
