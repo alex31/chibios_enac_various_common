@@ -186,7 +186,7 @@ public:
 #else
 	       , const uint8_t channel
 #endif
-	       , const TimerChannel timChannel = TimerChannel::C1
+	       , const TimerChannel m_timChannel = TimerChannel::C1
 	       );
   LT& operator[](const size_t index) {return leds[index];};
   void emitFrame(void);
@@ -195,7 +195,7 @@ public:
   constexpr static size_t size(void)  {return
       (sizeof(preamble)+sizeof(leds)+sizeof(end))/elemSize();};
 private:
-  void start(TimerChannel channel);
+  void start();
   struct {
     // DMA some timetime hangs on firsts value, so we keep them to 0
     const typename LT::timerType preamble[2] = {0,0};
@@ -206,6 +206,7 @@ private:
     const typename LT::timerType end[2] = {0,0};
   };
   const LedTiming &ledTiming;
+  const TimerChannel timChannel;
   PWMDriver *pwmd;
   PWMConfig pwmCfg;
   DMADriver dmap;
@@ -239,8 +240,8 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 #else
 	       , const uint8_t channel
 #endif
-	       , const TimerChannel timChannel) :
-  ledTiming(m_ledTiming), pwmd(m_pwmd)
+	       , const TimerChannel m_timChannel) :
+  ledTiming(m_ledTiming), timChannel(m_timChannel), pwmd(m_pwmd)
 {
   pwmCfg = {
 	    .frequency = ledTiming.frequency,
@@ -285,27 +286,23 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 	     .transfert_end_ctrl_by_periph = false
 #endif
   };
-  start(timChannel);
+  start();
 };
 
 template <size_t N, typename LT>
-void Led2812Strip<N, LT>::start(TimerChannel channel)
+void Led2812Strip<N, LT>::start()
 {
-  const uint32_t  dcr_dba = (((uint32_t *) (&pwmd->tim->CCR[std::to_underlying(channel)])
-			      - ((uint32_t *) pwmd->tim)));
-  const uint32_t  dcr_dbl =  ((1-1) << 8); // 1 transfert
   dmaObjectInit(&dmap);
   dmaStart(&dmap, &dmaCfg);
   pwmStart(pwmd, &pwmCfg);
-  pwmd->tim->DCR = dcr_dbl | dcr_dba;
-  pwmEnableChannel(pwmd, std::to_underlying(channel), getClockByTimer(pwmd).t0h);
+  pwmEnableChannel(pwmd, std::to_underlying(timChannel), getClockByTimer(pwmd).t0h);
 }
 
 
 template <size_t N, typename LT>
 void Led2812Strip<N, LT>::emitFrame(void) 
 {
-  dmaTransfert(&dmap, &pwmd->tim->DMAR, (void *) &preamble, size());
+  dmaTransfert(&dmap, &pwmd->tim->CCR[std::to_underlying(timChannel)], (void *) &preamble, size());
   chThdSleepMicroseconds(50);
 }
 
