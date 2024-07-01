@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <tuple>
+#include <utility>
 #include <cmath>
 
 
@@ -12,6 +13,7 @@ constexpr uint32_t PERIOD_NS = 1250;
 constexpr uint32_t T0H_NS = 400;
 constexpr uint32_t T1H_NS = 800;
 
+enum class TimerChannel {C1, C2, C3, C4};
 
 struct LedTiming {
   uint32_t frequency;
@@ -35,8 +37,25 @@ typedef struct {
 [[maybe_unused]] static HSV   rgb2hsv(const RGB in);
 [[maybe_unused]] static RGB   hsv2rgb(const HSV in);
 
-constexpr  LedTiming getClockByTimer(const PWMDriver *pwmp)
+
+template<typename T>
+concept Addable = requires (T a, T b)
 {
+    a + b; // "the expression “a + b” is a valid expression that will compile"
+};
+
+
+// template<typename T>
+// concept TIMCLK1_is_constexpr = requires(T a)
+// {
+//   uint32_t frequency = STM32_TIMCLK1;
+// };
+
+constexpr  LedTiming getClockByTimer([[maybe_unused]] const PWMDriver *pwmp)
+{
+#if defined STM32G4XX
+  uint32_t frequency = STM32_SYSCLK; // slowest one
+#else
   uint32_t frequency = STM32_TIMCLK1; // slowest one
 #ifdef USE_MAXIMUM_TIMER_CAPABILITY
 #if STM32_PWM_USE_TIM1
@@ -63,8 +82,7 @@ constexpr  LedTiming getClockByTimer(const PWMDriver *pwmp)
   if (pwmp == &PWMD17)
     frequency = STM32_TIMCLK2;
 #endif
-#else
-  (void) pwmp;
+#endif
 #endif
   
   const float timerPeriodNs = 1e9 / frequency;
@@ -168,6 +186,7 @@ public:
 #else
 	       , const uint8_t channel
 #endif
+	       , const TimerChannel timChannel = TimerChannel::C1
 	       );
   LT& operator[](const size_t index) {return leds[index];};
   void emitFrame(void);
@@ -176,7 +195,7 @@ public:
   constexpr static size_t size(void)  {return
       (sizeof(preamble)+sizeof(leds)+sizeof(end))/elemSize();};
 private:
-  void start(void);
+  void start(TimerChannel channel);
   struct {
     // DMA some timetime hangs on firsts value, so we keep them to 0
     const typename LT::timerType preamble[2] = {0,0};
@@ -220,7 +239,7 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 #else
 	       , const uint8_t channel
 #endif
-				  ) :
+	       , const TimerChannel timChannel) :
   ledTiming(m_ledTiming), pwmd(m_pwmd)
 {
   pwmCfg = {
@@ -228,7 +247,7 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 	    .period    = ledTiming.period, 
 	    .callback  = NULL,             
 	    .channels  = {
-			  {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
+			  {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
 			  {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
 			  {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
 			  {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
@@ -237,7 +256,7 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 	    .bdtr = 0,
 	    .dier =  STM32_TIM_DIER_UDE
   };
-
+  pwmCfg.channels[std::to_underlying(timChannel)] = {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL};
   dmaCfg = (DMAConfig) {
 	     .stream = stream,
 #if STM32_DMA_SUPPORTS_DMAMUX
@@ -258,25 +277,28 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 #if defined __DCACHE_PRESENT &&  __DCACHE_PRESENT
 	     .activate_dcache_sync = false,
 #endif
+#if STM32_DMA_ADVANCED
 	     .pburst = 0,
 	     .mburst = 0,
 	     .fifo = 4,
 	     .periph_inc_size_4 = false,
 	     .transfert_end_ctrl_by_periph = false
+#endif
   };
-  start();
+  start(timChannel);
 };
 
 template <size_t N, typename LT>
-void Led2812Strip<N, LT>::start(void)
+void Led2812Strip<N, LT>::start(TimerChannel channel)
 {
-  const uint32_t  dcr_dba = (((uint32_t *) (&pwmd->tim->CCR) - ((uint32_t *) pwmd->tim)));
+  const uint32_t  dcr_dba = (((uint32_t *) (&pwmd->tim->CCR[std::to_underlying(channel)])
+			      - ((uint32_t *) pwmd->tim)));
   const uint32_t  dcr_dbl =  ((1-1) << 8); // 1 transfert
   dmaObjectInit(&dmap);
   dmaStart(&dmap, &dmaCfg);
   pwmStart(pwmd, &pwmCfg);
   pwmd->tim->DCR = dcr_dbl | dcr_dba;
-  pwmEnableChannel(pwmd, 0, getClockByTimer(pwmd).t0h);
+  pwmEnableChannel(pwmd, std::to_underlying(channel), getClockByTimer(pwmd).t0h);
 }
 
 
