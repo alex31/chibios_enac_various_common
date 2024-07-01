@@ -300,7 +300,7 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
  *
  * @iclass
  */
-#ifndef DMA_request_TypeDef
+#if defined DMA_request_TypeDef && defined DMA_Stream_TypeDef
 void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 		      const size_t size,
 		      DMA_Stream_TypeDef *registers)
@@ -748,7 +748,7 @@ static inline size_t getCrossCacheBoundaryAwareSize(const void *memp,
  *
  * @notapi
  */
-#ifndef DMA_request_TypeDef
+#if defined DMA_request_TypeDef && defined DMA_Stream_TypeDef
 void  dma_lld_get_registers(DMADriver *dmap, volatile void *periphp,
 			    void *mem0p, const size_t size,
 			    DMA_Stream_TypeDef *registers)
@@ -874,15 +874,15 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
       ( (flags & STM32_DMA_ISR_TEIF)  ? DMA_ERR_TRANSFER_ERROR : 0UL) |
       ( (flags & STM32_DMA_ISR_DMEIF) ? DMA_ERR_DIRECTMODE_ERROR : 0UL);
 
-    if (dmap->config->fifo != 0U) {
 #if STM32_DMA_ADVANCED
+    if (dmap->config->fifo != 0U) {
       dmaerrormask_t fserr = 
 	( (flags & feif_msk)  ? DMA_ERR_FIFO_ERROR : 0UL) |
 	( getFCR_FS(dmap) == (0b100 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_EMPTY: 0UL) |
 	( getFCR_FS(dmap) == (0b101 << DMA_SxFCR_FS_Pos) ? DMA_ERR_FIFO_FULL: 0UL) ;
       err |= fserr;
-#endif
     }
+#endif
       
     
     _dma_isr_error_code(dmap, err);

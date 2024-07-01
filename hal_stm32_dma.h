@@ -538,7 +538,7 @@ bool  dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p,
 			 const size_t size);
 void  dmaStopTransfertI(DMADriver *dmap);
 uint8_t dmaGetStreamIndex(DMADriver *dmap);
-#ifndef DMA_request_TypeDef
+#if defined DMA_request_TypeDef && defined DMA_Stream_TypeDef
 void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 		      const size_t size,
 		      DMA_Stream_TypeDef *registers);
@@ -746,7 +746,7 @@ static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
   }
   _dma_timeout_isr(dmap);
 }
-#ifndef DMA_request_TypeDef
+#if defined DMA_request_TypeDef && defined DMA_Stream_TypeDef
 void  dma_lld_get_registers(DMADriver *dmap, volatile void *periphp,
 			    void *mem0p, const size_t size,
 			    DMA_Stream_TypeDef *registers);
