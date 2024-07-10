@@ -126,10 +126,10 @@
 
 //  Gyro FSR options
 
-#define MPU20600_GYROFSR_250         0U                       // +/- 250 degrees per second
-#define MPU20600_GYROFSR_500         8U                       // +/- 500 degrees per second
-#define MPU20600_GYROFSR_1000        0x10U                    // +/- 1000 degrees per second
-#define MPU20600_GYROFSR_2000        0x18U                    // +/- 2000 degrees per second
+#define MPU20600_GYROFSR_250         (0b00 << 3)              // +/- 250 degrees per second
+#define MPU20600_GYROFSR_500         (0b01 << 3)              // +/- 500 degrees per second
+#define MPU20600_GYROFSR_1000        (0b10 << 3)              // +/- 1000 degrees per second
+#define MPU20600_GYROFSR_2000        (0b11 << 3)              // +/- 2000 degrees per second
 
 //  Accel FSR options
 

@@ -28,9 +28,9 @@ TODO :
 
 
 
-static    msg_t setInitialConfig (Mpu20600Data *imu);
-static    msg_t setGyroConfig (Mpu20600Data *imu);
-static    msg_t setAccelConfig (Mpu20600Data *imu);
+static    msg_t setInitialConfig(Mpu20600Data *imu);
+static    msg_t setGyroConfig(Mpu20600Data *imu);
+static    msg_t setAccelConfig(Mpu20600Data *imu);
 static    msg_t setSampleRate( Mpu20600Data *imu);
 static    msg_t resetFifo( Mpu20600Data *imu);
 
@@ -52,19 +52,19 @@ msg_t mpu20600_init( Mpu20600Data *imu, const Mpu20600Config* initParam)
   status = setInitialConfig(imu);
 
   if (status == MSG_OK) 
-    status = mpu20600_setSampleRate (imu, initParam->sampleRate);
+    status = mpu20600_setSampleRate(imu, initParam->sampleRate);
 
   if (status == MSG_OK)
-    status = mpu20600_setGyroLpf (imu, initParam->gyroLpf);
+    status = mpu20600_setGyroLpf(imu, initParam->gyroLpf);
   
   if (status == MSG_OK)
-    status = mpu20600_setAccelLpf (imu, initParam->accelLpf);
+    status = mpu20600_setAccelLpf(imu, initParam->accelLpf);
   
   if (status == MSG_OK)
-    status = mpu20600_setGyroFsr (imu, initParam->gyroFsr);
+    status = mpu20600_setGyroFsr(imu, initParam->gyroFsr);
   
   if (status == MSG_OK)
-    status = mpu20600_setAccelFsr (imu, initParam->accelFsr);
+    status = mpu20600_setAccelFsr(imu, initParam->accelFsr);
   
   return status;
 }
@@ -88,7 +88,7 @@ msg_t mpu20600_setGyroLpf( Mpu20600Data *imu, const uint8_t lpf)
     return I2C_EINVAL;
   }
 
-  return setGyroConfig (imu);
+  return setGyroConfig(imu);
 }
 
 msg_t mpu20600_setAccelLpf( Mpu20600Data *imu, const uint8_t lpf)
@@ -109,7 +109,7 @@ msg_t mpu20600_setAccelLpf( Mpu20600Data *imu, const uint8_t lpf)
     return I2C_EINVAL;
   }
 
-  return setAccelConfig (imu);
+  return setAccelConfig(imu);
 }
 
 msg_t mpu20600_setSampleRate( Mpu20600Data *imu, const uint32_t rate)
@@ -121,7 +121,7 @@ msg_t mpu20600_setSampleRate( Mpu20600Data *imu, const uint32_t rate)
   imu->sampleInterval =  STM32_SYSCLK / imu->sampleRate;
   if (imu->sampleInterval == 0)
     imu->sampleInterval = 1;
-  return setSampleRate (imu);
+  return setSampleRate(imu);
 }
 
 msg_t mpu20600_setGyroFsr( Mpu20600Data *imu, const uint8_t fsr)
@@ -129,22 +129,22 @@ msg_t mpu20600_setGyroFsr( Mpu20600Data *imu, const uint8_t fsr)
   switch (fsr) {
   case MPU20600_GYROFSR_250:
     imu->gyroFsr = fsr;
-    imu->gyroScale = MATH_PI / (131.0f * 180.0f);
+    imu->gyroScale = MATH_PI / (131.0d * 180.0d);
     break;
 
   case MPU20600_GYROFSR_500:
     imu->gyroFsr = fsr;
-    imu->gyroScale = MATH_PI / (62.5f * 180.0f);
+    imu->gyroScale = MATH_PI / (62.5d * 180.0d);
     break;
       
   case MPU20600_GYROFSR_1000:
     imu->gyroFsr = fsr;
-    imu->gyroScale = MATH_PI / (32.8f * 180.0f);
+    imu->gyroScale = MATH_PI / (32.8d * 180.0d);
     break;
    
   case MPU20600_GYROFSR_2000:
     imu->gyroFsr = fsr;
-    imu->gyroScale = MATH_PI / (16.4f * 180.0f);
+    imu->gyroScale = MATH_PI / (16.4d * 180.0d);
     break;
             
   default:
@@ -152,7 +152,7 @@ msg_t mpu20600_setGyroFsr( Mpu20600Data *imu, const uint8_t fsr)
   }
 
 
-  return setGyroConfig (imu);
+  return setGyroConfig(imu);
 }
 
 msg_t mpu20600_setAccelFsr( Mpu20600Data *imu, const uint8_t fsr)
@@ -160,29 +160,29 @@ msg_t mpu20600_setAccelFsr( Mpu20600Data *imu, const uint8_t fsr)
    switch (fsr) {
     case MPU20600_ACCELFSR_2:
         imu->accelFsr = fsr;
-        imu->accelScale = 1.0d/16384.0d;
+        imu->accelScale = 1.0d / 16384.0d;
 	break;
     
     case MPU20600_ACCELFSR_4:
         imu->accelFsr = fsr;
-        imu->accelScale = 1.0d/8192.0d;
+        imu->accelScale = 1.0d / 8192.0d;
 	break;
 	
     case MPU20600_ACCELFSR_8:
         imu->accelFsr = fsr;
-        imu->accelScale = 1.0d/4096.0d;
+        imu->accelScale = 1.0d / 4096.0d;
 	break;
 
     case MPU20600_ACCELFSR_16:
         imu->accelFsr = fsr;
-        imu->accelScale = 1.0d/2048.0d;
+        imu->accelScale = 1.0d / 2048.0d;
 	break;
 
     default:
         return I2C_EINVAL;
     }
 
-   return setAccelConfig (imu);
+   return setAccelConfig(imu);
 }
 
 
@@ -218,14 +218,14 @@ msg_t mpu20600_getVal ( Mpu20600Data *imu, float *temp,
 			     imu->cacheTimestamp, 
 			     imu->cacheTimestamp + imu->sampleInterval)) {
     imu->cacheTimestamp = chSysGetRealtimeCounterX();
-    status =  mpu20600_cacheVal (imu);
+    status =  mpu20600_cacheVal(imu);
   }
 
   if (status != MSG_OK) 
     return status;
 
    // m/s²
-  for (int i=0; i< 3; i++) {
+  for (int i=0; i < 3; i++) {
     acc->arr[i] =  ((int16_t) ((rawB[i*2]<<8) | rawB[(i*2)+1])) * imu->accelScale  * 9.81f;
   }
 
@@ -238,7 +238,7 @@ msg_t mpu20600_getVal ( Mpu20600Data *imu, float *temp,
   *temp = ( ((int16_t) ((rawB[6]<<8) | rawB[7])) / 340.0f) + 21.0f;
   
   // rad/s
- for (int i=0; i< 3; i++) {
+ for (int i=0; i < 3; i++) {
     gyro->arr[i] =  ((int16_t) ((rawB[(i*2)+8]<<8) | rawB[(i*2)+9])) * imu->gyroScale;
   }
 
@@ -247,7 +247,7 @@ msg_t mpu20600_getVal ( Mpu20600Data *imu, float *temp,
   return status;
 }
 
-msg_t mpu20600_getDevid (Mpu20600Data *imu, uint8_t *devid)
+msg_t mpu20600_getDevid(Mpu20600Data *imu, uint8_t *devid)
 { 
   msg_t status = MSG_OK;
   i2cAcquireBus(imu->i2cd);
@@ -262,15 +262,15 @@ msg_t mpu20600_getDevid (Mpu20600Data *imu, uint8_t *devid)
 
 
 
-static    msg_t setInitialConfig ( Mpu20600Data *imu)
+static    msg_t setInitialConfig( Mpu20600Data *imu)
 {
   msg_t status = MSG_OK;
   i2cAcquireBus(imu->i2cd);
 
   // reset the entire 20600 (if compass I²C has been shutdown, this will not restore it
-  I2C_WRITE_REGISTERS (imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_1, 0x80);
-  chThdSleepMilliseconds (10);
-  I2C_WRITE_REGISTERS (imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_1, 0x1);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_1, 0x80);
+  chThdSleepMilliseconds(10);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_1, 0x1);
 
   i2cReleaseBus(imu->i2cd);
   return status;
@@ -279,42 +279,42 @@ static    msg_t setInitialConfig ( Mpu20600Data *imu)
 
 
 
-static    msg_t setGyroConfig ( Mpu20600Data *imu)
+static    msg_t setGyroConfig( Mpu20600Data *imu)
 {
   msg_t status = MSG_OK;
-  uint8_t gyroConfig = (uint8_t) (imu->gyroFsr + ((imu->gyroLpf >> 3U) & 3U));
+  uint8_t gyroConfig = (uint8_t) (imu->gyroFsr | ((imu->gyroLpf >> 3U) & 3U));
   uint8_t gyroLpf = (uint8_t) (imu->gyroLpf & 7U);
 
   i2cAcquireBus(imu->i2cd);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_GYRO_CONFIG, gyroConfig);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_GYRO_LPF, gyroLpf);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_GYRO_CONFIG, gyroConfig);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_GYRO_LPF, gyroLpf);
   i2cReleaseBus(imu->i2cd);
 
   return status;
 }
 
-static    msg_t setAccelConfig ( Mpu20600Data *imu)
+static    msg_t setAccelConfig( Mpu20600Data *imu)
 {
   msg_t status = MSG_OK;
 
   i2cAcquireBus(imu->i2cd);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_CONFIG, imu->accelFsr);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_LPF, imu->accelLpf);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_CONFIG, imu->accelFsr);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_LPF, imu->accelLpf);
   i2cReleaseBus(imu->i2cd);
   
   return status;
 }
 
 
-static    msg_t setSampleRate ( Mpu20600Data *imu)
+static    msg_t setSampleRate( Mpu20600Data *imu)
 {
   msg_t status = MSG_OK;
 
   i2cAcquireBus(imu->i2cd);
   if (imu->sampleRate > 1000) {
-    I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_SMPRT_DIV, 0);
+    I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_SMPRT_DIV, 0);
   } else {
-    I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_SMPRT_DIV, 
+    I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_SMPRT_DIV, 
 			  ((uint8_t) ((1000 / imu->sampleRate) - 1)));
   }
   
@@ -333,14 +333,14 @@ static __attribute__((__unused__)) msg_t resetFifo( Mpu20600Data *imu)
   msg_t status = MSG_OK;
   
   i2cAcquireBus(imu->i2cd);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_INT_ENABLE, 0);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_FIFO_EN, 0);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL, 0);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL, 0x04);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL, 0x60);
-  chThdSleepMilliseconds (50);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_INT_ENABLE, 1);
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_FIFO_EN, 0x78);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_INT_ENABLE, 0);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_EN, 0);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL, 0);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL, 0x04);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL, 0x60);
+  chThdSleepMilliseconds(50);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_INT_ENABLE, 1);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_EN, 0x78);
   i2cReleaseBus(imu->i2cd);
   
   return status;
@@ -355,12 +355,12 @@ static __attribute__((__unused__)) msg_t resetFifo( Mpu20600Data *imu)
 
 
 
-msg_t mpu20600_getItrStatus  (Mpu20600Data *imu, uint8_t *itrStatus)
+msg_t mpu20600_getItrStatus (Mpu20600Data *imu, uint8_t *itrStatus)
 {
   msg_t status = MSG_OK;
   i2cAcquireBus( imu->i2cd);
   I2C_READ_REGISTER(imu->i2cd, imu->slaveAddr, MPU20600_INT_STATUS, itrStatus);
-  i2cReleaseBus (imu->i2cd);
+  i2cReleaseBus(imu->i2cd);
   return status;
 }
 
@@ -369,7 +369,7 @@ msg_t mpu20600_getItrStatus  (Mpu20600Data *imu, uint8_t *itrStatus)
 
 
 
-msg_t mpu20600_setModeAccOnly (Mpu20600Data *imu)
+msg_t mpu20600_setModeAccOnly(Mpu20600Data *imu)
 {
   msg_t status;
   // if compass not already set in sleep mode, do it
@@ -378,17 +378,17 @@ msg_t mpu20600_setModeAccOnly (Mpu20600Data *imu)
   i2cAcquireBus(imu->i2cd); 
   
   // disable gyro sensors
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_2, MPU20600_PWRM2_DISABLE_GYRO);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_2, MPU20600_PWRM2_DISABLE_GYRO);
   
   // put gyro circuitry in standby
-  status = i2cMasterWriteBit (imu->i2cd, imu->slaveAddr,
+  status = i2cMasterWriteBit(imu->i2cd, imu->slaveAddr,
 			      MPU20600_PWR_MGMT_1,  MPU20600_PWRM1_GYROSTANDBY, true);
   
   i2cReleaseBus(imu->i2cd); 
   return status;
 }
 
-msg_t mpu20600_setModeAutoWake (Mpu20600Data *imu, 
+msg_t mpu20600_setModeAutoWake(Mpu20600Data *imu, 
 			      Mpu20600_LowPowerAccelerometerFrequencyCycle lpodr)
 {
   msg_t status = MSG_RESET;
@@ -397,10 +397,10 @@ msg_t mpu20600_setModeAutoWake (Mpu20600Data *imu,
   i2cAcquireBus(imu->i2cd); 
   if (lpodr != MPU20600_NORMAL_POWER_ODR) {
     // set frequency for waking mpu
-    I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_ODR, lpodr);
+    I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_ODR, lpodr);
     
     // set cycle bit to 1
-    I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_1, 0b00100001);
+    I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_1, 0b00100001);
   }
   
   i2cReleaseBus(imu->i2cd); 
@@ -408,7 +408,7 @@ msg_t mpu20600_setModeAutoWake (Mpu20600Data *imu,
 }
 
 
-msg_t mpu20600_activateMotionDetect (Mpu20600Data *imu, const uint32_t threadsholdInMilliG, const uint8_t pinConfigMask)
+msg_t mpu20600_activateMotionDetect(Mpu20600Data *imu, const uint32_t threadsholdInMilliG, const uint8_t pinConfigMask)
 {
   msg_t status;
   const uint8_t threadshold = MIN((threadsholdInMilliG/4), 255U);
@@ -416,18 +416,18 @@ msg_t mpu20600_activateMotionDetect (Mpu20600Data *imu, const uint32_t threadsho
   i2cAcquireBus(imu->i2cd);
   
   // enable wake on motion detection logic
-  I2C_WRITE_REGISTERS (imu->i2cd, imu->slaveAddr,  MPU20600_ACCEL_ITR_CTRL,
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr,  MPU20600_ACCEL_ITR_CTRL,
 		       MPU20600_INTEL_ENABLE | MPU20600_INTEL_MODE_COMPARE);
   
   // interrupt pin is active @level low, opendrain, 50µs pulse, clear on any register read
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_INT_PIN_CFG, pinConfigMask);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_INT_PIN_CFG, pinConfigMask);
   
   // interrupt pin fire on motion detection
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_INT_ENABLE,
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_INT_ENABLE,
 			MPU20600_INT_ENABLE_WAKE_ON_MOTION);
   
   // set threshold
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_WOM_THRESHOLD, threadshold);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_WOM_THRESHOLD, threadshold);
   
   
   i2cReleaseBus(imu->i2cd); 
@@ -441,7 +441,7 @@ msg_t mpu20600_activateMotionDetect (Mpu20600Data *imu, const uint32_t threadsho
 /*   i2cAcquireBus(imu->i2cd); */
   
 /*   // enable wake on motion detection logic */
-/*   I2C_WRITE_REGISTERS (imu->i2cd, imu->slaveAddr,  MPU20600_ACCEL_ITR_CTRL, */
+/*   I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr,  MPU20600_ACCEL_ITR_CTRL, */
 /* 		       MPU20600_INTEL_DISABLE); */
   
 /*   // interrupt pin is active @level low, opendrain, 50µs pulse, clear on any register read */
@@ -459,7 +459,7 @@ msg_t mpu20600_activateMotionDetect (Mpu20600Data *imu, const uint32_t threadsho
 /*   return status; */
 /* } */
 
-msg_t mpu20600_setModeDeepSleep (Mpu20600Data *imu)
+msg_t mpu20600_setModeDeepSleep(Mpu20600Data *imu)
 {
   msg_t status;
   
@@ -467,7 +467,7 @@ msg_t mpu20600_setModeDeepSleep (Mpu20600Data *imu)
  
   i2cAcquireBus(imu->i2cd);
   // set 20600 in deep sleep mode
-  I2C_WRITE_REGISTERS  (imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_1,  MPU20600_PWRM1_SLEEP);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_PWR_MGMT_1,  MPU20600_PWRM1_SLEEP);
   i2cReleaseBus(imu->i2cd);
   
   
