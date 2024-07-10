@@ -344,10 +344,10 @@ F7
 #elif  defined STM32G4XX
 #define STD_SECTION ".ram0" 
 #define FAST_SECTION ".ram4" 
-#define DMA_SECTION ".ram0"    
+#define DMA_SECTION ".ram1"    
 #define BCKP_SECTION ".ram5"
 #else
-#error "section defined only for STM32F3, STM32F4, STM32F7, STM32L4 and STM32H7"
+#error "section defined only for STM32F3, STM32F4, STM32F7, STM32L4, STM32H7 and STM32G4XX"
 #endif
 
 #if (defined __DCACHE_PRESENT) && (__DCACHE_PRESENT != 0)
