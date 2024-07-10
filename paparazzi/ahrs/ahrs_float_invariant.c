@@ -170,10 +170,12 @@ void ahrs_float_invariant_align(struct Int32Rates *lp_gyro,
                                struct Int32Vect3 *lp_accel,
                                struct Int32Vect3 *lp_mag)
 {
-  (void) lp_accel;
-  (void) lp_mag;
   /* Compute an initial orientation from accel and mag directly as quaternion */
-  ahrs_float_get_quat_from_accel_mag(&ahrs_float_inv.state.quat, lp_accel, lp_mag);
+  if (lp_mag) {
+    ahrs_float_get_quat_from_accel_mag(&ahrs_float_inv.state.quat, lp_accel, lp_mag);
+  } else {
+    ahrs_float_get_quat_from_accel(&ahrs_float_inv.state.quat, lp_accel);
+  }
   
   /* use average gyro as initial value for bias */
   struct FloatRates bias0;

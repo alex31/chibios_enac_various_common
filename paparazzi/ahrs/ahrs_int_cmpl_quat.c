@@ -35,7 +35,9 @@
 #include "paparazzi/generated/airframe.h"
 
 #undef GPS
+#ifndef USE_MAGNETOMETER
 #define USE_MAGNETOMETER 1
+#endif
 #define AHRS_MAG_UPDATE_ALL_AXES 0
 
 #include "paparazzi/ahrs/ahrs_int_cmpl_quat.h"
@@ -170,7 +172,7 @@ bool_t ahrs_icq_align(struct Int32Rates *lp_gyro, struct Int32Vect3 *lp_accel,
   ahrs_int_get_quat_from_accel(&ahrs_icq.ltp_to_imu_quat, lp_accel);
   ahrs_icq.heading_aligned = FALSE;
   // supress unused arg warning
-  lp_mag = lp_mag;
+  (void) lp_mag;
 #endif
 
   /* Use low passed gyro value as initial bias */
