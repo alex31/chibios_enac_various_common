@@ -186,7 +186,12 @@
 #define MPU20600_INT_ENABLE_FSYNC		(1<<3)
 #define MPU20600_INT_ENABLE_RAW_READY		(1<<0)
 
-
+#define MPU20600_INT_WOM_X			(1<<7)
+#define MPU20600_INT_WOM_Y			(1<<6)
+#define MPU20600_INT_WOM_Z			(1<<5)
+#define MPU20600_INT_FIFO_OFLOW			(1<<4)
+#define MPU20600_INT_GDRIVE			(1<<2)
+#define MPU20600_INT_DATA_RDY			(1<<0)
 
 
 
