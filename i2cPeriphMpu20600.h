@@ -22,16 +22,6 @@
 //  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-/*
-#         _                  _
-#        | |                | |
-#        | |_     ___     __| |    ___
-#        | __|   / _ \   / _` |   / _ \
-#        \ |_   | (_) | | (_| |  | (_) |
-#         \__|   \___/   \__,_|   \___/
-
-
- */
 
 #ifndef I2C_USE_IMU20600
 #define I2C_USE_IMU20600 0
@@ -53,27 +43,27 @@
 
 //  Register map
 
-#define MPU20600_XG_OFFS_TC_H            0x04     
-#define MPU20600_XG_OFFS_TC_L            0x05
-#define MPU20600_YG_OFFS_TC_H            0x07
-#define MPU20600_YG_OFFS_TC_L            0x08
-#define MPU20600_ZG_OFFS_TC_H            0x0a
-#define MPU20600_ZG_OFFS_TC_L            0x0b
-#define MPU20600_SELF_TEST_X_ACCEL       0x0d
-#define MPU20600_SELF_TEST_Y_ACCEL       0x0e
-#define MPU20600_SELF_TEST_Z_ACCEL       0x0f
-#define MPU20600_XG_OFFS_USRH            0x13
-#define MPU20600_XG_OFFS_USRL            0x14
-#define MPU20600_YG_OFFS_USRH            0x15
-#define MPU20600_YG_OFFS_USRL            0x16
-#define MPU20600_ZG_OFFS_USRH            0x17
-#define MPU20600_ZG_OFFS_USRL            0x18
-#define MPU20600_SMPRT_DIV           0x19U // 25
-#define MPU20600_GYRO_LPF            0x1aU // 26
+#define MPU20600_XG_OFFS_TC_H        0x04     
+#define MPU20600_XG_OFFS_TC_L        0x05
+#define MPU20600_YG_OFFS_TC_H        0x07
+#define MPU20600_YG_OFFS_TC_L        0x08
+#define MPU20600_ZG_OFFS_TC_H        0x0a
+#define MPU20600_ZG_OFFS_TC_L        0x0b
+#define MPU20600_SELF_TEST_X_ACCEL   0x0d
+#define MPU20600_SELF_TEST_Y_ACCEL   0x0e
+#define MPU20600_SELF_TEST_Z_ACCEL   0x0f
+#define MPU20600_XG_OFFS_USRH        0x13
+#define MPU20600_XG_OFFS_USRL        0x14
+#define MPU20600_YG_OFFS_USRH        0x15
+#define MPU20600_YG_OFFS_USRL        0x16
+#define MPU20600_ZG_OFFS_USRH        0x17
+#define MPU20600_ZG_OFFS_USRL        0x18
+#define MPU20600_SMPLRT_DIV          0x19U // 25
+#define MPU20600_GYRO_LPF	     0x1aU // 26
 #define MPU20600_GYRO_CONFIG         0x1bU // 27
 #define MPU20600_ACCEL_CONFIG        0x1cU // 28
 #define MPU20600_ACCEL_LPF           0x1dU // 29
-#define MPU20600_ACCEL_ODR	    0x1eU // 30
+#define MPU20600_ACCEL_ODR	     0x1eU // 30
 #define MPU20600_ACCEL_WOM_THRESHOLD 0x1fU // 31
 #define MPU20600_FIFO_EN             0x23U 
 #define MPU20600_I2C_MST_CTRL        0x24U
@@ -109,20 +99,17 @@
 
 //  compass rate defines
 
-#define MPU20600_COMPASSRATE_MIN     1U                       // 1 samples per second is the lowest
-#define MPU20600_COMPASSRATE_MAX     100U                     // 100 samples per second is maximum
-
 //  Gyro LPF options
 
-#define MPU20600_GYRO_LPF_8800       0x11U                    // 8800Hz, 0.64mS delay
-#define MPU20600_GYRO_LPF_3600       0x10U                    // 3600Hz, 0.11mS delay
+#define MPU20600_GYRO_LPF_3281       0x07U                    // 3600Hz, 0.11mS delay
 #define MPU20600_GYRO_LPF_250        0x00U                    // 250Hz, 0.97mS delay
-#define MPU20600_GYRO_LPF_184        0x01U                    // 184Hz, 2.9mS delay
+#define MPU20600_GYRO_LPF_176        0x01U                    // 184Hz, 2.9mS delay
 #define MPU20600_GYRO_LPF_92         0x02U                    // 92Hz, 3.9mS delay
 #define MPU20600_GYRO_LPF_41         0x03U                    // 41Hz, 5.9mS delay
 #define MPU20600_GYRO_LPF_20         0x04U                    // 20Hz, 9.9mS delay
 #define MPU20600_GYRO_LPF_10         0x05U                    // 10Hz, 17.85mS delay
 #define MPU20600_GYRO_LPF_5          0x06U                    // 5Hz, 33.48mS delay
+
 
 //  Gyro FSR options
 
@@ -140,14 +127,14 @@
 
 //  Accel LPF options
 
-#define MPU20600_ACCEL_LPF_1130      0x08U                    // 1130Hz, 0.75mS delay
-#define MPU20600_ACCEL_LPF_460       0x00U                    // 460Hz, 1.94mS delay
-#define MPU20600_ACCEL_LPF_184       0x01U                    // 184Hz, 5.80mS delay
-#define MPU20600_ACCEL_LPF_92        0x02U                    // 92Hz, 7.80mS delay
-#define MPU20600_ACCEL_LPF_41        0x03U                    // 41Hz, 11.80mS delay
-#define MPU20600_ACCEL_LPF_20        0x04U                    // 20Hz, 19.80mS delay
+#define MPU20600_ACCEL_LPF_1046      0x08U                    // 1130Hz, 0.75mS delay
+#define MPU20600_ACCEL_LPF_218       0x01U                    // 184Hz, 5.80mS delay
+#define MPU20600_ACCEL_LPF_99        0x02U                    // 92Hz, 7.80mS delay
+#define MPU20600_ACCEL_LPF_44        0x03U                    // 41Hz, 11.80mS delay
+#define MPU20600_ACCEL_LPF_21        0x04U                    // 20Hz, 19.80mS delay
 #define MPU20600_ACCEL_LPF_10        0x05U                    // 10Hz, 35.70mS delay
 #define MPU20600_ACCEL_LPF_5         0x06U                    // 5Hz, 66.96mS delay
+#define MPU20600_ACCEL_LPF_420       0x07U                    // 460Hz, 1.94mS delay
 
 
 
@@ -195,13 +182,9 @@
 
 
 
-//  FIFO transfer size
-#define MPU20600_FIFO_CHUNK_SIZE     12U                      // gyro and accels take 12 bytes
 
 // bitmask, obiousvly cannot have enabled and disabled bit at same time
 
-
-typedef enum {IMU_NO_SWAP=0, IMU_SWAP_0_1=0b01000000, IMU_SWAP_1_2=0b01010000} Mpu20600_TransferSwapMode;
 
 typedef enum {MPU20600_LOW_POWER_ACC_ODR_0_DOT_24_HZ=0,	
 	      MPU20600_LOW_POWER_ACC_ODR_0_DOT_49_HZ,	
@@ -222,19 +205,30 @@ typedef enum {MPU20600_LOW_POWER_ACC_ODR_0_DOT_24_HZ=0,
   
 
 /*
-#                 __  __   _____    _    _              ___    ___    _____    ___          
-#                |  \/  | |  __ \  | |  | |            / _ \  |__ \  | ____|  / _ \         
-#                | \  / | | |__) | | |  | |           | (_) |    ) | | |__   | | | |        
-#                | |\/| | |  ___/  | |  | |            \__, |   / /  |___ \  | | | |        
-#                | |  | | | |      | |__| |  ______      / /   / /_   ___) | | |_| |        
-#                |_|  |_| |_|       \____/  |______|    /_/   |____| |____/   \___/         
+#                 __  __ _____  _    _      ___   ___    __   ___   ___  
+#                |  \/  |  __ \| |  | |    |__ \ / _ \  / /  / _ \ / _ \ 
+#                | \  / | |__) | |  | |______ ) | | | |/ /_ | | | | | | |
+#                | |\/| |  ___/| |  | |______/ /| | | | '_ \| | | | | | |
+#                | |  | | |    | |__| |     / /_| |_| | (_) | |_| | |_| |
+#                |_|  |_|_|     \____/     |____|\___/ \___/ \___/ \___/ 
+#                                                                        
+#                                                                        
 */
 
 struct _Mpu20600Data;
 typedef struct _Mpu20600Data  Mpu20600Data;
 
 
-
+typedef union 
+{
+  struct {
+    int16_t acc[3];
+    int16_t temperature;
+    int16_t gyr[3];
+  };
+  int16_t raw[7]; // usefull to swap bytes (endianness) of words in a loop
+} Mpu20600FifoData;
+static_assert(sizeof(Mpu20600FifoData) == 14);
 
 struct _Mpu20600Data
 {
@@ -245,7 +239,6 @@ struct _Mpu20600Data
   uint32_t	cacheTimestamp;	// time stamp for raw data cache
   float		gyroScale;
   float		accelScale;
-  uint8_t	rawCache[MPU20600_REGISTER_LAST-MPU20600_REGISTER_BASE];	// can cache all of readable segment
 
   bool		accOnly;
   uint8_t			nextSlvFreeSlot;	// next slot for i2c slv managing
@@ -253,11 +246,13 @@ struct _Mpu20600Data
   
   uint8_t	gyroLpf;        // gyro low pass filter setting
   uint8_t	accelLpf;       // accel low pass filter setting
-  //  int32_t compassRate;                        // compass sample rate in Hz
 
   uint8_t	gyroFsr;	// gyro scale (250 to 2000 °/second)
   uint8_t	accelFsr;	// accel scale (+/- 2g to +/- 16g)
-  uint8_t	registerSegmentLen;	// len of register to acquire 
+  uint8_t	registerSegmentLen;	// len of register to acquire
+  uint8_t	fifoIndex;      // next fifo element to pop
+  uint8_t	fifoLen;        // number of elements in the fifo
+  Mpu20600FifoData fifo[72];
 };
 
 typedef struct  
@@ -265,6 +260,7 @@ typedef struct
   I2CDriver		*i2cd;
   uint32_t		 sampleRate;	// imu sample rate in Hz
   bool			 useAd0;	// I2C address offset pin enabled
+  bool			 fifoEnabled;   // Enable Fifo mode
   uint8_t		 gyroLpf;	// gyro low pass filter setting
   uint8_t		 accelLpf;	// accel low pass filter setting
   uint8_t		 gyroFsr;	// gyro scale (250 to 2000 °/second)
@@ -275,20 +271,22 @@ typedef struct
 
 
 
-msg_t mpu20600_init (Mpu20600Data *imu, const Mpu20600Config* initParam);
-msg_t mpu20600_setGyroLpf (Mpu20600Data *imu, const uint8_t lpf);
-msg_t mpu20600_setAccelLpf (Mpu20600Data *imu, const uint8_t lpf);
-msg_t mpu20600_setSampleRate (Mpu20600Data *imu, const uint32_t rate);
-msg_t mpu20600_setGyroFsr (Mpu20600Data *imu, const uint8_t fsr);
-msg_t mpu20600_setAccelFsr (Mpu20600Data *imu, const uint8_t fsr);
+msg_t mpu20600_init(Mpu20600Data *imu, const Mpu20600Config* initParam);
+msg_t mpu20600_setGyroLpf(Mpu20600Data *imu, const uint8_t lpf);
+msg_t mpu20600_setAccelLpf(Mpu20600Data *imu, const uint8_t lpf);
+msg_t mpu20600_setSampleRate(Mpu20600Data *imu, const uint32_t rate);
+msg_t mpu20600_setGyroFsr(Mpu20600Data *imu, const uint8_t fsr);
+msg_t mpu20600_setAccelFsr(Mpu20600Data *imu, const uint8_t fsr);
 
-msg_t mpu20600_cacheVal  (Mpu20600Data *imu);
+msg_t mpu20600_cacheVal(Mpu20600Data *imu);
 
 // temp in celcius degree, gyro in rad/s, accel in m/s², 
-msg_t mpu20600_getVal  (Mpu20600Data *imu, float *temp, 
+msg_t mpu20600_getVal(Mpu20600Data *imu, float *temp, 
 		      ImuVec3f *gyro, ImuVec3f *acc);
-msg_t mpu20600_getItrStatus  (Mpu20600Data *imu, uint8_t *itrStatus);
-msg_t mpu20600_getDevid (Mpu20600Data *imu, uint8_t *devid);
+msg_t mpu20600_getItrStatus(Mpu20600Data *imu, uint8_t *itrStatus);
+msg_t mpu20600_getDevid(Mpu20600Data *imu, uint8_t *devid);
+bool  mpu20600_popFifo(Mpu20600Data *imu, ImuVec3f *acc, ImuVec3f *gyro,
+		       float *dt, bool *fifoFull);
 
 
 

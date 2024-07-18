@@ -18,13 +18,16 @@ TODO :
 
 
 /*
-#                 __  __   _____    _    _              ___    ___    _____    ___          
-#                |  \/  | |  __ \  | |  | |            / _ \  |__ \  | ____|  / _ \         
-#                | \  / | | |__) | | |  | |           | (_) |    ) | | |__   | | | |        
-#                | |\/| | |  ___/  | |  | |            \__, |   / /  |___ \  | | | |        
-#                | |  | | | |      | |__| |  ______      / /   / /_   ___) | | |_| |        
-#                |_|  |_| |_|       \____/  |______|    /_/   |____| |____/   \___/         
+#                                            ___   ___    __   ___   ___  
+#                                           |__ \ / _ \  / /  / _ \ / _ \ 
+#                 _ __ ___  _ __  _   _ ______ ) | | | |/ /_ | | | | | | |
+#                | '_ ` _ \| '_ \| | | |______/ /| | | | '_ \| | | | | | |
+#                | | | | | | |_) | |_| |     / /_| |_| | (_) | |_| | |_| |
+#                |_| |_| |_| .__/ \__,_|    |____|\___/ \___/ \___/ \___/ 
+#                          | |                                            
+#                          |_|                                            
 */
+
 
 
 
@@ -32,7 +35,11 @@ static    msg_t setInitialConfig(Mpu20600Data *imu);
 static    msg_t setGyroConfig(Mpu20600Data *imu);
 static    msg_t setAccelConfig(Mpu20600Data *imu);
 static    msg_t setSampleRate( Mpu20600Data *imu);
-static    msg_t resetFifo( Mpu20600Data *imu);
+static    msg_t fifoEnable( Mpu20600Data *imu);
+static    void  rawToSI(const Mpu20600Data *imu, 
+		    ImuVec3f *acc, ImuVec3f *gyro,
+			float *temp);
+static msg_t readFifo(Mpu20600Data *imu, bool *fifoFull);
 
 #define MATH_PI 3.14159265358979323846f
 
@@ -48,6 +55,7 @@ msg_t mpu20600_init( Mpu20600Data *imu, const Mpu20600Config* initParam)
   imu->cacheTimestamp = chSysGetRealtimeCounterX();
   imu->nextSlvFreeSlot = 0;
   imu->accOnly = false;
+  imu->fifoIndex = imu->fifoLen = 0;
 
   status = setInitialConfig(imu);
 
@@ -72,10 +80,9 @@ msg_t mpu20600_init( Mpu20600Data *imu, const Mpu20600Config* initParam)
 msg_t mpu20600_setGyroLpf( Mpu20600Data *imu, const uint8_t lpf)
 {
   switch (lpf) {
-  case MPU20600_GYRO_LPF_8800:
-  case MPU20600_GYRO_LPF_3600:
+  case MPU20600_GYRO_LPF_3281:
   case MPU20600_GYRO_LPF_250:
-  case MPU20600_GYRO_LPF_184:
+  case MPU20600_GYRO_LPF_176:
   case MPU20600_GYRO_LPF_92:
   case MPU20600_GYRO_LPF_41:
   case MPU20600_GYRO_LPF_20:
@@ -94,12 +101,12 @@ msg_t mpu20600_setGyroLpf( Mpu20600Data *imu, const uint8_t lpf)
 msg_t mpu20600_setAccelLpf( Mpu20600Data *imu, const uint8_t lpf)
 {
   switch (lpf) {
-  case MPU20600_ACCEL_LPF_1130:
-  case MPU20600_ACCEL_LPF_460:
-  case MPU20600_ACCEL_LPF_184:
-  case MPU20600_ACCEL_LPF_92:
-  case MPU20600_ACCEL_LPF_41:
-  case MPU20600_ACCEL_LPF_20:
+  case MPU20600_ACCEL_LPF_1046:
+  case MPU20600_ACCEL_LPF_420:
+  case MPU20600_ACCEL_LPF_218:
+  case MPU20600_ACCEL_LPF_99:
+  case MPU20600_ACCEL_LPF_44:
+  case MPU20600_ACCEL_LPF_21:
   case MPU20600_ACCEL_LPF_10:
   case MPU20600_ACCEL_LPF_5:
     imu->accelLpf = lpf;
@@ -195,13 +202,17 @@ msg_t mpu20600_cacheVal ( Mpu20600Data *imu)
 
   // if we get all 9 axes
   if (imu->accOnly == false) {
-    I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_REGISTER_BASE, imu->rawCache, 
+    I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_REGISTER_BASE,
+			  (uint8_t *) imu->fifo, 
 			  imu->registerSegmentLen);
   } else { // if we just get 3 axes of accelerations
-    I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_REGISTER_BASE, imu->rawCache, 
+    I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_REGISTER_BASE,
+			  (uint8_t *) imu->fifo, 
 			  6);
   }
   i2cReleaseBus(imu->i2cd);
+  for (size_t i=0; i < 7; i++)
+    imu->fifo[0].raw[i] = SWAP_ENDIAN16(imu->fifo[0].raw[i]);
   
   return MSG_OK; 
 }
@@ -210,9 +221,6 @@ msg_t mpu20600_getVal ( Mpu20600Data *imu, float *temp,
 		     ImuVec3f *gyro, ImuVec3f *acc)
 {
   msg_t status = MSG_OK;
-
-  // alias 
-  const uint8_t  *rawB =  imu->rawCache;
 
   if (!chSysIsCounterWithinX(chSysGetRealtimeCounterX(),
 			     imu->cacheTimestamp, 
@@ -223,26 +231,8 @@ msg_t mpu20600_getVal ( Mpu20600Data *imu, float *temp,
 
   if (status != MSG_OK) 
     return status;
-
-   // m/s²
-  for (int i=0; i < 3; i++) {
-    acc->arr[i] =  ((int16_t) ((rawB[i*2]<<8) | rawB[(i*2)+1])) * imu->accelScale  * 9.81f;
-  }
-
-  // if we are in low power mode acceleration sensor only, don't calculate other values
-  if (imu->accOnly) {
-    return status;
-  }
-  
-  // C°
-  *temp = ( ((int16_t) ((rawB[6]<<8) | rawB[7])) / 340.0f) + 21.0f;
-  
-  // rad/s
- for (int i=0; i < 3; i++) {
-    gyro->arr[i] =  ((int16_t) ((rawB[(i*2)+8]<<8) | rawB[(i*2)+9])) * imu->gyroScale;
-  }
-
-
+  imu->fifoIndex = 0;
+  rawToSI(imu, acc, gyro, temp);
  
   return status;
 }
@@ -257,9 +247,6 @@ msg_t mpu20600_getDevid(Mpu20600Data *imu, uint8_t *devid)
     status = I2C_BADID;
   return status;
 }
-
-
-
 
 
 static    msg_t setInitialConfig( Mpu20600Data *imu)
@@ -312,9 +299,9 @@ static    msg_t setSampleRate( Mpu20600Data *imu)
 
   i2cAcquireBus(imu->i2cd);
   if (imu->sampleRate > 1000) {
-    I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_SMPRT_DIV, 0);
+    I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_SMPLRT_DIV, 0);
   } else {
-    I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_SMPRT_DIV, 
+    I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_SMPLRT_DIV, 
 			  ((uint8_t) ((1000 / imu->sampleRate) - 1)));
   }
   
@@ -328,19 +315,18 @@ static    msg_t setSampleRate( Mpu20600Data *imu)
 /*   return MSG_OK; */
 /* } */
 
-static __attribute__((__unused__)) msg_t resetFifo( Mpu20600Data *imu) 
+static __attribute__((__unused__)) msg_t fifoEnable( Mpu20600Data *imu) 
 {
   msg_t status = MSG_OK;
   
   i2cAcquireBus(imu->i2cd);
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_INT_ENABLE, 0);
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_EN, 0);
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL, 0);
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL, 0x04);
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL, 0x60);
-  chThdSleepMilliseconds(50);
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_INT_ENABLE, 1);
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_EN, 0x78);
+  // fifo enabled for accelero and gyro and temperature which
+  // cannot be disabled
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_EN,
+		      0b11 << 3);
+  // enable fifo operation
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL,
+		      0b1 << 6);
   i2cReleaseBus(imu->i2cd);
   
   return status;
@@ -366,6 +352,69 @@ msg_t mpu20600_getItrStatus (Mpu20600Data *imu, uint8_t *itrStatus)
 
 
 
+static msg_t readFifo(Mpu20600Data *imu, bool *fifoFull)
+{
+  msg_t status = MSG_OK;
+  uint8_t itrStatus;
+  uint16_t fifoCount;
+  i2cAcquireBus( imu->i2cd);
+  I2C_READ_REGISTER(imu->i2cd, imu->slaveAddr, MPU20600_INT_STATUS, &itrStatus);
+  *fifoFull = *fifoFull || (itrStatus & MPU20600_INT_FIFO_OFLOW) != 0;
+  I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_COUNT_H,
+			(uint8_t *) &fifoCount, sizeof(fifoCount));
+  fifoCount = SWAP_ENDIAN16(fifoCount);
+  chDbgAssert((fifoCount % sizeof(Mpu20600FifoData)) == 0, "fifo count not modulo 14");
+  // read by block of 14 bytes
+  const uint16_t fifoNbBlocks = (fifoCount / sizeof(Mpu20600FifoData)) /*+ 1U*/;
+  I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_R_W,
+			(uint8_t *) imu->fifo, fifoNbBlocks * sizeof(Mpu20600FifoData));
+  int16_t *samplesPtr = imu->fifo[0].raw;
+
+  // fix endianness of all values
+  for (size_t sampleIdx = 0;
+       sampleIdx < fifoNbBlocks * sizeof(Mpu20600FifoData) / sizeof(int16_t);
+       sampleIdx++) {
+    samplesPtr[sampleIdx] = SWAP_ENDIAN16(samplesPtr[sampleIdx]);
+  }
+  imu->fifoIndex = 0;
+  imu->fifoLen = fifoNbBlocks;
+  i2cReleaseBus(imu->i2cd);
+  return status;
+}
+
+static void rawToSI(const Mpu20600Data *imu, 
+		    ImuVec3f *acc, ImuVec3f *gyro,
+		    float *temp)
+{
+  const Mpu20600FifoData *fifoData = &imu->fifo[imu->fifoIndex];
+
+  if (acc) 
+    for (int i=0; i < 3; i++) 
+      acc->arr[i] =  fifoData->acc[i] * imu->accelScale  * 9.81f;
+  
+  if (gyro) 
+    for (int i=0; i < 3; i++) 
+      gyro->arr[i] = fifoData->gyr[i] * imu->gyroScale;
+  
+  if (temp) 
+    *temp = fifoData->temperature / 340.0f + 21.0f;
+  
+}
+
+
+bool  mpu20600_popFifo(Mpu20600Data *imu, ImuVec3f *acc, ImuVec3f *gyro,
+		       float *dt, bool *fifoFull)
+{
+  *dt = 1.0f / imu->sampleRate;
+  // if we have poped all data from fifo cache, get from IMU
+  if (imu->fifoIndex == imu->fifoLen) {
+    readFifo(imu, fifoFull);
+  }
+  // transform from raw value to SI value for the current index
+  rawToSI(imu, acc, gyro, nullptr);
+  // return true if there is remaining data in fifo cache
+  return (++imu->fifoIndex != imu->fifoLen);
+}
 
 
 
