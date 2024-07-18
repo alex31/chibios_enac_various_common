@@ -62,7 +62,7 @@
 #define MPU20600_GYRO_LPF	     0x1aU // 26
 #define MPU20600_GYRO_CONFIG         0x1bU // 27
 #define MPU20600_ACCEL_CONFIG        0x1cU // 28
-#define MPU20600_ACCEL_LPF           0x1dU // 29
+#define MPU20600_ACCEL_CONFIG2           0x1dU // 29
 #define MPU20600_ACCEL_ODR	     0x1eU // 30
 #define MPU20600_ACCEL_WOM_THRESHOLD 0x1fU // 31
 #define MPU20600_FIFO_EN             0x23U 
@@ -90,7 +90,7 @@
 #define ICM20600_WHO_AM_I_CONTENT    0x11U
 
 #define  MPU20600_REGISTER_BASE      MPU20600_ACCEL_XOUT_H
-#define  MPU20600_JUSTIMU_LAST	    MPU20600_GYRO_ZOUT_L
+#define  MPU20600_JUSTIMU_LAST	     MPU20600_GYRO_ZOUT_L
 #define  MPU20600_REGISTER_LAST	    MPU20600_EXT_SENS_DATA_23
 //  sample rate defines (applies to gyros and accels, not mags)
 
@@ -120,10 +120,10 @@
 
 //  Accel FSR options
 
-#define MPU20600_ACCELFSR_2          0U                       // +/- 2g
-#define MPU20600_ACCELFSR_4          8U                       // +/- 4g
-#define MPU20600_ACCELFSR_8          0x10U                    // +/- 8g
-#define MPU20600_ACCELFSR_16         0x18U                    // +/- 16g
+#define MPU20600_ACCELFSR_2          (0b00 << 3)              // +/- 2g
+#define MPU20600_ACCELFSR_4          (0b01 << 3)              // +/- 4g
+#define MPU20600_ACCELFSR_8          (0b10 << 3)              // +/- 8g
+#define MPU20600_ACCELFSR_16         (0b11 << 3)              // +/- 16g
 
 //  Accel LPF options
 
@@ -252,7 +252,7 @@ struct _Mpu20600Data
   uint8_t	registerSegmentLen;	// len of register to acquire
   uint8_t	fifoIndex;      // next fifo element to pop
   uint8_t	fifoLen;        // number of elements in the fifo
-  Mpu20600FifoData fifo[72];
+  Mpu20600FifoData fifo[72];	// cache for fifo or once by once data read
 };
 
 typedef struct  

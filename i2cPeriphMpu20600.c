@@ -3,7 +3,7 @@
 #include "i2cPeriphMpu20600.h"
 #include <math.h>
 #include <string.h>
-
+#include "stdutil.h"
 /*
 
 TODO :
@@ -63,16 +63,19 @@ msg_t mpu20600_init( Mpu20600Data *imu, const Mpu20600Config* initParam)
     status = mpu20600_setSampleRate(imu, initParam->sampleRate);
 
   if (status == MSG_OK)
-    status = mpu20600_setGyroLpf(imu, initParam->gyroLpf);
-  
-  if (status == MSG_OK)
-    status = mpu20600_setAccelLpf(imu, initParam->accelLpf);
-  
-  if (status == MSG_OK)
     status = mpu20600_setGyroFsr(imu, initParam->gyroFsr);
   
   if (status == MSG_OK)
+    status = mpu20600_setGyroLpf(imu, initParam->gyroLpf);
+  
+  if (status == MSG_OK)
     status = mpu20600_setAccelFsr(imu, initParam->accelFsr);
+
+  if (status == MSG_OK)
+    status = mpu20600_setAccelLpf(imu, initParam->accelLpf);
+  
+  if ((status == MSG_OK) && (initParam->fifoEnabled))
+    status = fifoEnable(imu);
   
   return status;
 }
@@ -135,22 +138,18 @@ msg_t mpu20600_setGyroFsr( Mpu20600Data *imu, const uint8_t fsr)
 {
   switch (fsr) {
   case MPU20600_GYROFSR_250:
-    imu->gyroFsr = fsr;
     imu->gyroScale = MATH_PI / (131.0d * 180.0d);
     break;
 
   case MPU20600_GYROFSR_500:
-    imu->gyroFsr = fsr;
     imu->gyroScale = MATH_PI / (62.5d * 180.0d);
     break;
       
   case MPU20600_GYROFSR_1000:
-    imu->gyroFsr = fsr;
     imu->gyroScale = MATH_PI / (32.8d * 180.0d);
     break;
    
   case MPU20600_GYROFSR_2000:
-    imu->gyroFsr = fsr;
     imu->gyroScale = MATH_PI / (16.4d * 180.0d);
     break;
             
@@ -158,7 +157,7 @@ msg_t mpu20600_setGyroFsr( Mpu20600Data *imu, const uint8_t fsr)
     return I2C_EINVAL;
   }
 
-
+  imu->gyroFsr = fsr;
   return setGyroConfig(imu);
 }
 
@@ -166,22 +165,18 @@ msg_t mpu20600_setAccelFsr( Mpu20600Data *imu, const uint8_t fsr)
 {
    switch (fsr) {
     case MPU20600_ACCELFSR_2:
-        imu->accelFsr = fsr;
         imu->accelScale = 1.0d / 16384.0d;
 	break;
     
     case MPU20600_ACCELFSR_4:
-        imu->accelFsr = fsr;
         imu->accelScale = 1.0d / 8192.0d;
 	break;
 	
     case MPU20600_ACCELFSR_8:
-        imu->accelFsr = fsr;
         imu->accelScale = 1.0d / 4096.0d;
 	break;
 
     case MPU20600_ACCELFSR_16:
-        imu->accelFsr = fsr;
         imu->accelScale = 1.0d / 2048.0d;
 	break;
 
@@ -189,6 +184,7 @@ msg_t mpu20600_setAccelFsr( Mpu20600Data *imu, const uint8_t fsr)
         return I2C_EINVAL;
     }
 
+   imu->accelFsr = fsr;
    return setAccelConfig(imu);
 }
 
@@ -286,7 +282,7 @@ static    msg_t setAccelConfig( Mpu20600Data *imu)
 
   i2cAcquireBus(imu->i2cd);
   I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_CONFIG, imu->accelFsr);
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_LPF, imu->accelLpf);
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_ACCEL_CONFIG2, imu->accelLpf);
   i2cReleaseBus(imu->i2cd);
   
   return status;
@@ -302,7 +298,7 @@ static    msg_t setSampleRate( Mpu20600Data *imu)
     I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_SMPLRT_DIV, 0);
   } else {
     I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_SMPLRT_DIV, 
-			  ((uint8_t) ((1000 / imu->sampleRate) - 1)));
+			  ((uint8_t) ((1000U / imu->sampleRate) - 1U)));
   }
   
   i2cReleaseBus(imu->i2cd);
@@ -315,7 +311,7 @@ static    msg_t setSampleRate( Mpu20600Data *imu)
 /*   return MSG_OK; */
 /* } */
 
-static __attribute__((__unused__)) msg_t fifoEnable( Mpu20600Data *imu) 
+static msg_t fifoEnable( Mpu20600Data *imu) 
 {
   msg_t status = MSG_OK;
   
@@ -326,7 +322,7 @@ static __attribute__((__unused__)) msg_t fifoEnable( Mpu20600Data *imu)
 		      0b11 << 3);
   // enable fifo operation
   I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL,
-		      0b1 << 6);
+		      0b01000100);
   i2cReleaseBus(imu->i2cd);
   
   return status;
@@ -356,19 +352,38 @@ static msg_t readFifo(Mpu20600Data *imu, bool *fifoFull)
 {
   msg_t status = MSG_OK;
   uint8_t itrStatus;
-  uint16_t fifoCount;
+  uint16_t fifoCount = 0;
   i2cAcquireBus( imu->i2cd);
   I2C_READ_REGISTER(imu->i2cd, imu->slaveAddr, MPU20600_INT_STATUS, &itrStatus);
   *fifoFull = *fifoFull || (itrStatus & MPU20600_INT_FIFO_OFLOW) != 0;
   I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_COUNT_H,
 			(uint8_t *) &fifoCount, sizeof(fifoCount));
   fifoCount = SWAP_ENDIAN16(fifoCount);
-  chDbgAssert((fifoCount % sizeof(Mpu20600FifoData)) == 0, "fifo count not modulo 14");
+  if (fifoCount % sizeof(Mpu20600FifoData) == 0) {
+    DebugTrace("BEFORE fifoCount is %%14 [%u]", fifoCount);
+  } else {
+    DebugTrace("BEFORE fifoCount = %u", fifoCount);
+  }
+
   // read by block of 14 bytes
   const uint16_t fifoNbBlocks = (fifoCount / sizeof(Mpu20600FifoData)) /*+ 1U*/;
   I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_R_W,
 			(uint8_t *) imu->fifo, fifoNbBlocks * sizeof(Mpu20600FifoData));
+  if (status != MSG_OK) {
+    DebugTrace("I2C_READLEN_REGISTERS Fails");
+  }
   int16_t *samplesPtr = imu->fifo[0].raw;
+  fifoCount = 0;
+  I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_COUNT_H,
+			(uint8_t *) &fifoCount, sizeof(fifoCount));
+  fifoCount = SWAP_ENDIAN16(fifoCount);
+  if (fifoCount % sizeof(Mpu20600FifoData) == 0) {
+    DebugTrace("AFTER read %u fifoCount is MODULO [%u]",
+	       fifoNbBlocks * sizeof(Mpu20600FifoData), fifoCount);
+  } else {
+    DebugTrace("AFTER read %u  fifoCount *NOT* = %u",
+	       fifoNbBlocks * sizeof(Mpu20600FifoData), fifoCount);
+  }
 
   // fix endianness of all values
   for (size_t sampleIdx = 0;
