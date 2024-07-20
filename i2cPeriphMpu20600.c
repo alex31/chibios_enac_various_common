@@ -310,6 +310,23 @@ static    msg_t setSampleRate( Mpu20600Data *imu)
 /* { */
 /*   return MSG_OK; */
 /* } */
+static msg_t fifoReset(Mpu20600Data *imu)
+{
+  msg_t status = MSG_OK;
+  // reset fifo operation
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL,
+		      0b100);
+  chThdSleepMilliseconds(1);
+  return status;
+}
+
+static msg_t fifoFill(Mpu20600Data *imu, bool fill)
+{
+  msg_t status = MSG_OK;
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_EN,
+		      fill ? 0b11 << 3 : 0);
+  return status;
+}
 
 static msg_t fifoEnable( Mpu20600Data *imu) 
 {
@@ -318,11 +335,14 @@ static msg_t fifoEnable( Mpu20600Data *imu)
   i2cAcquireBus(imu->i2cd);
   // fifo enabled for accelero and gyro and temperature which
   // cannot be disabled
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_EN,
-		      0b11 << 3);
+  fifoFill(imu, true);
+
+  fifoReset(imu);
+
   // enable fifo operation
   I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL,
-		      0b01000100);
+		      0b01000000);
+  chThdSleepMilliseconds(1);
   i2cReleaseBus(imu->i2cd);
   
   return status;
@@ -346,7 +366,15 @@ msg_t mpu20600_getItrStatus (Mpu20600Data *imu, uint8_t *itrStatus)
   return status;
 }
 
-
+/*
+  read itr status : store  overflow condition in boolan hasOverflown
+  read fifoCount
+  // disable sampling (really needed ?)
+  copy (fifoCount - fifoCount%14) bytes from 20600 to cache
+  // enable sampling  (really needed ?)
+  fifoIndex = 0; fifoLen = blockCount
+  if overflow : reset fifo circuitry
+ */
 
 static msg_t readFifo(Mpu20600Data *imu, bool *fifoFull)
 {
@@ -364,7 +392,7 @@ static msg_t readFifo(Mpu20600Data *imu, bool *fifoFull)
   } else {
     DebugTrace("BEFORE fifoCount = %u", fifoCount);
   }
-
+  //fifoFill(imu, false);
   // read by block of 14 bytes
   const uint16_t fifoNbBlocks = (fifoCount / sizeof(Mpu20600FifoData)) /*+ 1U*/;
   I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_R_W,
@@ -372,11 +400,13 @@ static msg_t readFifo(Mpu20600Data *imu, bool *fifoFull)
   if (status != MSG_OK) {
     DebugTrace("I2C_READLEN_REGISTERS Fails");
   }
+  //  fifoFill(imu, true);
   int16_t *samplesPtr = imu->fifo[0].raw;
   fifoCount = 0;
+  //chThdSleepMilliseconds(5);
   I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_COUNT_H,
 			(uint8_t *) &fifoCount, sizeof(fifoCount));
-  fifoCount = SWAP_ENDIAN16(fifoCount);
+  fifoCount = SWAP_ENDIAN16(fifoCount); // 560 -> 40 blocks -> sample @ 8Khz ? check FCHOICE_B
   if (fifoCount % sizeof(Mpu20600FifoData) == 0) {
     DebugTrace("AFTER read %u fifoCount is MODULO [%u]",
 	       fifoNbBlocks * sizeof(Mpu20600FifoData), fifoCount);
@@ -384,7 +414,6 @@ static msg_t readFifo(Mpu20600Data *imu, bool *fifoFull)
     DebugTrace("AFTER read %u  fifoCount *NOT* = %u",
 	       fifoNbBlocks * sizeof(Mpu20600FifoData), fifoCount);
   }
-
   // fix endianness of all values
   for (size_t sampleIdx = 0;
        sampleIdx < fifoNbBlocks * sizeof(Mpu20600FifoData) / sizeof(int16_t);
