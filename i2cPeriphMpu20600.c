@@ -39,7 +39,7 @@ static    msg_t fifoEnable( Mpu20600Data *imu);
 static    void  rawToSI(const Mpu20600Data *imu, 
 		    ImuVec3f *acc, ImuVec3f *gyro,
 			float *temp);
-static msg_t readFifo(Mpu20600Data *imu, bool *fifoFull);
+static msg_t readFifo(Mpu20600Data *imu, Mpu20600_Status *mpuStatus);
 
 #define MATH_PI 3.14159265358979323846f
 
@@ -317,6 +317,11 @@ static msg_t fifoReset(Mpu20600Data *imu)
   I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL,
 		      0b100);
   chThdSleepMilliseconds(1);
+  
+  // enable fifo operation
+  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL,
+		      0b01000000);
+  chThdSleepMilliseconds(1);
   return status;
 }
 
@@ -338,11 +343,6 @@ static msg_t fifoEnable( Mpu20600Data *imu)
   fifoFill(imu, true);
 
   fifoReset(imu);
-
-  // enable fifo operation
-  I2C_WRITE_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_USER_CTRL,
-		      0b01000000);
-  chThdSleepMilliseconds(1);
   i2cReleaseBus(imu->i2cd);
   
   return status;
@@ -376,52 +376,44 @@ msg_t mpu20600_getItrStatus (Mpu20600Data *imu, uint8_t *itrStatus)
   if overflow : reset fifo circuitry
  */
 
-static msg_t readFifo(Mpu20600Data *imu, bool *fifoFull)
+static msg_t readFifo(Mpu20600Data *imu, Mpu20600_Status *mpuStatus)
 {
   msg_t status = MSG_OK;
   uint8_t itrStatus;
   uint16_t fifoCount = 0;
+  imu->fifoIndex = imu->fifoLen = 0;
   i2cAcquireBus( imu->i2cd);
   I2C_READ_REGISTER(imu->i2cd, imu->slaveAddr, MPU20600_INT_STATUS, &itrStatus);
-  *fifoFull = *fifoFull || (itrStatus & MPU20600_INT_FIFO_OFLOW) != 0;
+  const bool hasOverflown =  (itrStatus & MPU20600_INT_FIFO_OFLOW) != 0;
+  if (hasOverflown) {
+    *mpuStatus |=  MPU20600_FIFO_FULL;
+  }
   I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_COUNT_H,
 			(uint8_t *) &fifoCount, sizeof(fifoCount));
   fifoCount = SWAP_ENDIAN16(fifoCount);
-  if (fifoCount % sizeof(Mpu20600FifoData) == 0) {
-    DebugTrace("BEFORE fifoCount is %%14 [%u]", fifoCount);
-  } else {
-    DebugTrace("BEFORE fifoCount = %u", fifoCount);
+  if ((fifoCount == 0) || (fifoCount > 1008)) {
+     goto fifoResetAndExit;
   }
-  //fifoFill(imu, false);
   // read by block of 14 bytes
-  const uint16_t fifoNbBlocks = (fifoCount / sizeof(Mpu20600FifoData)) /*+ 1U*/;
+  const uint16_t fifoNbBlocks = fifoCount / sizeof(Mpu20600FifoData);
   I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_R_W,
 			(uint8_t *) imu->fifo, fifoNbBlocks * sizeof(Mpu20600FifoData));
-  if (status != MSG_OK) {
-    DebugTrace("I2C_READLEN_REGISTERS Fails");
-  }
-  //  fifoFill(imu, true);
-  int16_t *samplesPtr = imu->fifo[0].raw;
-  fifoCount = 0;
-  //chThdSleepMilliseconds(5);
-  I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_COUNT_H,
-			(uint8_t *) &fifoCount, sizeof(fifoCount));
-  fifoCount = SWAP_ENDIAN16(fifoCount); // 560 -> 40 blocks -> sample @ 8Khz ? check FCHOICE_B
-  if (fifoCount % sizeof(Mpu20600FifoData) == 0) {
-    DebugTrace("AFTER read %u fifoCount is MODULO [%u]",
-	       fifoNbBlocks * sizeof(Mpu20600FifoData), fifoCount);
-  } else {
-    DebugTrace("AFTER read %u  fifoCount *NOT* = %u",
-	       fifoNbBlocks * sizeof(Mpu20600FifoData), fifoCount);
-  }
-  // fix endianness of all values
-  for (size_t sampleIdx = 0;
-       sampleIdx < fifoNbBlocks * sizeof(Mpu20600FifoData) / sizeof(int16_t);
-       sampleIdx++) {
-    samplesPtr[sampleIdx] = SWAP_ENDIAN16(samplesPtr[sampleIdx]);
-  }
-  imu->fifoIndex = 0;
-  imu->fifoLen = fifoNbBlocks;
+  if (status == MSG_OK) {
+    int16_t *samplesPtr = imu->fifo[0].raw;
+    fifoCount = 0;
+    // fix endianness of all values
+    for (size_t sampleIdx = 0;
+	 sampleIdx < fifoNbBlocks * sizeof(Mpu20600FifoData) / sizeof(int16_t);
+	 sampleIdx++) {
+      samplesPtr[sampleIdx] = SWAP_ENDIAN16(samplesPtr[sampleIdx]);
+    }
+    imu->fifoLen = fifoNbBlocks;
+    if (hasOverflown) {
+    fifoResetAndExit:
+      fifoReset(imu);
+    }
+  } 
+  
   i2cReleaseBus(imu->i2cd);
   return status;
 }
@@ -447,12 +439,16 @@ static void rawToSI(const Mpu20600Data *imu,
 
 
 bool  mpu20600_popFifo(Mpu20600Data *imu, ImuVec3f *acc, ImuVec3f *gyro,
-		       float *dt, bool *fifoFull)
+		       float *dt, Mpu20600_Status *mpuStatus)
 {
   *dt = 1.0f / imu->sampleRate;
   // if we have poped all data from fifo cache, get from IMU
   if (imu->fifoIndex == imu->fifoLen) {
-    readFifo(imu, fifoFull);
+    const msg_t status = readFifo(imu, mpuStatus);
+    if (status != MSG_OK) {
+      *mpuStatus |= MPU20600_I2C_ERROR;
+      fifoReset(imu);
+    }
   }
   // transform from raw value to SI value for the current index
   rawToSI(imu, acc, gyro, nullptr);

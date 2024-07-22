@@ -202,7 +202,11 @@ typedef enum {MPU20600_LOW_POWER_ACC_ODR_0_DOT_24_HZ=0,
 
 
 
-  
+typedef enum {
+  MPU20600_STATUS_OK = 0,
+  MPU20600_I2C_ERROR = 1 << 0,
+  MPU20600_FIFO_FULL = 1 << 1,
+}  Mpu20600_Status;
 
 /*
 #                 __  __ _____  _    _      ___   ___    __   ___   ___  
@@ -286,7 +290,7 @@ msg_t mpu20600_getVal(Mpu20600Data *imu, float *temp,
 msg_t mpu20600_getItrStatus(Mpu20600Data *imu, uint8_t *itrStatus);
 msg_t mpu20600_getDevid(Mpu20600Data *imu, uint8_t *devid);
 bool  mpu20600_popFifo(Mpu20600Data *imu, ImuVec3f *acc, ImuVec3f *gyro,
-		       float *dt, bool *fifoFull);
+		       float *dt, Mpu20600_Status *mpuStatus);
 
 
 
