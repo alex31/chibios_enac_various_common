@@ -70,7 +70,10 @@ chMtxInit(&i2cd->mutex);		\
     if (status != MSG_OK) {						\
       DebugTrace ("I2C error write " #array                             \
 		  " on " #i2cd                                          \
-		  " status =%s", status == MSG_RESET ?			\
+		  " file %s line %d "                                    \
+		  " status =%s",                                        \
+                  __FILE__, __LINE__,					\
+		  status == MSG_RESET ?					\
 		  "MSG_RESET" : "MSG_TIMEOUT");				\
       i2cReleaseBus (i2cd);						\
       chkErrorI2cMaster (i2cd);						\
@@ -79,8 +82,10 @@ chMtxInit(&i2cd->mutex);		\
 
 #define STATUS_TEST_READ(i2cd,array)  { \
     if (status != MSG_OK) {						\
-      DebugTrace ("I2C error read " #array                             \
+      DebugTrace ("I2C error read " #array                              \
 		  " on " #i2cd                                          \
+		  " file %s line %d ",					\
+                  __FILE__, __LINE__,					\
 		  " status =%s", status == MSG_RESET ?			\
 		  "MSG_RESET" : "MSG_TIMEOUT");				\
       i2cReleaseBus (i2cd);						\
@@ -90,7 +95,11 @@ chMtxInit(&i2cd->mutex);		\
 
 #define STATUS_TEST_READ_WRITE(i2cd,r_array,w_array)  { \
     if (status != MSG_OK) {						\
-      DebugTrace ("I2C error read  " #r_array  " write " #w_array " status =%s", \
+      DebugTrace ("I2C error read  " #r_array				\
+		  " write " #w_array					\
+		  " file %s line %d "					\
+		  "status =%s",						\
+                  __FILE__, __LINE__,					\
 		  status == MSG_RESET ? "MSG_RESET" : "MSG_TIMEOUT");	\
       i2cReleaseBus (i2cd);						\
       chkErrorI2cMaster (i2cd);						\
