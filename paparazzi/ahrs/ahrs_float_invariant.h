@@ -19,7 +19,7 @@
  */
 
 /**
- * @file subsystems/ahrs/ahrs_float_invariant.h
+ * @file modules/ahrs/ahrs_float_invariant.h
  * AHRS using invariant filter.
  * For more information, please send an email to "jp.condomines@gmail.com"
  */
@@ -96,25 +96,24 @@ struct AhrsFloatInv {
   struct inv_correction_gains corr;   ///< correction gains
   struct inv_gains gains;             ///< tuning gains
 
-  bool_t reset;                       ///< flag to request reset/reinit the filter
+  bool   reset;                       ///< flag to request reset/reinit the filter
 
   /** body_to_imu rotation */
   struct OrientationReps body_to_imu;
 
   struct FloatVect3 mag_h;
-  bool_t is_aligned;
+  bool is_aligned;
 };
 
 extern struct AhrsFloatInv ahrs_float_inv;
 
 extern void ahrs_float_invariant_init(void);
+extern void ahrs_float_invariant_align(struct FloatRates *lp_gyro,
+                                       struct FloatVect3 *lp_accel,
+                                       struct FloatVect3 *lp_mag);
+extern void ahrs_float_invariant_propagate(struct FloatRates* gyro, float dt);
+extern void ahrs_float_invariant_update_accel(struct FloatVect3* accel);
+extern void ahrs_float_invariant_update_mag(struct FloatVect3* mag);
 extern void ahrs_float_inv_set_body_to_imu_quat(struct FloatQuat *q_b2i);
-extern void ahrs_float_invariant_align(struct Int32Rates *lp_gyro,
-                                       struct Int32Vect3 *lp_accel,
-                                       struct Int32Vect3 *lp_mag);
-extern void ahrs_float_invariant_propagate(struct Int32Rates* gyro, float dt);
-extern void ahrs_float_invariant_update_accel(struct Int32Vect3* accel);
-extern void ahrs_float_invariant_update_mag(struct Int32Vect3* mag);
-
 #endif /* AHRS_FLOAT_INVARIANT_H */
 

@@ -19,7 +19,7 @@
  */
 
 /**
- * @file subsystems/ahrs/ahrs_float_invariant.c
+ * @file modules/ahrs/ahrs_float_invariant.c
  * @author Jean-Philippe Condomines <jp.condomines@gmail.com>
  *
  * AHRS using invariant filter.
@@ -37,13 +37,13 @@
 
 #include "paparazzi/ahrs/ahrs_float_invariant.h"
 
-#include "paparazzi/ahrs/ahrs_int_utils.h"
+#include "paparazzi/ahrs/ahrs_float_utils.h"
 #include "paparazzi/ahrs/ahrs_aligner.h"
 
 #include "paparazzi/generated/airframe.h"
 
 #include "paparazzi/math/pprz_algebra_float.h"
-#include "paparazzi/math/pprz_algebra_int.h"
+//#include "paparazzi/math/pprz_algebra_int.h"
 #include "paparazzi/math/pprz_rk_float.h"
 
 
@@ -125,12 +125,7 @@ void float_quat_vmul_right(struct FloatQuat *mright, const struct FloatQuat *q,
 static inline void init_invariant_state(void)
 {
   // init state
-  /* ahrs_float_inv.state.quat.qi = -1.f; */
-  /* ahrs_float_inv.state.quat.qx = 0.3f; */
-  /* ahrs_float_inv.state.quat.qy = 0.3f; */
-  /* ahrs_float_inv.state.quat.qz = 0.f; */
   float_quat_identity(&ahrs_float_inv.state.quat);
-  
   FLOAT_RATES_ZERO(ahrs_float_inv.state.bias);
   ahrs_float_inv.state.as = 1.0f;
   ahrs_float_inv.state.cs = 1.0f;
@@ -162,13 +157,13 @@ void ahrs_float_invariant_init(void)
   ahrs_float_inv.gains.n   = AHRS_INV_N;
   ahrs_float_inv.gains.o   = AHRS_INV_O;
 
-  ahrs_float_inv.is_aligned = FALSE;
-  ahrs_float_inv.reset = FALSE;
+  ahrs_float_inv.is_aligned = false;
+  ahrs_float_inv.reset = false;
 }
 
-void ahrs_float_invariant_align(struct Int32Rates *lp_gyro,
-                               struct Int32Vect3 *lp_accel,
-                               struct Int32Vect3 *lp_mag)
+void ahrs_float_invariant_align(struct FloatRates *lp_gyro,
+                                struct FloatVect3 *lp_accel,
+                                struct FloatVect3 *lp_mag)
 {
   /* Compute an initial orientation from accel and mag directly as quaternion */
   if (lp_mag) {
@@ -178,29 +173,24 @@ void ahrs_float_invariant_align(struct Int32Rates *lp_gyro,
   }
   
   /* use average gyro as initial value for bias */
-  struct FloatRates bias0;
-  RATES_COPY(bias0, *lp_gyro);
-  RATES_FLOAT_OF_BFP(ahrs_float_inv.state.bias, bias0);
+  ahrs_float_inv.state.bias = *lp_gyro;
 
   // ins and ahrs are now running
-  ahrs_float_inv.is_aligned = TRUE;
+  ahrs_float_inv.is_aligned = true;
 }
 
-void ahrs_float_invariant_propagate(struct Int32Rates* gyro, float dt)
+void ahrs_float_invariant_propagate(struct FloatRates* gyro, float dt)
 {
   // realign all the filter if needed
   // a complete init cycle is required
   if (ahrs_float_inv.reset) {
-    ahrs_float_inv.reset = FALSE;
-    ahrs_float_inv.is_aligned = FALSE;
+    ahrs_float_inv.reset = false;
+    ahrs_float_inv.is_aligned = false;
     init_invariant_state();
   }
 
   // fill command vector
-  struct Int32Rates gyro_meas_body;
-  struct Int32RMat *body_to_imu_rmat = orientationGetRMat_i(&ahrs_float_inv.body_to_imu);
-  int32_rmat_transp_ratemult(&gyro_meas_body, body_to_imu_rmat, gyro);
-  RATES_FLOAT_OF_BFP(ahrs_float_inv.cmd.rates, gyro_meas_body);
+  RATES_COPY(ahrs_float_inv.cmd.rates, *gyro);
 
   // update correction gains
   error_output(&ahrs_float_inv);
@@ -214,14 +204,14 @@ void ahrs_float_invariant_propagate(struct Int32Rates* gyro, float dt)
   ahrs_float_inv.state = new_state;
 
   // normalize quaternion
-  FLOAT_QUAT_NORMALIZE(ahrs_float_inv.state.quat);
+  float_quat_normalize(&ahrs_float_inv.state.quat);
 
   //------------------------------------------------------------//
 
 #if defined (SEND_INVARIANT_FILTER) && SEND_INVARIANT_FILTER
   struct FloatEulers eulers;
   float foo = 0.f;
-  FLOAT_EULERS_OF_QUAT(eulers, ahrs_float_inv.state.quat);
+  float_eulers_of_quat(&eulers, &ahrs_float_inv.state.quat);
   RunOnceEvery(3,
       pprz_msg_send_INV_FILTER(&(DefaultChannel).trans_tx, &(DefaultDevice).device,
         AC_ID,
@@ -247,15 +237,15 @@ void ahrs_float_invariant_propagate(struct Int32Rates* gyro, float dt)
 
 }
 
-void ahrs_float_invariant_update_accel(struct Int32Vect3* accel)
+void ahrs_float_invariant_update_accel(struct FloatVect3* accel)
 {
-  ACCELS_FLOAT_OF_BFP(ahrs_float_inv.meas.accel, *accel);
+  ahrs_float_inv.meas.accel = *accel;
 }
 
 // assume mag is dead when values are not moving anymore
 #define MAG_FROZEN_COUNT 30
 
-void ahrs_float_invariant_update_mag(struct Int32Vect3* mag)
+void ahrs_float_invariant_update_mag(struct FloatVect3* mag)
 {
   static uint32_t mag_frozen_count = MAG_FROZEN_COUNT;
   static int32_t last_mx = 0;
@@ -268,12 +258,8 @@ void ahrs_float_invariant_update_mag(struct Int32Vect3* mag)
       mag_frozen_count = MAG_FROZEN_COUNT;
     }
   } else {
-    // values are moving
-    struct Int32RMat *body_to_imu_rmat = orientationGetRMat_i(&ahrs_float_inv.body_to_imu);
-    struct Int32Vect3 mag_meas_body;
     // new values in body frame
-    int32_rmat_transp_vmult(&mag_meas_body, body_to_imu_rmat, mag);
-    MAGS_FLOAT_OF_BFP(ahrs_float_inv.meas.mag, mag_meas_body);
+    VECT3_COPY(ahrs_float_inv.meas.mag, *mag);
     // reset counter
     mag_frozen_count = MAG_FROZEN_COUNT;
   }
@@ -344,8 +330,7 @@ static inline void error_output(struct AhrsFloatInv *_ahrs)
   // test accel sensitivity
   if (fabs(_ahrs->state.as) < 0.1) {
     // too small, don't do anything to avoid division by 0
-    //    return;
-    _ahrs->state.as = 0.1f;
+    return;
   }
 
   /* C = A X B Cross product */
@@ -402,6 +387,7 @@ void float_quat_vmul_right(struct FloatQuat *mright, const struct FloatQuat *q,
   VECT3_ADD(v2, v1);
   QUAT_ASSIGN(*mright, qi, v2.x, v2.y, v2.z);
 }
+
 
 void ahrs_float_inv_set_body_to_imu_quat(struct FloatQuat *q_b2i)
 {
