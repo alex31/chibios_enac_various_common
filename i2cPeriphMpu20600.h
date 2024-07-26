@@ -257,6 +257,7 @@ struct _Mpu20600Data
   uint8_t	fifoIndex;      // next fifo element to pop
   uint8_t	fifoLen;        // number of elements in the fifo
   Mpu20600FifoData fifo[72];	// cache for fifo or once by once data read
+  mutex_t       mtx;
 };
 
 typedef struct  

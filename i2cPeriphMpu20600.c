@@ -49,6 +49,7 @@ msg_t mpu20600_init( Mpu20600Data *imu, const Mpu20600Config* initParam)
   msg_t status;
 
   imu->i2cd =  initParam->i2cd;
+  chMtxObjectInit(&imu->mtx);
   
   imu->slaveAddr = initParam->useAd0 ? MPU20600_ADDRESS1 :  MPU20600_ADDRESS0;
   imu->registerSegmentLen = MPU20600_JUSTIMU_LAST -  MPU20600_REGISTER_BASE +1;
@@ -217,7 +218,8 @@ msg_t mpu20600_getVal ( Mpu20600Data *imu, float *temp,
 		     ImuVec3f *gyro, ImuVec3f *acc)
 {
   msg_t status = MSG_OK;
-
+  chMtxLock(&imu->mtx);
+  
   if (!chSysIsCounterWithinX(chSysGetRealtimeCounterX(),
 			     imu->cacheTimestamp, 
 			     imu->cacheTimestamp + imu->sampleInterval)) {
@@ -225,11 +227,14 @@ msg_t mpu20600_getVal ( Mpu20600Data *imu, float *temp,
     status =  mpu20600_cacheVal(imu);
   }
 
-  if (status != MSG_OK) 
-    return status;
+  if (status != MSG_OK) {
+    goto unlockAndExit;
+  }
   imu->fifoIndex = 0;
   rawToSI(imu, acc, gyro, temp);
- 
+
+ unlockAndExit:
+  chMtxUnlock(&imu->mtx);
   return status;
 }
 
@@ -441,6 +446,7 @@ static void rawToSI(const Mpu20600Data *imu,
 bool  mpu20600_popFifo(Mpu20600Data *imu, ImuVec3f *acc, ImuVec3f *gyro,
 		       float *dt, Mpu20600_Status *mpuStatus)
 {
+  chMtxLock(&imu->mtx);
   *dt = 1.0f / imu->sampleRate;
   // if we have poped all data from fifo cache, get from IMU
   if (imu->fifoIndex == imu->fifoLen) {
@@ -453,7 +459,9 @@ bool  mpu20600_popFifo(Mpu20600Data *imu, ImuVec3f *acc, ImuVec3f *gyro,
   // transform from raw value to SI value for the current index
   rawToSI(imu, acc, gyro, nullptr);
   // return true if there is remaining data in fifo cache
-  return (++imu->fifoIndex != imu->fifoLen);
+  const bool fifoNotEmpty = ++imu->fifoIndex != imu->fifoLen;
+  chMtxUnlock(&imu->mtx);
+  return (fifoNotEmpty);
 }
 
 
