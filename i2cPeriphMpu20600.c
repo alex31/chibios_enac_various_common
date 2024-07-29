@@ -456,7 +456,9 @@ bool  mpu20600_popFifo(Mpu20600Data *imu, ImuVec3f *acc, ImuVec3f *gyro,
     const msg_t status = readFifo(imu, mpuStatus);
     if (status != MSG_OK) {
       *mpuStatus |= MPU20600_I2C_ERROR;
-      fifoReset(imu);
+      i2cAcquireBus(imu->i2cd);
+      if (fifoReset(imu) == MSG_OK)
+	i2cReleaseBus(imu->i2cd);
     }
   }
   // transform from raw value to SI value for the current index
