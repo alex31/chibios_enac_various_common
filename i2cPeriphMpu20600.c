@@ -215,10 +215,12 @@ msg_t mpu20600_cacheVal ( Mpu20600Data *imu)
 }
 
 msg_t mpu20600_getVal ( Mpu20600Data *imu, float *temp,
-		     ImuVec3f *gyro, ImuVec3f *acc)
+			ImuVec3f *gyro, ImuVec3f *acc, float *dt)
 {
   msg_t status = MSG_OK;
   chMtxLock(&imu->mtx);
+  if (dt)
+    *dt = 1.0f / imu->sampleRate;
   
   if (!chSysIsCounterWithinX(chSysGetRealtimeCounterX(),
 			     imu->cacheTimestamp, 
@@ -447,7 +449,8 @@ bool  mpu20600_popFifo(Mpu20600Data *imu, ImuVec3f *acc, ImuVec3f *gyro,
 		       float *dt, Mpu20600_Status *mpuStatus)
 {
   chMtxLock(&imu->mtx);
-  *dt = 1.0f / imu->sampleRate;
+   if (dt)
+     *dt = 1.0f / imu->sampleRate;
   // if we have poped all data from fifo cache, get from IMU
   if (imu->fifoIndex == imu->fifoLen) {
     const msg_t status = readFifo(imu, mpuStatus);

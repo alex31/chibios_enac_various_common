@@ -287,7 +287,7 @@ msg_t mpu20600_cacheVal(Mpu20600Data *imu);
 
 // temp in celcius degree, gyro in rad/s, accel in m/s², 
 msg_t mpu20600_getVal(Mpu20600Data *imu, float *temp, 
-		      ImuVec3f *gyro, ImuVec3f *acc);
+		      ImuVec3f *gyro, ImuVec3f *acc, float *dt);
 msg_t mpu20600_getItrStatus(Mpu20600Data *imu, uint8_t *itrStatus);
 msg_t mpu20600_getDevid(Mpu20600Data *imu, uint8_t *devid);
 bool  mpu20600_popFifo(Mpu20600Data *imu, ImuVec3f *acc, ImuVec3f *gyro,

@@ -1,6 +1,5 @@
 #include <math.h>
 #include "statistic.h"
-#include "stdutil.h"
 
 // resets all counters
 void stat_clear(Statistic *s)
