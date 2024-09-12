@@ -3,11 +3,12 @@
 
 use Modern::Perl '2020';
 use feature ':5.30';
-no warnings 'experimental::smartmatch';
+
 
 use Udev::FFI;
 use Udev::FFI::Devnum qw(:all); # <- import major, minor and makedev
 use Getopt::Long;
+use Syntax::Keyword::Match;
 
 use constant NONE => 0;
 use constant STLINK => 1;
@@ -27,11 +28,11 @@ my $programFile = $ARGV[0] // '';
 die "$programFile not readable\n" unless -r $programFile or exists $options{ftdi};
 
 unless (exists $options{ftdi}) {
-    for ($programFile) {
-	when(/.bin$/) {
+    match ($programFile : =~) {
+	case(/.bin$/) {
 	    $flashTool = STLINK;
 	}
-	when(/.elf$/) {
+	case(/.elf$/) {
 	    $flashTool = BMP;
 	}
     }
@@ -85,11 +86,11 @@ unless (exists $options{ftdi}) {
 	    next unless ($action eq 'add');
 	    my @com;
 	    
-	    for ($flashTool) {
-		when (STLINK) {
+	    match ($flashTool : ==) {
+		case (STLINK) {
 		    @com = ('/bin/st-flash', 'write', $programFile, '0x08000000');
 		}
-		when (BMP) {
+		case (BMP) {
 		    if (-x "$ENV{HOME}/BIN/bmpflash") {
 			@com = ("$ENV{HOME}/BIN/bmpflash", $programFile);
 		    } elsif (-x "/usr/local/bin/bmpflash") {
@@ -98,7 +99,7 @@ unless (exists $options{ftdi}) {
 			die "bmpflash not found\n";
 		    }
 		}
-		when (DFU) {
+		case (DFU) {
 		    my $dfuUtil;
 		    $dfuUtil = '/usr/local/bin/dfu-util' if -x '/usr/local/bin/dfu-util';
 		    $dfuUtil = '/bin/dfu-util' if -x '/bin/dfu-util';

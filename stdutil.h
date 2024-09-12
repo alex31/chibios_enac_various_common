@@ -66,19 +66,15 @@ typedef enum {PWM_NORMAL=0, PWM_COMPLEMENTARY} PwmOutputSide;
 
 
 // MODE LITTLE ENDIAN; have to be reversed for BIG ENDIAN
-#define  POINT_TO_IP4(a,b,c,d)	 \
-  ((u32_t)((d) & 0xff) << 24) |  \
-  ((u32_t)((c) & 0xff) << 16) |  \
-  ((u32_t)((b) & 0xff) << 8)  |  \
-   (u32_t)((a) & 0xff)
-
 #define  SWAP_ENDIAN32_BY_8(a,b,c,d)	 \
   ((uint32_t)((d) & 0xff) << 24) |  \
   ((uint32_t)((c) & 0xff) << 16) |  \
   ((uint32_t)((b) & 0xff) << 8)  |  \
    (uint32_t)((a) & 0xff)
 
-#define  SWAP_ENDIAN16_BY_8(a,b)  \
+#define  POINT_TO_IP4(a,b,c,d) SWAP_ENDIAN32_BY_8(a,b,c,d)
+
+#define  SWAP_ENDIAN16_BY_8(a,b)    \
   ((uint32_t)((b) & 0xff) << 8)  |  \
    (uint32_t)((a) & 0xff)
   

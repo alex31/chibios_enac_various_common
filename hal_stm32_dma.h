@@ -719,15 +719,15 @@ static inline void _dma_isr_full_code(DMADriver *dmap) {
 static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err) {
 #if CH_DBG_SYSTEM_STATE_CHECK == TRUE
   if (err & DMA_ERR_TRANSFER_ERROR)
-    dmap->nbTransferError++;
+    dmap->nbTransferError = dmap->nbTransferError + 1;
   if (err & DMA_ERR_DIRECTMODE_ERROR)
-    dmap->nbDirectModeError++;
+    dmap->nbDirectModeError = dmap->nbDirectModeError + 1;
   if (err & DMA_ERR_FIFO_ERROR) {
-    dmap->nbFifoError++;
+    dmap->nbFifoError= dmap->nbFifoError + 1;
     if (err & DMA_ERR_FIFO_FULL)
-       dmap->nbFifoFull++;
+       dmap->nbFifoFull = dmap->nbFifoFull + 1;
     if (err & DMA_ERR_FIFO_EMPTY)
-       dmap->nbFifoEmpty++;
+       dmap->nbFifoEmpty = dmap->nbFifoEmpty + 1;
   }
   dmap->lastError = err;
 #endif

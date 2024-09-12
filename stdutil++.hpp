@@ -179,6 +179,19 @@ public:
   ~SyslockRAII() {chSysUnlock();};
 };
 
+class MutexGuard
+{
+public:
+  MutexGuard(const MutexGuard&) = delete;
+  MutexGuard& operator=(const MutexGuard &) = delete;
+  MutexGuard(MutexGuard &&) = delete;
+  MutexGuard & operator=(MutexGuard &&) = delete;
+  
+  MutexGuard(mutex_t *_mut) : mut(_mut) {chMtxLock(mut);};
+  ~MutexGuard() {chMtxUnlock(mut);};
+private:
+  mutex_t *mut;
+};
 
 
 // Type your code here, or load an example.
