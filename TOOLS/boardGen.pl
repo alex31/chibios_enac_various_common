@@ -1,5 +1,12 @@
 #!/usr/bin/perl
 
+
+# for windows installation : use the line below as the first (shebang) line
+#                            instead of linux shebang (#!/usr/bin/perl)
+#!C:/Strawberry/perl/bin/perl.exe
+# of course, this as to fit your actual perl installation path
+
+
 use Modern::Perl '2014';
 use feature ':5.18';
 use Getopt::Long;
