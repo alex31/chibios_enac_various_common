@@ -170,6 +170,7 @@ public:
   ~SyslockRAII_fromIsr() {chSysUnlockFromISR();};
 };
 
+
 class SyslockRAII
 {
   SyslockRAII(const SyslockRAII &) = delete;
@@ -201,7 +202,7 @@ private:
 #include <bit>
 #include <numbers> 
 
-enum class Endianness {BIG_ENDIAN, LITTLE_ENDIAN};
+enum class Endianness {BIG, LITTLE};
 
 template<typename T, std::size_t LL, std::size_t RL>
 constexpr std::array<T, LL+RL> join(std::array<T, LL> rhs, std::array<T, RL> lhs)
@@ -218,7 +219,7 @@ template <typename T>
 constexpr auto bufferize(Endianness endns, T head) {
    //printf("bufferise type of size %u\n", sizeof(T));
   
-  if (endns == Endianness::BIG_ENDIAN) {
+  if (endns == Endianness::BIG) {
       if constexpr (sizeof(T) == 2) {
           head = std::bit_cast<T>(__builtin_bswap16(std::bit_cast<uint16_t>(head)));
       } else if constexpr (sizeof(T) == 4) {
