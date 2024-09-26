@@ -8,10 +8,11 @@
 namespace UAVCAN
 {
   template<typename MSG_T>
-  void nullAppCb(CanardRxTransfer *t,
-		 const MSG_T&)
-  {
-    DebugTrace("DBG default nullAppCb id = %u", t->data_type_id);
+  void nullAppCb(CanardRxTransfer *, const MSG_T) {
+    // DebugTrace("nullAppCb type = %u id = %u",
+    // 	       t->transfer_type, 
+    // 	       t->data_type_id);
+    
   }
   
   
@@ -57,19 +58,20 @@ namespace UAVCAN
 
   void Node::start()
   {
-    canStart(&config.cand, &config.cancfg);
     canardInit(&canard, memory_pool, MEMORYPOOL_SIZE,
 	       &onTransferReceivedDispatch,
 	       &shouldAcceptTransferDispatch, this);
     canardSetLocalNodeID(&canard, config.nodeId);
     initNodesList();
-    sender_thd = chThdCreateFromHeap(nullptr, 1024U, "sender_thd",
+    canStart(&config.cand, &config.cancfg);
+
+    sender_thd = chThdCreateFromHeap(nullptr, 2048U, "sender_thd",
 				      NORMALPRIO,
 				      &senderThdDispatch, this);
-    receiver_thd = chThdCreateFromHeap(nullptr, 2048U, "receiver_thd",
+    receiver_thd = chThdCreateFromHeap(nullptr, 4096U, "receiver_thd",
 				      NORMALPRIO,
 				      &receiverThdDispatch, this);
-    heartbeat_thd = chThdCreateFromHeap(nullptr, 1024U, "heartbeat_thd",
+    heartbeat_thd = chThdCreateFromHeap(nullptr, 2048U, "heartbeat_thd",
 				       NORMALPRIO,
 				       &heartbeatThdDispatch, this);
   }
@@ -213,9 +215,11 @@ uint8_t Node::getNbActiveAgents()
 	  sigItr !=  config.idToHandleRequest.end()) {
 	sigItr->second.cb(ins, transfer);
       } else {
-	DebugTrace(
-		   "onTransferReceived Request id %u not handled",
-		   transfer->data_type_id);
+	Node *node = static_cast<Node *>(canardGetUserReference(ins));
+	node->setCanStatus(REQUEST_UNHANDLED_ID);
+	StrCbHelper m("INFO onTransferReceived Request id %u not handled",
+		      transfer->data_type_id);
+	if (node->config.errorCb) node->config.errorCb(m.view());
       }
       break;
     } 
@@ -225,9 +229,11 @@ uint8_t Node::getNbActiveAgents()
 	  sigItr !=  config.idToHandleResponse.end()) {
 	sigItr->second.cb(ins, transfer);
       } else {
-	DebugTrace(
-		   "onTransferReceived Response id %u not handled",
-		   transfer->data_type_id);
+	Node *node = static_cast<Node *>(canardGetUserReference(ins));
+	node->setCanStatus(RESPONSE_UNHANDLED_ID);
+	StrCbHelper m("INFO onTransferReceived Response id %u not handled",
+		      transfer->data_type_id);
+	if (node->config.errorCb) node->config.errorCb(m.view());
       }
       break;
     }
@@ -237,9 +243,11 @@ uint8_t Node::getNbActiveAgents()
 	  sigItr !=  config.idToHandleBroadcast.end()) {
 	sigItr->second.cb(ins, transfer);
       } else {
-	DebugTrace(
-		   "onTransferReceived Broadcast id %u not handled",
-		   transfer->data_type_id);
+	Node *node = static_cast<Node *>(canardGetUserReference(ins));
+	node->setCanStatus(BROADCAST_UNHANDLED_ID);
+	StrCbHelper m("INFO onTransferReceived Broadcast id %u not handled",
+		      transfer->data_type_id);
+	if (node->config.errorCb) node->config.errorCb(m.view());
       }
       
       break;
@@ -262,9 +270,11 @@ uint8_t Node::getNbActiveAgents()
     CANRxFrame rxmsg;
     while (canReceiveTimeout(&config.cand, CAN_ANY_MAILBOX, &rxmsg,
                              TIME_INFINITE) == MSG_OK) {
-      // Traitement de la trame.
-      DebugTrace("\033[3J\033[1H Receive Msg from 0x%x, length %u",
-                 rxmsg.ext.EID, rxmsg.DLC);
+      // // Traitement de la trame.
+      // StrCbHelper m("INFO Receive Msg from 0x%x, length %u",
+      // 		    uint32_t(rxmsg.ext.EID), uint32_t(rxmsg.DLC));
+      // if (config.errorCb) config.errorCb(m.view());
+      
       CanardCANFrame rx_frame_canard = chibiRx2canard(rxmsg);
       chMtxLock(&canard_mtx);
       /*
@@ -281,7 +291,7 @@ uint8_t Node::getNbActiveAgents()
   void Node::heartbeatStep()
   {
     // nettoyage de NodesList.
-    const auto current_time = chTimeI2MS(chVTGetSystemTime());
+    const auto current_time = chVTGetSystemTime();
     const auto current_time_us = chTimeI2US(current_time);
     const auto current_time_ms = chTimeI2MS(current_time);
     for (auto& node : nodes_list) {
@@ -296,9 +306,12 @@ uint8_t Node::getNbActiveAgents()
           node.active = ((current_time_ms - timestamp_ms) <
 			 UAVCAN_PROTOCOL_NODESTATUS_OFFLINE_TIMEOUT_MS);
 	} else {
-	  DebugTrace("Warning : current time wraparound or "
-		     "message recieved in the future (unlikely)")
-	    }
+	  setCanStatus(UAVCAN_TIMEWRAP);
+	  StrCbHelper m("Warning : current time wraparound or "
+			"message recieved in the future (unlikely)");
+	  
+	  if (config.errorCb) config.errorCb(m.view());
+	}
       }
     }
 
@@ -364,7 +377,7 @@ uint8_t Node::getNbActiveAgents()
   {
     const uint8_t node_id = transfer->source_node_id;
     const uint64_t timestamp = transfer->timestamp_usec;
-    
+    palToggleLine(LINE_LED1_RED);
     updateNodesList(node_id, timestamp);
   }
 
@@ -384,13 +397,13 @@ uint8_t Node::getNbActiveAgents()
       pkt.software_version.optional_field_flags = config.flagCb();
     }
     
+    palToggleLine(LINE_LED1_GREEN);
     getUniqueID((UniqId_t *)pkt.hardware_version.unique_id);
     Node::sendResponse(pkt, transfer);
   }
 
   void Node::transmitQueue()
   {
-    static uint32_t countOk = 0;
     CANTxFrame tx_frame;
     for (const CanardCANFrame *canard_tx_frame = NULL;
 	 (canard_tx_frame = canardPeekTxQueue(&canard)) != NULL;) {
@@ -400,20 +413,27 @@ uint8_t Node::getNbActiveAgents()
       switch (tx_ok) {
       case MSG_OK: {
 	canardPopTxQueue(&canard);
-	DebugTrace("MSG_OK [%ld]", ++countOk);
+	// static uint32_t countOk = 0;
+	// StrCbHelper m("INFO Transmit OK [%ld]", ++countOk);
+	// if (config.errorCb) config.errorCb(m.view());
 	break;
       }
       case MSG_TIMEOUT: {
-	DebugTrace("MSG_TIMEOUT");
+	setCanStatus(TRANSMIT_TIMOUT);
+	StrCbHelper m("Transmit MSG_TIMEOUT");
+	if (config.errorCb) config.errorCb(m.view());
 	break;
       }
       case MSG_RESET: {
+	setCanStatus(TRANSMIT_RESET);
 	canardPopTxQueue(&canard);
-	DebugTrace("MSG_RESET");
+	StrCbHelper m("Transmit MSG_RESET");
+	if (config.errorCb) config.errorCb(m.view());
 	break;
       }
       default: {
-	DebugTrace("status %ld not handled in switch", tx_ok);
+	StrCbHelper m("ERROR canTransmit status %ld not handled in switch", tx_ok);
+	if (config.errorCb) config.errorCb(m.view());
 	break;
       }
       }
@@ -431,7 +451,7 @@ void Node::sendNodeStatus()
   broadcastMessage(node_status, CANARD_TRANSFER_PRIORITY_LOW);
 }
 
-void Node::setStatus(uint8_t health, uint8_t mode,  specificStatusCode specific_code)
+void Node::setStatus(uint8_t health, uint8_t mode,  specificStatusCode_t specific_code)
 {
   node_status.health = health;
   node_status.mode = mode;

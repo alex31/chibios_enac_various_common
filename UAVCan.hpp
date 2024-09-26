@@ -9,21 +9,31 @@
 #include "stdutil.h"
 #include "etl/map.h"
 #include "etl/string.h"
+#include "etl/string_view.h"
 #include <array>
 #include <type_traits>
 #include <concepts>
 
-#ifndef UAVNODE_MAX_MSGID
-#define UAVNODE_MAX_MSGID 16
+#ifndef UAVNODE_BROADCAST_DICT_SIZE
+#define UAVNODE_BROADCAST_DICT_SIZE 16
 #endif
-#ifndef UAVNODE_MAX_REQ_MSGID
-#define UAVNODE_MAX_REQ_MSGID 8
+#ifndef UAVNODE_REQUEST_DICT_SIZE
+#define UAVNODE_REQUEST_DICT_SIZE 8
 #endif
-#ifndef UAVNODE_MAX_RESP_MSGID
-#define UAVNODE_MAX_RESP_MSGID 8
+#ifndef UAVNODE_RESPONSE_DICT_SIZE
+#define UAVNODE_RESPONSE_DICT_SIZE 8
+#endif
+
+#if CANARD_ENABLE_CANFD
+#define TAO_ENABLE (not canard.tao_disabled)
+#else
+#define TAO_ENABLE false
 #endif
 /*
   TODO :
+
+  ° utiliser le sub type du message status (uint8_t) pour y coller un enum avec des
+    erreurs internes (à chaque fois qu'on invoque errorCb)
 
   ° porter sur devboardH7 et tester une comm H7 <->  H7
     module CANCOM avec tout ce qui est FDCAN planqué dedans
@@ -41,6 +51,24 @@ namespace {
 
 }
 
+class StrCbHelper {
+public:
+  StrCbHelper(const char *source) : s(source) {}
+  template<typename...Params>
+  StrCbHelper(const char * format, Params&&... params);
+  // __attribute__((format (printf, 2, 3)));
+  etl::string_view view() const {return etl::string_view(s);}
+private:
+  etl::string<80> s;
+};
+
+template<typename...Params>
+StrCbHelper::StrCbHelper(const char * format, Params&&... params)
+{
+  const auto len = chsnprintf(s.data(), s.capacity(), format, std::forward<Params> (params)...);
+  s.uninitialized_resize(len);
+}
+
 // to determine type of first arguments of a function
 template<typename T>
 struct cbTraits;  
@@ -53,11 +81,11 @@ struct cbTraits<R(Arg1, Arg2, Args...)> {
  
 
 #define UAVCAN_REQ(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID, \
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::REQUEST_SIGNATURE,	\
+      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	\
 	  UAVCAN::Node::requestMessageCb<cb>}}
 
 #define UAVCAN_RESP(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID, \
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::RESPONSE_SIGNATURE,	 \
+      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	 \
 	  UAVCAN::Node::responseMessageCb<cb>}}
 
 #define UAVCAN_BCAST(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID, \
@@ -72,15 +100,16 @@ namespace UAVCAN {
   using receivedCbPtr_t = void (*) (CanardInstance *ins,
 				    CanardRxTransfer *transfer);
   using flagCbPtr_t = uint8_t (*) ();
+  using errorCbPtr_t = void (*) (const etl::string_view sv);
   struct canardHandle {
     uint64_t signature = 0;
     receivedCbPtr_t cb = nullptr;
   };
 
   
-  using idToHandleRequest_t = etl::map<uint16_t, canardHandle, UAVNODE_MAX_REQ_MSGID>;
-  using idToHandleResponse_t = etl::map<uint16_t, canardHandle, UAVNODE_MAX_RESP_MSGID>;
-  using idToHandleBroadcast_t = etl::map<uint16_t, canardHandle, UAVNODE_MAX_MSGID>;
+  using idToHandleRequest_t = etl::map<uint16_t, canardHandle, UAVNODE_REQUEST_DICT_SIZE>;
+  using idToHandleResponse_t = etl::map<uint16_t, canardHandle, UAVNODE_RESPONSE_DICT_SIZE>;
+  using idToHandleBroadcast_t = etl::map<uint16_t, canardHandle, UAVNODE_BROADCAST_DICT_SIZE>;
   
   struct Config {
     CANDriver		&cand;
@@ -91,6 +120,7 @@ namespace UAVCAN {
     idToHandleBroadcast_t &idToHandleBroadcast;
     uavcan_protocol_GetNodeInfoResponse nodeInfo;
     flagCbPtr_t		flagCb; // dynamic return for optional_field_flags field
+    errorCbPtr_t  errorCb; // return internal errors to app during development
   };
   
   struct node_activity {
@@ -100,9 +130,6 @@ namespace UAVCAN {
     etl::string<20> name;
   };
 
-  enum specificStatusCode {SPECIFIC_OK, PS5V_UNDERVOLTAGE, PS5V_OVERVOLTAGE,
-			   TEMP_LOW, TEMP_HIGH};
- 
  
  template<typename MSG_T>
   concept IsUavCanMessage = requires(MSG_T msg) {
@@ -136,9 +163,16 @@ namespace UAVCAN {
 
   class Node {
   public:
+    enum specificStatusCode_t {SPECIFIC_OK, PS5V_UNDERVOLTAGE, PS5V_OVERVOLTAGE,
+			       TEMP_LOW, TEMP_HIGH};
+    enum canStatus_t {CAN_OK, TRANSMIT_RESET, TRANSMIT_TIMOUT, UAVCAN_TIMEWRAP,
+		      REQUEST_DECODE_ERROR, RESPONSE_DECODE_ERROR, BROADCAST_DECODE_ERROR,
+		      REQUEST_UNHANDLED_ID, RESPONSE_UNHANDLED_ID, BROADCAST_UNHANDLED_ID
+    };
+   
     Node(const Config &_config);
     void start();
-    void setStatus(uint8_t health, uint8_t mode,  specificStatusCode specific_code);
+    void setStatus(uint8_t health, uint8_t mode,  specificStatusCode_t specific_code);
     uint8_t getNbActiveAgents();
     const std::array<node_activity, MAX_CAN_NODES> &getNodeList() {return nodes_list;}
     template<typename MSG_T>
@@ -154,7 +188,8 @@ namespace UAVCAN {
     static void responseMessageCb(CanardInstance *, CanardRxTransfer *transfer);
     template<auto Fn> requires MessageCb<decltype(Fn)>
     static void broadcastMessageCb(CanardInstance *, CanardRxTransfer *transfer);
-
+    canStatus_t getAndResetCanStatus() {return std::exchange(canStatus, CAN_OK);}
+    
   private:
     const Config &config;
     mutex_t canard_mtx;
@@ -166,6 +201,7 @@ namespace UAVCAN {
     thread_t *sender_thd;
     thread_t *receiver_thd;
     thread_t *heartbeat_thd;
+    canStatus_t canStatus = {};
 
     // incrémenté à chaque transfert pour détecter la
     // perte de paquets.
@@ -188,6 +224,7 @@ namespace UAVCAN {
     void askNodeInfo(uint8_t dest_node_id);
     void transmitQueue();
     void sendNodeStatus();
+    void setCanStatus(canStatus_t cs) {canStatus = cs;}
     
     static bool shouldAcceptTransferDispatch(const CanardInstance *ins,
 				     uint64_t *out_data_type_signature,
@@ -218,7 +255,12 @@ namespace UAVCAN {
   void Node::broadcastMessage(MSG_T &msg, const uint8_t priority)
   {
     uint8_t buffer[MSG_T::cxx_iface::MAX_SIZE];
-    const uint16_t len = MSG_T::cxx_iface::encode(&msg, buffer, !(canard.tao_disabled));
+    
+    const uint16_t len = MSG_T::cxx_iface::encode(&msg, buffer
+#if CANARD_ENABLE_CANFD						  
+						  , TAO_ENABLE
+#endif
+						  );
     CanardTxTransfer broadcast = {
       .transfer_type = CanardTransferTypeBroadcast,
       .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
@@ -227,8 +269,10 @@ namespace UAVCAN {
       .priority = priority,
       .payload = buffer,
       .payload_len = len,
+#if CANARD_ENABLE_CANFD
       .canfd = true,
-      .tao = !(canard.tao_disabled)
+      .tao = !(canard.tao_disabled || broadcast.canfd)
+#endif
     };
     canardBroadcastObj(&canard, &broadcast);
     chEvtBroadcast(&canard_tx_not_empty);
@@ -238,7 +282,11 @@ namespace UAVCAN {
   void Node::sendRequest(MSG_T &msg, const uint8_t priority, const uint8_t dest_id)
   {
     uint8_t buffer[MSG_T::cxx_iface::REQ_MAX_SIZE];
-    const uint16_t len = MSG_T::cxx_iface::req_encode(&msg, buffer, !(canard.tao_disabled));
+    const uint16_t len = MSG_T::cxx_iface::req_encode(&msg, buffer
+#if CANARD_ENABLE_CANFD						  
+						      , TAO_ENABLE
+#endif
+						      );
     CanardTxTransfer request = {
       .transfer_type = CanardTransferTypeRequest,
       .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
@@ -247,28 +295,36 @@ namespace UAVCAN {
       .priority = priority,
       .payload = buffer,
       .payload_len = len,
+#if CANARD_ENABLE_CANFD
       .canfd = true,
-      .tao = !(canard.tao_disabled)
+      .tao = !(canard.tao_disabled || request.canfd)
+#endif
     };
     canardRequestOrRespondObj(&canard, dest_id, &request);
     chEvtBroadcast(&canard_tx_not_empty);
   }
-
+  
   template<typename MSG_T>
   void Node::sendResponse(MSG_T &msg, CanardRxTransfer *transfer)
   {
     uint8_t buffer[MSG_T::cxx_iface::RSP_MAX_SIZE];
-    const uint16_t len = MSG_T::cxx_iface::rsp_encode(&msg, buffer, !(canard.tao_disabled));
+    const uint16_t len = MSG_T::cxx_iface::rsp_encode(&msg, buffer
+#if CANARD_ENABLE_CANFD						  
+						  , TAO_ENABLE
+#endif
+						  );
     CanardTxTransfer response = {
-      .transfer_type = CanardTransferTypeRequest,
+      .transfer_type = CanardTransferTypeResponse,
       .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
       .data_type_id = MSG_T::cxx_iface::ID,
       .inout_transfer_id = &transfer->transfer_id,
       .priority =  transfer->priority,
       .payload = buffer,
       .payload_len = len,
+#if CANARD_ENABLE_CANFD
       .canfd = true,
-      .tao = !(canard.tao_disabled)
+      .tao = !(canard.tao_disabled || response.canfd)
+#endif
     };
     canardRequestOrRespondObj(&canard, transfer->source_node_id, &response);
     chEvtBroadcast(&canard_tx_not_empty);
@@ -281,17 +337,18 @@ namespace UAVCAN {
     using MsgType = std::remove_cvref_t<SecondArgType<decltype(Fn)>>;
     typename MsgType::cxx_iface::reqtype msg = {};
     const bool decode_error = MsgType::cxx_iface::req_decode(transfer, &msg);
+    Node *node = static_cast<Node *>(canardGetUserReference(ins));
     if (!decode_error) {
       if constexpr (std::is_same_v<MsgType, uavcan_protocol_GetNodeInfoRequest>) {
-	Node *node = static_cast<Node *>(canardGetUserReference(ins));
 	node->handleNodeInfoRequest(ins, transfer);
-	Fn(transfer, msg);
-      } else {
-	DebugTrace("requestMessageCb decode error on id %u", MsgType::cxx_iface::ID);
       }
+      Fn(transfer, msg);
+    } else {
+      StrCbHelper m("requestMessageCb decode error on id %u", MsgType::cxx_iface::ID);
+      node->setCanStatus(REQUEST_DECODE_ERROR);
+      if (node->config.errorCb) node->config.errorCb(m.view());
     }
   }
-
 
   template<auto Fn> requires MessageCb<decltype(Fn)>
   void Node::responseMessageCb(CanardInstance *ins, CanardRxTransfer *transfer)
@@ -299,14 +356,16 @@ namespace UAVCAN {
     using MsgType = std::remove_cvref_t<SecondArgType<decltype(Fn)>>;
     typename MsgType::cxx_iface::rsptype msg = {};
     const bool decode_error = MsgType::cxx_iface::rsp_decode(transfer, &msg);
+    Node *node = static_cast<Node *>(canardGetUserReference(ins));
     if (!decode_error) {
       if constexpr (std::is_same_v<MsgType, uavcan_protocol_GetNodeInfoResponse>) {
-	Node *node = static_cast<Node *>(canardGetUserReference(ins));
 	node->handleNodeInfoResponse(ins, transfer, msg);
-	Fn(transfer, msg);
-      } else {
-	DebugTrace("responseMessageCb decode error on id %u", MsgType::cxx_iface::ID);
       }
+      Fn(transfer, msg);
+    } else {
+      StrCbHelper m("responseMessageCb decode error on id %u", MsgType::cxx_iface::ID);
+      node->setCanStatus(RESPONSE_DECODE_ERROR);
+      if (node->config.errorCb) node->config.errorCb(m.view());
     }
   }
   
@@ -316,14 +375,16 @@ namespace UAVCAN {
     using MsgType = std::remove_cvref_t<SecondArgType<decltype(Fn)>>;
     typename MsgType::cxx_iface::msgtype msg = {};
     const bool decode_error = MsgType::cxx_iface::decode(transfer, &msg);
+    Node *node = static_cast<Node *>(canardGetUserReference(ins));
     if (!decode_error) {
       if constexpr (std::is_same_v<MsgType, uavcan_protocol_NodeStatus>) {
-	Node *node = static_cast<Node *>(canardGetUserReference(ins));
 	node->handleNodeStatusBroadcast(ins, transfer);
       }
       Fn(transfer, msg);
     } else {
-      DebugTrace("broadcastMessageCb decode error on id %u", MsgType::cxx_iface::ID);
+      StrCbHelper m("broadcastMessageCb decode error on id %u", MsgType::cxx_iface::ID);
+      node->setCanStatus(BROADCAST_DECODE_ERROR);
+      if (node->config.errorCb) node->config.errorCb(m.view());
     }
   }
   
