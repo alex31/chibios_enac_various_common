@@ -33,18 +33,12 @@
 /*
   TODO :
 
-  ° permettre BxCAN ou CANFD dans le code
-    + champ booleen et accesseur pour canfd et tao : tao = !canfd
-    + imply CANARD_ENABLE_TAO_OPTION et CANARD_ENABLE_CANFD
-
-
-  ° utiliser le sub type du message status (uint8_t) pour y coller
-    un enum avec des erreurs internes (à chaque fois qu'on invoque errorCb)
-
   ° porter sur devboardH7 et tester une comm H7 <->  H7
     module CANCOM avec tout ce qui est CANFD planqué dedans
-           + l'esclave attend un uavcan_equipment_actuator_Command (4 servos)
-	   + l'autopilote envoie des commandes (bouton rotatif + selection par joystick)
+           + le role esclave attend un
+	     uavcan_equipment_actuator_Command (4 servos)
+	   + le role autopilote envoie des commandes
+	     (bouton rotatif + selection par joystick)
 	   + l'esclave a un capteur (baro) et renvoie temperature et pression
 	   + l'autopilote affiche temperature et pression
 	   + chacun utilise une led tricolore : vert comm ok, rouge : pas de comm
@@ -118,7 +112,7 @@ namespace UAVCAN {
   using idToHandleResponse_t = etl::map<uint16_t, canardHandle, UAVNODE_RESPONSE_DICT_SIZE>;
   using idToHandleBroadcast_t = etl::map<uint16_t, canardHandle, UAVNODE_BROADCAST_DICT_SIZE>;
 
-  enum networkNodeType_t {NETWORK_FD_ONLY, NETWORK_FD_BX_MIXED};
+  enum networkNodeType_t {BUS_FD_ONLY, BUS_FD_BX_MIXED};
 
   struct Config {
     CANDriver		&cand;
