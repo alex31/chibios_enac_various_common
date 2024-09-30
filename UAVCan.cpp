@@ -22,7 +22,8 @@ namespace UAVCAN
 			.health = UAVCAN_PROTOCOL_NODESTATUS_HEALTH_OK,
 			.mode = UAVCAN_PROTOCOL_NODESTATUS_MODE_INITIALIZATION,
 			.sub_mode = 0,
-			.vendor_specific_status_code = SPECIFIC_OK}
+			.vendor_specific_status_code = SPECIFIC_OK},
+				      canFD(_config.cancfg.op_mode == OPMODE_FDCAN)
     
   {
     chMtxObjectInit(&canard_mtx);
@@ -51,7 +52,7 @@ namespace UAVCAN
     if (not config.idToHandleBroadcast.contains(UAVCAN_PROTOCOL_NODESTATUS_ID)) {
       config.idToHandleBroadcast[UAVCAN_PROTOCOL_NODESTATUS_ID] = {
 	UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
-	UAVCAN::Node::broadcastMessageCb<nullAppCb<uavcan_protocol_NodeStatus>>
+	UAVCAN::Node::sendBroadcastCb<nullAppCb<uavcan_protocol_NodeStatus>>
       };
     }
   }
@@ -270,9 +271,9 @@ uint8_t Node::getNbActiveAgents()
     CANRxFrame rxmsg;
     while (canReceiveTimeout(&config.cand, CAN_ANY_MAILBOX, &rxmsg,
                              TIME_INFINITE) == MSG_OK) {
-      // // Traitement de la trame.
+      // Traitement de la trame.
       // StrCbHelper m("INFO Receive Msg from 0x%x, length %u",
-      // 		    uint32_t(rxmsg.ext.EID), uint32_t(rxmsg.DLC));
+      //  		    uint32_t(rxmsg.ext.EID), uint32_t(rxmsg.DLC));
       // if (config.errorCb) config.errorCb(m.view());
       
       CanardCANFrame rx_frame_canard = chibiRx2canard(rxmsg);
@@ -354,7 +355,8 @@ uint8_t Node::getNbActiveAgents()
      * transmission canard. Appelée par updateNodesList().
      */
     uavcan_protocol_GetNodeInfoRequest req = {};
-    sendRequest(req, CANARD_TRANSFER_PRIORITY_LOW, dest_node_id);
+    sendRequest(req, CANARD_TRANSFER_PRIORITY_LOW, dest_node_id,
+		config.networkNodeType == NETWORK_FD_BX_MIXED);
   }
 
  
@@ -448,7 +450,8 @@ void Node::sendNodeStatus()
    * (doit être appelée à au moins 1 Hz).
    */
   node_status.uptime_sec = chTimeI2S(chVTGetSystemTime());
-  broadcastMessage(node_status, CANARD_TRANSFER_PRIORITY_LOW);
+  sendBroadcast(node_status, CANARD_TRANSFER_PRIORITY_LOW,
+		config.networkNodeType == NETWORK_FD_BX_MIXED);
 }
 
 void Node::setStatus(uint8_t health, uint8_t mode,  specificStatusCode_t specific_code)
