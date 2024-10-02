@@ -172,7 +172,8 @@ namespace UAVCAN {
     enum canStatus_t {CAN_OK, TRANSMIT_RESET, TRANSMIT_TIMOUT, UAVCAN_TIMEWRAP,
 		      REQUEST_DECODE_ERROR, RESPONSE_DECODE_ERROR,
 		      BROADCAST_DECODE_ERROR, REQUEST_UNHANDLED_ID,
-		      RESPONSE_UNHANDLED_ID, BROADCAST_UNHANDLED_ID
+		      RESPONSE_UNHANDLED_ID, BROADCAST_UNHANDLED_ID,
+		      NODE_OFFLINE
     };
    
     Node(const Config &_config);
@@ -208,6 +209,7 @@ namespace UAVCAN {
     thread_t *sender_thd;
     thread_t *receiver_thd;
     thread_t *heartbeat_thd;
+    thread_t *can_error_thd;
     canStatus_t canStatus = {};
 
     // incrémenté à chaque transfert pour détecter la
@@ -246,6 +248,7 @@ namespace UAVCAN {
     static void senderThdDispatch(void *opt);
     static void receiverThdDispatch(void *opt);
     static void heartbeatThdDispatch(void *opt);
+    static void canErrorThdDispatch(void *opt);
     
 
     void handleNodeInfoResponse(CanardInstance *ins,

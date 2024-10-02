@@ -87,6 +87,9 @@ namespace UAVCAN
     heartbeat_thd = chThdCreateFromHeap(nullptr, 2048U, "heartbeat_thd",
 				       NORMALPRIO,
 				       &heartbeatThdDispatch, this);
+    can_error_thd = chThdCreateFromHeap(nullptr, 512U, "can_error_thd",
+				       NORMALPRIO,
+				       &canErrorThdDispatch, this);
   }
 
   /*
@@ -149,8 +152,29 @@ namespace UAVCAN
   void Node::heartbeatThdDispatch(void *opt)
   {
     Node *node = static_cast<Node *>(opt);
+
     while(not chThdShouldTerminateX()) {
       node->heartbeatStep();
+    }
+    chThdExit(0);
+  }
+
+  void Node::canErrorThdDispatch(void *opt)
+  {
+    Node *node = static_cast<Node *>(opt);
+    event_listener_t el;
+    chEvtRegister(&node->config.cand.error_event, &el, 0);
+
+    while(not chThdShouldTerminateX()) {
+      if (chEvtWaitAnyTimeout(ALL_EVENTS, TIME_INFINITE) != 0) {
+	if (node->config.cand.fdcan->CCCR & FDCAN_CCCR_INIT) {
+	  node->config.cand.fdcan->CCCR &= ~FDCAN_CCCR_INIT;
+	  StrCbHelper m("canErrorThdDispatch node offline");
+	  node->setCanStatus(NODE_OFFLINE);
+	  if (node->config.errorCb) node->config.errorCb(m.view());
+	  chThdSleepMilliseconds(10);
+	}
+      }
     }
     chThdExit(0);
   }
@@ -305,6 +329,7 @@ uint8_t Node::getNbActiveAgents()
     // nettoyage de NodesList.
     const auto current_time_us = getTimestampUS();
     const auto current_time_ms = current_time_us / 1000U;
+
     for (auto& node : nodes_list) {
       if (node.active) {
 	const uint32_t timestamp_ms = node.timestamp_usec / (1000UL);
@@ -434,7 +459,6 @@ uint8_t Node::getNbActiveAgents()
 	setCanStatus(TRANSMIT_TIMOUT);
 	StrCbHelper m("Transmit MSG_TIMEOUT");
 	if (config.errorCb) config.errorCb(m.view());
-	config.cand.fdcan->CCCR &= ~1;
 	break;
       }
       case MSG_RESET: {
