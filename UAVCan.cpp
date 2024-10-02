@@ -5,6 +5,18 @@
 #include "stdutil++.hpp"
 #include <cstring>
 
+namespace {
+  inline uint64_t getTimestampUS() {
+    return chVTGetTimeStamp() * (1'000'000U / CH_CFG_ST_FREQUENCY);
+  }
+  inline uint64_t getTimestampMS() {
+    return getTimestampUS() / 1000U;
+  }
+  inline uint32_t getTimestampS() {
+    return getTimestampMS() / 1000U;
+  }
+}
+
 namespace UAVCAN
 {
   template<typename MSG_T>
@@ -283,8 +295,7 @@ uint8_t Node::getNbActiveAgents()
        * trames et on les passe à travers shouldAcceptTransfer() puis
        * onTransferRecieved().
        */
-      canardHandleRxFrame(&canard, &rx_frame_canard,
-                          (uint64_t)chTimeI2US(chVTGetSystemTime()));
+      canardHandleRxFrame(&canard, &rx_frame_canard,  getTimestampUS());
       chMtxUnlock(&canard_mtx);
     }
   }
@@ -292,9 +303,8 @@ uint8_t Node::getNbActiveAgents()
   void Node::heartbeatStep()
   {
     // nettoyage de NodesList.
-    const auto current_time = chVTGetSystemTime();
-    const auto current_time_us = chTimeI2US(current_time);
-    const auto current_time_ms = chTimeI2MS(current_time);
+    const auto current_time_us = getTimestampUS();
+    const auto current_time_ms = current_time_us / 1000U;
     for (auto& node : nodes_list) {
       if (node.active) {
 	const uint32_t timestamp_ms = node.timestamp_usec / (1000UL);
@@ -393,7 +403,7 @@ uint8_t Node::getNbActiveAgents()
     (void) ins;
 #endif
     uavcan_protocol_GetNodeInfoResponse pkt = config.nodeInfo;
-    node_status.uptime_sec = (uint32_t)chTimeI2S(chVTGetSystemTime());
+    node_status.uptime_sec = getTimestampS();
     pkt.status = node_status;
     if (config.flagCb != nullptr) {
       pkt.software_version.optional_field_flags = config.flagCb();
@@ -424,6 +434,7 @@ uint8_t Node::getNbActiveAgents()
 	setCanStatus(TRANSMIT_TIMOUT);
 	StrCbHelper m("Transmit MSG_TIMEOUT");
 	if (config.errorCb) config.errorCb(m.view());
+	config.cand.fdcan->CCCR &= ~1;
 	break;
       }
       case MSG_RESET: {
@@ -449,7 +460,7 @@ void Node::sendNodeStatus()
    * Génère et place le statut du noeud dans la queue de transmission canard.
    * (doit être appelée à au moins 1 Hz).
    */
-  node_status.uptime_sec = chTimeI2S(chVTGetSystemTime());
+  node_status.uptime_sec =  getTimestampS();
   sendBroadcast(node_status, CANARD_TRANSFER_PRIORITY_LOW,
 		config.networkNodeType == BUS_FD_BX_MIXED);
 }
