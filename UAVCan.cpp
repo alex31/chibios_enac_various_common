@@ -391,7 +391,7 @@ uint8_t Node::getNbActiveAgents()
      */
     uavcan_protocol_GetNodeInfoRequest req = {};
     sendRequest(req, CANARD_TRANSFER_PRIORITY_LOW, dest_node_id,
-		config.networkNodeType == BUS_FD_BX_MIXED);
+		config.busNodeType == BUS_FD_BX_MIXED);
   }
 
  
@@ -486,7 +486,7 @@ void Node::sendNodeStatus()
    */
   node_status.uptime_sec =  getTimestampS();
   sendBroadcast(node_status, CANARD_TRANSFER_PRIORITY_LOW,
-		config.networkNodeType == BUS_FD_BX_MIXED);
+		config.busNodeType == BUS_FD_BX_MIXED);
 }
 
 void Node::setStatus(uint8_t health, uint8_t mode,  specificStatusCode_t specific_code)

@@ -147,12 +147,12 @@ namespace UAVCAN {
   using idToHandleResponse_t = etl::map<uint16_t, canardHandle, UAVNODE_RESPONSE_DICT_SIZE>;
   using idToHandleBroadcast_t = etl::map<uint16_t, canardHandle, UAVNODE_BROADCAST_DICT_SIZE>;
 
-  enum networkNodeType_t {BUS_FD_ONLY, BUS_FD_BX_MIXED};
+  enum busNodeType_t {BUS_FD_ONLY, BUS_FD_BX_MIXED};
 
   struct Config {
     CANDriver		&cand;
     const CANConfig	&cancfg;
-    networkNodeType_t	networkNodeType;
+    busNodeType_t	busNodeType;
     uint8_t		nodeId = 0;
     idToHandleRequest_t   &idToHandleRequest;
     idToHandleResponse_t  &idToHandleResponse;
