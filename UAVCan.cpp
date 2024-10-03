@@ -496,5 +496,5 @@ void Node::setStatus(uint8_t health, uint8_t mode,  specificStatusCode_t specifi
   node_status.vendor_specific_status_code = specific_code;
 }
 
-  
+
 }

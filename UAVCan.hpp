@@ -81,22 +81,57 @@ struct cbTraits<R(Arg1, Arg2, Args...)> {
 };
  
 
-#define UAVCAN_REQ(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID, \
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	\
+#define UAVCAN_REQ(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,   \
+      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	       \
 	  UAVCAN::Node::requestMessageCb<cb>}}
 
-#define UAVCAN_RESP(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID, \
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	 \
+#define UAVCAN_RESP(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,  \
+      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	       \
 	  UAVCAN::Node::responseMessageCb<cb>}}
 
 #define UAVCAN_BCAST(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID, \
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,		  \
+      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	       \
 	  UAVCAN::Node::sendBroadcastCb<cb>}}
 
 
 namespace UAVCAN {
   static constexpr size_t MAX_CAN_NODES = 128;
   static constexpr size_t MEMORYPOOL_SIZE = 4096;
+
+  consteval uint32_t getNBTP(uint8_t prescaler,
+			     uint8_t seg1, uint8_t seg2)
+  {
+    seg1 = seg1 == 0 ? 1 : seg1;
+    seg2 = seg2 == 0 ? 1 : seg2;
+    prescaler = prescaler == 0 ? 1 : prescaler;
+    prescaler = prescaler & 0x1f;
+    --prescaler; --seg1; --seg2;
+    const auto synchroJumpWidth = seg2 <= 0xf ? seg2 : 0xf;
+    seg2 = seg2 & 0x7f;
+    return FDCAN_CONFIG_NBTP_NSJW(synchroJumpWidth) |
+      FDCAN_CONFIG_NBTP_NBRP(prescaler) |
+      FDCAN_CONFIG_NBTP_NTSEG1(seg1) |
+      FDCAN_CONFIG_NBTP_NTSEG2(seg2);
+  }
+  
+  consteval uint32_t getDBTP(uint8_t prescaler,
+			     uint8_t seg1, uint8_t seg2, bool tdc)
+  {
+    seg1 = (seg1 == 0) ? 1 : seg1;
+    seg2 = (seg2 == 0) ? 1 : seg2;
+    prescaler = (prescaler == 0) ? 1 : prescaler;
+    prescaler = prescaler & 0x1f;
+    --prescaler; --seg1; --seg2;
+    const auto synchroJumpWidth = seg2 <= 0xf ? seg2 : 0xf;
+    seg1 = seg1 & 0x1f;
+    seg2 = seg2 & 0xf;
+    
+    return FDCAN_CONFIG_DBTP_DSJW(synchroJumpWidth) |
+      FDCAN_CONFIG_DBTP_DBRP(prescaler) |
+      FDCAN_CONFIG_DBTP_DTSEG1(seg1) |
+      FDCAN_CONFIG_DBTP_DTSEG2(seg2) |
+      (tdc ? FDCAN_CONFIG_DBTP_TDC : 0);
+  }
   
   using receivedCbPtr_t = void (*) (CanardInstance *ins,
 				    CanardRxTransfer *transfer);
