@@ -188,10 +188,10 @@ public:
   MutexGuard(MutexGuard &&) = delete;
   MutexGuard & operator=(MutexGuard &&) = delete;
   
-  MutexGuard(mutex_t *_mut) : mut(_mut) {chMtxLock(mut);};
-  ~MutexGuard() {chMtxUnlock(mut);};
+  MutexGuard(mutex_t &_mut) : mut(_mut) {chMtxLock(&mut);};
+  ~MutexGuard() {chMtxUnlock(&mut);};
 private:
-  mutex_t *mut;
+  mutex_t &mut;
 };
 
 

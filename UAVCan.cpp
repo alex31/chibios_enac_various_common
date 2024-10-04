@@ -1,8 +1,4 @@
 #include "UAVCan.hpp"
-
-#include <ch.h>
-#include <hal.h>
-#include "stdutil++.hpp"
 #include <cstring>
 
 namespace {
@@ -297,9 +293,8 @@ uint8_t Node::getNbActiveAgents()
   
   void Node::senderStep()
   {
-    chMtxLock(&canard_mtx);
+    MutexGuard gard(canard_mtx);
     transmitQueue();
-    chMtxUnlock(&canard_mtx);
   }
   
   void Node::receiverStep()
@@ -313,14 +308,13 @@ uint8_t Node::getNbActiveAgents()
       // if (config.errorCb) config.errorCb(m.view());
       
       CanardCANFrame rx_frame_canard = chibiRx2canard(rxmsg);
-      chMtxLock(&canard_mtx);
+      MutexGuard gard(canard_mtx);
       /*
        * On reconstruit un message unique pour les transferts de plusieurs
        * trames et on les passe à travers shouldAcceptTransfer() puis
        * onTransferRecieved().
        */
       canardHandleRxFrame(&canard, &rx_frame_canard,  getTimestampUS());
-      chMtxUnlock(&canard_mtx);
     }
   }
   
@@ -351,13 +345,11 @@ uint8_t Node::getNbActiveAgents()
       }
     }
 
-    chMtxLock(&canard_mtx);
+    MutexGuard gard(canard_mtx);
     // nettoyage recommandé par la librairie.
     canardCleanupStaleTransfers(&canard, current_time_us);
     // Génération de NodeStatus.
     sendNodeStatus();
-    chMtxUnlock(&canard_mtx);
-
     chThdSleepMilliseconds(1000);
   }
 
@@ -414,7 +406,6 @@ uint8_t Node::getNbActiveAgents()
   {
     const uint8_t node_id = transfer->source_node_id;
     const uint64_t timestamp = transfer->timestamp_usec;
-    palToggleLine(LINE_LED1_RED);
     updateNodesList(node_id, timestamp);
   }
 
@@ -434,7 +425,6 @@ uint8_t Node::getNbActiveAgents()
       pkt.software_version.optional_field_flags = config.flagCb();
     }
     
-    palToggleLine(LINE_LED1_GREEN);
     getUniqueID((UniqId_t *)pkt.hardware_version.unique_id);
     Node::sendResponse(pkt, transfer);
   }

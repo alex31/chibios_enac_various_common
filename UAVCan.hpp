@@ -7,6 +7,7 @@
 #include "canard_chutils.h"
 #include "dronecan_msgs.h"
 #include "stdutil.h"
+#include "stdutil++.hpp"
 #include "etl/map.h"
 #include "etl/string.h"
 #include "etl/string_view.h"
@@ -317,7 +318,10 @@ namespace UAVCAN {
       .canfd = fdFrame,
       .tao = not fdFrame
     };
-    canardBroadcastObj(&canard, &broadcast);
+    {
+      MutexGuard gard(canard_mtx);
+      canardBroadcastObj(&canard, &broadcast);
+    }
     chEvtBroadcast(&canard_tx_not_empty);
   }
   
@@ -340,7 +344,10 @@ namespace UAVCAN {
       .canfd = fdFrame,
       .tao = not fdFrame
     };
-    canardRequestOrRespondObj(&canard, dest_id, &request);
+    {
+      MutexGuard gard(canard_mtx);
+      canardRequestOrRespondObj(&canard, dest_id, &request);
+    }
     chEvtBroadcast(&canard_tx_not_empty);
   }
   
@@ -362,7 +369,10 @@ namespace UAVCAN {
       .canfd = fdFrame,
       .tao = not fdFrame
     };
-    canardRequestOrRespondObj(&canard, transfer->source_node_id, &response);
+    {
+      MutexGuard gard(canard_mtx);
+      canardRequestOrRespondObj(&canard, transfer->source_node_id, &response);
+    }
     chEvtBroadcast(&canard_tx_not_empty);
   }
   
