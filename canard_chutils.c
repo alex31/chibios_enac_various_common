@@ -66,7 +66,7 @@ CanardCANFrame chibiRx2canard(const CANRxFrame frame){
 #endif
   out_frame.iface_id = 0;
   out_frame.data_len = dlcToDataLength(frame.DLC);
-  memcpy(out_frame.data,frame.data8, out_frame.data_len);
+  memcpy(out_frame.data, frame.data8, out_frame.data_len);
   return out_frame;
 }
 

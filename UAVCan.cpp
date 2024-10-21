@@ -345,9 +345,11 @@ uint8_t Node::getNbActiveAgents()
       }
     }
 
-    MutexGuard gard(canard_mtx);
-    // nettoyage recommandé par la librairie.
-    canardCleanupStaleTransfers(&canard, current_time_us);
+    {
+      MutexGuard gard(canard_mtx);
+      // nettoyage recommandé par la librairie.
+      canardCleanupStaleTransfers(&canard, current_time_us);
+    }
     // Génération de NodeStatus.
     sendNodeStatus();
     chThdSleepMilliseconds(1000);
