@@ -34,7 +34,8 @@ namespace UAVCAN
 				      canFD(_config.cancfg.op_mode == OPMODE_FDCAN)
     
   {
-    chMtxObjectInit(&canard_mtx);
+    chMtxObjectInit(&canard_mtx_s);
+    chMtxObjectInit(&canard_mtx_r);
     chEvtObjectInit(&canard_tx_not_empty);
 
     /*
@@ -293,7 +294,7 @@ uint8_t Node::getNbActiveAgents()
   
   void Node::senderStep()
   {
-    MutexGuard gard(canard_mtx);
+    MutexGuard gard(canard_mtx_s);
     transmitQueue();
   }
   
@@ -308,7 +309,7 @@ uint8_t Node::getNbActiveAgents()
       // if (config.errorCb) config.errorCb(m.view());
       
       CanardCANFrame rx_frame_canard = chibiRx2canard(rxmsg);
-      MutexGuard gard(canard_mtx);
+      MutexGuard gard(canard_mtx_r);
       /*
        * On reconstruit un message unique pour les transferts de plusieurs
        * trames et on les passe à travers shouldAcceptTransfer() puis
@@ -346,7 +347,7 @@ uint8_t Node::getNbActiveAgents()
     }
 
     {
-      MutexGuard gard(canard_mtx);
+      MutexGuard gard(canard_mtx_s);
       // nettoyage recommandé par la librairie.
       canardCleanupStaleTransfers(&canard, current_time_us);
     }

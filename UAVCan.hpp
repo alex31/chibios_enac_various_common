@@ -236,7 +236,7 @@ namespace UAVCAN {
     bool isCanfdEnabled() {return canFD;}
   private:
     const Config &config;
-    mutex_t canard_mtx;
+    mutex_t canard_mtx_r, canard_mtx_s;
     event_source_t canard_tx_not_empty;
     CanardInstance canard;
     uavcan_protocol_NodeStatus node_status;
@@ -319,7 +319,7 @@ namespace UAVCAN {
       .tao = not fdFrame
     };
     {
-      MutexGuard gard(canard_mtx);
+      MutexGuard gard(canard_mtx_s);
       canardBroadcastObj(&canard, &broadcast);
     }
     chEvtBroadcast(&canard_tx_not_empty);
@@ -345,7 +345,7 @@ namespace UAVCAN {
       .tao = not fdFrame
     };
     {
-      MutexGuard gard(canard_mtx);
+      MutexGuard gard(canard_mtx_s);
       canardRequestOrRespondObj(&canard, dest_id, &request);
     }
     chEvtBroadcast(&canard_tx_not_empty);
@@ -370,7 +370,7 @@ namespace UAVCAN {
       .tao = not fdFrame
     };
     {
-      MutexGuard gard(canard_mtx);
+      MutexGuard gard(canard_mtx_s);
       canardRequestOrRespondObj(&canard, transfer->source_node_id, &response);
     }
     chEvtBroadcast(&canard_tx_not_empty);

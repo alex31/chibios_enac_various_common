@@ -188,7 +188,14 @@ public:
   MutexGuard(MutexGuard &&) = delete;
   MutexGuard & operator=(MutexGuard &&) = delete;
   
-  MutexGuard(mutex_t &_mut) : mut(_mut) {chMtxLock(&mut);};
+  MutexGuard(mutex_t &_mut) : mut(_mut) {
+#if CH_CFG_USE_MUTEXES_RECURSIVE
+    chMtxLock(&mut);
+#else
+    if (chMtxTryLock(&mut) == false)
+      chSysHalt("recursive lock detected");
+#endif
+  };
   ~MutexGuard() {chMtxUnlock(&mut);};
 private:
   mutex_t &mut;
