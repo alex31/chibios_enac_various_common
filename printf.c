@@ -42,19 +42,21 @@
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 100000
 
-#if defined CHPRINTF_USE_STDLIB && CHPRINTF_USE_STDLIB
-#ifndef CHPRINTF_BUFFER_SIZE
-#define CHPRINTF_BUFFER_SIZE 160
-#endif
-#include <stdio.h>
-#include <stdarg.h>
-#include <reent.h>
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#if defined CHPRINTF_USE_STDLIB && CHPRINTF_USE_STDLIB
+#if defined CHPRINTF_USE_STDLIB
+# if CHPRINTF_USE_STDLIB
+#  ifndef CHPRINTF_BUFFER_SIZE
+#  define CHPRINTF_BUFFER_SIZE 160
+# endif
+# include <stdio.h>
+# include <stdarg.h>
+# include <reent.h>
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+# if CHPRINTF_USE_STDLIB
 static struct _reent reent =  _REENT_INIT(reent);
-#endif
+# endif
 #pragma GCC diagnostic pop
+# endif
 #else // CHPRINTF_USE_STDLIB not defined
 #define CHPRINTF_USE_STDLIB 0
 #endif

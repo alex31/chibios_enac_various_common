@@ -84,7 +84,7 @@ namespace UAVCAN
     heartbeat_thd = chThdCreateFromHeap(nullptr, 2048U, "heartbeat_thd",
 				       NORMALPRIO,
 				       &heartbeatThdDispatch, this);
-    can_error_thd = chThdCreateFromHeap(nullptr, 512U, "can_error_thd",
+    can_error_thd = chThdCreateFromHeap(nullptr, 1024U, "can_error_thd",
 				       NORMALPRIO,
 				       &canErrorThdDispatch, this);
   }
