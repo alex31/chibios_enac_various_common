@@ -102,6 +102,11 @@ namespace UAVCAN {
   consteval uint32_t getNBTP(uint16_t prescaler,
 			     uint8_t seg1, uint8_t seg2)
   {
+    if (prescaler > 512U)
+      return 0;
+    else if (seg2 > 128U)
+      return 0;
+    
     struct NBTPReg {
       uint8_t ntseg2:7;
       uint8_t _reserved:1 = 0;
@@ -112,7 +117,7 @@ namespace UAVCAN {
     static_assert(sizeof(NBTPReg) == 4);
     const uint8_t synchroJumpWidth = seg2 / 2U;
 
-    NBTPReg reg = {
+    const NBTPReg reg = {
       .ntseg2 = static_cast<uint8_t>(seg2 - 1U),
       .ntseg1 = static_cast<uint8_t>(seg1 - 1U),
       .nbrp = static_cast<uint16_t>(prescaler - 1U),
@@ -127,7 +132,14 @@ namespace UAVCAN {
   consteval uint32_t getDBTP(uint8_t prescaler,
 			     uint8_t seg1, uint8_t seg2, bool tdc)
   {
-    struct DBTPReg {
+   if (prescaler > 32U)
+      return 0;
+    else if (seg1 > 32U)
+      return 0;
+    else if (seg2 > 16U)
+      return 0;
+
+   struct DBTPReg {
       uint8_t dsjw:4;
       uint8_t dtseg2:4;
       uint8_t dtseg1:5;
