@@ -99,38 +99,59 @@ namespace UAVCAN {
   static constexpr size_t MAX_CAN_NODES = 128;
   static constexpr size_t MEMORYPOOL_SIZE = 4096;
 
-  consteval uint32_t getNBTP(uint8_t prescaler,
+  consteval uint32_t getNBTP(uint16_t prescaler,
 			     uint8_t seg1, uint8_t seg2)
   {
-    seg1 = seg1 == 0 ? 1 : seg1;
-    seg2 = seg2 == 0 ? 1 : seg2;
-    prescaler = prescaler == 0 ? 1 : prescaler;
-    prescaler = prescaler & 0x1f;
-    --prescaler; --seg1; --seg2;
-    const auto synchroJumpWidth = seg2 <= 0xf ? seg2 : 0xf;
-    seg2 = seg2 & 0x7f;
-    return FDCAN_CONFIG_NBTP_NSJW(synchroJumpWidth) |
-      FDCAN_CONFIG_NBTP_NBRP(prescaler) |
-      FDCAN_CONFIG_NBTP_NTSEG1(seg1) |
-      FDCAN_CONFIG_NBTP_NTSEG2(seg2);
+    struct NBTPReg {
+      uint8_t ntseg2:7;
+      uint8_t _reserved:1 = 0;
+      uint8_t ntseg1:8;
+      uint16_t nbrp:9;
+      uint8_t nsjw:7;
+    };
+    static_assert(sizeof(NBTPReg) == 4);
+    const uint8_t synchroJumpWidth = seg2 / 2U;
+
+    NBTPReg reg = {
+      .ntseg2 = static_cast<uint8_t>(seg2 - 1U),
+      .ntseg1 = static_cast<uint8_t>(seg1 - 1U),
+      .nbrp = static_cast<uint16_t>(prescaler - 1U),
+      .nsjw = static_cast<uint8_t>(synchroJumpWidth - 1U)
+    };
+    return FDCAN_CONFIG_NBTP_NSJW(reg.nsjw) |
+      FDCAN_CONFIG_NBTP_NBRP(reg.nbrp) |
+      FDCAN_CONFIG_NBTP_NTSEG1(reg.ntseg1) |
+      FDCAN_CONFIG_NBTP_NTSEG2(reg.ntseg2);
   }
   
   consteval uint32_t getDBTP(uint8_t prescaler,
 			     uint8_t seg1, uint8_t seg2, bool tdc)
   {
-    seg1 = (seg1 == 0) ? 1 : seg1;
-    seg2 = (seg2 == 0) ? 1 : seg2;
-    prescaler = (prescaler == 0) ? 1 : prescaler;
-    prescaler = prescaler & 0x1f;
-    --prescaler; --seg1; --seg2;
-    const auto synchroJumpWidth = seg2 <= 0xf ? seg2 : 0xf;
-    seg1 = seg1 & 0x1f;
-    seg2 = seg2 & 0xf;
-    
-    return FDCAN_CONFIG_DBTP_DSJW(synchroJumpWidth) |
-      FDCAN_CONFIG_DBTP_DBRP(prescaler) |
-      FDCAN_CONFIG_DBTP_DTSEG1(seg1) |
-      FDCAN_CONFIG_DBTP_DTSEG2(seg2) |
+    struct DBTPReg {
+      uint8_t dsjw:4;
+      uint8_t dtseg2:4;
+      uint8_t dtseg1:5;
+      uint8_t _reserved:3 = 0;
+      uint16_t dbrp:5;
+      uint8_t _reserved2:2 = 0;
+      uint8_t tdc:1;
+      uint8_t _reserved3:8 = 0;
+    };
+    static_assert(sizeof(DBTPReg) == 4);
+
+    const uint8_t synchroJumpWidth = (seg2 *3U) / 2U;
+    DBTPReg reg = {
+      .dsjw = static_cast<uint8_t>(synchroJumpWidth - 1U),
+      .dtseg2 = static_cast<uint8_t>(seg2 - 1U),
+      .dtseg1 = static_cast<uint8_t>(seg1 - 1U),
+      .dbrp = static_cast<uint16_t>(prescaler - 1U),
+      .tdc = tdc
+    };
+  
+    return FDCAN_CONFIG_DBTP_DSJW(reg.dsjw) |
+      FDCAN_CONFIG_DBTP_DBRP(reg.dbrp) |
+      FDCAN_CONFIG_DBTP_DTSEG1(reg.dtseg1) |
+      FDCAN_CONFIG_DBTP_DTSEG2(reg.dtseg2) |
       (tdc ? FDCAN_CONFIG_DBTP_TDC : 0);
   }
   
