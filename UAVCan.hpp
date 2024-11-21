@@ -49,8 +49,55 @@
   ° tester une comm H7 <-> G491 à 4Mbit, puis 4.25 Mbits
 
  */
-namespace {
 
+
+/*
+  Fsource
+  divider
+  sumseg
+  bitrate
+
+
+  bitrate = Fsource/(divider * sumseg)
+  1 <= divider <= dividerMax
+  1 <= sumseg <= sumsegMax
+
+  divider * sumseg = Fsource / bitrate
+  D *
+  
+ */
+namespace {
+  template <typename T>
+  constexpr bool in_bounds(T value, T lower, T upper)
+  {
+    return value >= lower && value <= upper;
+  }
+  
+  struct DivSeg {
+    uint32_t prescaler;
+    uint32_t s1;
+    uint32_t s2;  
+  };
+    
+  consteval DivSeg findDivSeg(uint32_t clockRatio,  uint32_t preMax, uint32_t s1max, 
+			      float ratios1s2) 
+  {
+    uint32_t s2max = s1max / 2U;
+    
+    for (uint32_t prescaler = 1; prescaler <= preMax; ++prescaler) {
+      if (clockRatio % prescaler == 0) { 
+	uint32_t Stotal = clockRatio / prescaler;
+	uint32_t S1 = Stotal * ratios1s2;
+	uint32_t S2 = Stotal - S1;
+	S1-- ;// retreive sync seg
+	if (S1 >= 1 && S2 >= 1 && S1 <= s1max && S2 <= s2max) {
+	  return {prescaler, S1, S2};
+	}
+      } 
+    }
+    
+    return {0, 0, 0};
+  }
 }
 
 class StrCbHelper {
@@ -96,77 +143,86 @@ struct cbTraits<R(Arg1, Arg2, Args...)> {
 
 
 namespace UAVCAN {
+  // bit timing helper fuctions apply rules found in
+  // https://www.can-cia.org/fileadmin/cia/documents/publications/cnlm/march_2018/18-1_p28_recommendation_for_the_canfd_bit-timing_holger_zeltwanger_cia.pdf
   static constexpr size_t MAX_CAN_NODES = 128;
   static constexpr size_t MEMORYPOOL_SIZE = 4096;
 
-  consteval uint32_t getNBTP(uint16_t prescaler,
-			     uint8_t seg1, uint8_t seg2)
+  // struct NBTPReg {
+  //   uint8_t ntseg2:7;
+  //   uint8_t _reserved:1 = 0;
+  //   uint8_t ntseg1:8;
+  //   uint16_t nbrp:9;
+  //   uint8_t nsjw:7;
+  // };
+  
+  struct BitTiming {
+    uint32_t btp;
+    uint32_t prescaler;
+  };
+  
+  consteval uint32_t getNBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2,
+			     uint32_t synchroJumpWidth)
   {
-    if (prescaler > 512U)
+    if (not in_bounds(prescaler, 1UL, 512UL))
       return 0;
-    else if (seg2 > 128U)
+    if (not in_bounds(seg1, 1UL, 256UL))
+      return 0;
+    if (not in_bounds(seg2, 1UL, 128UL))
+      return 0;
+    if (not in_bounds(synchroJumpWidth, 1UL, 128UL))
       return 0;
     
-    struct NBTPReg {
-      uint8_t ntseg2:7;
-      uint8_t _reserved:1 = 0;
-      uint8_t ntseg1:8;
-      uint16_t nbrp:9;
-      uint8_t nsjw:7;
-    };
-    static_assert(sizeof(NBTPReg) == 4);
-    const uint8_t synchroJumpWidth = seg2 / 2U;
+    return FDCAN_CONFIG_NBTP_NSJW(synchroJumpWidth - 1U) |
+      FDCAN_CONFIG_NBTP_NBRP(prescaler - 1U) |
+      FDCAN_CONFIG_NBTP_NTSEG1(seg1 - 1U) |
+      FDCAN_CONFIG_NBTP_NTSEG2(seg2 - 1U);
+  }
 
-    const NBTPReg reg = {
-      .ntseg2 = static_cast<uint8_t>(seg2 - 1U),
-      .ntseg1 = static_cast<uint8_t>(seg1 - 1U),
-      .nbrp = static_cast<uint16_t>(prescaler - 1U),
-      .nsjw = static_cast<uint8_t>(synchroJumpWidth - 1U)
-    };
-    return FDCAN_CONFIG_NBTP_NSJW(reg.nsjw) |
-      FDCAN_CONFIG_NBTP_NBRP(reg.nbrp) |
-      FDCAN_CONFIG_NBTP_NTSEG1(reg.ntseg1) |
-      FDCAN_CONFIG_NBTP_NTSEG2(reg.ntseg2);
+  consteval BitTiming getNBTP(uint32_t canClk, uint32_t bitRateK, float s1s2Ratio)
+  {
+    const DivSeg divSeg = findDivSeg(canClk / (bitRateK * 1000U), 512U, 256U, s1s2Ratio);
+    return {getNBTP(divSeg.prescaler, divSeg.s1, divSeg.s2, std::min(divSeg.s1, divSeg.s2)),
+	    divSeg.prescaler};
   }
   
-  consteval uint32_t getDBTP(uint8_t prescaler,
-			     uint8_t seg1, uint8_t seg2, bool tdc)
+   // struct DBTPReg {
+   //    uint8_t dsjw:4;
+   //    uint8_t dtseg2:4;
+   //    uint8_t dtseg1:5;
+   //    uint8_t _reserved:3 = 0;
+   //    uint16_t dbrp:5;
+   //    uint8_t _reserved2:2 = 0;
+   //    uint8_t tdc:1;
+   //    uint8_t _reserved3:8 = 0;
+   //  };
+  consteval uint32_t getDBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2,
+			     uint32_t synchroJumpWidth, bool tdc)
   {
-   if (prescaler > 32U)
+    if (not in_bounds(prescaler, 1UL, 32UL))
       return 0;
-    else if (seg1 > 32U)
+    if (not in_bounds(seg1, 1UL, 32UL))
       return 0;
-    else if (seg2 > 16U)
+    if (not in_bounds(seg2, 1UL, 16UL))
+      return 0;
+    if (not in_bounds(synchroJumpWidth, 1UL, 16UL))
       return 0;
 
-   struct DBTPReg {
-      uint8_t dsjw:4;
-      uint8_t dtseg2:4;
-      uint8_t dtseg1:5;
-      uint8_t _reserved:3 = 0;
-      uint16_t dbrp:5;
-      uint8_t _reserved2:2 = 0;
-      uint8_t tdc:1;
-      uint8_t _reserved3:8 = 0;
-    };
-    static_assert(sizeof(DBTPReg) == 4);
-
-    const uint8_t synchroJumpWidth = (seg2 *3U) / 2U;
-    DBTPReg reg = {
-      .dsjw = static_cast<uint8_t>(synchroJumpWidth - 1U),
-      .dtseg2 = static_cast<uint8_t>(seg2 - 1U),
-      .dtseg1 = static_cast<uint8_t>(seg1 - 1U),
-      .dbrp = static_cast<uint16_t>(prescaler - 1U),
-      .tdc = tdc
-    };
-  
-    return FDCAN_CONFIG_DBTP_DSJW(reg.dsjw) |
-      FDCAN_CONFIG_DBTP_DBRP(reg.dbrp) |
-      FDCAN_CONFIG_DBTP_DTSEG1(reg.dtseg1) |
-      FDCAN_CONFIG_DBTP_DTSEG2(reg.dtseg2) |
+    return FDCAN_CONFIG_DBTP_DSJW(synchroJumpWidth - 1U) |
+      FDCAN_CONFIG_DBTP_DBRP(prescaler - 1U) |
+      FDCAN_CONFIG_DBTP_DTSEG1(seg1 - 1U) |
+      FDCAN_CONFIG_DBTP_DTSEG2(seg2 - 1U) |
       (tdc ? FDCAN_CONFIG_DBTP_TDC : 0);
   }
-  
+
+  consteval BitTiming getDBTP(uint32_t canClk, uint32_t bitRateK, float s1s2Ratio)
+  {
+    const DivSeg divSeg = findDivSeg(canClk / (bitRateK * 1000U), 32U, 32U, s1s2Ratio);
+    return {getDBTP(divSeg.prescaler, divSeg.s1, divSeg.s2,
+	            std::min(divSeg.s1, divSeg.s2), bitRateK > 1000U),
+	    divSeg.prescaler};
+  }
+
   using receivedCbPtr_t = void (*) (CanardInstance *ins,
 				    CanardRxTransfer *transfer);
   using flagCbPtr_t = uint8_t (*) ();
