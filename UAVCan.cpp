@@ -167,9 +167,9 @@ namespace UAVCAN
 	if (node->config.cand.fdcan->CCCR & FDCAN_CCCR_INIT) {
 	  node->config.cand.fdcan->CCCR &= ~FDCAN_CCCR_INIT;
 	  StrCbHelper m("canErrorThdDispatch bus_off condition");
-	  //	  node->setCanStatus(NODE_OFFLINE);
+	  node->setCanStatus(NODE_OFFLINE);
 	  if (node->config.errorCb) node->config.errorCb(m.view());
-	  chThdSleepMilliseconds(100);
+	  chThdSleepMilliseconds(50);
 	}
       }
     }

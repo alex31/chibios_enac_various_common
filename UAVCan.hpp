@@ -80,11 +80,11 @@ namespace {
   };
     
   consteval DivSeg findDivSeg(uint32_t clockRatio,  uint32_t preMax, uint32_t s1max, 
-			      float ratios1s2) 
+			      float ratios1s2, bool usePremax = false) 
   {
     uint32_t s2max = s1max / 2U;
     
-    for (uint32_t prescaler = 1; prescaler <= preMax; ++prescaler) {
+    for (uint32_t prescaler = usePremax ? preMax : 1u; prescaler <= preMax; ++prescaler) {
       if (clockRatio % prescaler == 0) { 
 	uint32_t Stotal = clockRatio / prescaler;
 	uint32_t S1 = Stotal * ratios1s2;
@@ -148,17 +148,10 @@ namespace UAVCAN {
   static constexpr size_t MAX_CAN_NODES = 128;
   static constexpr size_t MEMORYPOOL_SIZE = 4096;
 
-  // struct NBTPReg {
-  //   uint8_t ntseg2:7;
-  //   uint8_t _reserved:1 = 0;
-  //   uint8_t ntseg1:8;
-  //   uint16_t nbrp:9;
-  //   uint8_t nsjw:7;
-  // };
-  
-  struct BitTiming {
-    uint32_t btp;
-    uint32_t prescaler;
+
+  struct RegTimings {
+    uint32_t nbtp;
+    uint32_t dbtp;
   };
   
   consteval uint32_t getNBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2,
@@ -179,23 +172,6 @@ namespace UAVCAN {
       FDCAN_CONFIG_NBTP_NTSEG2(seg2 - 1U);
   }
 
-  consteval BitTiming getNBTP(uint32_t canClk, uint32_t bitRateK, float s1s2Ratio)
-  {
-    const DivSeg divSeg = findDivSeg(canClk / (bitRateK * 1000U), 512U, 256U, s1s2Ratio);
-    return {getNBTP(divSeg.prescaler, divSeg.s1, divSeg.s2, std::min(divSeg.s1, divSeg.s2)),
-	    divSeg.prescaler};
-  }
-  
-   // struct DBTPReg {
-   //    uint8_t dsjw:4;
-   //    uint8_t dtseg2:4;
-   //    uint8_t dtseg1:5;
-   //    uint8_t _reserved:3 = 0;
-   //    uint16_t dbrp:5;
-   //    uint8_t _reserved2:2 = 0;
-   //    uint8_t tdc:1;
-   //    uint8_t _reserved3:8 = 0;
-   //  };
   consteval uint32_t getDBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2,
 			     uint32_t synchroJumpWidth, bool tdc)
   {
@@ -215,12 +191,27 @@ namespace UAVCAN {
       (tdc ? FDCAN_CONFIG_DBTP_TDC : 0);
   }
 
-  consteval BitTiming getDBTP(uint32_t canClk, uint32_t bitRateK, float s1s2Ratio)
+
+  consteval RegTimings getTimings(uint32_t canClk,
+			    uint32_t arbitrationBitRateK, float arbitrationS1s2Ratio,
+			    uint32_t dataBitRateK, float dataS1s2Ratio, bool transDelayCompens
+			    )
   {
-    const DivSeg divSeg = findDivSeg(canClk / (bitRateK * 1000U), 32U, 32U, s1s2Ratio);
-    return {getDBTP(divSeg.prescaler, divSeg.s1, divSeg.s2,
-	            std::min(divSeg.s1, divSeg.s2), bitRateK > 1000U),
-	    divSeg.prescaler};
+    const DivSeg divSegData = findDivSeg(canClk / (dataBitRateK * 1000U),
+					 32U, 32U, dataS1s2Ratio);
+    const DivSeg divSegArbitration = findDivSeg(canClk / (arbitrationBitRateK * 1000U),
+						divSegData.prescaler, 256U,
+						arbitrationS1s2Ratio, true);
+    
+    const uint32_t nbtp = getNBTP(divSegArbitration.prescaler,
+				  divSegArbitration.s1, divSegArbitration.s2,
+				  std::min(divSegArbitration.s1, divSegArbitration.s2));
+
+    const uint32_t dbtp = getDBTP(divSegData.prescaler,
+				  divSegData.s1, divSegData.s2,
+				  std::min(divSegData.s1, divSegData.s2),
+				  transDelayCompens);
+    return {nbtp, dbtp};
   }
 
   using receivedCbPtr_t = void (*) (CanardInstance *ins,
