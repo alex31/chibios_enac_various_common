@@ -152,6 +152,7 @@ namespace UAVCAN {
   struct RegTimings {
     uint32_t nbtp;
     uint32_t dbtp;
+    uint32_t tdcr;
   };
   
   consteval uint32_t getNBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2,
@@ -211,7 +212,12 @@ namespace UAVCAN {
 				  divSegData.s1, divSegData.s2,
 				  std::min(divSegData.s1, divSegData.s2),
 				  transDelayCompens);
-    return {nbtp, dbtp};
+    const uint32_t offset = divSegData.prescaler * divSegData.s1;
+    const uint32_t tdc_offset = offset <= 127U ? offset : 127U;
+    const uint32_t tdc_filter = tdc_offset * 2 / 3;
+    const uint32_t tdcr = (tdc_offset << FDCAN_TDCR_TDCO_Pos) | 
+                          (tdc_filter << FDCAN_TDCR_TDCF_Pos); 
+    return {nbtp, dbtp, transDelayCompens ? tdcr : 0};
   }
 
   using receivedCbPtr_t = void (*) (CanardInstance *ins,
