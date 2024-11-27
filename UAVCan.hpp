@@ -30,42 +30,12 @@
 #error "CANARD_ENABLE_TAO_OPTION and CANARD_ENABLE_CANFD must be set to true"
 #endif
 
-
 /*
-  TODO :
+  TODO:
 
-  ° porter sur devboardH7 et tester une comm H7 <->  H7
-    module CANCOM avec tout ce qui est CANFD planqué dedans
-           + le role esclave attend un
-	     uavcan_equipment_actuator_Command (4 servos)
-	   + le role autopilote envoie des commandes
-	     (bouton rotatif + selection par joystick)
-	   + l'esclave a un capteur (baro) et renvoie temperature et pression
-	   + l'autopilote affiche temperature et pression
-	   + chacun utilise une led tricolore : vert comm ok, rouge : pas de comm
-	   + en fonction d'un switch, prendre un role ou l'autre pour avoir le
-	     même code sur les 2 cartes
-
-  ° tester une comm H7 <-> G491 à 4Mbit, puis 4.25 Mbits
-
+  doxygen all the things
  */
 
-
-/*
-  Fsource
-  divider
-  sumseg
-  bitrate
-
-
-  bitrate = Fsource/(divider * sumseg)
-  1 <= divider <= dividerMax
-  1 <= sumseg <= sumsegMax
-
-  divider * sumseg = Fsource / bitrate
-  D *
-  
- */
 namespace {
   template <typename T>
   constexpr bool in_bounds(T value, T lower, T upper)
@@ -98,24 +68,6 @@ namespace {
     
     return {0, 0, 0};
   }
-}
-
-class StrCbHelper {
-public:
-  StrCbHelper(const char *source) : s(source) {}
-  template<typename...Params>
-  StrCbHelper(const char * format, Params&&... params);
-  // __attribute__((format (printf, 2, 3)));
-  etl::string_view view() const {return etl::string_view(s);}
-private:
-  etl::string<80> s;
-};
-
-template<typename...Params>
-StrCbHelper::StrCbHelper(const char * format, Params&&... params)
-{
-  const auto len = chsnprintf(s.data(), s.capacity(), format, std::forward<Params> (params)...);
-  s.uninitialized_resize(len);
 }
 
 // to determine type of first arguments of a function
@@ -381,6 +333,8 @@ namespace UAVCAN {
 				CanardRxTransfer *transfer);
     void handleNodeInfoRequest(CanardInstance *ins,
 			       CanardRxTransfer *transfer);
+    template<typename...Params>
+    void errorCb(const char * format, Params&&... params);
    };
 
 
@@ -477,9 +431,8 @@ namespace UAVCAN {
       }
       Fn(transfer, msg);
     } else {
-      StrCbHelper m("requestMessageCb decode error on id %u", MsgType::cxx_iface::ID);
       node->setCanStatus(REQUEST_DECODE_ERROR);
-      if (node->config.errorCb) node->config.errorCb(m.view());
+      node->errorCb("requestMessageCb decode error on id %u", MsgType::cxx_iface::ID);
     }
   }
 
@@ -496,9 +449,8 @@ namespace UAVCAN {
       }
       Fn(transfer, msg);
     } else {
-      StrCbHelper m("responseMessageCb decode error on id %u", MsgType::cxx_iface::ID);
       node->setCanStatus(RESPONSE_DECODE_ERROR);
-      if (node->config.errorCb) node->config.errorCb(m.view());
+      node->errorCb("responseMessageCb decode error on id %u", MsgType::cxx_iface::ID);
     }
   }
   
@@ -515,9 +467,8 @@ namespace UAVCAN {
       }
       Fn(transfer, msg);
     } else {
-      StrCbHelper m("sendBroadcastCb decode error on id %u", MsgType::cxx_iface::ID);
       node->setCanStatus(BROADCAST_DECODE_ERROR);
-      if (node->config.errorCb) node->config.errorCb(m.view());
+      node->errorCb("sendBroadcastCb decode error on id %u", MsgType::cxx_iface::ID);
     }
   }
   

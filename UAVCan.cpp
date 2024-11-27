@@ -147,9 +147,8 @@ namespace UAVCAN
     int8_t filtersInUse = configureHardwareFilters();
     //    int8_t filtersInUse = 0;
     if (filtersInUse < 0) {
-      StrCbHelper m("WARN: too many messages fo hardware filtering, "
+      errorCb("WARN: too many messages fo hardware filtering, "
 		    "revert to software filtering");
-      if (config.errorCb) config.errorCb(m.view());
     } else {
       const bool rejectNonAcceptedId =
 #ifdef FDCAN_CONFIG_RXGFC_ANFE_REJECT
@@ -159,8 +158,7 @@ namespace UAVCAN
 #endif
       chDbgAssert(rejectNonAcceptedId,
 		  "cancfg.RXGFC must be corrected to reject filtered id");
-      StrCbHelper m("INFO: hardware filtering use %d slots", filtersInUse);
-      if (config.errorCb) config.errorCb(m.view());
+      errorCb("INFO: hardware filtering use %d slots", filtersInUse);
     }
 
     sender_thd = chThdCreateFromHeap(nullptr, 2048U, "sender_thd",
@@ -255,8 +253,7 @@ namespace UAVCAN
 	if (node->config.cand.fdcan->CCCR & FDCAN_CCCR_INIT) {
 	  node->config.cand.fdcan->CCCR &= ~FDCAN_CCCR_INIT;
 	  node->setCanStatus(NODE_OFFLINE);
-	  StrCbHelper m("canErrorThdDispatch bus_off condition");
-	  if (node->config.errorCb) node->config.errorCb(m.view());
+	  node->errorCb("canErrorThdDispatch bus_off condition");
 	  chThdSleepMilliseconds(50);
 	}
       }
@@ -324,9 +321,7 @@ uint8_t Node::getNbActiveAgents()
       chSysHalt("data_type_id not handled");
     }
 
-    StrCbHelper m("INFO: id %x not hardware filtered", data_type_id);
-    if (config.errorCb) config.errorCb(m.view());
-
+    errorCb("INFO: id %x not hardware filtered", data_type_id);
     return false;
   }
   
@@ -342,9 +337,8 @@ uint8_t Node::getNbActiveAgents()
       } else {
 	Node *node = static_cast<Node *>(canardGetUserReference(ins));
 	node->setCanStatus(REQUEST_UNHANDLED_ID);
-	StrCbHelper m("INFO onTransferReceived Request id %u not handled",
+	node->errorCb("INFO onTransferReceived Request id %u not handled",
 		      transfer->data_type_id);
-	if (node->config.errorCb) node->config.errorCb(m.view());
       }
       break;
     } 
@@ -356,9 +350,8 @@ uint8_t Node::getNbActiveAgents()
       } else {
 	Node *node = static_cast<Node *>(canardGetUserReference(ins));
 	node->setCanStatus(RESPONSE_UNHANDLED_ID);
-	StrCbHelper m("INFO onTransferReceived Response id %u not handled",
+	node->errorCb("INFO onTransferReceived Response id %u not handled",
 		      transfer->data_type_id);
-	if (node->config.errorCb) node->config.errorCb(m.view());
       }
       break;
     }
@@ -370,9 +363,8 @@ uint8_t Node::getNbActiveAgents()
       } else {
 	Node *node = static_cast<Node *>(canardGetUserReference(ins));
 	node->setCanStatus(BROADCAST_UNHANDLED_ID);
-	StrCbHelper m("INFO onTransferReceived Broadcast id %u not handled",
+	node->errorCb("INFO onTransferReceived Broadcast id %u not handled",
 		      transfer->data_type_id);
-	if (node->config.errorCb) node->config.errorCb(m.view());
       }
       
       break;
@@ -395,9 +387,8 @@ uint8_t Node::getNbActiveAgents()
     while (canReceiveTimeout(&config.cand, CAN_ANY_MAILBOX, &rxmsg,
                              TIME_INFINITE) == MSG_OK) {
       // Traitement de la trame.
-      // StrCbHelper m("INFO Receive Msg from 0x%x, length %u",
+      // errorCb("INFO Receive Msg from 0x%x, length %u",
       //  		    uint32_t(rxmsg.ext.EID), uint32_t(rxmsg.DLC));
-      // if (config.errorCb) config.errorCb(m.view());
       
       CanardCANFrame rx_frame_canard = chibiRx2canard(rxmsg);
       MutexGuard gard(canard_mtx_r);
@@ -429,10 +420,9 @@ uint8_t Node::getNbActiveAgents()
 			 UAVCAN_PROTOCOL_NODESTATUS_OFFLINE_TIMEOUT_MS);
 	} else {
 	  setCanStatus(UAVCAN_TIMEWRAP);
-	  StrCbHelper m("Warning : current time wraparound or "
-			"message recieved in the future (unlikely)");
+	  errorCb("Warning : current time wraparound or "
+		  "message recieved in the future (unlikely)");
 	  
-	  if (config.errorCb) config.errorCb(m.view());
 	}
       }
     }
@@ -535,26 +525,22 @@ uint8_t Node::getNbActiveAgents()
       case MSG_OK: {
 	canardPopTxQueue(&canard);
 	// static uint32_t countOk = 0;
-	// StrCbHelper m("INFO Transmit OK [%ld]", ++countOk);
-	// if (config.errorCb) config.errorCb(m.view());
+	// errorCb("INFO Transmit OK [%ld]", ++countOk);
 	break;
       }
       case MSG_TIMEOUT: {
 	setCanStatus(TRANSMIT_TIMOUT);
-	StrCbHelper m("Transmit MSG_TIMEOUT");
-	if (config.errorCb) config.errorCb(m.view());
+	errorCb("Transmit MSG_TIMEOUT");
 	break;
       }
       case MSG_RESET: {
 	setCanStatus(TRANSMIT_RESET);
 	canardPopTxQueue(&canard);
-	StrCbHelper m("Transmit MSG_RESET");
-	if (config.errorCb) config.errorCb(m.view());
+	errorCb("Transmit MSG_RESET");
 	break;
       }
       default: {
-	StrCbHelper m("ERROR canTransmit status %ld not handled in switch", tx_ok);
-	if (config.errorCb) config.errorCb(m.view());
+	errorCb("ERROR canTransmit status %ld not handled in switch", tx_ok);
 	break;
       }
       }
@@ -580,5 +566,19 @@ void Node::setStatus(uint8_t health, uint8_t mode,  specificStatusCode_t specifi
   node_status.vendor_specific_status_code = specific_code;
 }
 
+template<typename...Params>
+void Node::errorCb(const char * format, [[maybe_unused]] Params&&... params)
+{
+#if CH_DBG_ENABLE_CHECKS
+  if (config.errorCb) {
+    etl::string<80> s;
+    const auto len = chsnprintf(s.data(), s.capacity(), format, std::forward<Params> (params)...);
+    s.uninitialized_resize(len);
+    config.errorCb(etl::string_view(s));
+  }
+#else
+  (void) format;
+#endif
+}
 
 }
