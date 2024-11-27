@@ -357,6 +357,7 @@ namespace UAVCAN {
     void transmitQueue();
     void sendNodeStatus();
     void setCanStatus(canStatus_t cs) {canStatus = cs;}
+    int8_t configureHardwareFilters();
     
     static bool shouldAcceptTransferDispatch(const CanardInstance *ins,
 				     uint64_t *out_data_type_signature,

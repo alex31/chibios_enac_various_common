@@ -66,6 +66,76 @@ namespace UAVCAN
     }
   }
 
+  int8_t Node::configureHardwareFilters()
+  {
+    int8_t filterIndex = 0;
+    constexpr uint8_t filtersSize = 
+#ifdef FDCAN_CONFIG_RXGFC_RRFS // ugly meanway to know if we use HDCANV1 ou V2
+      8; // FDCANV1 : each FDCan interface has 8 extended filters
+#else // FDCANV2 : 32 extended filters are shared between FDCan interface(s) in use
+#    if ((STM32_CAN_USE_FDCAN1 + STM32_CAN_USE_FDCAN2 + STM32_CAN_USE_FDCAN3) == 1)
+    32;
+#    elif ((STM32_CAN_USE_FDCAN1 + STM32_CAN_USE_FDCAN2 + STM32_CAN_USE_FDCAN3) == 2)
+    16;
+#    elif ((STM32_CAN_USE_FDCAN1 + STM32_CAN_USE_FDCAN2 + STM32_CAN_USE_FDCAN3) == 2)
+    10;
+#    endif
+#endif
+
+    CANFilter  filterList[filtersSize];
+    
+    for (const auto& [msg_id, _] :  config.idToHandleRequest) {
+      chDbgAssert(msg_id < 256, "service message id should be in the range 0 .. 255");
+      constexpr uint32_t mask = 0x00'ff'80'00;
+      const uint32_t id = (msg_id << 16) | (0x80 << 8);
+      filterList[filterIndex] = {
+	.filter_type = CAN_FILTER_TYPE_EXT,
+	.filter_mode = CAN_FILTER_MODE_CLASSIC,
+	.filter_cfg =  CAN_FILTER_CFG_FIFO_0,
+	.identifier1 = id,
+	.identifier2 = mask
+      };
+      if (++filterIndex > filtersSize)
+	goto overfill;
+    }
+    
+   for (const auto& [msg_id, _] :  config.idToHandleResponse) {
+      chDbgAssert(msg_id < 256, "service message id should be in the range 0 .. 255");
+      constexpr uint32_t mask = 0x00'ff'80'00;
+      const uint32_t id = (msg_id << 16) | (0x00 << 8);
+      filterList[filterIndex] = {
+	.filter_type = CAN_FILTER_TYPE_EXT,
+	.filter_mode = CAN_FILTER_MODE_CLASSIC,
+	.filter_cfg =  CAN_FILTER_CFG_FIFO_0,
+	.identifier1 = id,
+	.identifier2 = mask
+      };
+      if (++filterIndex > filtersSize)
+	goto overfill;
+    }
+
+   for (const auto& [msg_id, _] :  config.idToHandleBroadcast) {
+      constexpr uint32_t mask = 0x00'ff'ff'00;
+      const uint32_t id = msg_id << 8;
+      filterList[filterIndex] = {
+	.filter_type = CAN_FILTER_TYPE_EXT,
+	.filter_mode = CAN_FILTER_MODE_CLASSIC,
+	.filter_cfg =  CAN_FILTER_CFG_FIFO_1,
+	.identifier1 = id,
+	.identifier2 = mask
+      };
+      if (++filterIndex > filtersSize)
+	goto overfill;
+    }
+
+   canSTM32SetFilters(&config.cand, filterIndex, filterList);
+   return filterIndex;
+
+  overfill: // if we don't have enough filter, we do nothing and rely on sofware filtering
+   // TODO : use filters to etablish reject list (probably mean modifying driver to enable reject list)
+    return -1;
+  }
+  
   void Node::start()
   {
     canardInit(&canard, memory_pool, MEMORYPOOL_SIZE,
@@ -74,6 +144,24 @@ namespace UAVCAN
     canardSetLocalNodeID(&canard, config.nodeId);
     initNodesList();
     canStart(&config.cand, &config.cancfg);
+    int8_t filtersInUse = configureHardwareFilters();
+    //    int8_t filtersInUse = 0;
+    if (filtersInUse < 0) {
+      StrCbHelper m("WARN: too many messages fo hardware filtering, "
+		    "revert to software filtering");
+      if (config.errorCb) config.errorCb(m.view());
+    } else {
+      const bool rejectNonAcceptedId =
+#ifdef FDCAN_CONFIG_RXGFC_ANFE_REJECT
+	(config.cancfg.RXGFC & FDCAN_CONFIG_RXGFC_ANFE_REJECT) != 0;
+#else
+      (config.cancfg.RXGFC & FDCAN_CONFIG_GFC_ANFE_REJECT) != 0;
+#endif
+      chDbgAssert(rejectNonAcceptedId,
+		  "cancfg.RXGFC must be corrected to reject filtered id");
+      StrCbHelper m("INFO: hardware filtering use %d slots", filtersInUse);
+      if (config.errorCb) config.errorCb(m.view());
+    }
 
     sender_thd = chThdCreateFromHeap(nullptr, 2048U, "sender_thd",
 				      NORMALPRIO,
@@ -166,8 +254,8 @@ namespace UAVCAN
       if (chEvtWaitAnyTimeout(ALL_EVENTS, TIME_INFINITE) != 0) {
 	if (node->config.cand.fdcan->CCCR & FDCAN_CCCR_INIT) {
 	  node->config.cand.fdcan->CCCR &= ~FDCAN_CCCR_INIT;
-	  StrCbHelper m("canErrorThdDispatch bus_off condition");
 	  node->setCanStatus(NODE_OFFLINE);
+	  StrCbHelper m("canErrorThdDispatch bus_off condition");
 	  if (node->config.errorCb) node->config.errorCb(m.view());
 	  chThdSleepMilliseconds(50);
 	}
@@ -235,7 +323,10 @@ uint8_t Node::getNbActiveAgents()
     default:
       chSysHalt("data_type_id not handled");
     }
-    
+
+    StrCbHelper m("INFO: id %x not hardware filtered", data_type_id);
+    if (config.errorCb) config.errorCb(m.view());
+
     return false;
   }
   
