@@ -16,6 +16,8 @@ use XML::LibXML;
 use Data::Dumper;
 use File::Basename;
 use Syntax::Keyword::Match;
+use Term::ANSIColor;
+
 
 #example of use of new symbol generation feature in C/C++ program
 #to avoid mismatch between code and board.cfg
@@ -213,6 +215,7 @@ sub fillPassiveFields ($$$$);
 sub generatePassiveAfMacro($$$); #pin, function, af
 sub getMcus($);
 sub demangleMcuName($);
+sub diecolor(@);
 sub usage();
 
 my @headerFromCfg;
@@ -255,7 +258,7 @@ if (exists $options{'no-adcp-in'}) {
 
 addPluginsRootDir();
 my ($CUBE_ROOT) = grep (-d $_, @CubeMXRootDir);
-die "unable to find STM32CubeMX root dir\n" unless defined $CUBE_ROOT;
+diecolor "unable to find STM32CubeMX root dir\n" unless defined $CUBE_ROOT;
 my $boardFile;
 my $cfgFileRoot;
 
@@ -267,7 +270,7 @@ if (exists $options{'mcu'}) {
     match ($nbMatch : ==) {
 	case (0) {
 	    say ("$mc does not match any mcu");
-	    die "exiting\n";
+	    diecolor "exiting\n";
 	}
 	case (1) {
 	    say ("$mc match $matchingMcus[0]");
@@ -282,7 +285,7 @@ if (exists $options{'mcu'}) {
 		print "$m : ";
 		demangleMcuName($m);
 	    }
-	    die "exiting\n";
+	    diecolor "exiting\n";
 	}
     }
 } else {
@@ -291,9 +294,9 @@ if (exists $options{'mcu'}) {
     $boardFile //= '-';
     
     if ($boardFile ne '-') {
-	die "cannot read $cfgFile\n" unless -r $cfgFile;
+	diecolor "cannot read $cfgFile\n" unless -r $cfgFile;
 	if (-e $boardFile) {
-	    die "cannot write $boardFile\n" unless -w $boardFile;
+	    diecolor "cannot write $boardFile\n" unless -w $boardFile;
 	}
     }
     
@@ -304,16 +307,16 @@ if (exists $options{'mcu'}) {
 
     if ($cfgParameters{CHIBIOS_VERSION} < 3) {
 	$config{'DEFAULT'}->{A_SPEED} =  $ospeedName{$config{'DEFAULT'}->{A_SPEED}} ;
-	die "port not complete : CHIBIOS_VERSION} < 3 not yet implemented\n";
+	diecolor "port not complete : CHIBIOS_VERSION} < 3 not yet implemented\n";
 	# foreach my $aref (values %configByFunction) {
 	# 	$aref->[2] =  $ospeedName{$aref->[2]};
 	# }
     }
 }
 
-die "\$cfgParameters{MCU_MODEL} is mandatory\n" unless exists $cfgParameters{MCU_MODEL} && $cfgParameters{MCU_MODEL};
+diecolor "\$cfgParameters{MCU_MODEL} is mandatory\n" unless exists $cfgParameters{MCU_MODEL} && $cfgParameters{MCU_MODEL};
 
-die "Gpio Ports List is mandatory\n" unless @ports;
+diecolor "Gpio Ports List is mandatory\n" unless @ports;
 
 $generateLockrAscr = 1 if $cfgParameters{MCU_MODEL} =~ /STM32L4/;
 
@@ -323,7 +326,7 @@ if (exists  $options{find}) {
 }
 
 if (exists  $options{dma}) {
-    die "ERROR : open pin description database does not contain any DMA information" .
+    diecolor "ERROR : open pin description database does not contain any DMA information" .
 	", install CubeMX from STMicroelectronics\n" if exists $options{opd};
     findDmaByFunction ($options{dma});
     exit (0);
@@ -366,7 +369,7 @@ genFooter ();
 
 
 if ($boardFile ne '-') {
-    open (FHD, ">", $boardFile) or die "cannot open $boardFile for writing\n";
+    open (FHD, ">", $boardFile) or diecolor "cannot open $boardFile for writing\n";
     foreach (@boardContent) {
 	syswrite (FHD, $_);
     }
@@ -514,11 +517,11 @@ sub verifyAf ($$$$)
 	if ($mode =~ /ANALOG/) {
 	    my $ascr = getFunction ($port, $pin, 'ASCR');
 	    if ((defined $ascr) && ($ascr =~ /ENABLED/)) {
-		die "$ppn has no ADC capabilities ASCR=$ascr" unless exists $family->[ADC_BY_PIN]->{$ppn};
+		diecolor "$ppn has no ADC capabilities ASCR=$ascr" unless exists $family->[ADC_BY_PIN]->{$ppn};
 	    }
 	} elsif (($mode =~ /INPUT|ALTERNATE/) || (($mode =~ /OUTPUT/) && ($otype =~ /OPENDRAIN/))) {
 	    # test if the pin has a tag 5V and is not 5V tolerant
-	    die "forbidden $config{$pn}->{A_5V} VOLTS on adc pin $ppn [$realName] (NOT 5V tolerant)" if 
+	    diecolor "forbidden $config{$pn}->{A_5V} VOLTS on adc pin $ppn [$realName] (NOT 5V tolerant)" if 
 	     	(exists $config{$pn}) &&  ($config{$pn}->{A_5V} > 3.33) && 
 		(defined $family->[ADC_BY_PIN]->{$ppn}) && ($realName !~ /^P?[A-P]\d\d$/);
 	    
@@ -526,9 +529,9 @@ sub verifyAf ($$$$)
 
 	next unless $af;
 
-	die "useless Alternate Function defined although mode is not ALTERNATE with pin $realName\n" if ($mode !~ /ALTERNATE/);
+	diecolor "useless Alternate Function defined although mode is not ALTERNATE with pin $realName\n" if ($mode !~ /ALTERNATE/);
 
-	die "alternate function AF${af} cannot be affected with pin $realName" unless
+	diecolor "alternate function AF${af} cannot be affected with pin $realName" unless
 	    exists $family->[BY_PIN]->{$ppn}->{$af};
 
 	next; # don't try to verify confordance with pin name
@@ -537,7 +540,7 @@ sub verifyAf ($$$$)
 	foreach my $fun (@{$family->[BY_PIN]->{$ppn}->{$af}}) {
 	    $lcsln = max ($lcsln, length String::LCSS::lcss ($fun, $realName) // 0);
 	    $fnnln = min ($fnnln, length ($fun));
-	    die sprintf ("function $fun cannot be affected with pin %s and pin %s\n",
+	    diecolor sprintf ("function $fun cannot be affected with pin %s and pin %s\n",
 			$allFuns{$fun},	$realName) if exists $allFuns{$fun};
 	    $allFuns{$fun} = $realName;
 	}
@@ -545,7 +548,7 @@ sub verifyAf ($$$$)
 	    join (' : ', @{$family->[BY_PIN]->{$ppn}->{$af}}) . "\n" ;
 
       
-	die "Error $errMsg" if ($lcsln < (min ($fnnln, 4)) -1) && (not exists $options{'no-error'}) ;
+	diecolor "Error $errMsg" if ($lcsln < (min ($fnnln, 4)) -1) && (not exists $options{'no-error'}) ;
 	
 	warn "Warning $errMsg" if ($lcsln < ($fnnln-3));
 	#say sprintf ("DBG> %d < %d ", $lcsln , ($fnnln-1));
@@ -592,14 +595,14 @@ sub getAF ($$) # port, pin
 	$af = $config{'DEFAULT'}->{A_AF};
     }
 
-    die "cannot retrieve AF on $port$jpin\n" unless defined $af;
+    diecolor "cannot retrieve AF on $port$jpin\n" unless defined $af;
     return $af;
 }
       
 sub parseCfgFile ($)
 {
     my $fn = shift;
-    open(my $fh, "<", $fn) or die "cannot open < $fn: $!";
+    open(my $fh, "<", $fn) or diecolor "cannot open < $fn: $!";
 
     use constant {
         WAIT_FOR_TYPE => 0, 
@@ -657,12 +660,12 @@ sub parseCfgFile ($)
 		$l =~ s/\s+(?=[^()]*\))//g; #remove space in the parentheses
 		my @words = split (/\s+/, $l);
 
-		die "malformed line $l\n" if  scalar (@words) < 3;
+		diecolor "malformed line $l\n" if  scalar (@words) < 3;
 		
 		my %conf = %pinTemplate;
 
 		my $pin = shift @words;
-		die "bad pin name $pin\n" unless $pin =~ /P?([A-K]\d{2})|DEFAULT/;
+		diecolor "bad pin name $pin\n" unless $pin =~ /P?([A-K]\d{2})|DEFAULT/;
 		$pin =~ s/^P//;
 		$conf{A_PIN} = $pin;
 
@@ -681,7 +684,7 @@ sub parseCfgFile ($)
 
 		    # passive admits a list of possibles affectation
 		    if ($w =~ '\((.*)\)') {
-			die "$l\n (passive list) must come after function\n"
+			diecolor "$l\n (passive list) must come after function\n"
 			    if ($1 eq '') and ($currentFunc eq '');
 			fillPassiveFields($l, $pin, $name, $1 ne '' ? $1 : $currentFunc);
 			next;
@@ -704,7 +707,7 @@ sub parseCfgFile ($)
 			$conf{A_5V} = $1;
 #			say "DBG> $conf{A_5V} volts";
 		    } else {
-			die "function $w not routable with pin $pin\n";
+			diecolor "function $w not routable with pin $pin\n";
 		    }
 		    
 		}
@@ -712,16 +715,16 @@ sub parseCfgFile ($)
 		# at this point, all the fields should be defined
 		foreach my $k (keys %conf) {
 		    unless (defined $conf{$k}) {
-			die "missing field $pinTemplateName{$k} on line :\n" .
+			diecolor "missing field $pinTemplateName{$k} on line :\n" .
 			    "$l\n";
 		    }
 		}
 		
 		
-		die "pin $pin used more than once\n" if
+		diecolor "pin $pin used more than once\n" if
 		    $pin =~ /\d\d/ && exists $localConfig{$pin};
-		die "name $name used more than once\n" if exists $localConfig{$name};
-		die "pin $pin is OUTPUT PUSHPULL but use  PULLUP/PULLDOWN resistor" if
+		diecolor "name $name used more than once\n" if exists $localConfig{$name};
+		diecolor "pin $pin is OUTPUT PUSHPULL but use  PULLUP/PULLDOWN resistor" if
 		    (($conf{A_MODE} eq 'OUTPUT') && ($conf{A_OTYPE} eq 'PUSHPULL') && 
 		     ($conf{A_PUPDR} ne 'FLOATING'));
 		$config{$pin} = \%conf;
@@ -892,7 +895,7 @@ EOL
 	my $groupLen = scalar @{$orderedGroups{$group}};
 	if ($groupLen) {
 	    foreach my $pinName (@{$orderedGroups{$group}}) {
-		die ("Error : use of non defined pin name $pinName for group $group\n") unless exists $pinNames{$pinName};
+		diecolor ("Error : use of non defined pin name $pinName for group $group\n") unless exists $pinNames{$pinName};
 	    }
 	    push(@boardContent,
 		 sprintf("#define $group \\\n\t%s\n", join (", \\\n\t",
@@ -970,6 +973,7 @@ EOL
 #         \__,_| |___/   \__,_|  |___/   \___|
 sub usage ()
 {
+  print color('bold blue');
   $0 =~ s|.*/||;
   my ($x) = ' ' x length($0) ;
 
@@ -1144,7 +1148,7 @@ sub findDmaByFunction ($)
 		} elsif ($chanType eq 'C') {
 		    say "#define STM32_${funcName}_DMA_CHANNEL\t\t$chanOrReq";
 		} else {
-		    die "unkown chanType $chanType\n";
+		    diecolor "unkown chanType $chanType\n";
 		}
 		say "#define STM32_${funcName}_DMA_IRQ_PRIORITY\t\t6";
 		say "#define STM32_${funcName}_DMA_PRIORITY\t\t2\n\n";
@@ -1252,7 +1256,7 @@ sub generateHardwareTableByPin ($$)
     $mcuname =~ s/[\(\)-]//g;
     $cfgFileRoot //= './';
     open (FHD, ">", "$cfgFileRoot/$mcuname.csv") or
-	die "cannot open $cfgFileRoot/$mcuname.csv for writing\n";
+	diecolor "cannot open $cfgFileRoot/$mcuname.csv for writing\n";
 
     say FHD "$mcuname,,,";
     say FHD "Pin,name,type,side";
@@ -1297,7 +1301,7 @@ sub generateHardwareTableByPin ($$)
 
     
     open (FHD, ">", "$cfgFileRoot/${mcuname}_allFunctions.txt") or
-	die "cannot open $cfgFileRoot/${mcuname}_allFunctions.txt for writing\n";
+	diecolor "cannot open $cfgFileRoot/${mcuname}_allFunctions.txt for writing\n";
 
     for my $pinName (sort (keys %$signalByPin)) {
 	print FHD "$pinName : ";
@@ -1535,10 +1539,10 @@ sub getdataFromCubeMx ($)
     my $mcuDir = $CUBE_ROOT . "/mcu";
     my $mcuPath = $mcuDir . "/$mcu.xml";
 
-    die "you should supply MCU_MODEL = mcu_name at top of config.cfg file\n" . 
+    diecolor "you should supply MCU_MODEL = mcu_name at top of config.cfg file\n" . 
 	"all mcu are in directory $mcuDir\n"	unless $mcu;
 
-    die "incorrect mcu_name $mcu\n" . 
+    diecolor "incorrect mcu_name $mcu\n" . 
 	"all mcu are in directory $mcuDir\n"	unless -r $mcuPath;
     
     my $dom = XML::LibXML->load_xml(location => $mcuPath);
@@ -1591,7 +1595,7 @@ sub getAF_byName ($$$) # line, pin, af signal (could be AFx or AF:name)
     }
     
     
-    die "incorrect AF number $af\n"
+    diecolor "incorrect AF number $af\n"
 	unless grep ($af == $_, (-1, 0 .. 14 ));
     
     return $af;
@@ -1609,12 +1613,12 @@ sub isNonAfAltfuncIsRoutableOnPin ($$)
 
     unless (exists $pinsByNonAfSignal->{$nonAfSignal}) {
 #	warn "$line\nunknown function $nonAfSignal\n\n";
-#	die "possible functions are " . join (' ', sort keys %$pinsByNonAfSignal);
+#	diecolor "possible functions are " . join (' ', sort keys %$pinsByNonAfSignal);
 	return 0;
     }
 
 
-#    die "$line\nfunction $nonAfSignal cannot be associated with pin $pin\n" 
+#    diecolor "$line\nfunction $nonAfSignal cannot be associated with pin $pin\n" 
 #        unless exists $pinsByNonAfSignal->{$nonAfSignal}->{$pin};
 
     return 0 unless exists $pinsByNonAfSignal->{$nonAfSignal}->{$pin};
@@ -1644,7 +1648,7 @@ sub fillPassiveFields ($$$$)
     my %fun=();
     foreach my $ps (@ps) {
 	my ($funType) = $ps =~ /([A-Z]+)\d/;
-	die "$l\nmore than one function of type $funType on " .
+	diecolor "$l\nmore than one function of type $funType on " .
 	    "a passive pin\n" if defined $funType and exists $fun{$funType};
 	$fun{$funType}=1;
 	
@@ -1657,7 +1661,7 @@ sub fillPassiveFields ($$$$)
 	    warn "probable missing AF on PASSIVE: on $ps term on line\n$l\n" if $tryAf >= 0;
 	    generatePassiveMacro($pinName, $ps);
 	} else {
-	    die "$l\nfunction $ps cannot be associated with pin $pin\n";
+	    diecolor "$l\nfunction $ps cannot be associated with pin $pin\n";
 	}
     }
 }
@@ -1783,4 +1787,11 @@ sub demangleMcuName($)
     }
     $nbPin = 8 if $package eq 'SO8N';
     say ("model=$model, pin=$nbPin, flash=$flashSize Ko, package=$package");
+}
+
+sub diecolor(@)
+{
+    print color('bold red');
+    say @_;
+    die "\n";
 }
