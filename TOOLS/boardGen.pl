@@ -223,7 +223,7 @@ my @boardContent;
 
 my %options;
 my $family;
-
+my $cfgFile;
 
 
 
@@ -289,7 +289,6 @@ if (exists $options{'mcu'}) {
 	}
     }
 } else {
-    my $cfgFile;
     ($cfgFile, $boardFile) = @ARGV;
     $boardFile //= '-';
     
@@ -1791,7 +1790,11 @@ sub demangleMcuName($)
 
 sub diecolor(@)
 {
-    print color('bold red');
-    say @_;
+    print color('black on_bright_red'), "-" x 80, color('bold bright_red on_black'), "\n";
+    say "Error in file $cfgFile :";
+    print color('bold white on_black');
+    print @_;
+    print color('black on_bright_red'), "-" x 80, color('bold bright_red on_black'), "\n";
+    print color('reset');
     die "\n";
 }
