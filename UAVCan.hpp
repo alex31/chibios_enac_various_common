@@ -285,6 +285,7 @@ namespace UAVCAN {
     thread_t *heartbeat_thd;
     thread_t *can_error_thd;
     canStatus_t canStatus = {};
+    bool	hasReceiveMsg = false;
 
     // incrémenté à chaque transfert pour détecter la
     // perte de paquets.

@@ -144,6 +144,7 @@ namespace UAVCAN
     canardSetLocalNodeID(&canard, config.nodeId);
     initNodesList();
     canStart(&config.cand, &config.cancfg);
+    
     int8_t filtersInUse = configureHardwareFilters();
     //    int8_t filtersInUse = 0;
     if (filtersInUse < 0) {
@@ -160,7 +161,6 @@ namespace UAVCAN
 		  "cancfg.RXGFC must be corrected to reject filtered id");
       errorCb("INFO: hardware filtering use %d slots", filtersInUse);
     }
-
     sender_thd = chThdCreateFromHeap(nullptr, 2048U, "sender_thd",
 				      NORMALPRIO,
 				      &senderThdDispatch, this);
@@ -174,7 +174,7 @@ namespace UAVCAN
 				       NORMALPRIO,
 				       &canErrorThdDispatch, this);
   }
-
+  
   /*
     #                        _              _      _                 
     #                       | |            | |    (_)                
@@ -246,18 +246,22 @@ namespace UAVCAN
   {
     Node *node = static_cast<Node *>(opt);
     event_listener_t el;
-    chEvtRegister(&node->config.cand.error_event, &el, 0);
+    constexpr eventmask_t fdcanBusOffEvent = 1 << 0;
+    chEvtRegisterMaskWithFlags(&node->config.cand.error_event, &el,
+			       fdcanBusOffEvent, CAN_BUSOFF_ERROR);
 
+    // reset online if no message where ever received (alone on the bus)
+    // after messages are received wait 5mn before each resume online
     while(not chThdShouldTerminateX()) {
-      if (chEvtWaitAnyTimeout(ALL_EVENTS, TIME_INFINITE) != 0) {
-	if (node->config.cand.fdcan->CCCR & FDCAN_CCCR_INIT) {
-	  node->config.cand.fdcan->CCCR &= ~FDCAN_CCCR_INIT;
-	  node->setCanStatus(NODE_OFFLINE);
-	  node->errorCb("canErrorThdDispatch bus_off condition");
-	  chThdSleepMilliseconds(50);
-	}
+      chEvtWaitOne(fdcanBusOffEvent);
+      canSTM32ResumeOnline(&node->config.cand);
+      node->setCanStatus(NODE_OFFLINE);
+      node->errorCb("canErrorThdDispatch bus_off condition");
+      if (node->hasReceiveMsg) {
+	chThdSleepSeconds(300);
       }
     }
+
     chThdExit(0);
   }
 
@@ -389,7 +393,7 @@ uint8_t Node::getNbActiveAgents()
       // Traitement de la trame.
       // errorCb("INFO Receive Msg from 0x%x, length %u",
       //  		    uint32_t(rxmsg.ext.EID), uint32_t(rxmsg.DLC));
-      
+      hasReceiveMsg = true;
       CanardCANFrame rx_frame_canard = chibiRx2canard(rxmsg);
       MutexGuard gard(canard_mtx_r);
       /*
