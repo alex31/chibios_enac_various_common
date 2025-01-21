@@ -1,3 +1,10 @@
+/**
+ * @file    UAVCan.hpp
+ * @brief   C++ wrapper over libcanard
+ *
+ * @{
+ */
+
 #pragma once
 
 #include <ch.h>
@@ -15,12 +22,24 @@
 #include <type_traits>
 #include <concepts>
 
+/**
+ * @brief   Maximum number of subscriptions to broadcast messages
+ * @notes   Wish it could be estimated at compile time
+ */
 #ifndef UAVNODE_BROADCAST_DICT_SIZE
 #define UAVNODE_BROADCAST_DICT_SIZE 16
 #endif
+/**
+ * @brief   Maximum number of subscriptions to request messages
+ * @notes   Wish it could be estimated at compile time
+ */
 #ifndef UAVNODE_REQUEST_DICT_SIZE
 #define UAVNODE_REQUEST_DICT_SIZE 8
 #endif
+/**
+ * @brief   Maximum number of subscriptions to response messages
+ * @notes   Wish it could be estimated at compile time
+ */
 #ifndef UAVNODE_RESPONSE_DICT_SIZE
 #define UAVNODE_RESPONSE_DICT_SIZE 8
 #endif
@@ -33,22 +52,61 @@
 /*
   TODO:
 
-  doxygen all the things
- */
+  ° replace UAVCAN_REQ, UAVCAN_RESP, UAVCAN_BROADCAST macro by
+    class Node templated public static method
+    
+    + when this is done, sendBroadcast, sendRequest and sendResponse methods could
+      be made private
+*/
 
 namespace {
+  /**
+   * @brief   test if a value is between limits
+   */
   template <typename T>
   constexpr bool in_bounds(T value, T lower, T upper)
   {
     return value >= lower && value <= upper;
   }
   
+  /**
+   * @brief   structure describing CAN timing
+   */
   struct DivSeg {
+    /**
+     * @brief   This determines the duration of Time Quanta
+     * @notes   tq = prescaler / CAN clock source
+     */
     uint32_t prescaler;
+    
+    
+    /**
+     * @brief   Time Segment 1: The sum of the Propagation Segment and Phase Segment 1 in tq
+     *
+     */
     uint32_t s1;
+    
+    /**
+     * @brief    Time Segment 2: Phase Segment 2 in tq
+     *
+     */
     uint32_t s2;  
   };
-    
+  
+	 
+  /**
+   * @brief       calculate CAN timings
+   * @details     constexpr : evaluated @ compile time
+   *
+   * @param[in]   clockRatio : CAN clock source frequency / bus bitrate
+   * @param[in]   preMax : prescaler will be max clamped to this value 
+   * @param[in]   s1Max : s1 will be max clamped to this value 
+   * @param[in]   ratios1s2 : ratio between s1 and s2 in the range [0 .. 1]
+   * @param[in]   usePremax : force to set prescaler at the premax value
+   * @return      DivSeg structure containing calculated timing values
+   *
+   * @notapi
+   */
   consteval DivSeg findDivSeg(uint32_t clockRatio,  uint32_t preMax, uint32_t s1max, 
 			      float ratios1s2, bool usePremax = false) 
   {
@@ -70,7 +128,12 @@ namespace {
   }
 }
 
-// to determine type of first arguments of a function
+/**
+ * @brief       determine type of first arguments of a function
+ * @details     constexpr : evaluated @ compile time
+ *
+ * @notapi
+ */
 template<typename T>
 struct cbTraits;  
 
@@ -81,32 +144,79 @@ struct cbTraits<R(Arg1, Arg2, Args...)> {
 };
  
 
-#define UAVCAN_REQ(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,   \
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	       \
+/**
+ * @brief macro helper to make a disctionary entry
+ * @notes key is UAVCan message id
+ *	  value is a pair of message signature and request message callback
+ *        ! should be replaced by a templated constexpr function
+ */
+#define UAVCAN_REQ(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,	\
+      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,		\
 	  UAVCAN::Node::requestMessageCb<cb>}}
 
-#define UAVCAN_RESP(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,  \
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	       \
+/**
+ * @brief macro helper to make a disctionary entry
+ * @notes key is UAVCan message id
+ *	  value is a pair of message signature and response message callback
+ *        ! should be replaced by a templated constexpr function
+ */
+#define UAVCAN_RESP(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,	\
+      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,		\
 	  UAVCAN::Node::responseMessageCb<cb>}}
 
-#define UAVCAN_BCAST(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID, \
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,	       \
+/**
+ * @brief macro helper to make a disctionary entry
+ * @notes key is UAVCan message id
+ *	  value is a pair of message signature and broadcast message callback
+ *        ! should be replaced by a templated constexpr function
+ */
+#define UAVCAN_BCAST(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,	\
+      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,		\
 	  UAVCAN::Node::sendBroadcastCb<cb>}}
 
 
 namespace UAVCAN {
-  // bit timing helper fuctions apply rules found in
-  // https://www.can-cia.org/fileadmin/cia/documents/publications/cnlm/march_2018/18-1_p28_recommendation_for_the_canfd_bit-timing_holger_zeltwanger_cia.pdf
   static constexpr size_t MAX_CAN_NODES = 128;
   static constexpr size_t MEMORYPOOL_SIZE = 4096;
 
 
+  /**
+   * @brief   structure describing STM32 FDcan peripheral register for timing
+   */
   struct RegTimings {
+    /**
+     * @brief   arbitration phase timing register value
+     * @notes   in case of classic can, it's also the data timing
+     */
     uint32_t nbtp;
+
+    
+    /**
+     * @brief   data phase timing register value
+     * @notes   only used for FDCan
+     */
     uint32_t dbtp;
+
+    /**
+     * @brief   transmission delay compensation
+     * @notes   only used for FDCan, needed to achieve high data rate
+     *          in a reliable way
+     */
     uint32_t tdcr;
   };
-  
+
+  /**
+   * @brief       calculate NBTP register value from field values for arbitration timing
+   * @details     consteval : evaluated @ compile time
+   *
+   * @param[in]   prescaler : commun prescaler for timing
+   * @param[in]   seg1 : segment 1 duration in tq
+   * @param[in]   seg2 : segment 2 duration in tq
+   * @param[in]   synchroJumpWidth : synchro jump width duration in tq
+   * @return      NBTP register value or 0 if input parameters are out of bound
+   *
+   * @notapi
+   */
   consteval uint32_t getNBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2,
 			     uint32_t synchroJumpWidth)
   {
@@ -125,6 +235,18 @@ namespace UAVCAN {
       FDCAN_CONFIG_NBTP_NTSEG2(seg2 - 1U);
   }
 
+  /**
+   * @brief       calculate DBTP register value from field values for data timing
+   * @details     consteval : evaluated @ compile time
+   *
+   * @param[in]   prescaler : commun prescaler for timing
+   * @param[in]   seg1 : segment 1 duration in tq
+   * @param[in]   seg2 : segment 2 duration in tq
+   * @param[in]   synchroJumpWidth : synchro jump width duration in tq
+   * @return      DBTP register value or 0 if input parameters are out of bound
+   *
+   * @notapi
+   */
   consteval uint32_t getDBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2,
 			     uint32_t synchroJumpWidth, bool tdc)
   {
@@ -145,10 +267,23 @@ namespace UAVCAN {
   }
 
 
+  /**
+   * @brief       calculate timing registers values for desired bitrate
+   * @details     consteval : evaluated @ compile time
+   *              respect rules found in https://www.can-cia.org/fileadmin/cia/documents/publications/cnlm/march_2018/18-1_p28_recommendation_for_the_canfd_bit-timing_holger_zeltwanger_cia.pdf
+   * @param[in]   canClk: can clock in Hz
+   * @param[in]   arbitrationBitRateK : arbitration phase bit rate in Kilo bits per second
+   * @param[in]   arbitrationS1s2Ratio : s1 s2 ratio for the arbitration phase in range 0 .. 1
+   * @param[in]   dataBitRateK : data phase bit rate in Kilo bits per second
+   * @param[in]   dataS1s2Ratio : s1 s2 ratio for the data phase in range 0 .. 1
+   * @param[in]   transDelayCompens : activate transmission delay compensation mechanism
+   * @return      RegTimings structure that contains STM32 FDcan timing register values
+   *
+   */
   consteval RegTimings getTimings(uint32_t canClk,
-			    uint32_t arbitrationBitRateK, float arbitrationS1s2Ratio,
-			    uint32_t dataBitRateK, float dataS1s2Ratio, bool transDelayCompens
-			    )
+				  uint32_t arbitrationBitRateK, float arbitrationS1s2Ratio,
+				  uint32_t dataBitRateK, float dataS1s2Ratio, bool transDelayCompens
+				  )
   {
     const DivSeg divSegData = findDivSeg(canClk / (dataBitRateK * 1000U),
 					 32U, 32U, dataS1s2Ratio);
@@ -168,7 +303,7 @@ namespace UAVCAN {
     const uint32_t tdc_offset = offset <= 127U ? offset : 127U;
     const uint32_t tdc_filter = tdc_offset * 2 / 3;
     const uint32_t tdcr = (tdc_offset << FDCAN_TDCR_TDCO_Pos) | 
-                          (tdc_filter << FDCAN_TDCR_TDCF_Pos); 
+      (tdc_filter << FDCAN_TDCR_TDCF_Pos); 
     return {nbtp, dbtp, transDelayCompens ? tdcr : 0};
   }
 
@@ -176,29 +311,107 @@ namespace UAVCAN {
 				    CanardRxTransfer *transfer);
   using flagCbPtr_t = uint8_t (*) ();
   using errorCbPtr_t = void (*) (const etl::string_view sv);
+
+  /**
+   * @brief       structure associating message signature with message callback
+   *
+   */
   struct canardHandle {
     uint64_t signature = 0;
     receivedCbPtr_t cb = nullptr;
   };
 
   
+  /**
+   * @brief       type of map associating message id with canardHandle for request
+   *
+   */
   using idToHandleRequest_t = etl::map<uint16_t, canardHandle, UAVNODE_REQUEST_DICT_SIZE>;
+
+  /**
+   * @brief       type of map associating message id with canardHandle for response
+   *
+   */
   using idToHandleResponse_t = etl::map<uint16_t, canardHandle, UAVNODE_RESPONSE_DICT_SIZE>;
+
+  /**
+   * @brief       type of map associating message id with canardHandle for broadcast
+   *
+   */
   using idToHandleBroadcast_t = etl::map<uint16_t, canardHandle, UAVNODE_BROADCAST_DICT_SIZE>;
 
   enum busNodeType_t {BUS_FD_ONLY, BUS_FD_BX_MIXED};
 
+  
+  /**
+   * @brief       Node configuration structure
+   *
+   */
   struct Config {
+    
+    /**
+     * @brief       FDCan driver used for communication
+     *
+     */
     CANDriver		&cand;
+
+    /**
+     * @brief       FDCan configuration
+     *
+     */
     const CANConfig	&cancfg;
+
+    /**
+     * @brief       FD only or classic CAN and FDCan mixed bus topoly
+     *
+     */
     busNodeType_t	busNodeType;
+
+    /**
+     * @brief       id [1 .. 127] of the node
+     *
+     */
     uint8_t		nodeId = 0;
+
+    /**
+     * @brief	  map of request message id to callback
+     * @notes	  use UAVCAN_REQ macro
+     *
+     */
     idToHandleRequest_t   &idToHandleRequest;
+    
+    /**
+     * @brief	  map of reponse message id to callback
+     * @notes	  use UAVCAN_RESP macro
+     *
+     */
     idToHandleResponse_t  &idToHandleResponse;
+
+    /**
+     * @brief	  map of broadcast message id to callback
+     * @notes	  use UAVCAN_BCAST macro
+     *
+     */
     idToHandleBroadcast_t &idToHandleBroadcast;
+ 
+    /**
+     * @brief    node information that others node can gather on demand   
+     *
+     */
     uavcan_protocol_GetNodeInfoResponse nodeInfo;
-    flagCbPtr_t		flagCb; // dynamic return for optional_field_flags field
-    errorCbPtr_t  errorCb; // return internal errors to app during development
+
+    /**
+     * @brief   callback that is called to fill pkt.software_version.optional_field_flags
+     *
+     */
+    flagCbPtr_t		flagCb; 
+
+    /**
+     * @brief   error cb mainly used to return string describing
+     *          internal errors during development
+     *
+     */
+    errorCbPtr_t  errorCb; 
   };
   
   struct node_activity {
@@ -209,14 +422,14 @@ namespace UAVCAN {
   };
 
  
- template<typename MSG_T>
+  template<typename MSG_T>
   concept IsUavCanMessage = requires(MSG_T msg) {
     (void) MSG_T::cxx_iface::ID;
     (void) MSG_T::cxx_iface::SIGNATURE;
     (void) MSG_T::cxx_iface::MAX_SIZE;
   };
 
-// to determine type of first arguments of a function
+  // to determine type of first arguments of a function
   template<typename T>
   struct function_traits;  
   
@@ -239,6 +452,11 @@ namespace UAVCAN {
   };
  
 
+  /**
+   * @brief       UAVCan object
+   * @details     manage messaging agents on an UAVCan bus
+   *
+   */
   class Node {
   public:
     enum specificStatusCode_t {SPECIFIC_OK, PS5V_UNDERVOLTAGE, PS5V_OVERVOLTAGE,
@@ -250,28 +468,125 @@ namespace UAVCAN {
 		      NODE_OFFLINE
     };
    
+    /**
+     * @brief       Construct Node object
+     * @param[in]   _config Configuration structure
+     *
+     */
     Node(const Config &_config);
+
+    /**
+     * @brief       Construct Node object
+     * @param[in]   _config Configuration structure
+     *
+     */
     void start();
-    void setStatus(uint8_t health, uint8_t mode,  specificStatusCode_t specific_code);
+
+    /**
+     * @brief       set internal node health status
+     * @notes	    can be gathered by other nodes
+     *
+     */
+    void setStatus(const uavcan_protocol_NodeStatus& status);
+
+    /**
+     * @brief       return number of active nodes on the bus
+     * @notes       actives nodes are the ones which have sent alive messages
+     *              in the 3 preceding seconds
+     */
     uint8_t getNbActiveAgents();
+
+    /**
+     * @brief       return list of all nodes that have been seen on the bus
+     * @notes       actives nodes are the ones which have sent alive messages
+     *              in the 3 preceding seconds. The lists also contains inactive
+     *              nodes
+     */
     const std::array<node_activity, MAX_CAN_NODES> &getNodeList() {return nodes_list;}
+    
+    /**
+     * @brief       send broadcast message
+     * @notes	    templated function : can send any UAVNode message type
+     * @param[in]   msg : UAVCan message  
+     * @param[in]   priority : 5 bit priority [0 .. 31] (lowest = higher priority)
+     * @param[in]   forceBxCan : force sending message with classical CAN protocol 
+     */
     template<typename MSG_T>
     void sendBroadcast(MSG_T &msg, const uint8_t priority,
-			  bool forceBxCan = false);
+		       bool forceBxCan = false);
     template<typename MSG_T>
+    
+    /**
+     * @brief       send request message
+     * @notes	    templated function : can send any UAVNode message type
+     * @param[in]   msg : UAVCan message  
+     * @param[in]   priority : 5 bit priority [0 .. 31] (lowest = higher priority)
+     * @param[in]   forceBxCan : force sending message with classical CAN protocol 
+     */
     void sendRequest(MSG_T &msg, const uint8_t priority, const uint8_t dest_id,
-			  bool forceBxCan = false);
+		     bool forceBxCan = false);
     template<typename MSG_T>
+    
+    /**
+     * @brief       send response message
+     * @notes	    templated function : can send any UAVNode message type
+     * @param[in]   msg : UAVCan message  
+     * @param[in]   priority : 5 bit priority [0 .. 31] (lowest = higher priority)
+     * @param[in]   forceBxCan : force sending message with classical CAN protocol 
+     */
     void sendResponse(MSG_T &msg, CanardRxTransfer *transfer);
 
+    /**
+     * @brief       request message callback proxy
+     * @notes	    call user supplied callback from libcanard transfer object
+     *		    notapi, but must be public because use by a macro which is api
+     * @param[in]   libcanard instance (not used)
+     * @param[in]   libcanard transfert object
+     *
+     * @notapi
+     */
     template<auto Fn> requires MessageCb<decltype(Fn)>
     static void requestMessageCb(CanardInstance *, CanardRxTransfer *transfer);
+ 
+    /**
+     * @brief       response message callback proxy
+     * @notes	    call user supplied callback from libcanard transfer object
+     *		    notapi, but must be public because use by a macro which is api
+     * @param[in]   libcanard instance (not used)
+     * @param[in]   libcanard transfert object
+     *
+     * @notapi
+     */
     template<auto Fn> requires MessageCb<decltype(Fn)>
     static void responseMessageCb(CanardInstance *, CanardRxTransfer *transfer);
+
+    /**
+     * @brief       broadcast message callback proxy
+     * @notes	    call user supplied callback from libcanard transfer object
+     *		    notapi, but must be public because use by a macro which is api
+     * @param[in]   libcanard instance (not used)
+     * @param[in]   libcanard transfert object
+     *
+     * @notapi
+     */
     template<auto Fn> requires MessageCb<decltype(Fn)>
     static void sendBroadcastCb(CanardInstance *, CanardRxTransfer *transfer);
+ 
+    /**
+     * @brief       get fdcan layer status
+     * @notes	    clear status, so next call will return CAN_OK unless new error
+     *		    occurs
+     *
+     */
     canStatus_t getAndResetCanStatus() {return std::exchange(canStatus, CAN_OK);}
+
+    /**
+     * @brief       return true if underlying CAN driver is in OPMODE_FDCAN mode
+     *
+     */
     bool isCanfdEnabled() {return canFD;}
+    
+    
   private:
     const Config &config;
     mutex_t canard_mtx_r, canard_mtx_s;
@@ -293,13 +608,13 @@ namespace UAVCAN {
     bool canFD;
     
     bool shouldAcceptTransfer(const CanardInstance *ins,
-				     uint64_t *out_data_type_signature,
-				     uint16_t data_type_id,
-				     CanardTransferType transfer_type,
-				     uint8_t source_node_id);
+			      uint64_t *out_data_type_signature,
+			      uint16_t data_type_id,
+			      CanardTransferType transfer_type,
+			      uint8_t source_node_id);
     
     void onTransferReceived(CanardInstance *ins,
-				   CanardRxTransfer *transfer);
+			    CanardRxTransfer *transfer);
  
     void senderStep();
     void receiverStep();
@@ -313,13 +628,13 @@ namespace UAVCAN {
     int8_t configureHardwareFilters();
     
     static bool shouldAcceptTransferDispatch(const CanardInstance *ins,
-				     uint64_t *out_data_type_signature,
-				     uint16_t data_type_id,
-				     CanardTransferType transfer_type,
-				     uint8_t source_node_id);
+					     uint64_t *out_data_type_signature,
+					     uint16_t data_type_id,
+					     CanardTransferType transfer_type,
+					     uint8_t source_node_id);
     
     static void onTransferReceivedDispatch(CanardInstance *ins,
-				   CanardRxTransfer *transfer);
+					   CanardRxTransfer *transfer);
 
     static void senderThdDispatch(void *opt);
     static void receiverThdDispatch(void *opt);
@@ -331,18 +646,18 @@ namespace UAVCAN {
 				CanardRxTransfer *transfer,
 				const uavcan_protocol_GetNodeInfoResponse &res);
     void handleNodeStatusBroadcast(CanardInstance *ins,
-				CanardRxTransfer *transfer);
+				   CanardRxTransfer *transfer);
     void handleNodeInfoRequest(CanardInstance *ins,
 			       CanardRxTransfer *transfer);
     template<typename...Params>
     void errorCb(const char * format, Params&&... params);
-   };
+  };
 
 
 
   template<typename MSG_T>
   void Node::sendBroadcast(MSG_T &msg, const uint8_t priority,
-			  bool forceBxCan)
+			   bool forceBxCan)
   {
     uint8_t buffer[MSG_T::cxx_iface::MAX_SIZE];
     
@@ -369,7 +684,7 @@ namespace UAVCAN {
   
   template<typename MSG_T>
   void Node::sendRequest(MSG_T &msg, const uint8_t priority, const uint8_t dest_id,
-			  bool forceBxCan)
+			 bool forceBxCan)
   {
     uint8_t buffer[MSG_T::cxx_iface::REQ_MAX_SIZE];
     const bool fdFrame = isCanfdEnabled() and not forceBxCan;
@@ -475,3 +790,5 @@ namespace UAVCAN {
   
  
 }
+
+/** @} */

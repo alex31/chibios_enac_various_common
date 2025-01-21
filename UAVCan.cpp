@@ -1,3 +1,9 @@
+/**
+ * @file    UAVCan.cpp
+ * @brief   C++ wrapper over libcanard
+ *
+ * @{
+ */
 #include "UAVCan.hpp"
 #include <cstring>
 
@@ -40,7 +46,7 @@ namespace UAVCAN
 
     /*
       if application has not bind callback to any of these 3 message id,
-      library should create entry in the map for internel message management
+      library should create entry in the map for internal message management
       if  application has bind callback, the entry is already there and management
       will be done
      */
@@ -563,11 +569,11 @@ void Node::sendNodeStatus()
 		config.busNodeType == BUS_FD_BX_MIXED);
 }
 
-void Node::setStatus(uint8_t health, uint8_t mode,  specificStatusCode_t specific_code)
+void Node::setStatus(const uavcan_protocol_NodeStatus& status)
 {
-  node_status.health = health;
-  node_status.mode = mode;
-  node_status.vendor_specific_status_code = specific_code;
+  node_status.health = status.health;
+  node_status.mode = status.mode;
+  node_status.vendor_specific_status_code = status.vendor_specific_status_code;
 }
 
 template<typename...Params>
@@ -586,3 +592,5 @@ void Node::errorCb(const char * format, [[maybe_unused]] Params&&... params)
 }
 
 }
+
+/** @} */
