@@ -18,6 +18,7 @@
 #include "etl/map.h"
 #include "etl/string.h"
 #include "etl/string_view.h"
+#include <utility>
 #include <array>
 #include <type_traits>
 #include <concepts>
@@ -128,7 +129,7 @@ namespace {
 }
 
 /**
- * @brief       determine type of first arguments of a function
+ * @brief       determine type of first arguments of subscribe message callback
  * @details     constexpr : evaluated @ compile time
  *
  * @notapi
@@ -313,29 +314,34 @@ namespace UAVCAN {
    * @brief       structure associating message signature with message callback
    *
    */
-  struct canardHandle {
+  struct canardHandle_t {
     uint64_t signature = 0;
     receivedCbPtr_t cb = nullptr;
   };
 
+   /**
+   * @brief       pair associating message Id with canardHandle
+   * @note	  represent an entry in an ordered list used as a dictionary
+   */
+ using subscribeMapEntry_t = std::pair<uint16_t, canardHandle_t>;
   
   /**
-   * @brief       type of map associating message id with canardHandle for request
+   * @brief       type of map associating message id with canardHandle_t for request
    *
    */
-  using idToHandleRequest_t = etl::map<uint16_t, canardHandle, UAVNODE_REQUEST_DICT_SIZE>;
+  using idToHandleRequest_t = etl::map<uint16_t, canardHandle_t, UAVNODE_REQUEST_DICT_SIZE>;
 
   /**
-   * @brief       type of map associating message id with canardHandle for response
+   * @brief       type of map associating message id with canardHandle_t for response
    *
    */
-  using idToHandleResponse_t = etl::map<uint16_t, canardHandle, UAVNODE_RESPONSE_DICT_SIZE>;
+  using idToHandleResponse_t = etl::map<uint16_t, canardHandle_t, UAVNODE_RESPONSE_DICT_SIZE>;
 
   /**
-   * @brief       type of map associating message id with canardHandle for broadcast
+   * @brief       type of map associating message id with canardHandle_t for broadcast
    *
    */
-  using idToHandleBroadcast_t = etl::map<uint16_t, canardHandle, UAVNODE_BROADCAST_DICT_SIZE>;
+  using idToHandleBroadcast_t = etl::map<uint16_t, canardHandle_t, UAVNODE_BROADCAST_DICT_SIZE>;
 
   enum busNodeType_t {BUS_FD_ONLY, BUS_FD_BX_MIXED};
 
@@ -548,17 +554,28 @@ namespace UAVCAN {
     bool isCanfdEnabled() {return canFD;}
 
     template<auto Fn>
-    static auto makeRequestCb();
+    static constexpr subscribeMapEntry_t makeRequestCb();
     
     template<auto Fn>
-    static auto makeResponseCb();
+    static constexpr subscribeMapEntry_t makeResponseCb();
     
     template<auto Fn>
-    static auto makeBroadcastCb();
+    static constexpr subscribeMapEntry_t makeBroadcastCb();
     
-    // template<auto Fn, template<auto> typename Callback_T> 
-    // static auto makeMessageCb();
-    
+
+    template<auto ...Fn>
+    bool subscribeBroadcastMessages() {
+      return ( subscribeBroadcastOneMessage<Fn>() && ... );
+    }
+    template<auto ...Fn>
+    bool subscribeRequestMessages() {
+      return ( subscribeRequestOneMessage<Fn>() && ... );
+    }
+    template<auto ...Fn>
+    bool subscribeResponseMessages() {
+      return ( subscribeResponseOneMessage<Fn>() && ... );
+    }
+
   private:
     const Config &config;
     mutex_t canard_mtx_r, canard_mtx_s;
@@ -598,7 +615,15 @@ namespace UAVCAN {
     void sendNodeStatus();
     void setCanStatus(canStatus_t cs) {canStatus = cs;}
     int8_t configureHardwareFilters();
-    
+
+    template<auto Fn>
+    bool subscribeBroadcastOneMessage();
+    template<auto Fn>
+    bool subscribeRequestOneMessage();
+    template<auto Fn>
+    bool subscribeResponseOneMessage();
+
+     
    /**
      * @brief       request message callback proxy
      * @notes	    call user supplied callback from libcanard transfer object
@@ -795,45 +820,79 @@ namespace UAVCAN {
   }
 
   template<auto Fn>
-  auto Node::makeRequestCb() {
+  constexpr subscribeMapEntry_t Node::makeRequestCb() {
     using msgt = cbTraits<decltype(Fn)>::msgt;
     return  std::pair{
       msgt::cxx_iface::ID,	
-      (canardHandle) {
+      (canardHandle_t) {
 	.signature = msgt::cxx_iface::SIGNATURE,		
 	.cb = UAVCAN::Node::requestMessageCb<Fn>}
     };
   }
 
   template<auto Fn>
-  auto Node::makeResponseCb() {
+  constexpr subscribeMapEntry_t Node::makeResponseCb() {
     using msgt = cbTraits<decltype(Fn)>::msgt;
     return  std::pair{
       msgt::cxx_iface::ID,	
-      (canardHandle) {
+      (canardHandle_t) {
 	.signature = msgt::cxx_iface::SIGNATURE,		
 	.cb = UAVCAN::Node::responseMessageCb<Fn>}
     };
   }
 
   template<auto Fn>
-  auto Node::makeBroadcastCb() {
+  constexpr subscribeMapEntry_t Node::makeBroadcastCb() {
     using msgt = cbTraits<decltype(Fn)>::msgt;
     return  std::pair{
       msgt::cxx_iface::ID,	
-      (canardHandle) {
+      (canardHandle_t) {
 	.signature = msgt::cxx_iface::SIGNATURE,		
 	.cb = UAVCAN::Node::broadcastMessageCb<Fn>}
     };
   }
 
+  template<auto Fn>
+    bool Node::subscribeBroadcastOneMessage() {
+      if (config.idToHandleBroadcast.full()) {
+	errorCb("idToHandleBroadcast is full");
+	return false;
+      }
+      constexpr subscribeMapEntry_t keyValue = makeBroadcastCb<Fn>();
+      config.idToHandleBroadcast.insert(keyValue);
+      return true;
+    }
+
+  template<auto Fn>
+    bool Node::subscribeRequestOneMessage() {
+      if (config.idToHandleRequest.full()) {
+	errorCb("idToHandleRequest is full");
+	return false;
+      }
+      constexpr subscribeMapEntry_t keyValue = makeRequestCb<Fn>();
+      config.idToHandleRequest.insert(keyValue);
+      return true;
+    }
+
+  template<auto Fn>
+    bool Node::subscribeResponseOneMessage() {
+      if (config.idToHandleResponse.full()) {
+	errorCb("idToHandleResponse is full");
+	return false;
+      }
+      constexpr subscribeMapEntry_t keyValue = makeResponseCb<Fn>();
+      config.idToHandleResponse.insert(keyValue);
+      return true;
+    }
+
+  /* Attempt to use template template parameter*/
   // // template<template<typename> typename Func, typename T>
   // template<auto Fn, template<auto> typename Callback_T> 
   // auto Node::makeMessageCb() {
   //   using msgt = cbTraits<decltype(Fn)>::msgt;
   //   return  std::pair{
   //     msgt::cxx_iface::ID,	
-  //     (canardHandle) {
+  //     (canardHandle_t) {
   // 	.signature = msgt::cxx_iface::SIGNATURE,		
   // 	.cb = Callback_T<Fn>}
   //   };

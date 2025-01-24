@@ -51,27 +51,39 @@ namespace UAVCAN
       will be done
      */
     if (not config.idToHandleRequest.contains(UAVCAN_PROTOCOL_GETNODEINFO_ID)) {
-      config.idToHandleRequest[UAVCAN_PROTOCOL_GETNODEINFO_ID] = {
-	UAVCAN_PROTOCOL_GETNODEINFO_REQUEST_SIGNATURE,
-	UAVCAN::Node::requestMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoRequest>>
-      };
+      if (not config.idToHandleRequest.full()) {
+	config.idToHandleRequest[UAVCAN_PROTOCOL_GETNODEINFO_ID] = {
+	  UAVCAN_PROTOCOL_GETNODEINFO_REQUEST_SIGNATURE,
+	  UAVCAN::Node::requestMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoRequest>>
+	};
+      } else {
+	errorCb("idToHandleRequest is full");
+      }
     }
 
     if (not config.idToHandleResponse.contains(UAVCAN_PROTOCOL_GETNODEINFO_ID)) {
-      config.idToHandleResponse[UAVCAN_PROTOCOL_GETNODEINFO_ID] = {
-	UAVCAN_PROTOCOL_GETNODEINFO_RESPONSE_SIGNATURE,
-	UAVCAN::Node::responseMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoResponse>>
-      };
+      if (not config.idToHandleResponse.full()) {
+	config.idToHandleResponse[UAVCAN_PROTOCOL_GETNODEINFO_ID] = {
+	  UAVCAN_PROTOCOL_GETNODEINFO_RESPONSE_SIGNATURE,
+	  UAVCAN::Node::responseMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoResponse>>
+	};
+      } else {
+	errorCb("idToHandleResponse is full");
+      }
     }
 
     if (not config.idToHandleBroadcast.contains(UAVCAN_PROTOCOL_NODESTATUS_ID)) {
-      config.idToHandleBroadcast[UAVCAN_PROTOCOL_NODESTATUS_ID] = {
-	UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
-	UAVCAN::Node::broadcastMessageCb<nullAppCb<uavcan_protocol_NodeStatus>>
-      };
+      if (not config.idToHandleBroadcast.full()) {
+	config.idToHandleBroadcast[UAVCAN_PROTOCOL_NODESTATUS_ID] = {
+	  UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
+	  UAVCAN::Node::broadcastMessageCb<nullAppCb<uavcan_protocol_NodeStatus>>
+	};
+      } else {
+	errorCb("idToHandleBroadcast is full");
+      }
     }
   }
-
+  
   int8_t Node::configureHardwareFilters()
   {
     int8_t filterIndex = 0;
