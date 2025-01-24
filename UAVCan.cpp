@@ -67,7 +67,7 @@ namespace UAVCAN
     if (not config.idToHandleBroadcast.contains(UAVCAN_PROTOCOL_NODESTATUS_ID)) {
       config.idToHandleBroadcast[UAVCAN_PROTOCOL_NODESTATUS_ID] = {
 	UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
-	UAVCAN::Node::sendBroadcastCb<nullAppCb<uavcan_protocol_NodeStatus>>
+	UAVCAN::Node::broadcastMessageCb<nullAppCb<uavcan_protocol_NodeStatus>>
       };
     }
   }

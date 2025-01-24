@@ -52,11 +52,10 @@
 /*
   TODO:
 
-  ° replace UAVCAN_REQ, UAVCAN_RESP, UAVCAN_BROADCAST macro by
-    class Node templated public static method
-    
-    + when this is done, sendBroadcast, sendRequest and sendResponse methods could
-      be made private
+  ° changes :
+    internal ordered map, and method to make the subscribe that can take multiple
+    pair for the three things : broadcast, request, response
+    then remove idToHandle** reference : will be inline
 */
 
 namespace {
@@ -137,42 +136,40 @@ namespace {
 template<typename T>
 struct cbTraits;  
 
-template<typename R, typename Arg1, typename Arg2, typename... Args>
-struct cbTraits<R(Arg1, Arg2, Args...)> {
+template<typename Arg1, typename Arg2>
+struct cbTraits<void(Arg1, Arg2)> {
   using raw_second_arg_type =  Arg2;
   using msgt = std::remove_cvref_t<raw_second_arg_type>;
 };
- 
+
+template<typename Arg1, typename Arg2>
+struct cbTraits<void(*)(Arg1, Arg2)> {
+  using raw_second_arg_type =  Arg2;
+  using msgt = std::remove_cvref_t<raw_second_arg_type>;
+};
+
 
 /**
- * @brief macro helper to make a disctionary entry
+ * @brief macro helper to make an ordered map entry
  * @notes key is UAVCan message id
  *	  value is a pair of message signature and request message callback
- *        ! should be replaced by a templated constexpr function
  */
-#define UAVCAN_REQ(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,	\
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,		\
-	  UAVCAN::Node::requestMessageCb<cb>}}
+#define UAVCAN_REQ(cb) UAVCAN::Node::makeRequestCb<cb>()
 
 /**
- * @brief macro helper to make a disctionary entry
+ * @brief macro helper to make an ordered map entry
  * @notes key is UAVCan message id
  *	  value is a pair of message signature and response message callback
- *        ! should be replaced by a templated constexpr function
  */
-#define UAVCAN_RESP(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,	\
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,		\
-	  UAVCAN::Node::responseMessageCb<cb>}}
+#define UAVCAN_RESP(cb) UAVCAN::Node::makeResponseCb<cb>()
 
 /**
- * @brief macro helper to make a disctionary entry
+ * @brief macro helper to make an ordered map entry
  * @notes key is UAVCan message id
  *	  value is a pair of message signature and broadcast message callback
- *        ! should be replaced by a templated constexpr function
  */
-#define UAVCAN_BCAST(cb) {cbTraits<decltype(cb)>::msgt::cxx_iface::ID,	\
-      {cbTraits<decltype(cb)>::msgt::cxx_iface::SIGNATURE,		\
-	  UAVCAN::Node::sendBroadcastCb<cb>}}
+#define UAVCAN_BCAST(cb) UAVCAN::Node::makeBroadcastCb<cb>()
+
 
 
 namespace UAVCAN {
@@ -514,8 +511,7 @@ namespace UAVCAN {
     template<typename MSG_T>
     void sendBroadcast(MSG_T &msg, const uint8_t priority,
 		       bool forceBxCan = false);
-    template<typename MSG_T>
-    
+
     /**
      * @brief       send request message
      * @notes	    templated function : can send any UAVNode message type
@@ -523,10 +519,10 @@ namespace UAVCAN {
      * @param[in]   priority : 5 bit priority [0 .. 31] (lowest = higher priority)
      * @param[in]   forceBxCan : force sending message with classical CAN protocol 
      */
+    template<typename MSG_T>
     void sendRequest(MSG_T &msg, const uint8_t priority, const uint8_t dest_id,
 		     bool forceBxCan = false);
-    template<typename MSG_T>
-    
+
     /**
      * @brief       send response message
      * @notes	    templated function : can send any UAVNode message type
@@ -534,44 +530,9 @@ namespace UAVCAN {
      * @param[in]   priority : 5 bit priority [0 .. 31] (lowest = higher priority)
      * @param[in]   forceBxCan : force sending message with classical CAN protocol 
      */
+    template<typename MSG_T>
     void sendResponse(MSG_T &msg, CanardRxTransfer *transfer);
 
-    /**
-     * @brief       request message callback proxy
-     * @notes	    call user supplied callback from libcanard transfer object
-     *		    notapi, but must be public because use by a macro which is api
-     * @param[in]   libcanard instance (not used)
-     * @param[in]   libcanard transfert object
-     *
-     * @notapi
-     */
-    template<auto Fn> requires MessageCb<decltype(Fn)>
-    static void requestMessageCb(CanardInstance *, CanardRxTransfer *transfer);
- 
-    /**
-     * @brief       response message callback proxy
-     * @notes	    call user supplied callback from libcanard transfer object
-     *		    notapi, but must be public because use by a macro which is api
-     * @param[in]   libcanard instance (not used)
-     * @param[in]   libcanard transfert object
-     *
-     * @notapi
-     */
-    template<auto Fn> requires MessageCb<decltype(Fn)>
-    static void responseMessageCb(CanardInstance *, CanardRxTransfer *transfer);
-
-    /**
-     * @brief       broadcast message callback proxy
-     * @notes	    call user supplied callback from libcanard transfer object
-     *		    notapi, but must be public because use by a macro which is api
-     * @param[in]   libcanard instance (not used)
-     * @param[in]   libcanard transfert object
-     *
-     * @notapi
-     */
-    template<auto Fn> requires MessageCb<decltype(Fn)>
-    static void sendBroadcastCb(CanardInstance *, CanardRxTransfer *transfer);
- 
     /**
      * @brief       get fdcan layer status
      * @notes	    clear status, so next call will return CAN_OK unless new error
@@ -585,7 +546,18 @@ namespace UAVCAN {
      *
      */
     bool isCanfdEnabled() {return canFD;}
+
+    template<auto Fn>
+    static auto makeRequestCb();
     
+    template<auto Fn>
+    static auto makeResponseCb();
+    
+    template<auto Fn>
+    static auto makeBroadcastCb();
+    
+    // template<auto Fn, template<auto> typename Callback_T> 
+    // static auto makeMessageCb();
     
   private:
     const Config &config;
@@ -627,6 +599,39 @@ namespace UAVCAN {
     void setCanStatus(canStatus_t cs) {canStatus = cs;}
     int8_t configureHardwareFilters();
     
+   /**
+     * @brief       request message callback proxy
+     * @notes	    call user supplied callback from libcanard transfer object
+     * @param[in]   libcanard instance (not used)
+     * @param[in]   libcanard transfert object
+     *
+     * @notapi
+     */
+    template<auto Fn> requires MessageCb<decltype(Fn)>
+    static void requestMessageCb(CanardInstance *, CanardRxTransfer *transfer);
+ 
+    /**
+     * @brief       response message callback proxy
+     * @notes	    call user supplied callback from libcanard transfer object
+     * @param[in]   libcanard instance (not used)
+     * @param[in]   libcanard transfert object
+     *
+     * @notapi
+     */
+    template<auto Fn> requires MessageCb<decltype(Fn)>
+    static void responseMessageCb(CanardInstance *, CanardRxTransfer *transfer);
+
+    /**
+     * @brief       broadcast message callback proxy
+     * @notes	    call user supplied callback from libcanard transfer object
+     * @param[in]   libcanard instance (not used)
+     * @param[in]   libcanard transfert object
+     *
+     * @notapi
+     */
+    template<auto Fn> requires MessageCb<decltype(Fn)>
+    static void broadcastMessageCb(CanardInstance *, CanardRxTransfer *transfer);
+ 
     static bool shouldAcceptTransferDispatch(const CanardInstance *ins,
 					     uint64_t *out_data_type_signature,
 					     uint16_t data_type_id,
@@ -652,6 +657,7 @@ namespace UAVCAN {
     template<typename...Params>
     void errorCb(const char * format, Params&&... params);
   };
+
 
 
 
@@ -771,7 +777,7 @@ namespace UAVCAN {
   }
   
   template<auto Fn> requires MessageCb<decltype(Fn)>
-  void Node::sendBroadcastCb(CanardInstance *ins, CanardRxTransfer *transfer)
+  void Node::broadcastMessageCb(CanardInstance *ins, CanardRxTransfer *transfer)
   {
     using MsgType = std::remove_cvref_t<SecondArgType<decltype(Fn)>>;
     typename MsgType::cxx_iface::msgtype msg = {};
@@ -784,11 +790,57 @@ namespace UAVCAN {
       Fn(transfer, msg);
     } else {
       node->setCanStatus(BROADCAST_DECODE_ERROR);
-      node->errorCb("sendBroadcastCb decode error on id %u", MsgType::cxx_iface::ID);
+      node->errorCb("broadcastMessageCb decode error on id %u", MsgType::cxx_iface::ID);
     }
   }
-  
+
+  template<auto Fn>
+  auto Node::makeRequestCb() {
+    using msgt = cbTraits<decltype(Fn)>::msgt;
+    return  std::pair{
+      msgt::cxx_iface::ID,	
+      (canardHandle) {
+	.signature = msgt::cxx_iface::SIGNATURE,		
+	.cb = UAVCAN::Node::requestMessageCb<Fn>}
+    };
+  }
+
+  template<auto Fn>
+  auto Node::makeResponseCb() {
+    using msgt = cbTraits<decltype(Fn)>::msgt;
+    return  std::pair{
+      msgt::cxx_iface::ID,	
+      (canardHandle) {
+	.signature = msgt::cxx_iface::SIGNATURE,		
+	.cb = UAVCAN::Node::responseMessageCb<Fn>}
+    };
+  }
+
+  template<auto Fn>
+  auto Node::makeBroadcastCb() {
+    using msgt = cbTraits<decltype(Fn)>::msgt;
+    return  std::pair{
+      msgt::cxx_iface::ID,	
+      (canardHandle) {
+	.signature = msgt::cxx_iface::SIGNATURE,		
+	.cb = UAVCAN::Node::broadcastMessageCb<Fn>}
+    };
+  }
+
+  // // template<template<typename> typename Func, typename T>
+  // template<auto Fn, template<auto> typename Callback_T> 
+  // auto Node::makeMessageCb() {
+  //   using msgt = cbTraits<decltype(Fn)>::msgt;
+  //   return  std::pair{
+  //     msgt::cxx_iface::ID,	
+  //     (canardHandle) {
+  // 	.signature = msgt::cxx_iface::SIGNATURE,		
+  // 	.cb = Callback_T<Fn>}
+  //   };
+  // }
  
+  
+
 }
 
 /** @} */
