@@ -54,9 +54,21 @@
   TODO:
 
   ° changes :
-    internal ordered map, and method to make the subscribe that can take multiple
-    pair for the three things : broadcast, request, response
-    then remove idToHandle** reference : will be inline
+    + move  ordered maps in class Node, remove reference from .config
+    + remove MACROS wrappers to make***cb that get key value pairs
+
+
+  ° do we really need to store the signature in the map ?
+
+  ° if subscribing is centralized, 
+    + subscribe from a constexpr array of key value pairs so we can #error @compile time
+      if any of the three maps are too small
+
+
+  ° review of mutex usage : can that be simplified ?
+  
+
+
 */
 
 namespace {
@@ -859,6 +871,7 @@ namespace UAVCAN {
 	return false;
       }
       constexpr subscribeMapEntry_t keyValue = makeBroadcastCb<Fn>();
+      MutexGuard gard(canard_mtx_r);
       config.idToHandleBroadcast.insert(keyValue);
       return true;
     }
@@ -870,6 +883,7 @@ namespace UAVCAN {
 	return false;
       }
       constexpr subscribeMapEntry_t keyValue = makeRequestCb<Fn>();
+      MutexGuard gard(canard_mtx_r);
       config.idToHandleRequest.insert(keyValue);
       return true;
     }
@@ -881,6 +895,7 @@ namespace UAVCAN {
 	return false;
       }
       constexpr subscribeMapEntry_t keyValue = makeResponseCb<Fn>();
+      MutexGuard gard(canard_mtx_r);
       config.idToHandleResponse.insert(keyValue);
       return true;
     }
