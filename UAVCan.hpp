@@ -24,26 +24,14 @@
 #include <concepts>
 
 /**
- * @brief   Maximum number of subscriptions to broadcast messages
+ * @brief   Maximum number of subscriptions to
+            broadcast, request, response messages
  * @notes   Wish it could be estimated at compile time
  */
-#ifndef UAVNODE_BROADCAST_DICT_SIZE
-#define UAVNODE_BROADCAST_DICT_SIZE 16
+#ifndef UAVNODE_DICTIONARY_SIZE
+#define UAVNODE_DICTIONARY_SIZE 32
 #endif
-/**
- * @brief   Maximum number of subscriptions to request messages
- * @notes   Wish it could be estimated at compile time
- */
-#ifndef UAVNODE_REQUEST_DICT_SIZE
-#define UAVNODE_REQUEST_DICT_SIZE 8
-#endif
-/**
- * @brief   Maximum number of subscriptions to response messages
- * @notes   Wish it could be estimated at compile time
- */
-#ifndef UAVNODE_RESPONSE_DICT_SIZE
-#define UAVNODE_RESPONSE_DICT_SIZE 8
-#endif
+
 
 
 #if (!CANARD_ENABLE_TAO_OPTION) || (!CANARD_ENABLE_CANFD)
@@ -54,24 +42,24 @@
   TODO:
 
   ° changes :
-    + move  ordered maps in class Node, remove reference from .config
-    + remove MACROS wrappers to make***cb that get key value pairs
+  ° tupple of dict size intead of 3 macros :
+    proposal -> #define UAVNODE_BROAD_REQ_RESP_DICT_SIZE {16, 8, 8}
+  ° review of mutex usage : can that be simplified ?
 
-
-  ° do we really need to store the signature in the map ?
+  ° unsubscribe API : is it needed ?
 
   ° if subscribing is centralized, 
     + subscribe from a constexpr array of key value pairs so we can #error @compile time
       if any of the three maps are too small
 
 
-  ° review of mutex usage : can that be simplified ?
   
 
 
 */
 
 namespace {
+
   /**
    * @brief   test if a value is between limits
    */
@@ -160,29 +148,6 @@ struct cbTraits<void(*)(Arg1, Arg2)> {
   using raw_second_arg_type =  Arg2;
   using msgt = std::remove_cvref_t<raw_second_arg_type>;
 };
-
-
-/**
- * @brief macro helper to make an ordered map entry
- * @notes key is UAVCan message id
- *	  value is a pair of message signature and request message callback
- */
-#define UAVCAN_REQ(cb) UAVCAN::Node::makeRequestCb<cb>()
-
-/**
- * @brief macro helper to make an ordered map entry
- * @notes key is UAVCan message id
- *	  value is a pair of message signature and response message callback
- */
-#define UAVCAN_RESP(cb) UAVCAN::Node::makeResponseCb<cb>()
-
-/**
- * @brief macro helper to make an ordered map entry
- * @notes key is UAVCan message id
- *	  value is a pair of message signature and broadcast message callback
- */
-#define UAVCAN_BCAST(cb) UAVCAN::Node::makeBroadcastCb<cb>()
-
 
 
 namespace UAVCAN {
@@ -331,29 +296,20 @@ namespace UAVCAN {
     receivedCbPtr_t cb = nullptr;
   };
 
+  using subscribeMapKey_t = std::pair<uint16_t, CanardTransferType>;
+  
    /**
    * @brief       pair associating message Id with canardHandle
    * @note	  represent an entry in an ordered list used as a dictionary
    */
- using subscribeMapEntry_t = std::pair<uint16_t, canardHandle_t>;
+ using subscribeMapEntry_t = std::pair<subscribeMapKey_t, canardHandle_t>;
   
   /**
-   * @brief       type of map associating message id with canardHandle_t for request
-   *
+   * @brief       type of map associating message id with canardHandle_t for 
+   *		  broadcast, request, response mesages
    */
-  using idToHandleRequest_t = etl::map<uint16_t, canardHandle_t, UAVNODE_REQUEST_DICT_SIZE>;
-
-  /**
-   * @brief       type of map associating message id with canardHandle_t for response
-   *
-   */
-  using idToHandleResponse_t = etl::map<uint16_t, canardHandle_t, UAVNODE_RESPONSE_DICT_SIZE>;
-
-  /**
-   * @brief       type of map associating message id with canardHandle_t for broadcast
-   *
-   */
-  using idToHandleBroadcast_t = etl::map<uint16_t, canardHandle_t, UAVNODE_BROADCAST_DICT_SIZE>;
+  using idToHandleMessage_t = etl::map<subscribeMapKey_t,
+				       canardHandle_t, UAVNODE_DICTIONARY_SIZE>;
 
   enum busNodeType_t {BUS_FD_ONLY, BUS_FD_BX_MIXED};
 
@@ -388,27 +344,7 @@ namespace UAVCAN {
      */
     uint8_t		nodeId = 0;
 
-    /**
-     * @brief	  map of request message id to callback
-     * @notes	  use UAVCAN_REQ macro
-     *
-     */
-    idToHandleRequest_t   &idToHandleRequest;
-    
-    /**
-     * @brief	  map of reponse message id to callback
-     * @notes	  use UAVCAN_RESP macro
-     *
-     */
-    idToHandleResponse_t  &idToHandleResponse;
-
-    /**
-     * @brief	  map of broadcast message id to callback
-     * @notes	  use UAVCAN_BCAST macro
-     *
-     */
-    idToHandleBroadcast_t &idToHandleBroadcast;
- 
+  
     /**
      * @brief    node information that others node can gather on demand   
      *
@@ -589,6 +525,12 @@ namespace UAVCAN {
     }
 
   private:
+   /**
+     * @brief	  map of message id to callback
+     *
+     */
+    idToHandleMessage_t   idToHandleMessage;
+    
     const Config &config;
     mutex_t canard_mtx_r, canard_mtx_s;
     event_source_t canard_tx_not_empty;
@@ -835,7 +777,7 @@ namespace UAVCAN {
   constexpr subscribeMapEntry_t Node::makeRequestCb() {
     using msgt = cbTraits<decltype(Fn)>::msgt;
     return  std::pair{
-      msgt::cxx_iface::ID,	
+      subscribeMapKey_t {msgt::cxx_iface::ID, CanardTransferTypeRequest},
       (canardHandle_t) {
 	.signature = msgt::cxx_iface::SIGNATURE,		
 	.cb = UAVCAN::Node::requestMessageCb<Fn>}
@@ -846,7 +788,7 @@ namespace UAVCAN {
   constexpr subscribeMapEntry_t Node::makeResponseCb() {
     using msgt = cbTraits<decltype(Fn)>::msgt;
     return  std::pair{
-      msgt::cxx_iface::ID,	
+      subscribeMapKey_t {msgt::cxx_iface::ID, CanardTransferTypeResponse},
       (canardHandle_t) {
 	.signature = msgt::cxx_iface::SIGNATURE,		
 	.cb = UAVCAN::Node::responseMessageCb<Fn>}
@@ -857,7 +799,7 @@ namespace UAVCAN {
   constexpr subscribeMapEntry_t Node::makeBroadcastCb() {
     using msgt = cbTraits<decltype(Fn)>::msgt;
     return  std::pair{
-      msgt::cxx_iface::ID,	
+      subscribeMapKey_t {msgt::cxx_iface::ID, CanardTransferTypeBroadcast},
       (canardHandle_t) {
 	.signature = msgt::cxx_iface::SIGNATURE,		
 	.cb = UAVCAN::Node::broadcastMessageCb<Fn>}
@@ -866,37 +808,37 @@ namespace UAVCAN {
 
   template<auto Fn>
     bool Node::subscribeBroadcastOneMessage() {
-      if (config.idToHandleBroadcast.full()) {
-	errorCb("idToHandleBroadcast is full");
+      if (idToHandleMessage.full()) {
+	errorCb("idToHandleMessage is full");
 	return false;
       }
       constexpr subscribeMapEntry_t keyValue = makeBroadcastCb<Fn>();
       MutexGuard gard(canard_mtx_r);
-      config.idToHandleBroadcast.insert(keyValue);
+      idToHandleMessage.insert(keyValue);
       return true;
     }
 
   template<auto Fn>
     bool Node::subscribeRequestOneMessage() {
-      if (config.idToHandleRequest.full()) {
-	errorCb("idToHandleRequest is full");
+      if (idToHandleMessage.full()) {
+	errorCb("idToHandleMessage is full");
 	return false;
       }
       constexpr subscribeMapEntry_t keyValue = makeRequestCb<Fn>();
       MutexGuard gard(canard_mtx_r);
-      config.idToHandleRequest.insert(keyValue);
+      idToHandleMessage.insert(keyValue);
       return true;
     }
 
   template<auto Fn>
     bool Node::subscribeResponseOneMessage() {
-      if (config.idToHandleResponse.full()) {
-	errorCb("idToHandleResponse is full");
+      if (idToHandleMessage.full()) {
+	errorCb("idToHandleMessage is full");
 	return false;
       }
       constexpr subscribeMapEntry_t keyValue = makeResponseCb<Fn>();
       MutexGuard gard(canard_mtx_r);
-      config.idToHandleResponse.insert(keyValue);
+      idToHandleMessage.insert(keyValue);
       return true;
     }
 

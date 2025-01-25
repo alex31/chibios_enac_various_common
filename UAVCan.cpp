@@ -50,36 +50,41 @@ namespace UAVCAN
       if  application has bind callback, the entry is already there and management
       will be done
      */
-    if (not config.idToHandleRequest.contains(UAVCAN_PROTOCOL_GETNODEINFO_ID)) {
-      if (not config.idToHandleRequest.full()) {
-	config.idToHandleRequest[UAVCAN_PROTOCOL_GETNODEINFO_ID] = {
+    if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_GETNODEINFO_ID,
+	  CanardTransferTypeRequest})) {
+      if (not idToHandleMessage.full()) {
+	idToHandleMessage[{UAVCAN_PROTOCOL_GETNODEINFO_ID, CanardTransferTypeRequest}] = {
 	  UAVCAN_PROTOCOL_GETNODEINFO_REQUEST_SIGNATURE,
 	  UAVCAN::Node::requestMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoRequest>>
 	};
       } else {
-	errorCb("idToHandleRequest is full");
+	errorCb("idToHandleMessage is full");
       }
     }
 
-    if (not config.idToHandleResponse.contains(UAVCAN_PROTOCOL_GETNODEINFO_ID)) {
-      if (not config.idToHandleResponse.full()) {
-	config.idToHandleResponse[UAVCAN_PROTOCOL_GETNODEINFO_ID] = {
+    if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_GETNODEINFO_ID,
+	  CanardTransferTypeResponse})) {
+      if (not idToHandleMessage.full()) {
+	idToHandleMessage[{UAVCAN_PROTOCOL_GETNODEINFO_ID,
+	  CanardTransferTypeResponse}] = {
 	  UAVCAN_PROTOCOL_GETNODEINFO_RESPONSE_SIGNATURE,
 	  UAVCAN::Node::responseMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoResponse>>
 	};
       } else {
-	errorCb("idToHandleResponse is full");
+	errorCb("idToHandleMessage is full");
       }
     }
 
-    if (not config.idToHandleBroadcast.contains(UAVCAN_PROTOCOL_NODESTATUS_ID)) {
-      if (not config.idToHandleBroadcast.full()) {
-	config.idToHandleBroadcast[UAVCAN_PROTOCOL_NODESTATUS_ID] = {
+    if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_NODESTATUS_ID,
+	  CanardTransferTypeResponse})) {
+      if (not idToHandleMessage.full()) {
+	idToHandleMessage[{UAVCAN_PROTOCOL_NODESTATUS_ID,
+	  CanardTransferTypeResponse}] = {
 	  UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
 	  UAVCAN::Node::broadcastMessageCb<nullAppCb<uavcan_protocol_NodeStatus>>
 	};
       } else {
-	errorCb("idToHandleBroadcast is full");
+	errorCb("idToHandleMessage is full");
       }
     }
   }
@@ -102,7 +107,8 @@ namespace UAVCAN
 
     CANFilter  filterList[filtersSize];
     
-    for (const auto& [msg_id, _] :  config.idToHandleRequest) {
+    for (const auto& [msg_id_type, _] :  idToHandleMessage) {
+      const auto& [msg_id, __] = msg_id_type;
       chDbgAssert(msg_id < 256, "service message id should be in the range 0 .. 255");
       constexpr uint32_t mask = 0x00'ff'80'00;
       const uint32_t id = (msg_id << 16) | (0x80 << 8);
@@ -117,35 +123,6 @@ namespace UAVCAN
 	goto overfill;
     }
     
-   for (const auto& [msg_id, _] :  config.idToHandleResponse) {
-      chDbgAssert(msg_id < 256, "service message id should be in the range 0 .. 255");
-      constexpr uint32_t mask = 0x00'ff'80'00;
-      const uint32_t id = (msg_id << 16) | (0x00 << 8);
-      filterList[filterIndex] = {
-	.filter_type = CAN_FILTER_TYPE_EXT,
-	.filter_mode = CAN_FILTER_MODE_CLASSIC,
-	.filter_cfg =  CAN_FILTER_CFG_FIFO_0,
-	.identifier1 = id,
-	.identifier2 = mask
-      };
-      if (++filterIndex > filtersSize)
-	goto overfill;
-    }
-
-   for (const auto& [msg_id, _] :  config.idToHandleBroadcast) {
-      constexpr uint32_t mask = 0x00'ff'ff'00;
-      const uint32_t id = msg_id << 8;
-      filterList[filterIndex] = {
-	.filter_type = CAN_FILTER_TYPE_EXT,
-	.filter_mode = CAN_FILTER_MODE_CLASSIC,
-	.filter_cfg =  CAN_FILTER_CFG_FIFO_1,
-	.identifier1 = id,
-	.identifier2 = mask
-      };
-      if (++filterIndex > filtersSize)
-	goto overfill;
-    }
-
    canSTM32SetFilters(&config.cand, filterIndex, filterList);
    return filterIndex;
 
@@ -311,89 +288,30 @@ uint8_t Node::getNbActiveAgents()
     (void) ins;
     (void) source_node_id;
     
-    switch (transfer_type) {
-     case (CanardTransferTypeRequest): {
-      if (auto sigItr = config.idToHandleRequest.find(data_type_id);
-	  sigItr !=  config.idToHandleRequest.end()) {
-	*out_data_type_signature = sigItr->second.signature;
-	return true;
-      }
-      break;
-     } 
-       
-    case (CanardTransferTypeResponse): {
-      if (auto sigItr = config.idToHandleResponse.find(data_type_id);
-	  sigItr !=  config.idToHandleResponse.end()) {
-	*out_data_type_signature = sigItr->second.signature;
-	return true;
-      }
-      break;
-    } 
-      
-    case (CanardTransferTypeBroadcast): {
-      if (auto sigItr = config.idToHandleBroadcast.find(data_type_id);
-	  sigItr !=  config.idToHandleBroadcast.end()) {
-	*out_data_type_signature = sigItr->second.signature;
-	return true;
-      }
-      break;
-    } 
-      
-    default:
-      chSysHalt("data_type_id not handled");
+    if (auto sigItr = idToHandleMessage.find({data_type_id,transfer_type});
+	sigItr !=  idToHandleMessage.end()) {
+      *out_data_type_signature = sigItr->second.signature;
+      return true;
     }
-
-    errorCb("INFO: id %x not hardware filtered", data_type_id);
+    
+    errorCb("INFO: id %x of type %d is not hardware filtered",
+	    transfer_type, data_type_id);
     return false;
   }
   
   void Node::onTransferReceived(CanardInstance *ins,
 			  CanardRxTransfer *transfer)
   {
-    (void) ins;
-    switch (transfer->transfer_type) {
-    case (CanardTransferTypeRequest): {
-      if (auto sigItr = config.idToHandleRequest.find(transfer->data_type_id);
-	  sigItr !=  config.idToHandleRequest.end()) {
-	sigItr->second.cb(ins, transfer);
-      } else {
-	Node *node = static_cast<Node *>(canardGetUserReference(ins));
-	node->setCanStatus(REQUEST_UNHANDLED_ID);
-	node->errorCb("INFO onTransferReceived Request id %u not handled",
-		      transfer->data_type_id);
-      }
-      break;
-    } 
-      
-    case (CanardTransferTypeResponse): {
-      if (auto sigItr = config.idToHandleResponse.find(transfer->data_type_id);
-	  sigItr !=  config.idToHandleResponse.end()) {
-	sigItr->second.cb(ins, transfer);
-      } else {
-	Node *node = static_cast<Node *>(canardGetUserReference(ins));
-	node->setCanStatus(RESPONSE_UNHANDLED_ID);
-	node->errorCb("INFO onTransferReceived Response id %u not handled",
-		      transfer->data_type_id);
-      }
-      break;
-    }
-      
-    case (CanardTransferTypeBroadcast): {
-      if (auto sigItr = config.idToHandleBroadcast.find(transfer->data_type_id);
-	  sigItr !=  config.idToHandleBroadcast.end()) {
-	sigItr->second.cb(ins, transfer);
-      } else {
-	Node *node = static_cast<Node *>(canardGetUserReference(ins));
-	node->setCanStatus(BROADCAST_UNHANDLED_ID);
-	node->errorCb("INFO onTransferReceived Broadcast id %u not handled",
-		      transfer->data_type_id);
-      }
-      
-      break;
-    }  
-      
-    default:
-      chSysHalt("data_type_id not handled");
+    if (auto sigItr = idToHandleMessage.find(
+		      {transfer->data_type_id,
+		       static_cast<CanardTransferType>(transfer->transfer_type)});
+      sigItr !=  idToHandleMessage.end()) {
+      sigItr->second.cb(ins, transfer);
+    } else {
+      Node *node = static_cast<Node *>(canardGetUserReference(ins));
+      node->setCanStatus(REQUEST_UNHANDLED_ID);
+      node->errorCb("INFO onTransferReceived Request id %u type %d not handled",
+		    transfer->data_type_id, transfer->transfer_type);
     }
   }
   
