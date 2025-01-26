@@ -41,20 +41,9 @@
 /*
   TODO:
 
-  ° changes :
-  ° tupple of dict size intead of 3 macros :
-    proposal -> #define UAVNODE_BROAD_REQ_RESP_DICT_SIZE {16, 8, 8}
   ° review of mutex usage : can that be simplified ?
 
   ° unsubscribe API : is it needed ?
-
-  ° if subscribing is centralized, 
-    + subscribe from a constexpr array of key value pairs so we can #error @compile time
-      if any of the three maps are too small
-
-
-  
-
 
 */
 
@@ -842,21 +831,23 @@ namespace UAVCAN {
       return true;
     }
 
-  /* Attempt to use template template parameter*/
-  // // template<template<typename> typename Func, typename T>
-  // template<auto Fn, template<auto> typename Callback_T> 
-  // auto Node::makeMessageCb() {
-  //   using msgt = cbTraits<decltype(Fn)>::msgt;
-  //   return  std::pair{
-  //     msgt::cxx_iface::ID,	
-  //     (canardHandle_t) {
-  // 	.signature = msgt::cxx_iface::SIGNATURE,		
-  // 	.cb = Callback_T<Fn>}
-  //   };
-  // }
- 
-  
 
+template<typename...Params>
+void Node::errorCb(const char * format, [[maybe_unused]] Params&&... params)
+{
+#if CH_DBG_ENABLE_CHECKS
+  if (config.errorCb) {
+    etl::string<80> s;
+    const auto len = chsnprintf(s.data(), s.capacity(), format, std::forward<Params> (params)...);
+    s.uninitialized_resize(len);
+    config.errorCb(etl::string_view(s));
+  }
+#else
+  (void) format;
+#endif
+}
+
+  
 }
 
 /** @} */

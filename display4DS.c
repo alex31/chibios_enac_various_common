@@ -827,7 +827,7 @@ void fdsCloseFile (FdsDriver *fdsDriver, const uint16_t handle)
 
 void fdsDisplayGci (FdsDriver *fdsDriver, const uint16_t handle, uint32_t offset)
 {
-  uint16_t errno;
+  uint16_t errno = 0;
   if (fdsFileSeek (fdsDriver, handle, offset)) {
     file_image(fdsDriver, 0, 0, handle, &errno);
      if (errno) {

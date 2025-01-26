@@ -506,20 +506,6 @@ void Node::setStatus(const uavcan_protocol_NodeStatus& status)
   node_status.vendor_specific_status_code = status.vendor_specific_status_code;
 }
 
-template<typename...Params>
-void Node::errorCb(const char * format, [[maybe_unused]] Params&&... params)
-{
-#if CH_DBG_ENABLE_CHECKS
-  if (config.errorCb) {
-    etl::string<80> s;
-    const auto len = chsnprintf(s.data(), s.capacity(), format, std::forward<Params> (params)...);
-    s.uninitialized_resize(len);
-    config.errorCb(etl::string_view(s));
-  }
-#else
-  (void) format;
-#endif
-}
 
 }
 
