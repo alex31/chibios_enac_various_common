@@ -1,6 +1,6 @@
 /**
  * @file    UAVCan.hpp
- * @brief   C++ wrapper over libcanard
+ * @brief   C++ publish subscribe wrapper over libcanard
  *
  * @{
  */
@@ -45,6 +45,17 @@
 
   ° unsubscribe API : is it needed ?
 
+  ° alive message should be sent in classic CAN : check
+    + when sending a message to classic can node : should be sent accordingly
+
+
+  ° find a scheme to attribute ID (1..127) and roles to the can slaves
+
+  ° mettre en œuvre un tunnel au dessus du shell :
+    + chaque node a un shell dans un thread au dessus du message uavcan.protocol.AccessCommandShell
+    + on sacrifie un montage à base de microcan + ftdi pour faire un pont qui permette de communiquer au shell des nodes connectés
+      sur ce node de communication, il y aura un shell avec des commandes locale, et une commande type select qui permet de se connecter
+      sur un node distant et de quitter ce node distant
 */
 
 namespace {
