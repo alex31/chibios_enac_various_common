@@ -266,7 +266,7 @@ namespace UAVCAN
     // after messages are received wait 5mn before each resume online
     while(not chThdShouldTerminateX()) {
       chEvtWaitOne(fdcanBusOffEvent);
-      canSTM32ResumeOnline(&node->config.cand);
+      //      canSTM32ResumeOnline(&node->config.cand);
       node->setCanStatus(NODE_OFFLINE);
       node->errorCb("canErrorThdDispatch bus_off condition");
       if (node->hasReceiveMsg) {
