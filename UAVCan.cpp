@@ -17,6 +17,54 @@ namespace {
   inline uint32_t getTimestampS() {
     return getTimestampMS() / 1000U;
   }
+
+   /**
+   * @brief   Get bus status 
+   * @note    This is an STM32-specific API.
+   *          under certain circumstances, can peripheral can be set offline
+   * @param[in] canp    pointer to the @p CANDriver object
+   * @param[out]        true if the peripheral is online
+   *
+   * @notapi
+   */
+  bool can_lld_is_online(CANDriver *canp) {
+    return (canp->fdcan->CCCR & FDCAN_CCCR_INIT) == 0;
+  }
+  
+  /**
+   * @brief   Set bus status 
+   * @note    This is an STM32-specific API.
+   *          force peripheral to be online or offline
+   * @param[in] canp    pointer to the @p CANDriver object
+   * @param[in] online  set the peripheral online if true, offline otherwise
+   *
+   * @notapi
+   */
+  void can_lld_set_online(CANDriver *canp, bool online) {
+    if (online) {
+      canp->fdcan->CCCR &= ~FDCAN_CCCR_INIT;
+    } else {
+      canp->fdcan->CCCR |= FDCAN_CCCR_INIT;
+    }
+  }
+  
+  
+  
+  /**
+   * @brief   Resume peripheral online after offline event occurred
+   * @note    This is an STM32-specific API.
+   *          In certain circumstances, the CAN peripheral may disconnect
+   *          itself from the bus.
+   * @param[in] canp    pointer to the @p CANDriver object
+   *
+   */
+  void canSTM32ResumeOnline(CANDriver *canp) {
+    osalDbgAssert(canp->state == CAN_READY, "invalid state");
+    if (!can_lld_is_online(canp)) {
+      can_lld_set_online(canp, true);
+    }
+  }
+   
 }
 
 namespace UAVCAN
@@ -266,7 +314,7 @@ namespace UAVCAN
     // after messages are received wait 5mn before each resume online
     while(not chThdShouldTerminateX()) {
       chEvtWaitOne(fdcanBusOffEvent);
-      //      canSTM32ResumeOnline(&node->config.cand);
+      canSTM32ResumeOnline(&node->config.cand);
       node->setCanStatus(NODE_OFFLINE);
       node->errorCb("canErrorThdDispatch bus_off condition");
       if (node->hasReceiveMsg) {
