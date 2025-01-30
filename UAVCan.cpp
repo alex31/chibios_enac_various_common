@@ -76,10 +76,10 @@ namespace UAVCAN
     }
 
     if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_NODESTATUS_ID,
-	  CanardTransferTypeResponse})) {
+	  CanardTransferTypeBroadcast})) {
       if (not idToHandleMessage.full()) {
 	idToHandleMessage[{UAVCAN_PROTOCOL_NODESTATUS_ID,
-	  CanardTransferTypeResponse}] = {
+	  CanardTransferTypeBroadcast}] = {
 	  UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
 	  UAVCAN::Node::broadcastMessageCb<nullAppCb<uavcan_protocol_NodeStatus>>
 	};
@@ -92,7 +92,7 @@ namespace UAVCAN
   int8_t Node::configureHardwareFilters()
   {
     int8_t filterIndex = 0;
-    constexpr uint8_t filtersSize = 
+    static constexpr uint8_t filtersSize = 
 #ifdef FDCAN_CONFIG_RXGFC_RRFS // ugly meanway to know if we use HDCANV1 ou V2
       8; // FDCANV1 : each FDCan interface has 8 extended filters
 #else // FDCANV2 : 32 extended filters are shared between FDCan interface(s) in use
@@ -105,19 +105,36 @@ namespace UAVCAN
 #    endif
 #endif
 
+
+    static constexpr uint32_t masks[] = {
+      0x00'ff'80'00, // response
+      0x00'ff'80'00, // request
+      0x00'ff'ff'00  // broadcast    
+    };
+    
     CANFilter  filterList[filtersSize];
     
     for (const auto& [msg_id_type, _] :  idToHandleMessage) {
-      const auto& [msg_id, __] = msg_id_type;
-      chDbgAssert(msg_id < 256, "service message id should be in the range 0 .. 255");
-      constexpr uint32_t mask = 0x00'ff'80'00;
-      const uint32_t id = (msg_id << 16) | (0x80 << 8);
+      const auto& [msg_id, cttype] = msg_id_type;
+      uint32_t filterId;
+      switch (cttype) {
+      case CanardTransferTypeRequest:
+      chDbgAssert(msg_id < 256, "request service message id should be in the range 0 .. 255");
+      filterId = (msg_id << 16) | (0x80 << 8);
+      break;
+      case CanardTransferTypeResponse:
+      chDbgAssert(msg_id < 256, "response service message id should be in the range 0 .. 255");
+      filterId = (msg_id << 16) | (0x00 << 8);
+      break;
+      default:
+	filterId =  msg_id << 8;
+      }
       filterList[filterIndex] = {
 	.filter_type = CAN_FILTER_TYPE_EXT,
 	.filter_mode = CAN_FILTER_MODE_CLASSIC,
 	.filter_cfg =  CAN_FILTER_CFG_FIFO_0,
-	.identifier1 = id,
-	.identifier2 = mask
+	.identifier1 = filterId,
+	.identifier2 = masks[cttype]
       };
       if (++filterIndex > filtersSize)
 	goto overfill;
