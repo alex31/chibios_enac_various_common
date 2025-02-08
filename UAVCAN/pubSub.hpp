@@ -10,8 +10,6 @@
 #include <ch.h>
 #include <hal.h>
 
-#include "canard.h"
-#include "canard_chutils.h"
 #include "dronecan_msgs.h"
 #include "stdutil.h"
 #include "stdutil++.hpp"
