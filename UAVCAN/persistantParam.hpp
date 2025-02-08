@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <variant>
 #include <array>
 #include <optional>
@@ -11,20 +12,24 @@
 
 /*
   FAIT :
-  On a une table de pointeurs sur des Parameters dans le même ordre que
-  la table frozen de Default.
+   ° On a une table de pointeurs sur des Parameters dans le même ordre que
+     la table frozen de Default.
 
-  Un appel à ParameterBase::start recopie les defaut dans la table en ram
+   ° Un appel à ParameterBase::start recopie les defaut dans la table en ram
 
-  TODO :
-  ° ajout dans classe ParameterBase d'une reference au variant Default
-    pour verifier dans le setter que l'on respecte min max si c'est une valeur numérique
+   ° ajout dans classe ParameterBase d'une reference au variant Default
+     pour verifier dans le setter que l'on respecte min max si c'est une valeur numérique
 
-  ° ajout setter au niveau de la classe dérivée et qui prend un
-    variant en param : si le variant est pas du bon type : kaboum
+   ° ajout setter au niveau de la classe dérivée et qui prend un
+     variant en param
+     
+   ° retrouver un param par son index et son nom
+ TODO :
 
-  ° retrouver un param par son index et son nom
-
+  ° methode find constexpr  :
+            si elle renvoie un pointeur au lieu d'une ref, constexpr possible ?
+  ° std::variant sur MCU, qu'est ce qu'il se passe sur un bad variant access ?
+ 
   ° fonction ou methode qui construit un StoredValue depuis le type fourni par DSDL
   ° fonction ou methode qui construit un message DSDL depuis un StoredValue
   ° fonction ou methode qui accede (r/w)  paramList en eeprom/flash
@@ -46,7 +51,23 @@
  */
 
 namespace {
- 
+  // Template to get index of type T in std::variant<...>
+  template <typename T, typename Variant>
+  struct variant_index;
+
+  template <typename T, typename... Types>
+  struct variant_index<T, std::variant<Types...>> {
+    static constexpr std::size_t value = [] {
+      std::size_t index = 0;
+      bool found = ((std::is_same_v<T, Types> ? true : (++index, false)) || ...);
+      return found ? index : static_cast<std::size_t>(-1);
+    }();
+  };
+  
+  // Helper variable template
+  template <typename T, typename Variant>
+  inline constexpr std::size_t variant_index_v = variant_index<T, Variant>::value;
+  
 }
 
 
@@ -61,7 +82,6 @@ namespace Persistant {
     NumericValue max = (NoValue){};
     Default	 v = (NoValue){};
   };
-  using FrozenDict = frozen::unordered_map<frozen::string, ParamDefault, 50>;
 
   
   static constexpr std::pair<frozen::string, ParamDefault> params_list[]
@@ -69,7 +89,7 @@ namespace Persistant {
 #include "nodeParameters.hpp"
     };
 
-  constexpr size_t  params_list_len =
+  constexpr ssize_t  params_list_len =
     sizeof(params_list) / sizeof(params_list[0]);
   
   constexpr auto frozenParameters = frozen::make_unordered_map(params_list);
@@ -78,17 +98,21 @@ namespace Persistant {
   public:
     virtual const StoredValue get() const = 0;
     virtual void  set(const StoredValue&) = 0;
-    constexpr static ssize_t getIndex(const frozen::string key);
+    constexpr static ssize_t findIndex(const frozen::string key);
     static void populateDefaults();
+    static ParameterBase& find(const ssize_t index);
+    static ParameterBase& find(const frozen::string key);
   protected:
+    ParameterBase(const ParamDefault& _deflt) : deflt(_deflt) {};
     static etl::vector<ParameterBase *, params_list_len> paramList;
+    const ParamDefault& deflt;
   };
   
   template <typename T>
   class Parameter : public ParameterBase {
   public:
-    Parameter();
-    Parameter(const T& v);
+    Parameter(const ParamDefault& _deflt);
+    Parameter(const ParamDefault& _deflt, const T& v);
     const StoredValue get() const override {return val;};
     void  set(const StoredValue&) override;
   private:
@@ -96,7 +120,7 @@ namespace Persistant {
   };
 
 
-  constexpr ssize_t ParameterBase::getIndex(const frozen::string key)
+  constexpr ssize_t ParameterBase::findIndex(const frozen::string key)
   {
     const auto it = frozenParameters.find(key);
     if (it == frozenParameters.end()) {
@@ -104,10 +128,10 @@ namespace Persistant {
     }
     return std::distance(frozenParameters.begin(), it);
   }
-  
+
   
   template <typename T>
-  Parameter<T>::Parameter() 
+  Parameter<T>::Parameter(const ParamDefault& _deflt) : ParameterBase(_deflt)
   {
     if (paramList.full()) {
       // chSysHalt("etl::vector paramList is full");
@@ -116,7 +140,7 @@ namespace Persistant {
   }
 
   template <typename T>
-  Parameter<T>::Parameter(const T& v) : Parameter()
+  Parameter<T>::Parameter(const ParamDefault& _deflt, const T& v) : Parameter(_deflt)
   {
     val = v;
   }
@@ -124,7 +148,26 @@ namespace Persistant {
   template <typename T>
   void Parameter<T>::set(const StoredValue& variant)
   {
-    val = std::get<T>(variant);
+    if (std::holds_alternative<T>(variant)) {
+      val = std::get<T>(variant);
+    } else {
+      assert (false && "Parameter<T>::set variant mismatch");
+    }
+    if constexpr (std::is_same_v<T, int64_t>) {
+      if (deflt.min.index() == variant_index_v<int64_t, NumericValue>) {
+	val = std::max(val, std::get<int64_t>(deflt.min));
+      }
+      if (deflt.max.index() == variant_index_v<int64_t, NumericValue>) {
+	val = std::min(val, std::get<int64_t>(deflt.max));
+      }
+    } else if constexpr (std::is_same_v<T, float>) {
+      if (deflt.min.index() == variant_index_v<float, NumericValue>) {
+	val = std::max(val, std::get<float>(deflt.min));
+      }
+      if (deflt.max.index() == variant_index_v<float, NumericValue>) {
+	val = std::min(val, std::get<float>(deflt.max));
+      }
+    }
   }
   
 }

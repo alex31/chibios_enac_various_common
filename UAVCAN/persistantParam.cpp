@@ -1,20 +1,21 @@
 #include "persistantParam.hpp"
+#include <cassert>
 
 namespace Persistant {
 
  struct Overload {
-    void operator()(Persistant::NoValue n) const {
-      new Parameter(n);
+   void operator()(const ParamDefault& deflt, NoValue n) const {
+      new Parameter(deflt, n);
     }
-    void operator()(int64_t i) const {
-      new Parameter(i);
+      void operator()(const ParamDefault& deflt, int64_t i) const {
+      new Parameter(deflt, i);
     }
-    void operator()(float f) const {
-      new Parameter(f);
+   void operator()(const ParamDefault& deflt, float f) const {
+      new Parameter(deflt, f);
     }
-    void operator()(const frozen::string& s) const {
+    void operator()(const ParamDefault& deflt, const frozen::string& s) const {
       StoredString ets(s.data());
-      new Parameter(ets);
+      new Parameter(deflt, ets);
     }
   };
 
@@ -23,9 +24,21 @@ namespace Persistant {
   {
      for (const auto& [_, variant] : frozenParameters) {  
        std::visit([&](const auto& value) {
-	 Overload{}(value);  
+	 Overload{}(variant, value);  
        }, variant.v);
      }
+  }
+
+  ParameterBase& ParameterBase::find(const ssize_t index)
+  {
+    assert((index >= 0) && (index < params_list_len));
+    return *paramList[index];
+  }
+
+  ParameterBase& ParameterBase::find(const frozen::string key)
+  {
+    const auto index = findIndex(key);
+    return find(index);
   }
 
   etl::vector<ParameterBase *, params_list_len> ParameterBase::paramList;
