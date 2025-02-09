@@ -24,12 +24,17 @@
      variant en param
      
    ° retrouver un param par son index et son nom
+
+   ° verifier à la compilation la validité de la table frozen :
+    + si le type est numérique -> min et max sont empty ou du même type
+    + si le type est string -> min est max sont de type empty
+ 
  TODO :
 
-  ° methode find constexpr  :
-            si elle renvoie un pointeur au lieu d'une ref, constexpr possible ?
-  ° std::variant sur MCU, qu'est ce qu'il se passe sur un bad variant access ?
- 
+ ° de nouveau essayer de transformer les methodes find en methodes constexpr
+
+ ° review de tous les nom de type et variable
+
   ° fonction ou methode qui construit un StoredValue depuis le type fourni par DSDL
   ° fonction ou methode qui construit un message DSDL depuis un StoredValue
   ° fonction ou methode qui accede (r/w)  paramList en eeprom/flash
@@ -67,6 +72,8 @@ namespace {
   // Helper variable template
   template <typename T, typename Variant>
   inline constexpr std::size_t variant_index_v = variant_index<T, Variant>::value;
+
+
   
 }
 
@@ -83,12 +90,56 @@ namespace Persistant {
     Default	 v = (NoValue){};
   };
 
+
+
+    // Compile-time check for an entry
+  consteval bool isValidDefault(const ParamDefault& param) {
+    return std::visit([&](const auto& v) -> bool {
+      using T = std::decay_t<decltype(v)>;
+
+      if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, float>) {
+	return std::visit([](const auto& min_val, const auto& max_val) -> bool {
+	  using MinT = std::decay_t<decltype(min_val)>;
+	  using MaxT = std::decay_t<decltype(max_val)>;
+
+	  return (std::is_same_v<MinT, NoValue> || std::is_same_v<MinT, T>) &&
+	    (std::is_same_v<MaxT, NoValue> || std::is_same_v<MaxT, T>);
+	}, param.min, param.max);
+      } else if constexpr (std::is_same_v<T, frozen::string>) {
+	return std::visit([](const auto& min_val, const auto& max_val) -> bool {
+	  using MinT = std::decay_t<decltype(min_val)>;
+	  using MaxT = std::decay_t<decltype(max_val)>;
+
+	  return (std::is_same_v<MinT, NoValue>) && (std::is_same_v<MaxT, NoValue>);
+	}, param.min, param.max);
+      }
+      return true; // If v is not int64_t or float, no check is needed
+    }, param.v);
+  }
+
+  // Compile-time check for an entire array
+  consteval int validateDefaultsList(const auto& paramsPairList) {
+    int index = 0;
+    for (const auto& entry : paramsPairList) {
+      if (!isValidDefault(entry.second)) return index;
+      index++;
+    }
+    return -1;
+  }
+
+
+  
   
   static constexpr std::pair<frozen::string, ParamDefault> params_list[]
     {
 #include "nodeParameters.hpp"
     };
 
+  // Static assert at compile-time
+  static_assert(validateDefaultsList(params_list) < 0,
+   		"❌ params_list contains invalid ParamDefault entries!");
+  
+  
   constexpr ssize_t  params_list_len =
     sizeof(params_list) / sizeof(params_list[0]);
   
