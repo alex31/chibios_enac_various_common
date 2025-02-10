@@ -8,7 +8,7 @@
 #include "frozen/string.h"
 #include "frozen/set.h"
 #include "etl/string.h"
-#include "etl/vector.h"
+
 
 /*
   FAIT :
@@ -28,16 +28,14 @@
    ° verifier à la compilation la validité de la table frozen :
     + si le type est numérique -> min et max sont empty ou du même type
     + si le type est string -> min est max sont de type empty
- 
+
+   ° transformer les methodes find en methodes constexpr
+
+
  TODO :
 
- ° de nouveau essayer de transformer les methodes find en methodes constexpr
+ ° review de tous les nom de type et variable : casing ? ptr indication ?
 
- ° review de tous les nom de type et variable
-
-  ° fonction ou methode qui construit un StoredValue depuis le type fourni par DSDL
-  ° fonction ou methode qui construit un message DSDL depuis un StoredValue
-  ° fonction ou methode qui accede (r/w)  paramList en eeprom/flash
 
   TODO optimisation espace pris en RAM :
   ° ne pas utiliser new, mais des tables pré allouée par taille
@@ -48,8 +46,14 @@
       statique d'index (sur 16 bits) : index de table sur 2 bits, index dans la table sur 14 bits
       * creation une structure avec des bitfield
 
-  après faut gerer les scenarios : le nom d'un param soit commencer par un prefixe de 5 lettres
-  qui indique le scénario
+  ° fonction ou methode qui construit un StoredValue depuis le type fourni par DSDL
+  ° fonction ou methode qui construit un message DSDL depuis un StoredValue
+  ° fonction ou methode qui accede (r/w)  paramList en eeprom/flash
+
+  ° gerer les scenarios (trouver meilleur nom) : le nom d'un param doit
+    commencer par un prefixe de 5 lettres qui indique le scénario
+   + fonction constexpr qui vérifie que les noms respectent la convention et
+     que le scenario existe  
 
   en fonction des scenario activés (paramètre bitfield sur 64 bits
   stocké en flash) on n'indexe en ram que les paramètres utilisés par les scenarios actifs
@@ -151,11 +155,12 @@ namespace Persistant {
     virtual void  set(const StoredValue&) = 0;
     constexpr static ssize_t findIndex(const frozen::string key);
     static void populateDefaults();
-    static ParameterBase& find(const ssize_t index);
-    static ParameterBase& find(const frozen::string key);
+    constexpr static ParameterBase** find(const ssize_t index);
+    constexpr static ParameterBase** find(const frozen::string key);
   protected:
     ParameterBase(const ParamDefault& _deflt) : deflt(_deflt) {};
-    static etl::vector<ParameterBase *, params_list_len> paramList;
+    static std::array<ParameterBase *, params_list_len> paramList;
+    static size_t paramCurrentIndex;
     const ParamDefault& deflt;
   };
   
@@ -180,14 +185,25 @@ namespace Persistant {
     return std::distance(frozenParameters.begin(), it);
   }
 
+  constexpr ParameterBase** ParameterBase::find(const ssize_t index)
+  {
+    assert((index >= 0) && (index < params_list_len));
+    return &paramList[index];
+  }
+  
+  constexpr ParameterBase** ParameterBase::find(const frozen::string key)
+  {
+    const auto index = findIndex(key);
+    return find(index);
+  }
   
   template <typename T>
   Parameter<T>::Parameter(const ParamDefault& _deflt) : ParameterBase(_deflt)
   {
-    if (paramList.full()) {
+    if (paramCurrentIndex == params_list_len) {
       // chSysHalt("etl::vector paramList is full");
     }
-    paramList.push_back(this);
+    paramList[paramCurrentIndex++] = this;
   }
 
   template <typename T>

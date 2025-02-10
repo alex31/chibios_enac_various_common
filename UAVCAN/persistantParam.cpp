@@ -29,19 +29,9 @@ namespace Persistant {
      }
   }
 
-  ParameterBase& ParameterBase::find(const ssize_t index)
-  {
-    assert((index >= 0) && (index < params_list_len));
-    return *paramList[index];
-  }
-
-  ParameterBase& ParameterBase::find(const frozen::string key)
-  {
-    const auto index = findIndex(key);
-    return find(index);
-  }
-
-  etl::vector<ParameterBase *, params_list_len> ParameterBase::paramList;
+ 
+  std::array<ParameterBase *, params_list_len> ParameterBase::paramList;
+  size_t ParameterBase::paramCurrentIndex = 0;
 }
 
 
