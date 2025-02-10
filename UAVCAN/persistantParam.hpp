@@ -7,7 +7,7 @@
 #include "frozen/unordered_map.h"
 #include "frozen/string.h"
 #include "frozen/set.h"
-#include "etl/string.h"
+#include "tinyString.hpp" // etl::string overhead is insane : 40 bytes for each string
 
 
 /*
@@ -38,13 +38,12 @@
 
 
   TODO optimisation espace pris en RAM :
-  ° ne pas utiliser new, mais des tables pré allouée par taille
-    (en fonction de float, int64, Empty, etl::string)
-    + la taille de ces 4 tables peut être retournée par une fonction constexpr
-    + plutôt que de faire un new on alloue dans ces tables
-    + plutôt que d'avoir une table statique de pointeur, on aurait une table
-      statique d'index (sur 16 bits) : index de table sur 2 bits, index dans la table sur 14 bits
-      * creation une structure avec des bitfield
+  ° utiliser TinyString plutôt que etl::string
+  ° utiliser un custom allocator plutôt que le tas
+  
+  ° ne pas utiliser de fonction virtuelle, ni de reference vers le default :
+    + seule interface par methode find qui retourne un pointeur sur base qu'il faudra
+      caster comme il faut avant d'appeler get ou set dessus
 
   ° fonction ou methode qui construit un StoredValue depuis le type fourni par DSDL
   ° fonction ou methode qui construit un message DSDL depuis un StoredValue
@@ -84,7 +83,7 @@ namespace {
 
 namespace Persistant {
   struct NoValue {};
-  using StoredString = etl::string<48>;
+  using StoredString = TinyString<47>;
   using Default = std::variant<NoValue, frozen::string, int64_t, float>;
   using StoredValue = std::variant<NoValue, StoredString, int64_t, float>;
   using NumericValue = std::variant<NoValue, int64_t, float>;
@@ -131,14 +130,11 @@ namespace Persistant {
     return -1;
   }
 
-
-  
-  
   static constexpr std::pair<frozen::string, ParamDefault> params_list[]
     {
 #include "nodeParameters.hpp"
     };
-
+  
   // Static assert at compile-time
   static_assert(validateDefaultsList(params_list) < 0,
    		"❌ params_list contains invalid ParamDefault entries!");
@@ -146,9 +142,12 @@ namespace Persistant {
   
   constexpr ssize_t  params_list_len =
     sizeof(params_list) / sizeof(params_list[0]);
+
+
+
+
   
   constexpr auto frozenParameters = frozen::make_unordered_map(params_list);
-
   class ParameterBase {
   public:
     virtual const StoredValue get() const = 0;
@@ -175,6 +174,32 @@ namespace Persistant {
     T val;
   };
 
+
+  static consteval size_t getMemoryPoolSize() {
+    struct Overload {
+      constexpr size_t operator()(Persistant::NoValue) const {
+	return sizeof(Parameter<NoValue>);
+      }
+      constexpr size_t operator()(int64_t) const {
+	return sizeof(Parameter<int64_t>);
+      }
+      constexpr size_t operator()(float) const {
+	return sizeof(Parameter<float>);
+      }
+      constexpr size_t  operator()(const frozen::string &) const {
+	return sizeof(Parameter<StoredString>);
+      }
+    };
+
+    size_t size = 0;
+    for (size_t i=0; i < params_list_len; i++) {  
+      std::visit([&](const auto& param) {
+	size += Overload{}(param);  
+      }, params_list[i].second.v);
+    }
+    
+    return size;
+  }
 
   constexpr ssize_t ParameterBase::findIndex(const frozen::string key)
   {
