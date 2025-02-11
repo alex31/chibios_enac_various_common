@@ -7,8 +7,8 @@
 #include "frozen/unordered_map.h"
 #include "frozen/string.h"
 #include "frozen/set.h"
-#include "tinyString.hpp" // etl::string overhead is insane : 40 bytes for each string
-
+#include "tinyString.hpp" 
+#include "customAllocator.hpp"
 
 /*
   FAIT :
@@ -31,15 +31,25 @@
 
    ° transformer les methodes find en methodes constexpr
 
+   ° utiliser TinyString plutôt que etl::string
+
+   ° utiliser un custom allocator plutôt que le tas
+
 
  TODO :
+
+ ** Oh putain : faut une refonte complete : plus de classes base et derivée
+    juste un tableau de variant avec pour les string un pointeur sur la chaine
+    y aura que la classe TintString qui a besoin d'un custom allocator
+    + pour faire plus propre, tiny string prendra la taille du stockage comme un
+      paramètre template
+    + le fonction qui retourne la taille necessaire sera modifiée pour ne retourner
+      que la taille necesaire aux tinyString
 
  ° review de tous les nom de type et variable : casing ? ptr indication ?
 
 
   TODO optimisation espace pris en RAM :
-  ° utiliser TinyString plutôt que etl::string
-  ° utiliser un custom allocator plutôt que le tas
   
   ° ne pas utiliser de fonction virtuelle, ni de reference vers le default :
     + seule interface par methode find qui retourne un pointeur sur base qu'il faudra
@@ -59,7 +69,7 @@
  */
 
 namespace {
-  // Template to get index of type T in std::variant<...>
+  // Helper : Template to get index of type T in std::variant<...>
   template <typename T, typename Variant>
   struct variant_index;
 
@@ -75,9 +85,6 @@ namespace {
   // Helper variable template
   template <typename T, typename Variant>
   inline constexpr std::size_t variant_index_v = variant_index<T, Variant>::value;
-
-
-  
 }
 
 
@@ -146,10 +153,45 @@ namespace Persistant {
 
 
 
-  
+  static consteval size_t getMemoryPoolSize() {
+    struct Overload {
+      constexpr size_t operator()(Persistant::NoValue) const {
+	return std::max(24UL, 16U + sizeof(NoValue));
+      }
+      constexpr size_t operator()(int64_t) const {
+	return std::max(24UL, 16U + sizeof(int64_t));
+      }
+      constexpr size_t operator()(float) const {
+	return std::max(24UL, 16U + sizeof(float));
+      }
+      constexpr size_t  operator()(const frozen::string &) const {
+	return std::max(24UL, 16U + sizeof(StoredString));
+      }
+    };
+
+    size_t size = 0;
+    for (size_t i=0; i < params_list_len; i++) {  
+      std::visit([&](const auto& param) {
+	size += Overload{}(param);  
+      }, params_list[i].second.v);
+    }
+    
+    return size;
+  }
+
   constexpr auto frozenParameters = frozen::make_unordered_map(params_list);
-  class ParameterBase {
+
+  class  ParameterBase {
   public:
+    static void* operator new(std::size_t size) {
+      //  Safe: Returns nullptr if out of memory
+      return memPool.allocate(size);  
+    }
+    
+    static void operator delete(void*, std::size_t) {
+      assert( 0 && "delete should never be called");
+    }
+    
     virtual const StoredValue get() const = 0;
     virtual void  set(const StoredValue&) = 0;
     constexpr static ssize_t findIndex(const frozen::string key);
@@ -158,6 +200,7 @@ namespace Persistant {
     constexpr static ParameterBase** find(const frozen::string key);
   protected:
     ParameterBase(const ParamDefault& _deflt) : deflt(_deflt) {};
+    static SimpleMemoryPool<getMemoryPoolSize()> memPool;
     static std::array<ParameterBase *, params_list_len> paramList;
     static size_t paramCurrentIndex;
     const ParamDefault& deflt;
@@ -172,35 +215,10 @@ namespace Persistant {
     void  set(const StoredValue&) override;
   private:
     T val;
-  };
+  } ;
 
 
-  static consteval size_t getMemoryPoolSize() {
-    struct Overload {
-      constexpr size_t operator()(Persistant::NoValue) const {
-	return sizeof(Parameter<NoValue>);
-      }
-      constexpr size_t operator()(int64_t) const {
-	return sizeof(Parameter<int64_t>);
-      }
-      constexpr size_t operator()(float) const {
-	return sizeof(Parameter<float>);
-      }
-      constexpr size_t  operator()(const frozen::string &) const {
-	return sizeof(Parameter<StoredString>);
-      }
-    };
-
-    size_t size = 0;
-    for (size_t i=0; i < params_list_len; i++) {  
-      std::visit([&](const auto& param) {
-	size += Overload{}(param);  
-      }, params_list[i].second.v);
-    }
-    
-    return size;
-  }
-
+ 
   constexpr ssize_t ParameterBase::findIndex(const frozen::string key)
   {
     const auto it = frozenParameters.find(key);

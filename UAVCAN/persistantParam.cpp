@@ -3,6 +3,8 @@
 
 namespace Persistant {
 
+  // does not use heap, custom allocator will use statically
+  // defined memory area
  struct Overload {
    void operator()(const ParamDefault& deflt, NoValue n) const {
       new Parameter(deflt, n);
@@ -32,6 +34,7 @@ namespace Persistant {
  
   std::array<ParameterBase *, params_list_len> ParameterBase::paramList;
   size_t ParameterBase::paramCurrentIndex = 0;
+  SimpleMemoryPool<Persistant::getMemoryPoolSize()> ParameterBase::memPool;
 }
 
 
