@@ -12,49 +12,23 @@
 
 /*
   FAIT :
-   ° On a une table de pointeurs sur des Parameters dans le même ordre que
-     la table frozen de Default.
-
-   ° Un appel à ParameterBase::start recopie les defaut dans la table en ram
-
-   ° ajout dans classe ParameterBase d'une reference au variant Default
-     pour verifier dans le setter que l'on respecte min max si c'est une valeur numérique
-
-   ° ajout setter au niveau de la classe dérivée et qui prend un
-     variant en param
-     
-   ° retrouver un param par son index et son nom
-
-   ° verifier à la compilation la validité de la table frozen :
-    + si le type est numérique -> min et max sont empty ou du même type
-    + si le type est string -> min est max sont de type empty
-
-   ° transformer les methodes find en methodes constexpr
-
-   ° utiliser TinyString plutôt que etl::string
-
-   ° utiliser un custom allocator plutôt que le tas
 
 
  TODO :
 
- ** Oh putain : faut une refonte complete : plus de classes base et derivée
-    juste un tableau de variant avec pour les string un pointeur sur la chaine
-    y aura que la classe TintString qui a besoin d'un custom allocator
-    + pour faire plus propre, tiny string prendra la taille du stockage comme un
-      paramètre template
-    + le fonction qui retourne la taille necessaire sera modifiée pour ne retourner
-      que la taille necesaire aux tinyString
+
+ ° test de la validité de frozen : v est compris entre min et max ?
+ 
+ ° quand on affecte un StoredValue : verifier si c'est pertinent min/max
+ 
+ ° tester que find fonctionne en constexpr et aussi au runtime 
 
  ° review de tous les nom de type et variable : casing ? ptr indication ?
 
 
   TODO optimisation espace pris en RAM :
   
-  ° ne pas utiliser de fonction virtuelle, ni de reference vers le default :
-    + seule interface par methode find qui retourne un pointeur sur base qu'il faudra
-      caster comme il faut avant d'appeler get ou set dessus
-
+ 
   ° fonction ou methode qui construit un StoredValue depuis le type fourni par DSDL
   ° fonction ou methode qui construit un message DSDL depuis un StoredValue
   ° fonction ou methode qui accede (r/w)  paramList en eeprom/flash
@@ -64,9 +38,7 @@
    + fonction constexpr qui vérifie que les noms respectent la convention et
      que le scenario existe  
 
-  en fonction des scenario activés (paramètre bitfield sur 64 bits
-  stocké en flash) on n'indexe en ram que les paramètres utilisés par les scenarios actifs
- */
+  */
 
 namespace {
   // Helper : Template to get index of type T in std::variant<...>
@@ -89,16 +61,58 @@ namespace {
 
 
 namespace Persistant {
+  constexpr size_t tinyStrSize = 47;
   struct NoValue {};
-  using StoredString = TinyString<47>;
   using Default = std::variant<NoValue, frozen::string, int64_t, float>;
-  using StoredValue = std::variant<NoValue, StoredString, int64_t, float>;
   using NumericValue = std::variant<NoValue, int64_t, float>;
   struct ParamDefault {
     NumericValue min = (NoValue){};
     NumericValue max = (NoValue){};
     Default	 v = (NoValue){};
   };
+
+  
+
+  static constexpr std::pair<frozen::string, ParamDefault> params_list[]
+    {
+#include "nodeParameters.hpp"
+    };
+  
+ 
+  constexpr ssize_t  params_list_len =
+    sizeof(params_list) / sizeof(params_list[0]);
+
+
+  static consteval size_t getTinyStringMemoryPoolSize() {
+    struct Overload {
+      constexpr size_t operator()(Persistant::NoValue) const {
+	return 0;
+      }
+      constexpr size_t operator()(int64_t) const {
+	return 0;
+      }
+      constexpr size_t operator()(float) const {
+	return 0;
+      }
+      constexpr size_t  operator()(const frozen::string &) const {
+	return sizeof(TinyString<0, tinyStrSize>);
+      }
+    };
+    
+    size_t size = 0;
+    for (size_t i=0; i < params_list_len; i++) {  
+      std::visit([&](const auto& param) {
+	size += Overload{}(param);  
+      }, params_list[i].second.v);
+    }
+    
+    return size;
+  }
+
+  
+  
+  using StoredString = TinyString<getTinyStringMemoryPoolSize(), tinyStrSize>;
+  using StoredValue = std::variant<NoValue, StoredString*, int64_t, float>;
 
 
 
@@ -137,89 +151,34 @@ namespace Persistant {
     return -1;
   }
 
-  static constexpr std::pair<frozen::string, ParamDefault> params_list[]
-    {
-#include "nodeParameters.hpp"
-    };
-  
   // Static assert at compile-time
   static_assert(validateDefaultsList(params_list) < 0,
    		"❌ params_list contains invalid ParamDefault entries!");
   
-  
-  constexpr ssize_t  params_list_len =
-    sizeof(params_list) / sizeof(params_list[0]);
 
-
-
-
-  static consteval size_t getMemoryPoolSize() {
-    struct Overload {
-      constexpr size_t operator()(Persistant::NoValue) const {
-	return std::max(24UL, 16U + sizeof(NoValue));
-      }
-      constexpr size_t operator()(int64_t) const {
-	return std::max(24UL, 16U + sizeof(int64_t));
-      }
-      constexpr size_t operator()(float) const {
-	return std::max(24UL, 16U + sizeof(float));
-      }
-      constexpr size_t  operator()(const frozen::string &) const {
-	return std::max(24UL, 16U + sizeof(StoredString));
-      }
-    };
-
-    size_t size = 0;
-    for (size_t i=0; i < params_list_len; i++) {  
-      std::visit([&](const auto& param) {
-	size += Overload{}(param);  
-      }, params_list[i].second.v);
-    }
-    
-    return size;
-  }
 
   constexpr auto frozenParameters = frozen::make_unordered_map(params_list);
 
-  class  ParameterBase {
+  class  Parameter {
   public:
-    static void* operator new(std::size_t size) {
-      //  Safe: Returns nullptr if out of memory
-      return memPool.allocate(size);  
-    }
-    
-    static void operator delete(void*, std::size_t) {
-      assert( 0 && "delete should never be called");
-    }
-    
-    virtual const StoredValue get() const = 0;
-    virtual void  set(const StoredValue&) = 0;
+    Parameter() = delete;
     constexpr static ssize_t findIndex(const frozen::string key);
     static void populateDefaults();
-    constexpr static ParameterBase** find(const ssize_t index);
-    constexpr static ParameterBase** find(const frozen::string key);
-  protected:
-    ParameterBase(const ParamDefault& _deflt) : deflt(_deflt) {};
-    static SimpleMemoryPool<getMemoryPoolSize()> memPool;
-    static std::array<ParameterBase *, params_list_len> paramList;
-    static size_t paramCurrentIndex;
-    const ParamDefault& deflt;
+    constexpr static StoredValue& find(const ssize_t index);
+    constexpr static StoredValue& find(const frozen::string key);
+    constexpr static StoredValue clamp(const ssize_t index, const StoredValue& v);
+    constexpr static StoredValue clamp(const frozen::string key, const StoredValue& v);
+   template<typename T>
+    constexpr static T clamp(const ParamDefault& deflt, const T& value);
+
+  private:
+    static std::array<StoredValue, params_list_len> paramList;
   };
   
-  template <typename T>
-  class Parameter : public ParameterBase {
-  public:
-    Parameter(const ParamDefault& _deflt);
-    Parameter(const ParamDefault& _deflt, const T& v);
-    const StoredValue get() const override {return val;};
-    void  set(const StoredValue&) override;
-  private:
-    T val;
-  } ;
 
 
  
-  constexpr ssize_t ParameterBase::findIndex(const frozen::string key)
+  constexpr ssize_t Parameter::findIndex(const frozen::string key)
   {
     const auto it = frozenParameters.find(key);
     if (it == frozenParameters.end()) {
@@ -228,56 +187,66 @@ namespace Persistant {
     return std::distance(frozenParameters.begin(), it);
   }
 
-  constexpr ParameterBase** ParameterBase::find(const ssize_t index)
+  constexpr StoredValue& Parameter::find(const ssize_t index)
   {
     assert((index >= 0) && (index < params_list_len));
-    return &paramList[index];
+    return paramList[index];
   }
   
-  constexpr ParameterBase** ParameterBase::find(const frozen::string key)
+  constexpr StoredValue& Parameter::find(const frozen::string key)
   {
     const auto index = findIndex(key);
     return find(index);
   }
   
-  template <typename T>
-  Parameter<T>::Parameter(const ParamDefault& _deflt) : ParameterBase(_deflt)
+  constexpr StoredValue Parameter::clamp(const frozen::string key,
+					 const StoredValue& variant)
   {
-    if (paramCurrentIndex == params_list_len) {
-      // chSysHalt("etl::vector paramList is full");
+    const auto index = findIndex(key);
+    return clamp(index, variant);
+  }
+  
+  constexpr StoredValue Parameter::clamp(const ssize_t index,
+					 const StoredValue& variant)
+  {
+    assert((index >= 0) && (index < params_list_len));
+    StoredValue ret;
+    const auto& deflt = params_list[index].second;
+    if (std::holds_alternative<int64_t>(variant)) {
+      if (std::holds_alternative<int64_t>(deflt.min))
+	ret =  std::max(std::get<int64_t>(variant), std::get<int64_t>(deflt.min));
+      if (std::holds_alternative<int64_t>(deflt.max))
+	ret =  std::min(std::get<int64_t>(variant), std::get<int64_t>(deflt.max));
     }
-    paramList[paramCurrentIndex++] = this;
+    if (std::holds_alternative<float>(variant)) {
+      if (std::holds_alternative<float>(deflt.min))
+	ret =  std::max(std::get<float>(variant), std::get<float>(deflt.min));
+      if (std::holds_alternative<float>(deflt.max))
+	ret =  std::min(std::get<float>(variant), std::get<float>(deflt.max));
+    }
+    
+    return ret;
   }
 
-  template <typename T>
-  Parameter<T>::Parameter(const ParamDefault& _deflt, const T& v) : Parameter(_deflt)
+  template<typename T>
+  constexpr T Parameter::clamp(const ParamDefault& deflt,
+					 const T& value)
   {
-    val = v;
-  }
+    T ret;
 
-  template <typename T>
-  void Parameter<T>::set(const StoredValue& variant)
-  {
-    if (std::holds_alternative<T>(variant)) {
-      val = std::get<T>(variant);
-    } else {
-      assert (false && "Parameter<T>::set variant mismatch");
+    if constexpr (std::is_same_v<int64_t, T>) {
+      if (std::holds_alternative<int64_t>(deflt.min))
+	ret =  std::max(value, std::get<int64_t>(deflt.min));
+      if (std::holds_alternative<int64_t>(deflt.max))
+	ret =  std::min(value, std::get<int64_t>(deflt.max));
+    } else if constexpr (std::is_same_v<float, T>) {
+      if (std::holds_alternative<float>(deflt.min))
+	ret =  std::max(value, std::get<float>(deflt.min));
+      if (std::holds_alternative<float>(deflt.max))
+	ret =  std::min(value, std::get<float>(deflt.max));
     }
-    if constexpr (std::is_same_v<T, int64_t>) {
-      if (deflt.min.index() == variant_index_v<int64_t, NumericValue>) {
-	val = std::max(val, std::get<int64_t>(deflt.min));
-      }
-      if (deflt.max.index() == variant_index_v<int64_t, NumericValue>) {
-	val = std::min(val, std::get<int64_t>(deflt.max));
-      }
-    } else if constexpr (std::is_same_v<T, float>) {
-      if (deflt.min.index() == variant_index_v<float, NumericValue>) {
-	val = std::max(val, std::get<float>(deflt.min));
-      }
-      if (deflt.max.index() == variant_index_v<float, NumericValue>) {
-	val = std::min(val, std::get<float>(deflt.max));
-      }
-    }
+    
+    return ret;
   }
   
 }
