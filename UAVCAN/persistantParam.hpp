@@ -17,47 +17,19 @@
  TODO :
 
 
- ° test de la validité de frozen : v est compris entre min et max ?
- 
- ° quand on affecte un StoredValue : verifier si c'est pertinent min/max
- 
- ° tester que find fonctionne en constexpr et aussi au runtime 
-
  ° review de tous les nom de type et variable : casing ? ptr indication ?
 
 
-  TODO optimisation espace pris en RAM :
-  
+ ° fonction ou methode qui construit un StoredValue depuis le type fourni par DSDL
+ ° fonction ou methode qui construit un message DSDL depuis un StoredValue
+ ° fonction ou methode qui accede (r/w)  paramList en eeprom/flash
  
-  ° fonction ou methode qui construit un StoredValue depuis le type fourni par DSDL
-  ° fonction ou methode qui construit un message DSDL depuis un StoredValue
-  ° fonction ou methode qui accede (r/w)  paramList en eeprom/flash
-
-  ° gerer les scenarios (trouver meilleur nom) : le nom d'un param doit
-    commencer par un prefixe de 5 lettres qui indique le scénario
-   + fonction constexpr qui vérifie que les noms respectent la convention et
-     que le scenario existe  
-
-  */
-
-namespace {
-  // Helper : Template to get index of type T in std::variant<...>
-  template <typename T, typename Variant>
-  struct variant_index;
-
-  template <typename T, typename... Types>
-  struct variant_index<T, std::variant<Types...>> {
-    static constexpr std::size_t value = [] {
-      std::size_t index = 0;
-      bool found = ((std::is_same_v<T, Types> ? true : (++index, false)) || ...);
-      return found ? index : static_cast<std::size_t>(-1);
-    }();
-  };
-  
-  // Helper variable template
-  template <typename T, typename Variant>
-  inline constexpr std::size_t variant_index_v = variant_index<T, Variant>::value;
-}
+ ° gerer les scenarios (trouver meilleur nom) : le nom d'un param doit
+ commencer par un prefixe de 5 lettres qui indique le scénario
+ + fonction constexpr qui vérifie que les noms respectent la convention et
+ que le scenario existe  
+ 
+*/
 
 
 namespace Persistant {
@@ -164,12 +136,16 @@ namespace Persistant {
     Parameter() = delete;
     constexpr static ssize_t findIndex(const frozen::string key);
     static void populateDefaults();
-    constexpr static StoredValue& find(const ssize_t index);
-    constexpr static StoredValue& find(const frozen::string key);
-    constexpr static StoredValue clamp(const ssize_t index, const StoredValue& v);
-    constexpr static StoredValue clamp(const frozen::string key, const StoredValue& v);
-   template<typename T>
-    constexpr static T clamp(const ParamDefault& deflt, const T& value);
+    constexpr static std::pair<StoredValue&, const ParamDefault&>
+                     find(const ssize_t index);
+    constexpr static std::pair<StoredValue&, const ParamDefault&>
+		     find(const frozen::string key);
+    constexpr static std::pair<StoredValue&, const ParamDefault&>
+		     find(const char* key);
+    constexpr static int64_t clamp(const ParamDefault& deflt, const int64_t& value);
+    constexpr static float clamp(const ParamDefault& deflt, const float& value);
+    constexpr static void set(const std::pair<StoredValue&, const ParamDefault&> &p, const int64_t& value);
+    constexpr static void set(const std::pair<StoredValue&, const ParamDefault&> &p, const float& value);
 
   private:
     static std::array<StoredValue, params_list_len> paramList;
@@ -187,66 +163,71 @@ namespace Persistant {
     return std::distance(frozenParameters.begin(), it);
   }
 
-  constexpr StoredValue& Parameter::find(const ssize_t index)
+  constexpr std::pair<StoredValue&, const ParamDefault&>
+  Parameter::find(const ssize_t index)
   {
     assert((index >= 0) && (index < params_list_len));
-    return paramList[index];
+    return {paramList[index], params_list[index].second};
   }
   
-  constexpr StoredValue& Parameter::find(const frozen::string key)
+  constexpr std::pair<StoredValue&, const ParamDefault&>
+  Parameter::find(const frozen::string key)
   {
     const auto index = findIndex(key);
     return find(index);
   }
-  
-  constexpr StoredValue Parameter::clamp(const frozen::string key,
-					 const StoredValue& variant)
+
+  constexpr std::pair<StoredValue&, const ParamDefault&>
+  Parameter::find(const char* key)
   {
-    const auto index = findIndex(key);
-    return clamp(index, variant);
+    const auto index = findIndex(frozen::string(key));
+    return find(index);
   }
   
-  constexpr StoredValue Parameter::clamp(const ssize_t index,
-					 const StoredValue& variant)
+ 
+  constexpr int64_t Parameter::clamp(const ParamDefault& deflt,
+				     const int64_t& value)
   {
-    assert((index >= 0) && (index < params_list_len));
-    StoredValue ret;
-    const auto& deflt = params_list[index].second;
-    if (std::holds_alternative<int64_t>(variant)) {
-      if (std::holds_alternative<int64_t>(deflt.min))
-	ret =  std::max(std::get<int64_t>(variant), std::get<int64_t>(deflt.min));
-      if (std::holds_alternative<int64_t>(deflt.max))
-	ret =  std::min(std::get<int64_t>(variant), std::get<int64_t>(deflt.max));
-    }
-    if (std::holds_alternative<float>(variant)) {
-      if (std::holds_alternative<float>(deflt.min))
-	ret =  std::max(std::get<float>(variant), std::get<float>(deflt.min));
-      if (std::holds_alternative<float>(deflt.max))
-	ret =  std::min(std::get<float>(variant), std::get<float>(deflt.max));
-    }
-    
+    int64_t ret = {};
+
+    if (std::holds_alternative<int64_t>(deflt.min))
+      ret =  std::max(value, std::get<int64_t>(deflt.min));
+    if (std::holds_alternative<int64_t>(deflt.max))
+      ret =  std::min(value, std::get<int64_t>(deflt.max));
     return ret;
   }
 
-  template<typename T>
-  constexpr T Parameter::clamp(const ParamDefault& deflt,
-					 const T& value)
-  {
-    T ret;
+ constexpr float Parameter::clamp(const ParamDefault& deflt,
+				  const float& value)
+ {
+    float ret = {};
 
-    if constexpr (std::is_same_v<int64_t, T>) {
-      if (std::holds_alternative<int64_t>(deflt.min))
-	ret =  std::max(value, std::get<int64_t>(deflt.min));
-      if (std::holds_alternative<int64_t>(deflt.max))
-	ret =  std::min(value, std::get<int64_t>(deflt.max));
-    } else if constexpr (std::is_same_v<float, T>) {
-      if (std::holds_alternative<float>(deflt.min))
-	ret =  std::max(value, std::get<float>(deflt.min));
-      if (std::holds_alternative<float>(deflt.max))
-	ret =  std::min(value, std::get<float>(deflt.max));
+    if (std::holds_alternative<float>(deflt.min))
+     ret =  std::max(value, std::get<float>(deflt.min));
+   if (std::holds_alternative<float>(deflt.max))
+     ret =  std::min(value, std::get<float>(deflt.max));
+   return ret;
+ }
+
+  constexpr void Parameter::set(const std::pair<StoredValue&, const ParamDefault&> &p,
+			     const int64_t& value)
+  {
+    const auto& [store, deflt] = p;
+    if (not std::holds_alternative<int64_t>(store)) {
+      assert(0 && "cannot change StoredValue alternative");
     }
-    
-    return ret;
+    store = clamp(deflt, value);
   }
-  
+
+  constexpr void Parameter::set(const std::pair<StoredValue&, const ParamDefault&> &p,
+			     const float& value)
+  {
+    const auto& [store, deflt] = p;
+    if (not std::holds_alternative<float>(store)) {
+      assert(0 && "cannot change StoredValue alternative");
+    }
+    store = clamp(deflt, value);
+  }
+ 
+
 }

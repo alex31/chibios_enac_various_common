@@ -64,18 +64,24 @@ std::cout << std::endl;
  for (ssize_t i=0; i < Persistant::params_list_len; i++) {  
      std::visit([&](const auto& param_ptr) {
        OverloadDyn{}(param_ptr);  
-     }, Persistant::Parameter::find(i));
+     }, Persistant::Parameter::find(i).first);
    }
 
- constexpr auto& powerParam_p = Persistant::Parameter::find("power");
- powerParam_p = Persistant::Parameter::clamp("power", 4200);
+ const char* ratio = "ratio";
+ 
+ const auto& p = Persistant::Parameter::find("power");
+ const auto& p2 = Persistant::Parameter::find(ratio);
+ Persistant::Parameter::set(p, 4200L);
+ int64_t dynval = 2000;
+ Persistant::Parameter::set(p, dynval);
+ Persistant::Parameter::set(p2, 0.42f);
 
  for (ssize_t i=0; i < Persistant::params_list_len; i++) {  
-     std::visit([&](const auto& param_ptr) {
-       OverloadDyn{}(param_ptr);  
-     }, Persistant::Parameter::find(i));
-   }
-
+   std::visit([&](const auto& param_ptr) {
+     OverloadDyn{}(param_ptr);  
+   }, Persistant::Parameter::find(i).first);
+ }
+ 
  std::cout << std::format("noval = {}, float = {}; int64_t = {}\n"
 			  "tinyString poolSize = {}; storedString = {}\n"
 			  "frozenEntry = {}\n",
