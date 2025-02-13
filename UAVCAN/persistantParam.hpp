@@ -26,6 +26,12 @@
  
  ° gerer les scenarios (trouver meilleur nom) : le nom d'un param doit
  commencer par un prefixe de 5 lettres qui indique le scénario
+
+ ° notion de constant string
+   + on ne reserve pas de place dans la ram,
+     un pointeur de char* pointe sur frozen::string en flash
+   + comment on specifie une chaine constante dans nodeParameters.hpp -> un type particuler ?
+
  + fonction constexpr qui vérifie que les noms respectent la convention et
  que le scenario existe  
  
@@ -33,10 +39,15 @@
 
 
 namespace Persistant {
+  // must be (4*N)-1 to avoid to spill ram in padding
   constexpr size_t tinyStrSize = 47;
+  // Integer type choice : int64_t or int32_t
+  // if int64_t : mirror DSDL message format, but each param use 16 bytes in ram
+  // if int32_t : does NOT mirror DSDL message format, but each param use 8 bytes in ram
+  using Integer =  int64_t;
   struct NoValue {};
-  using Default = std::variant<NoValue, frozen::string, int64_t, float>;
-  using NumericValue = std::variant<NoValue, int64_t, float>;
+  using Default = std::variant<NoValue, frozen::string, Integer, float>;
+  using NumericValue = std::variant<NoValue, Integer, float>;
   struct ParamDefault {
     NumericValue min = (NoValue){};
     NumericValue max = (NoValue){};
@@ -55,12 +66,15 @@ namespace Persistant {
     sizeof(params_list) / sizeof(params_list[0]);
 
 
+  // helper to calculate the amount or ram needed to store
+  // string parameters. Custom allocator will
+  // use a static area managed by TintString class
   static consteval size_t getTinyStringMemoryPoolSize() {
     struct Overload {
       constexpr size_t operator()(Persistant::NoValue) const {
 	return 0;
       }
-      constexpr size_t operator()(int64_t) const {
+      constexpr size_t operator()(Integer) const {
 	return 0;
       }
       constexpr size_t operator()(float) const {
@@ -84,23 +98,34 @@ namespace Persistant {
   
   
   using StoredString = TinyString<getTinyStringMemoryPoolSize(), tinyStrSize>;
-  using StoredValue = std::variant<NoValue, StoredString*, int64_t, float>;
+  using StoredValue = std::variant<NoValue, StoredString*, Integer, float>;
 
 
-
-    // Compile-time check for an entry
+  // Compile-time checks for an entry
+  // ° min and max are else NoValue or the same type as v
+  // ° neither min or max for string parameters
+  // ° default value is in the range min..max it they are supplied
   consteval bool isValidDefault(const ParamDefault& param) {
     return std::visit([&](const auto& v) -> bool {
       using T = std::decay_t<decltype(v)>;
 
-      if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, float>) {
-	return std::visit([](const auto& min_val, const auto& max_val) -> bool {
+      if constexpr (std::is_same_v<T, Integer> || std::is_same_v<T, float>) {
+	return std::visit([&](const auto& min_val, const auto& max_val) -> bool {
 	  using MinT = std::decay_t<decltype(min_val)>;
 	  using MaxT = std::decay_t<decltype(max_val)>;
 
+	  if constexpr(std::is_same_v<MinT, T>) {
+	    if (v < min_val)
+	      return 0;
+	  }
+	  if constexpr(std::is_same_v<MaxT, T>) {
+	    if (v > max_val)
+	      return 0;
+	  } 
 	  return (std::is_same_v<MinT, NoValue> || std::is_same_v<MinT, T>) &&
 	    (std::is_same_v<MaxT, NoValue> || std::is_same_v<MaxT, T>);
 	}, param.min, param.max);
+	  
       } else if constexpr (std::is_same_v<T, frozen::string>) {
 	return std::visit([](const auto& min_val, const auto& max_val) -> bool {
 	  using MinT = std::decay_t<decltype(min_val)>;
@@ -109,7 +134,7 @@ namespace Persistant {
 	  return (std::is_same_v<MinT, NoValue>) && (std::is_same_v<MaxT, NoValue>);
 	}, param.min, param.max);
       }
-      return true; // If v is not int64_t or float, no check is needed
+      return true; // If v is not Integer or float, no check is needed
     }, param.v);
   }
 
@@ -124,6 +149,8 @@ namespace Persistant {
   }
 
   // Static assert at compile-time
+  // if a check fail, compiler error message will show the first
+  // offending entry, numbered from 0
   static_assert(validateDefaultsList(params_list) < 0,
    		"❌ params_list contains invalid ParamDefault entries!");
   
@@ -142,10 +169,12 @@ namespace Persistant {
 		     find(const frozen::string key);
     constexpr static std::pair<StoredValue&, const ParamDefault&>
 		     find(const char* key);
-    constexpr static int64_t clamp(const ParamDefault& deflt, const int64_t& value);
+    constexpr static Integer clamp(const ParamDefault& deflt, const Integer& value);
     constexpr static float clamp(const ParamDefault& deflt, const float& value);
-    constexpr static void set(const std::pair<StoredValue&, const ParamDefault&> &p, const int64_t& value);
-    constexpr static void set(const std::pair<StoredValue&, const ParamDefault&> &p, const float& value);
+    constexpr static void set(const std::pair<StoredValue&, const ParamDefault&> &p,
+			      const Integer& value);
+    constexpr static void set(const std::pair<StoredValue&, const ParamDefault&> &p,
+			      const float& value);
 
   private:
     static std::array<StoredValue, params_list_len> paramList;
@@ -185,22 +214,22 @@ namespace Persistant {
   }
   
  
-  constexpr int64_t Parameter::clamp(const ParamDefault& deflt,
-				     const int64_t& value)
+  constexpr Integer Parameter::clamp(const ParamDefault& deflt,
+				     const Integer& value)
   {
-    int64_t ret = {};
+    Integer ret = value;
 
-    if (std::holds_alternative<int64_t>(deflt.min))
-      ret =  std::max(value, std::get<int64_t>(deflt.min));
-    if (std::holds_alternative<int64_t>(deflt.max))
-      ret =  std::min(value, std::get<int64_t>(deflt.max));
+    if (std::holds_alternative<Integer>(deflt.min))
+      ret =  std::max(value, std::get<Integer>(deflt.min));
+    if (std::holds_alternative<Integer>(deflt.max))
+      ret =  std::min(value, std::get<Integer>(deflt.max));
     return ret;
   }
 
  constexpr float Parameter::clamp(const ParamDefault& deflt,
 				  const float& value)
  {
-    float ret = {};
+    float ret = value;
 
     if (std::holds_alternative<float>(deflt.min))
      ret =  std::max(value, std::get<float>(deflt.min));
@@ -210,10 +239,10 @@ namespace Persistant {
  }
 
   constexpr void Parameter::set(const std::pair<StoredValue&, const ParamDefault&> &p,
-			     const int64_t& value)
+			     const Integer& value)
   {
     const auto& [store, deflt] = p;
-    if (not std::holds_alternative<int64_t>(store)) {
+    if (not std::holds_alternative<Integer>(store)) {
       assert(0 && "cannot change StoredValue alternative");
     }
     store = clamp(deflt, value);

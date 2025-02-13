@@ -18,7 +18,7 @@ int main(int argc, char **)
     void operator()(const char* name, Persistant::NoValue) const {
       std::cout << name << " has no Value !! ;";
     }
-    void operator()(const char* name, int64_t i) const {
+    void operator()(const char* name, Persistant::Integer i) const {
       std::cout << name << " is Integer = " << i << "; ";
     }
     void operator()(const char* name, float f) const {
@@ -49,7 +49,7 @@ std::cout << std::endl;
     void operator()(Persistant::NoValue) const {
       std::cout << "store" << " has no Value !! \n";
     }
-    void operator()(int64_t i) const {
+    void operator()(Persistant::Integer i) const {
       std::cout << "store" << " is Integer = " << i << std::endl;
     }
     void operator()(float f) const {
@@ -72,7 +72,7 @@ std::cout << std::endl;
  const auto& p = Persistant::Parameter::find("power");
  const auto& p2 = Persistant::Parameter::find(ratio);
  Persistant::Parameter::set(p, 4200L);
- int64_t dynval = 2000;
+ Persistant::Integer dynval = 2000;
  Persistant::Parameter::set(p, dynval);
  Persistant::Parameter::set(p2, 0.42f);
 
@@ -81,15 +81,17 @@ std::cout << std::endl;
      OverloadDyn{}(param_ptr);  
    }, Persistant::Parameter::find(i).first);
  }
+
  
- std::cout << std::format("noval = {}, float = {}; int64_t = {}\n"
+ std::cout << std::format("noval = {}, float = {}; Persistant::Integer = {}\n"
 			  "tinyString poolSize = {}; storedString = {}\n"
-			  "frozenEntry = {}\n",
+			  "storedValue = {}; frozenEntry = {}\n",
 			  sizeof(Persistant::NoValue),
 			  sizeof(float),
-			  sizeof(int64_t),
+			  sizeof(Persistant::Integer),
 			  Persistant::getTinyStringMemoryPoolSize(),
 			  sizeof(Persistant::StoredString),
+			  sizeof(Persistant::StoredValue),
 			  sizeof(Persistant::Default));
  
  return 0;

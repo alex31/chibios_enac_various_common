@@ -16,8 +16,7 @@ CPPSRC = ../../UAVCAN/persistantParam.cpp \
          testPP.cpp
 
 # Compiler
-CXX := g++-14
-
+CXX := g++-14 -O0 -g3 -fsanitize=address,pointer-subtract,pointer-compare,leak,undefined
 # Compiler Flags
 CXXFLAGS := -Wall -Wextra -std=c++26
 
