@@ -19,9 +19,11 @@
 #include "frozen/string.h"
 #include "frozen/unordered_map.h"
 #include "tinyString.hpp"
+#include "dronecan_msgs.h"
 #include <array>
 #include <type_traits>
 #include <variant>
+
 
 /*
   FAIT :
