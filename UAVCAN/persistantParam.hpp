@@ -63,7 +63,7 @@ using Integer = int64_t;
 /** @brief Represents an empty value in the parameter system. */
 struct NoValue {};
 
-using Default = std::variant<NoValue, frozen::string, Integer, float>;
+using Default = std::variant<NoValue, frozen::string, Integer, bool, float>;
 using NumericValue = std::variant<NoValue, Integer, float>;
 
 /**
@@ -92,6 +92,7 @@ static consteval size_t getTinyStringMemoryPoolSize() {
     constexpr size_t operator()(Persistant::NoValue) const { return 0; }
     constexpr size_t operator()(Integer) const { return 0; }
     constexpr size_t operator()(float) const { return 0; }
+    constexpr size_t operator()(bool) const { return 0; }
     constexpr size_t operator()(const frozen::string &) const {
       return sizeof(TinyString<0, tinyStrSize>);
     }
@@ -107,7 +108,7 @@ static consteval size_t getTinyStringMemoryPoolSize() {
 }
 
 using StoredString = TinyString<getTinyStringMemoryPoolSize(), tinyStrSize>;
-using StoredValue = std::variant<NoValue, StoredString *, Integer, float>;
+  using StoredValue = std::variant<NoValue, StoredString *, Integer, bool, float>;
 
 /**
  * @brief Compile-time validation of a parameter entry.
@@ -143,7 +144,7 @@ consteval bool isValidDefault(const ParamDefault &param) {
               },
               param.min, param.max);
 
-        } else if constexpr (std::is_same_v<T, frozen::string>) {
+        } else {
           return std::visit(
               [](const auto &min_val, const auto &max_val) -> bool {
                 using MinT = std::decay_t<decltype(min_val)>;
@@ -154,7 +155,6 @@ consteval bool isValidDefault(const ParamDefault &param) {
               },
               param.min, param.max);
         }
-        return true; // If v is not Integer or float, no check is needed
       },
       param.v);
 }

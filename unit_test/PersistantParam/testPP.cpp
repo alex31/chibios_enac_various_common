@@ -24,6 +24,9 @@ int main(int argc, char **)
     void operator()(const char* name, float f) const {
       std::cout << name << " is Double = " << f << "; ";
     }
+    void operator()(const char* name, bool b) const {
+      std::cout << name << " is Bool = " << b << "; ";
+    }
     void operator()(const char* name, const frozen::string& s) const {
       std::cout << name << " is String = " << s.data() << "; ";
     }
@@ -51,6 +54,9 @@ std::cout << std::endl;
     }
     void operator()(Persistant::Integer i) const {
       std::cout << "store" << " is Integer = " << i << std::endl;
+    }
+    void operator()(bool b) const {
+      std::cout << "store" << " is Bool = " << b << std::endl;
     }
     void operator()(float f) const {
       std::cout << "store" << " is Double = " << f << std::endl;

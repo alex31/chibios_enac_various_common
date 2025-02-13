@@ -12,6 +12,9 @@ namespace Persistant {
    void operator()(StoredValue& sv, Integer i) const {
      sv = i;
    }
+   void operator()(StoredValue& sv, bool b) const {
+     sv = b;
+    }
    void operator()(StoredValue& sv, float f) const {
      sv = f;
     }
