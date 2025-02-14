@@ -16,9 +16,12 @@ BUILD_DIR    := build
 CXX          := g++-14
 CC           := gcc-14  # Use `CC` for C files
 
+SANITIZE     := -fsanitize=address,pointer-subtract,pointer-compare,leak,undefined
 # Compiler Flags
-CXXFLAGS     := -Wall -Wextra -std=c++26 -O0 -g3 -fsanitize=address,pointer-subtract,pointer-compare,leak,undefined
-CFLAGS       := -Wall -Wextra -std=c23   -O0 -g3 -fsanitize=address,pointer-subtract,pointer-compare,leak,undefined
+# CXXFLAGS     := -Wall -Wextra -std=c++26 -O0 -g3 $(SANITIZE)
+# CFLAGS       := -Wall -Wextra -std=c23   -O0 -g3 $(SANITIZE)
+CXXFLAGS     := -Wall -Wextra -std=c++26 -Og -g3
+CFLAGS       := -Wall -Wextra -std=c23   -Og -g3
 
 # DSDL Paths
 DSDL         := $(RELATIVE)/DSDL

@@ -82,6 +82,13 @@ public:
         return *this;
     }
 
+    constexpr TinyString& assign(const char* str, size_t len) {
+      if (len >= STR_SIZE) len = STR_SIZE - 1;  // Avoid buffer overflow
+      std::memcpy(data, str, len);
+      data[len] = '\0';
+      return *this;
+     }
+
     constexpr TinyString& operator+=(const TinyString& other) {
         append(other.c_str());
         return *this;

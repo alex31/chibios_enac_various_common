@@ -5,7 +5,7 @@
 
 int main(int argc, char **)
 {
-  Persistant::Parameter::populateDefaults();
+  Persistant::Parameter::start();
   constexpr ssize_t index1 = Persistant::Parameter::findIndex("ratio");
   static_assert(index1 >= 0, "index1 not found");
 

@@ -17,7 +17,7 @@
 
 #include "frozen/set.h"
 #include "frozen/string.h"
-#include "frozen/unordered_map.h"
+#include "frozen/map.h"
 #include "tinyString.hpp"
 #include "dronecan_msgs.h"
 #include <array>
@@ -33,17 +33,13 @@
 
 
  ° fonction ou methode qui construit un StoredValue depuis le type fourni par
- DSDL ° fonction ou methode qui construit un message DSDL depuis un StoredValue
+ DSDL
+ ° fonction ou methode qui construit un message DSDL depuis un StoredValue
  ° fonction ou methode qui accede (r/w)  paramList en eeprom/flash
 
  ° gerer les scenarios (trouver meilleur nom) : le nom d'un param doit
  commencer par un prefixe de 5 lettres qui indique le scénario
 
- ° notion de constant string
-   + on ne reserve pas de place dans la ram,
-     un pointeur de char* pointe sur frozen::string en flash
-   + comment on specifie une chaine constante dans nodeParameters.hpp -> un type
- particuler ?
 
  + fonction constexpr qui vérifie que les noms respectent la convention et
  que le scenario existe
@@ -63,7 +59,7 @@ using Integer = int64_t;
 /** @brief Represents an empty value in the parameter system. */
 struct NoValue {};
 
-using Default = std::variant<NoValue, frozen::string, Integer, bool, float>;
+using Default = std::variant<NoValue, Integer, float, bool, frozen::string>;
 using NumericValue = std::variant<NoValue, Integer, float>;
 
 /**
@@ -108,7 +104,8 @@ static consteval size_t getTinyStringMemoryPoolSize() {
 }
 
 using StoredString = TinyString<getTinyStringMemoryPoolSize(), tinyStrSize>;
-  using StoredValue = std::variant<NoValue, StoredString *, Integer, bool, float>;
+using StoredValue = std::variant<NoValue, Integer, float, bool, StoredString *>;
+
 
 /**
  * @brief Compile-time validation of a parameter entry.
@@ -181,8 +178,8 @@ static_assert(validateDefaultsList(params_list) < 0,
               "❌ params_list contains invalid ParamDefault entries!");
 
 /// Frozen map for fast parameter lookup.
-constexpr auto frozenParameters = frozen::make_unordered_map(params_list);
-
+//  constexpr auto frozenParameters = frozen::make_unordered_map(params_list);
+  constexpr auto frozenParameters = frozen::make_map(params_list);
 /**
  * @brief Provides access to stored parameter values.
  */
@@ -197,11 +194,15 @@ public:
    */
   constexpr static ssize_t findIndex(const frozen::string key);
 
-  /**
-   * @brief Populate default values into the parameter list.
-   */
-  static void populateDefaults();
+  constexpr static ssize_t findIndex(const uint8_t *str) {
+    return findIndex(frozen::string(reinterpret_cast<const char *>(str)));
+  }
 
+  /**
+   * @brief start the module
+   */
+  static void start() {populateDefaults();}
+  
   /**
    * @brief Retrieve a parameter by index.
    * @param index The parameter index.
@@ -253,11 +254,17 @@ public:
       const float &value);
 
 private:
+  /**  
+   * @brief Populate default values into the parameter list.
+   */
+  static void populateDefaults();
+
   static std::array<StoredValue, params_list_len>
       paramList; ///< Runtime storage of parameter values
 };
 
-constexpr ssize_t Parameter::findIndex(const frozen::string key) {
+  
+  constexpr ssize_t Parameter::findIndex(const frozen::string key) {
   const auto it = frozenParameters.find(key);
   if (it == frozenParameters.end()) {
     return -1; // Key not found
@@ -268,7 +275,7 @@ constexpr ssize_t Parameter::findIndex(const frozen::string key) {
 constexpr std::pair<StoredValue &, const ParamDefault &>
 Parameter::find(const ssize_t index) {
   assert((index >= 0) && (index < params_list_len));
-  return {paramList[index], params_list[index].second};
+  return {paramList[index], std::next(frozenParameters.begin(), index)->second};
 }
 
 constexpr std::pair<StoredValue &, const ParamDefault &>
@@ -325,4 +332,14 @@ Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
   store = clamp(deflt, value);
 }
 
+
+void toUavcan(const StoredValue& storedValue, uavcan_protocol_param_Value& uavcanValue);
+void toUavcan(const Default& defaultValue, uavcan_protocol_param_Value& uavcanValue);
+void fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue);
+void toUavcan(const NumericValue& numericValue, uavcan_protocol_param_NumericValue& uavcanValue);
+void fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue);
+
+void getResponse(uavcan_protocol_param_GetSetRequest &req,
+		 uavcan_protocol_param_GetSetResponse& resp);
+  
 } // namespace Persistant
