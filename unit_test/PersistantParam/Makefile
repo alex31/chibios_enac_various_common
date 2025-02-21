@@ -20,8 +20,8 @@ SANITIZE     := -fsanitize=address,pointer-subtract,pointer-compare,leak,undefin
 # Compiler Flags
 # CXXFLAGS     := -Wall -Wextra -std=c++26 -O0 -g3 $(SANITIZE)
 # CFLAGS       := -Wall -Wextra -std=c23   -O0 -g3 $(SANITIZE)
-CXXFLAGS     := -Wall -Wextra -std=c++26 -Og -g3
-CFLAGS       := -Wall -Wextra -std=c23   -Og -g3
+CXXFLAGS     := -Wall -Wextra -std=c++26 -O0 -g3
+CFLAGS       := -Wall -Wextra -std=c23   -O0 -g3
 
 # DSDL Paths
 DSDL         := $(RELATIVE)/DSDL
@@ -38,7 +38,7 @@ DSDLC_CSRC   := $(wildcard $(DSDLC)/src/*.c)
 # C++ sources (filenames only!)
 CPPSRC := \
   persistantParam.cpp \
-  customAllocator.cpp \
+  persistantStorage.cpp \
   testPP.cpp
 
 # C sources (filenames only!)

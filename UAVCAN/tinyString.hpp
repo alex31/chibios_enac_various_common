@@ -62,6 +62,12 @@ public:
     constexpr size_t capacity() const { return STR_SIZE - 1; }
     constexpr const char* c_str() const { return data; }
 
+  // Iterator support
+    constexpr char* begin() { return data; }
+    constexpr char* end() { return data + len; }
+    
+    constexpr const char* begin() const { return data; }
+    constexpr const char* end() const { return data + len; }
     constexpr void clear() {
         len = 0;
         data[0] = '\0';
@@ -82,8 +88,8 @@ public:
         return *this;
     }
 
-    constexpr TinyString& assign(const char* str, size_t len) {
-      if (len >= STR_SIZE) len = STR_SIZE - 1;  // Avoid buffer overflow
+    constexpr TinyString& assign(const char* str, size_t _len) {
+      len = _len >= STR_SIZE ? STR_SIZE - 1 : _len;
       std::memcpy(data, str, len);
       data[len] = '\0';
       return *this;

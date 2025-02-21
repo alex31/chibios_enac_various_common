@@ -1,17 +1,36 @@
 #include "persistantParam.hpp"
+#include "persistantStorage.hpp"
 #include <cstdio>
 #include <format>
 #include <iostream>
+#include <eeprom.hpp>
+
+
+namespace {
+   Persistant::EepromStoreHandle eepromHandle = {
+     .writeFn = eeprom_write<256>,
+     .readFn = eeprom_read<256>,
+     .getLen = eeprom_getlen<256>
+   };
+}
+
+
 
 int main(int argc, char **)
 {
-  Persistant::Parameter::start();
+  Persistant::Storage storage(eepromHandle);
+  
+  assert(storage.storeAll() == true);
+
+  // const ssize_t searchIndex = storage.binarySearch(0, "CONST.PARAMETERS.CRC32");
+  // printf("searchIndex ('CONST.PARAMETERS.CRC32') = %ld\n", searchIndex);
+
   constexpr ssize_t index1 = Persistant::Parameter::findIndex("ratio");
-  static_assert(index1 >= 0, "index1 not found");
+  static_assert(index1 >= 0, "ratio not found");
 
   ssize_t index2 = Persistant::Parameter::findIndex("ration");
   std::cout << std::format("argc = {} i1 = {}, i2 = {}\n",
-			   argc,index1, index2);
+			   argc, index1, index2);
 
   
   struct Overload {
@@ -49,45 +68,55 @@ int main(int argc, char **)
 std::cout << std::endl;
  
  struct OverloadDyn {
-    void operator()(Persistant::NoValue) const {
-      std::cout << "store" << " has no Value !! \n";
+   void operator()(const ssize_t i, const frozen::string& name, Persistant::NoValue) const {
+     std::cout << "store " << i << ' ' << name.data() << " has no Value !! \n";
     }
-    void operator()(Persistant::Integer i) const {
-      std::cout << "store" << " is Integer = " << i << std::endl;
+    void operator()(const ssize_t i, const frozen::string& name, Persistant::Integer j) const {
+      std::cout << "store " << i << ' ' << name.data() << " is Integer = " << j << std::endl;
     }
-    void operator()(bool b) const {
-      std::cout << "store" << " is Bool = " << b << std::endl;
+    void operator()(const ssize_t i, const frozen::string& name, bool b) const {
+      std::cout << "store " << i << ' ' << name.data() << " is Bool = " << b << std::endl;
     }
-    void operator()(float f) const {
-      std::cout << "store" << " is Double = " << f << std::endl;
+    void operator()(const ssize_t i, const frozen::string& name, float f) const {
+      std::cout << "store " << i << ' ' << name.data() << " is Double = " << f << std::endl;
     }
-    void operator()(Persistant::StoredString *s) const {
-      std::cout << "store" << " is String = " << s->c_str() << std::endl;
+    void operator()(const ssize_t i, const frozen::string& name, Persistant::StoredString *s) const {
+      std::cout << "store " << i << ' ' << name.data() << " is String = " << s->c_str() << std::endl;
     }
   };
 
 
- for (ssize_t i=0; i < Persistant::params_list_len; i++) {  
-     std::visit([&](const auto& param_ptr) {
-       OverloadDyn{}(param_ptr);  
-     }, Persistant::Parameter::find(i).first);
-   }
-
- const char* ratio = "ratio";
- 
- const auto& p = Persistant::Parameter::find("power");
- const auto& p2 = Persistant::Parameter::find(ratio);
- Persistant::Parameter::set(p, 4200L);
- Persistant::Integer dynval = 2000;
- Persistant::Parameter::set(p, dynval);
- Persistant::Parameter::set(p2, 0.42f);
-
- for (ssize_t i=0; i < Persistant::params_list_len; i++) {  
+ for (ssize_t i=0; i < Persistant::params_list_len; i++) {
+   const frozen::string& paramName =  std::next(Persistant::frozenParameters.begin(), i)->first;
    std::visit([&](const auto& param_ptr) {
-     OverloadDyn{}(param_ptr);  
+     OverloadDyn{}(i, paramName, param_ptr);  
    }, Persistant::Parameter::find(i).first);
  }
+ std::cout << std::endl << std::endl;
+ 
+ const char* ratio = "ratio";
 
+ constexpr ssize_t powerIndex = Persistant::Parameter::findIndex("power");
+ const auto& p = Persistant::Parameter::find(powerIndex);
+ const auto& p2 = Persistant::Parameter::find(ratio);
+ // const auto& p6 = Persistant::Parameter::find("title");
+
+ Persistant::Integer dynval = Persistant::Parameter::get<Integer>(p);
+ if (dynval >= 100)
+   dynval = 1;
+ Persistant::Parameter::set(p, dynval * 2);
+ Persistant::Parameter::set(p2, 0.42f);
+ storage.store(powerIndex);
+ 
+
+ for (ssize_t i=0; i < Persistant::params_list_len; i++) {  
+   const frozen::string& paramName =  std::next(Persistant::frozenParameters.begin(), i)->first;
+   std::visit([&](const auto& param_ptr) {
+     OverloadDyn{}(i, paramName, param_ptr);
+   }, Persistant::Parameter::find(i).first);
+ }
+ std::cout << std::endl << std::endl;
+ 
  
  std::cout << std::format("noval = {}, float = {}; Persistant::Integer = {}\n"
 			  "tinyString poolSize = {}; storedString = {}\n"
@@ -99,6 +128,35 @@ std::cout << std::endl;
 			  sizeof(Persistant::StoredString),
 			  sizeof(Persistant::StoredValue),
 			  sizeof(Persistant::Default));
+
+
+ Persistant::StoreSerializeBuffer serialBuffer;
+ Persistant::Parameter::serializeStoredValue(6, serialBuffer);
+ Persistant::Parameter::set(p2, 100.0f);
+ const bool success = Persistant::Parameter::deserializeStoredValue(6, serialBuffer);
+ const auto& name = Persistant::Parameter::deserializeGetName(serialBuffer);
+ printf("stored param name = \"%s\" status = %d\n",
+	reinterpret_cast<const char*>(name.data()),
+	success);
+
+ for (ssize_t i=0; i < Persistant::params_list_len; i++) {  
+   const frozen::string& paramName =  std::next(Persistant::frozenParameters.begin(), i)->first;
+   std::visit([&](const auto& param_ptr) {
+     OverloadDyn{}(i, paramName, param_ptr);
+   }, Persistant::Parameter::find(i).first);
+ }
+ std::cout << std::endl << std::endl;
+
+ assert(storage.restoreAll() == true);
  
+  for (ssize_t i=0; i < Persistant::params_list_len; i++) {  
+   const frozen::string& paramName =  std::next(Persistant::frozenParameters.begin(), i)->first;
+   std::visit([&](const auto& param_ptr) {
+     OverloadDyn{}(i, paramName, param_ptr);
+   }, Persistant::Parameter::find(i).first);
+ }
+ std::cout << std::endl << std::endl;
+
+
  return 0;
 }
