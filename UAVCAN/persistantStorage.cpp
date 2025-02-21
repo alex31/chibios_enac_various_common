@@ -56,43 +56,22 @@ namespace Persistant {
   Storage::Storage(const EepromStoreHandle& _handle) : handle(_handle)
   {
     Parameter::populateDefaults();
-    StoredValue countAct = get(getActive(), "INTERNAL.STORAGE.BANK_SWAP");
-    StoredValue countAlt = get(getAlternate(), "INTERNAL.STORAGE.BANK_SWAP");
-    Integer bswap = 0;
-    if (std::holds_alternative<Integer>(countAct) &&
-	std::holds_alternative<Integer>(countAlt)) {
-      if (std::get<Integer>(countAlt) > std::get<Integer>(countAct)) {
-	swapActive();
-      }
-      bswap = std::max(std::get<Integer>(countAlt), std::get<Integer>(countAct)) + 1;
-    }
     
     if (not restoreAll()) {
-      printf("DBG> restore from bank0 failed\n");
-      swapActive();
-      if (not restoreAll()) {
-	printf("DBG> restore from bank1 failed\n");
-    	partialRestoreFromAlternate();
-    	Parameter::enforceMinMax();
-    	storeAll();
-      } else {
-	 printf("DBG> restore from bank1 success\n");
-      }
+      printf("DBG> total restore failed\n");
+      partialRestore();
+      Parameter::enforceMinMax();
+      storeAll();
     } else {
-      printf("DBG> restore from bank0 success\n");
+      printf("DBG> total restore success\n");
     }
-     constexpr ssize_t bankSwapIdx = Persistant::Parameter::findIndex("INTERNAL.STORAGE.BANK_SWAP");
-     static_assert(bankSwapIdx >= 0, "INTERNAL.STORAGE.BANK_SWAP must exist");
-     const auto& bankSwapParam = Persistant::Parameter::find(bankSwapIdx);
-     Persistant::Parameter::set(bankSwapParam, bswap);
-     store(bankSwapIdx);
   }
-
+  
   bool Storage::store(size_t index, const StoreSerializeBuffer& buffer)
   {
-    return handle.writeFn(activeBank, index, buffer.data(), buffer.size());
+    return handle.writeFn(index, buffer.data(), buffer.size());
   }
-
+  
   bool Storage::store(size_t index)
   {
     StoreSerializeBuffer buffer;
@@ -100,10 +79,10 @@ namespace Persistant {
     return store(index, buffer);
   }
 
-  bool Storage::restore(uint8_t bank, size_t index, StoreSerializeBuffer& buffer)
+  bool Storage::restore(size_t index, StoreSerializeBuffer& buffer)
   {
     size_t size = buffer.capacity();
-    if (handle.readFn(bank, index, buffer.data(), size)) {
+    if (handle.readFn(index, buffer.data(), size)) {
       buffer.uninitialized_resize(size);
       return size != 0;
     } else {
@@ -113,10 +92,10 @@ namespace Persistant {
   
 
   
-  bool Storage::restore(uint8_t bank, size_t index)
+  bool Storage::restore(size_t index)
   {
     StoreSerializeBuffer buffer;
-    if (restore(bank, index, buffer) != true) {
+    if (restore(index, buffer) != true) {
       return false;
     }
     const auto& name = Parameter::deserializeGetName(buffer);
@@ -144,6 +123,22 @@ namespace Persistant {
     return true;
   }
   
+  bool Storage::restore(size_t frozenIndex, size_t storeIndex)
+  {
+    StoreSerializeBuffer buffer;
+    if (restore(storeIndex, buffer) != true) {
+      return false;
+    }
+    const auto& name = Parameter::deserializeGetName(buffer);
+    printf("DBG> restore name = %s\n", name.data());
+    
+    // not begin with CONST and return true in both cases
+    if (compareStrSpan(name, "CONST."_u, true) != std::strong_ordering::equal) {
+      Parameter::deserializeStoredValue(frozenIndex, buffer);
+    }
+    return true;
+  }
+  
   bool Storage::storeAll()
   {
     bool success = true;
@@ -157,15 +152,15 @@ namespace Persistant {
   {
     bool success = true;
     for (size_t index=0; index < params_list_len; index++) {
-      success = restore(activeBank, index) && success;
+      success = restore(index) && success;
     }
     return success;
   }
   
 // Binary search function (returns index of found string or -1 if not found)
-  ssize_t Storage::binarySearch(uint8_t bank, const frozen::string& ftarget)
+  ssize_t Storage::binarySearch(const frozen::string& ftarget)
   {
-    const std::size_t total_strings = handle.getLen(bank);
+    const std::size_t total_strings = handle.getLen();
     if (total_strings == 0)
       return -1;
 
@@ -181,7 +176,7 @@ namespace Persistant {
         std::size_t mid = low + (high - low) / 2;
 	StoreSerializeBuffer buffer;
 	size_t size = buffer.capacity();
-	if (not handle.readFn(activeBank, mid, buffer.data(), size)) {
+	if (not handle.readFn(mid, buffer.data(), size)) {
 	  return -1;
 	}
 	buffer.uninitialized_resize(size);
@@ -200,29 +195,29 @@ namespace Persistant {
     return -1;  // Not found
 }
   
- void Storage::partialRestoreFromAlternate()
+ void Storage::partialRestore()
  {
    for (size_t idx=0; idx < params_list_len; idx++) {
      const auto& paramName = std::next(frozenParameters.begin(), idx)->first;
-     const ssize_t altIndex = binarySearch(getAlternate(), paramName);
-     if (altIndex >= 0) {
-       if (restore(getAlternate(), altIndex) != true) {
+     const ssize_t paramIndex = binarySearch(paramName);
+     if (paramIndex >= 0) {
+       if (restore(idx, paramIndex) != true) {
 	 printf("DBG> partial restore alt('%s') ***FAILED***\n", paramName.data());
        } else {
-	 printf("DBG> partial restore '%s' from bank %u is SUCCESS\n", paramName.data(), getAlternate());
+	 printf("DBG> partial restore '%s' is SUCCESS\n", paramName.data());
        }
      } else {
-       printf("DBG> %s not found in alternate\n", paramName.data());
+       printf("DBG> %s not found in storage\n", paramName.data());
      }
    }
  }
   
-  StoredValue Storage::get(uint8_t bank, const frozen::string& paramName)
+  StoredValue Storage::get(const frozen::string& paramName)
   {
-    const ssize_t index = binarySearch(bank, paramName);
+    const ssize_t index = binarySearch(paramName);
     if (index >= 0) {
       StoreSerializeBuffer buffer;
-      if (restore(bank, index, buffer) != true) {
+      if (restore(index, buffer) != true) {
 	return {};
       }
       StoredValue value;

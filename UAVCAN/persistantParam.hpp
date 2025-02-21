@@ -29,27 +29,13 @@
  TODO :
 
 
- ° utiliser le stockage au demarrage :
-    ° restoreAll  (on se sait pas si c'est l'active !)
-    ° si erreur : (au niveau du CRC ou autre) :
-        swap de bank active
-	restoreAll
-        si erreur :
-	   on mets les param par defaut
-	   restorePartial from alternate
-	   enforce les min max
-	   storeAll
-
-
+ 
  ° tester les fonctions de conversion StoredParam <-> UAVCAN
  
  ° stoquer si getSet
+
+ ° refaire un tour : style, nom des fonctions/methodes (restore ??)
  
- ° modifier le stockage pour stoquer en 1er un crc sur les defaults
-   + si le crc associé aux defaults n'est pas le crc stoqué :
-     on passe sur l'autre bank : on restore les paramètres qui ont le même nom et le même type
-
-
 */
 
 namespace Persistant {
@@ -269,8 +255,13 @@ private:
 
 constexpr std::pair<StoredValue &, const ParamDefault &>
 Parameter::find(const ssize_t index) {
-  assert((index >= 0) && (index < params_list_len));
-  return {storedParamsList[index], std::next(frozenParameters.begin(), index)->second};
+  static constexpr ParamDefault empty {};
+  assert(index >= 0);
+  if (index < params_list_len) {
+    return {storedParamsList[index], std::next(frozenParameters.begin(), index)->second};
+  } else {
+    return {storedParamsList[index], empty};
+  }
 }
 
 constexpr std::pair<StoredValue &, const ParamDefault &>

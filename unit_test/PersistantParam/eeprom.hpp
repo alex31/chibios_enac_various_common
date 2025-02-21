@@ -9,14 +9,8 @@
 
 
 
-template<size_t RECORD_MAX_SIZE>
-void eeprom_write(uint8_t bank, size_t recordIndex, const void *data, size_t size);
-
-template<size_t RECORD_MAX_SIZE>
-void eeprom_read(uint8_t bank, size_t recordIndex, void *data, size_t& size);
-
 namespace {
-  constexpr const char* EEPROM_FILE[] = {"eeprom_data_1.bin", "eeprom_data_2.bin"} ;
+  constexpr const char* EEPROM_FILE = "eeprom_data.bin";
   constexpr size_t EEPROM_SIZE = 2048 * 1024;  // Simulated EEPROM total size
   constexpr size_t HEADER_SIZE = sizeof(uint32_t);  // 4-byte size metadata
 }
@@ -31,8 +25,7 @@ namespace {
 
 
 template<size_t RECORD_MAX_SIZE=256>
-bool eeprom_write(uint8_t bank, size_t recordIndex, const void *data, size_t size) {
-  assert(bank <= 1);
+bool eeprom_write(size_t recordIndex, const void *data, size_t size) {
   if (size > RECORD_MAX_SIZE)
     return false;
   recordIndex *= RECORD_MAX_SIZE;
@@ -41,13 +34,13 @@ bool eeprom_write(uint8_t bank, size_t recordIndex, const void *data, size_t siz
     return false;
   }
 
-  std::fstream eeprom(EEPROM_FILE[bank], std::ios::in | std::ios::out | std::ios::binary);
+  std::fstream eeprom(EEPROM_FILE, std::ios::in | std::ios::out | std::ios::binary);
   if (!eeprom) {
-    std::ofstream newFile(EEPROM_FILE[bank], std::ios::binary | std::ios::trunc);
+    std::ofstream newFile(EEPROM_FILE, std::ios::binary | std::ios::trunc);
     newFile.seekp(EEPROM_SIZE - 1);
     newFile.write("", 1);  // Extend file
     newFile.close();
-    eeprom.open(EEPROM_FILE[bank], std::ios::in | std::ios::out | std::ios::binary);
+    eeprom.open(EEPROM_FILE, std::ios::in | std::ios::out | std::ios::binary);
   }
 
   // Write size header
@@ -68,8 +61,7 @@ bool eeprom_write(uint8_t bank, size_t recordIndex, const void *data, size_t siz
  * @param size In: buffer size, Out: actual size read.
  */
 template<size_t RECORD_MAX_SIZE=256>
-bool eeprom_read(uint8_t bank, size_t recordIndex, void *data, size_t &size) {
-  assert(bank <= 1);
+bool eeprom_read(size_t recordIndex, void *data, size_t& size) {
   recordIndex *= RECORD_MAX_SIZE;
   if (recordIndex + HEADER_SIZE > EEPROM_SIZE) {
     std::cerr << "Invalid record index.\n";
@@ -77,7 +69,7 @@ bool eeprom_read(uint8_t bank, size_t recordIndex, void *data, size_t &size) {
     return false;
   }
 
-  std::ifstream eeprom(EEPROM_FILE[bank], std::ios::binary);
+  std::ifstream eeprom(EEPROM_FILE, std::ios::binary);
   if (!eeprom) {
     std::cerr << "EEPROM file not found!\n";
     size = 0;
@@ -105,14 +97,11 @@ bool eeprom_read(uint8_t bank, size_t recordIndex, void *data, size_t &size) {
 
 /**
  * @brief Finds the highest index where data is stored in EEPROM.
- * @param bank EEPROM file index.
  * @return The highest record index where valid data is found. Returns -1 if empty.
  */
 template<size_t RECORD_MAX_SIZE = 256>
-size_t eeprom_getlen(uint8_t bank) {
-    assert(bank <= 1);
-
-    std::ifstream eeprom(EEPROM_FILE[bank], std::ios::binary);
+size_t eeprom_getlen() {
+    std::ifstream eeprom(EEPROM_FILE, std::ios::binary);
     if (!eeprom) {
         std::cerr << "EEPROM file not found!\n";
         return 0;
