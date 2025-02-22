@@ -187,7 +187,7 @@ namespace Persistant {
     }, numericValue);
   }
 
-  void toUavcan(const Default& defaultValue, uavcan_protocol_param_Value& uavcanValue)
+  void toUavcan(const FrozenDefault& defaultValue, uavcan_protocol_param_Value& uavcanValue)
   {    std::visit([&](const auto& val) {
     using T = std::decay_t<decltype(val)>;
       

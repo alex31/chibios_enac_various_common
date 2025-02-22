@@ -99,12 +99,16 @@ std::cout << std::endl;
  constexpr ssize_t powerIndex = Persistant::Parameter::findIndex("power");
  const auto& p = Persistant::Parameter::find(powerIndex);
  const auto& p2 = Persistant::Parameter::find(ratio);
+ auto& [power_val, _] = p;
+ uavcan_protocol_param_Value uavCan_power;
+ toUavcan(power_val,  uavCan_power);
+ if (uavCan_power.integer_value >= 100)
+   uavCan_power.integer_value = 1;
+ uavCan_power.integer_value *= 2;
+ fromUavcan(uavCan_power, power_val);
+ 
  // const auto& p6 = Persistant::Parameter::find("title");
 
- Persistant::Integer dynval = Persistant::Parameter::get<Integer>(p);
- if (dynval >= 100)
-   dynval = 1;
- Persistant::Parameter::set(p, dynval * 2);
  Persistant::Parameter::set(p2, 0.42f);
  storage.store(powerIndex);
  
@@ -127,7 +131,7 @@ std::cout << std::endl;
 			  Persistant::getTinyStringMemoryPoolSize(),
 			  sizeof(Persistant::StoredString),
 			  sizeof(Persistant::StoredValue),
-			  sizeof(Persistant::Default));
+			  sizeof(Persistant::FrozenDefault));
 
 
  Persistant::StoreSerializeBuffer serialBuffer;

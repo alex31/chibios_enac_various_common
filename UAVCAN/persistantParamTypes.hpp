@@ -20,7 +20,7 @@ using Integer = int64_t;
 /** @brief Represents an empty value in the parameter system. */
 struct NoValue {};
 
-using Default = std::variant<NoValue, Integer, float, bool, frozen::string>;
+using FrozenDefault = std::variant<NoValue, Integer, float, bool, frozen::string>;
 using NumericValue = std::variant<NoValue, Integer, float>;
 
 /**
@@ -29,7 +29,7 @@ using NumericValue = std::variant<NoValue, Integer, float>;
 struct ParamDefault {
   NumericValue min = (NoValue){};
   NumericValue max = (NoValue){};
-  Default v = (NoValue){};
+  FrozenDefault v = (NoValue){};
 };
 
 /// Default parameter list stored in ROM.

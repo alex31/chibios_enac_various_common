@@ -87,7 +87,7 @@ crc32_hash_pod(std::uint32_t crc, const T& value)
 //--------------------------------------------------------------------
 // 5) Hashing for your variant types
 //--------------------------------------------------------------------
-constexpr std::uint32_t hashVariant(std::uint32_t crc, const Default& dv);
+constexpr std::uint32_t hashVariant(std::uint32_t crc, const FrozenDefault& dv);
 
 constexpr std::uint32_t hashVariant(std::uint32_t crc, const NumericValue& nv);
 
@@ -113,7 +113,7 @@ constexpr std::uint32_t hashParamDefaultEntry(std::uint32_t crc, const ParamDefa
 //--------------------------------------------------------------------
 // 6) Provide the variant visitation logic
 //--------------------------------------------------------------------
-constexpr std::uint32_t hashVariant(std::uint32_t crc, const Default& dv)
+constexpr std::uint32_t hashVariant(std::uint32_t crc, const FrozenDefault& dv)
 {
     return std::visit(
         [&](auto&& arg) -> std::uint32_t {

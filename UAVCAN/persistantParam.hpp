@@ -29,13 +29,26 @@
  TODO :
 
 
+ ° replacer les printf par des DebugTrace
  
- ° tester les fonctions de conversion StoredParam <-> UAVCAN
+ ° /fix : fonctions de conversion UAV CAN : enforce minmax
  
- ° stoquer si getSet
+ ° tester les fonctions de conversion StoredParam <-> UAVCAN pour tous les types
+   int : done
+ 
+ ° stoquer si getSet from UAVCan
 
  ° refaire un tour : style, nom des fonctions/methodes (restore ??)
- 
+
+ ° gestion CONST.PARAMETERS.CRC32 par get direct à haut niveau plutôt
+   que dans persistantStorage.cpp ?
+
+ ° gain en mémoire : remplacer le stockage d'un variant par le stockage du type
+   reel, en ayant un calcul constexpr de la place prise dimensionant un memory pool.
+   Pour chaque paramètre, on a une fonction constexpr qui donne son adresse dans le tableau.
+   Si le nom est literal, on force la resolution consteval du calcul de l'adresse, sion on parcourt
+   la map frozen.
+
 */
 
 namespace Persistant {
@@ -342,7 +355,7 @@ Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
   }
 
 void toUavcan(const StoredValue& storedValue, uavcan_protocol_param_Value& uavcanValue);
-void toUavcan(const Default& defaultValue, uavcan_protocol_param_Value& uavcanValue);
+void toUavcan(const FrozenDefault& defaultValue, uavcan_protocol_param_Value& uavcanValue);
 void fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue);
 void toUavcan(const NumericValue& numericValue, uavcan_protocol_param_NumericValue& uavcanValue);
 void fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue);

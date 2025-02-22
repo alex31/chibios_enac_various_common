@@ -132,7 +132,7 @@ namespace Persistant {
     const auto& name = Parameter::deserializeGetName(buffer);
     printf("DBG> restore name = %s\n", name.data());
     
-    // not begin with CONST and return true in both cases
+    // discard CONST\..* parameters
     if (compareStrSpan(name, "CONST."_u, true) != std::strong_ordering::equal) {
       Parameter::deserializeStoredValue(frozenIndex, buffer);
     }

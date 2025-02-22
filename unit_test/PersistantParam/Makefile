@@ -22,6 +22,8 @@ CXXFLAGS     := -Wall -Wextra -std=c++26 -O0 -g3 $(SANITIZE)
 CFLAGS       := -Wall -Wextra -std=c23   -O0 -g3 $(SANITIZE)
 # CXXFLAGS     := -Wall -Wextra -std=c++26 -Og -g3
 # CFLAGS       := -Wall -Wextra -std=c23   -Og -g3
+# CXXFLAGS     := -Wall -Wextra -std=c++26 -Os -flto
+# CFLAGS       := -Wall -Wextra -std=c23   -Os -flto
 
 # DSDL Paths
 DSDL         := $(RELATIVE)/DSDL
