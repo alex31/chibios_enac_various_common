@@ -22,7 +22,6 @@ template<size_t STORAGE_SIZE>
 void* SimpleMemoryPool<STORAGE_SIZE>::allocate(std::size_t size) {
   size = size == 1 ? 0 : size;
   std::size_t alignedOffset = (offset + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
-  printf("off = %lu, aligned = %lu\n", offset, alignedOffset);
   
   if (alignedOffset + size > STORAGE_SIZE) {
     return nullptr;  // ❌ Out of memory, return null pointer

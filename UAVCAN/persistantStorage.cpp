@@ -6,6 +6,15 @@
 #include <ranges>
 #include <algorithm>
 
+#if defined(__x86_64__) && defined(__linux__)
+#define TARGET_LINUX_X86_64
+#define DebugTrace(fmt, ...) printf (fmt "\r\n", ## __VA_ARGS__ )
+#define chDbgAssert(c,m) assert(c && m)
+#elif defined(__arm__) || defined(__aarch64__) || defined(__ARM_ARCH)
+#define TARGET_ARM_BARE_METAL
+#else
+#error "Unsupported architecture!"
+#endif
 
 
 namespace {
@@ -56,14 +65,17 @@ namespace Persistant {
   Storage::Storage(const EepromStoreHandle& _handle) : handle(_handle)
   {
     Parameter::populateDefaults();
+    chDbgAssert(handle.writeFn != nullptr, "handle.writeFn is null");
+    chDbgAssert(handle.readFn != nullptr, "handle.writeFn is null");
+    chDbgAssert(handle.getLen != nullptr, "handle.writeFn is null");
     
     if (not restoreAll()) {
-      printf("DBG> total restore failed\n");
+      DebugTrace("DBG> total restore failed\n");
       partialRestore();
       Parameter::enforceMinMax();
       storeAll();
     } else {
-      printf("DBG> total restore success\n");
+      DebugTrace("DBG> total restore success\n");
     }
   }
   
@@ -99,7 +111,7 @@ namespace Persistant {
       return false;
     }
     const auto& name = Parameter::deserializeGetName(buffer);
-    printf("DBG> restore name = %s\n", name.data());
+    DebugTrace("DBG> restore name = %s\n", name.data());
     // for CRC32 : we don't restore, and if the value is different
     // we return false
     if (compareStrSpan(name, "CONST.PARAMETERS.CRC32"_u) == std::strong_ordering::equal) {
@@ -130,7 +142,7 @@ namespace Persistant {
       return false;
     }
     const auto& name = Parameter::deserializeGetName(buffer);
-    printf("DBG> restore name = %s\n", name.data());
+    DebugTrace("DBG> restore name = %s\n", name.data());
     
     // discard CONST\..* parameters
     if (compareStrSpan(name, "CONST."_u, true) != std::strong_ordering::equal) {
@@ -202,12 +214,12 @@ namespace Persistant {
      const ssize_t paramIndex = binarySearch(paramName);
      if (paramIndex >= 0) {
        if (restore(idx, paramIndex) != true) {
-	 printf("DBG> partial restore alt('%s') ***FAILED***\n", paramName.data());
+	 DebugTrace("DBG> partial restore alt('%s') ***FAILED***\n", paramName.data());
        } else {
-	 printf("DBG> partial restore '%s' is SUCCESS\n", paramName.data());
+	 DebugTrace("DBG> partial restore '%s' is SUCCESS\n", paramName.data());
        }
      } else {
-       printf("DBG> %s not found in storage\n", paramName.data());
+       DebugTrace("DBG> %s not found in storage\n", paramName.data());
      }
    }
  }

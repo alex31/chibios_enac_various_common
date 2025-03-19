@@ -29,12 +29,7 @@
  TODO :
 
 
- ° replacer les printf par des DebugTrace
- 
  ° /fix : fonctions de conversion UAV CAN : enforce minmax
- 
- ° tester les fonctions de conversion StoredParam <-> UAVCAN pour tous les types
-   int : done
  
  ° stoquer si getSet from UAVCan
 
@@ -245,6 +240,7 @@ public:
    * @brief Populate default values into the parameter list.
    */
   static void populateDefaults();
+  static void enforceMinMax(size_t index);
   static void enforceMinMax();
     
 private:
@@ -269,8 +265,7 @@ private:
 constexpr std::pair<StoredValue &, const ParamDefault &>
 Parameter::find(const ssize_t index) {
   static constexpr ParamDefault empty {};
-  assert(index >= 0);
-  if (index < params_list_len) {
+  if ((index >= 0) and (index < params_list_len)) {
     return {storedParamsList[index], std::next(frozenParameters.begin(), index)->second};
   } else {
     return {storedParamsList[index], empty};
@@ -356,9 +351,9 @@ Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
 
 void toUavcan(const StoredValue& storedValue, uavcan_protocol_param_Value& uavcanValue);
 void toUavcan(const FrozenDefault& defaultValue, uavcan_protocol_param_Value& uavcanValue);
-void fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue);
+bool fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue);
 void toUavcan(const NumericValue& numericValue, uavcan_protocol_param_NumericValue& uavcanValue);
-void fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue);
+bool fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue);
 
 StoreData getSetResponse(uavcan_protocol_param_GetSetRequest &req,
 			 uavcan_protocol_param_GetSetResponse& resp);

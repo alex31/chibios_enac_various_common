@@ -1,6 +1,17 @@
 #include "persistantParam.hpp"
-#include <cassert>
 #include <bit>  // For std::bit_cast
+
+#if defined(__x86_64__) && defined(__linux__)
+#define TARGET_LINUX_X86_64
+#include <cassert>
+#define chDbgAssert(c,m) assert(c && m)
+#elif defined(__arm__) || defined(__aarch64__) || defined(__ARM_ARCH)
+#define TARGET_ARM_BARE_METAL
+#include "ch.h"
+#else
+#error "Unsupported architecture!"
+#endif
+
 
 namespace Persistant {
   consteval std::int64_t computeParamsListCRC()
@@ -48,23 +59,23 @@ namespace Persistant {
  struct EnforceMinMax {
    void operator()(StoredValue&, NoValue,  NoValue) const {
     }
-   void operator()(StoredValue&, NoValue,  Integer) const {
-     assert(0 && "internal fault");
+   void operator()(StoredValue& sv, NoValue,  Integer max) const {
+     sv = std::min(max, std::get<Integer>(sv));
     }
-   void operator()(StoredValue&, NoValue,  float) const {
-     assert(0 && "internal fault");
+   void operator()(StoredValue& sv, NoValue,  float max) const {
+     sv = std::min(max, std::get<float>(sv));
     }
-   void operator()(StoredValue&, Integer, NoValue) const {
-     assert(0 && "internal fault");
+   void operator()(StoredValue& sv, Integer min, NoValue) const {
+     sv = std::max(min, std::get<Integer>(sv));
     }
-   void operator()(StoredValue&, float, NoValue) const {
-     assert(0 && "internal fault");
+   void operator()(StoredValue& sv, float min , NoValue) const {
+      sv = std::max(min, std::get<float>(sv));
     }
    void operator()(StoredValue&, float, Integer) const {
-     assert(0 && "internal fault");
+     chDbgAssert(false,  "internal fault");
     }
    void operator()(StoredValue&, Integer, float) const {
-     assert(0 && "internal fault");
+     chDbgAssert(false,  "internal fault");
     }
    void operator()(StoredValue& sv, Integer min, Integer max) const {
      sv = std::max(min, std::min(std::get<Integer>(sv), max));
@@ -74,14 +85,26 @@ namespace Persistant {
    }
  };
 
+  void Parameter::enforceMinMax(size_t index)
+  {
+    const auto& variant = std::next(frozenParameters.begin(), index)->second;
+    std::visit([&](const auto& min, const auto& max) {
+      EnforceMinMax{}(storedParamsList[index], min, max);  
+    }, variant.min, variant.max);
+  }
+
   void Parameter::enforceMinMax()
   {
-    size_t index = 0;
-    for (const auto& [_, variant] : frozenParameters) {  
-      std::visit([&](const auto& min, const auto& max) {
-	EnforceMinMax{}(storedParamsList[index++], min, max);  
-      }, variant.min, variant.max);
+    for (size_t index = 0; index < params_list_len; index++) {
+      enforceMinMax(index);
     }
+
+    //   size_t index = 0;
+    // for (const auto& [_, variant] : frozenParameters) {  
+    //   std::visit([&](const auto& min, const auto& max) {
+    // 	EnforceMinMax{}(storedParamsList[index++], min, max);  
+    //   }, variant.min, variant.max);
+    // }
   }
 
   /**
@@ -132,37 +155,49 @@ namespace Persistant {
    * @param uavcanValue The UAVCAN structure to convert.
    * @param[out] storedValue The resulting `StoredValue`, updated in place.
    */
-  void fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue)
+  bool fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue)
   {
     switch (uavcanValue.union_tag) {
     case UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY:
       storedValue = NoValue{};
       break;
     case UAVCAN_PROTOCOL_PARAM_VALUE_INTEGER_VALUE:
-      storedValue = uavcanValue.integer_value;
+      if (std::holds_alternative<Integer>(storedValue)) {
+	storedValue = uavcanValue.integer_value;
+      } else {
+	return false;
+      }
       break;
     case UAVCAN_PROTOCOL_PARAM_VALUE_REAL_VALUE:
+      if (std::holds_alternative<float>(storedValue)) {
       storedValue = uavcanValue.real_value;
+      } else {
+	return false;
+      }
       break;
     case UAVCAN_PROTOCOL_PARAM_VALUE_BOOLEAN_VALUE:
-      storedValue = static_cast<bool>(uavcanValue.boolean_value);
+      if (std::holds_alternative<bool>(storedValue)) {
+	storedValue = static_cast<bool>(uavcanValue.boolean_value);
+      } else {
+	return false;
+      }
       break;
     case UAVCAN_PROTOCOL_PARAM_VALUE_STRING_VALUE:
       if (std::holds_alternative<StoredString*>(storedValue)) {
         StoredString* strPtr = std::get<StoredString*>(storedValue);
-	assert (strPtr && "strPtr should not be null*");
+	if (!strPtr) {
+	  	return false;
+	}
 	strPtr->assign(reinterpret_cast<const char*>(uavcanValue.string_value.data), 
 		       uavcanValue.string_value.len);
       } else {
-        assert(false && "StoredValue does not hold a StoredString*");
-        storedValue = NoValue{}; // Graceful fallback
+	return false;
       }
       break;
     default:
-      assert(false && "Unknown UAVCAN value type");
-      storedValue = NoValue{};
-      break;
+      return false;
     }
+    return true;
   }
 
   /**
@@ -214,7 +249,7 @@ namespace Persistant {
    * @param uavcanValue The UAVCAN structure to convert.
    * @param numericValue The resulting NumericValue.
    */
-  void fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue)
+  bool fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue)
   {
     switch (uavcanValue.union_tag) {
     case UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_EMPTY:
@@ -227,10 +262,10 @@ namespace Persistant {
       numericValue = uavcanValue.real_value;
       break;
     default:
-      assert(false && "Unknown UAVCAN numeric value type");
       numericValue = NoValue{}; // Fallback to NoValue in case of an invalid type
-      break;
+      return false;
     }
+    return true;
   }
 
   /*
@@ -297,6 +332,8 @@ namespace Persistant {
     const auto& [stored, deflt] = Parameter::find(req.index);
     if (req.value.union_tag != UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY) {
       fromUavcan(resp.value, stored);
+      Parameter::enforceMinMax(req.index);
+
       // TODO: write value in eeprom or return an optional which will permit to store:
       // std::pair<ssize_t, StoredValue> : if second in not NoValue, then store
       ret = {req.index, stored};
@@ -314,7 +351,7 @@ namespace Persistant {
 #include <variant>
 #include <vector>
 #include <cstring>
-#include <cassert>
+
 
 
 
@@ -373,7 +410,7 @@ namespace Persistant {
   std::span<const uint8_t>
   Parameter::deserializeGetName(const StoreSerializeBuffer& buffer)
   {
-    assert(!buffer.empty() && "Buffer is empty!");
+    chDbgAssert(!buffer.empty(), "Buffer is empty!");
     // unstore parameter name first
     // unstore the length of the parameter name
     const size_t paramNameLen = buffer[0];
@@ -401,7 +438,7 @@ namespace Persistant {
       value = NoValue{};
       break;
     case 1: // Integer
-      assert(buffer.size() >= 2 + paramNameLen + sizeof(Integer));
+      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(Integer), "buffer size to small");
       if (std::holds_alternative<Integer>(value)) {
 	// hint the compiler that values are not properly aligned in the serialized store
 	value = std::bit_cast<Integer>(*reinterpret_cast<const std::array<std::byte,
@@ -411,7 +448,7 @@ namespace Persistant {
       }
       break;
     case 2: // float
-      assert(buffer.size() >= 2 + paramNameLen + sizeof(float));
+      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(float), "buffer size to small");
       if (std::holds_alternative<float>(value)) {
 	// hint the compiler that values are not properly aligned in the serialized store
 	value = std::bit_cast<float>(*reinterpret_cast<const std::array<std::byte,
@@ -421,7 +458,7 @@ namespace Persistant {
       }
       break;
     case 3: // bool
-      assert(buffer.size() >= 3 + paramNameLen);
+      chDbgAssert(buffer.size() >= 3 + paramNameLen, "buffer size to small");
        if (std::holds_alternative<bool>(value)) {
 	// hint the compiler that values are not properly aligned in the serialized store
 	 value = std::bit_cast<bool>(*reinterpret_cast<const std::array<std::byte,
@@ -442,7 +479,7 @@ namespace Persistant {
       }
       break;
     default:
-      assert(false && "Unknown type identifier in serialization!");
+      chDbgAssert(false, "Unknown type identifier in serialization!");
       value = NoValue{};
       return false;
     }
@@ -469,19 +506,19 @@ namespace Persistant {
       value = NoValue{};
       break;
     case 1: // Integer
-      assert(buffer.size() >= 2 + paramNameLen + sizeof(Integer));
+      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(Integer), "buffer size to small");
       // hint the compiler that values are not properly aligned in the serialized store
       value = std::bit_cast<Integer>(*reinterpret_cast<const std::array<std::byte,
 				     sizeof(Integer)>*>(data));
       break;
     case 2: // float
-      assert(buffer.size() >= 2 + paramNameLen + sizeof(float));
+      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(float), "buffer size to small");
       // hint the compiler that values are not properly aligned in the serialized store
       value = std::bit_cast<float>(*reinterpret_cast<const std::array<std::byte,
 				   sizeof(float)>*>(data));
       break;
     case 3: // bool
-      assert(buffer.size() >= 3 + paramNameLen);
+      chDbgAssert(buffer.size() >= 3 + paramNameLen, "buffer size to small");
 	// hint the compiler that values are not properly aligned in the serialized store
       value = std::bit_cast<bool>(*reinterpret_cast<const std::array<std::byte,
 				  sizeof(bool)>*>(data));
@@ -498,7 +535,7 @@ namespace Persistant {
       }
       break;
     default:
-      assert(false && "Unknown type identifier in serialization!");
+      chDbgAssert(false, "Unknown type identifier in serialization!");
       value = NoValue{};
       return false;
     }

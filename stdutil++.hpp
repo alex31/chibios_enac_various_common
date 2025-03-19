@@ -197,6 +197,45 @@ private:
 };
 
 
+template <typename Callable>
+class ScopeGuard {
+public:
+    explicit ScopeGuard(Callable&& onExit) noexcept
+        : onExitFn(std::forward<Callable>(onExit)), active(true) {}
+
+    ~ScopeGuard() {
+        if (active) {
+            onExitFn();
+        }
+    }
+
+    // Prevent copying (avoids duplicate execution)
+    ScopeGuard(const ScopeGuard&) = delete;
+    ScopeGuard& operator=(const ScopeGuard&) = delete;
+
+    // Allow move semantics (safe transfer of ownership)
+    ScopeGuard(ScopeGuard&& other) noexcept
+        : onExitFn(std::move(other.onExitFn)), active(other.active) {
+        other.active = false;
+    }
+
+    ScopeGuard& operator=(ScopeGuard&& other) noexcept {
+        if (this != &other) {
+            onExitFn = std::move(other.onExitFn);
+            active = other.active;
+            other.active = false;
+        }
+        return *this;
+    }
+
+    void dismiss() noexcept { active = false; } // Prevent execution if needed
+
+private:
+    Callable onExitFn; // Stores the cleanup function
+    bool active;       // Tracks whether the function should execute
+};
+
+
 // Type your code here, or load an example.
 #include <cstdio>
 #include <cstdint>

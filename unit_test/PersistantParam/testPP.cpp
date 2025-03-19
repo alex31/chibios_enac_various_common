@@ -105,11 +105,14 @@ std::cout << std::endl;
  if (uavCan_power.integer_value >= 100)
    uavCan_power.integer_value = 1;
  uavCan_power.integer_value *= 2;
- fromUavcan(uavCan_power, power_val);
+ if (not fromUavcan(uavCan_power, power_val)) {
+   printf("fromUavcan ERROR\n");
+   exit (-1);
+ }
  
  // const auto& p6 = Persistant::Parameter::find("title");
 
- Persistant::Parameter::set(p2, 0.42f);
+ Persistant::Parameter::set(p2, 42.f);
  storage.store(powerIndex);
  
 
