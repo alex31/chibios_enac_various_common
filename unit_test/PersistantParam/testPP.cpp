@@ -10,6 +10,7 @@ namespace {
    Persistant::EepromStoreHandle eepromHandle = {
      .writeFn = eeprom_write<256>,
      .readFn = eeprom_read<256>,
+     .eraseFn = eeprom_erase<256>,
      .getLen = eeprom_getlen<256>
    };
 }

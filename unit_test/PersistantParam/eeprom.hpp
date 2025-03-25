@@ -6,7 +6,10 @@
 #include <cstring>
 #include <cstdint>
 #include <cassert>
+#include <filesystem>
 
+#include <filesystem>
+#include <iostream>
 
 
 namespace {
@@ -24,8 +27,13 @@ namespace {
 
 
 
-template<size_t RECORD_MAX_SIZE=256>
-bool eeprom_write(size_t recordIndex, const void *data, size_t size) {
+ template<size_t RECORD_MAX_SIZE=256>
+   bool eeprom_erase() {
+   return std::filesystem::remove(EEPROM_FILE);
+ }
+ 
+ template<size_t RECORD_MAX_SIZE=256>
+   bool eeprom_write(size_t recordIndex, const void *data, size_t size) {
   if (size > RECORD_MAX_SIZE)
     return false;
   recordIndex *= RECORD_MAX_SIZE;
