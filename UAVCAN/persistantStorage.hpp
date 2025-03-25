@@ -3,7 +3,10 @@
 #include <cstddef>
 #include <cstdint>
 #include "persistantParam.hpp"
-
+#if defined(__arm__) || defined(__aarch64__) || defined(__ARM_ARCH)
+#define TARGET_ARM_CHIBIOS
+#include "ch.h"
+#endif
 /*
   TODO :
 
@@ -16,11 +19,13 @@ namespace Persistant {
  */
   using EepromStoreWriteFn = bool (*) (size_t recordIndex, const void *data, size_t size);
   using EepromStoreReadFn =  bool (*) (size_t recordIndex, void *data, size_t& size);
+  using EepromErase =        bool (*) (void);
   using EepromGetLen =       size_t (*) ();
   
   struct EepromStoreHandle {
     EepromStoreWriteFn	writeFn;
     EepromStoreReadFn	readFn;
+    EepromErase		eraseFn;
     EepromGetLen	getLen;
   };
 
@@ -28,12 +33,16 @@ namespace Persistant {
   class Storage {
   public:
     Storage(const EepromStoreHandle& _handle);
+    bool eraseAll();
     bool store(size_t index);
     bool restore(size_t index);
     bool storeAll();
     bool restoreAll();
     
   private:
+#ifdef TARGET_ARM_CHIBIOS
+    MUTEX_DECL(mtx); // to protect shared dma StoreSerializeBuffer buffer
+#endif
     EepromStoreHandle handle;
     bool store(size_t index, const StoreSerializeBuffer& buffer);
     bool restore(size_t index, StoreSerializeBuffer& buffer);
@@ -41,6 +50,7 @@ namespace Persistant {
     ssize_t binarySearch(const frozen::string& str);
     void partialRestore();
     StoredValue get(const frozen::string& name);
+    static StoreSerializeBuffer buffer;
   };
 
   

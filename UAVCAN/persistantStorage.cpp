@@ -11,7 +11,10 @@
 #define DebugTrace(fmt, ...) printf (fmt "\r\n", ## __VA_ARGS__ )
 #define chDbgAssert(c,m) assert(c && m)
 #elif defined(__arm__) || defined(__aarch64__) || defined(__ARM_ARCH)
-#define TARGET_ARM_BARE_METAL
+#define TARGET_ARM_CHIBIOS
+#include "ch.h"
+#include "stdutil.h"
+#include "stdutil++.hpp"
 #else
 #error "Unsupported architecture!"
 #endif
@@ -66,36 +69,48 @@ namespace Persistant {
   {
     Parameter::populateDefaults();
     chDbgAssert(handle.writeFn != nullptr, "handle.writeFn is null");
-    chDbgAssert(handle.readFn != nullptr, "handle.writeFn is null");
-    chDbgAssert(handle.getLen != nullptr, "handle.writeFn is null");
+    chDbgAssert(handle.readFn != nullptr, "handle.readFn is null");
+    chDbgAssert(handle.getLen != nullptr, "handle.getLen is null");
+    chDbgAssert(handle.eraseFn != nullptr, "handle.eraseFn is null");
     
     if (not restoreAll()) {
       DebugTrace("DBG> total restore failed\n");
       partialRestore();
       Parameter::enforceMinMax();
+      eraseAll();
       storeAll();
     } else {
       DebugTrace("DBG> total restore success\n");
     }
   }
   
-  bool Storage::store(size_t index, const StoreSerializeBuffer& buffer)
+  bool Storage::eraseAll()
   {
-    return handle.writeFn(index, buffer.data(), buffer.size());
+#ifdef TARGET_ARM_CHIBIOS
+    MutexGuard guard(mtx);
+#endif
+    return handle.eraseFn();
+  }
+  
+  bool Storage::store(size_t index, const StoreSerializeBuffer& lbuffer)
+  {
+    return handle.writeFn(index, buffer.data(), lbuffer.size());
   }
   
   bool Storage::store(size_t index)
   {
-    StoreSerializeBuffer buffer;
+#ifdef TARGET_ARM_CHIBIOS
+    MutexGuard guard(mtx);
+#endif
     Parameter::serializeStoredValue(index, buffer);
     return store(index, buffer);
   }
-
-  bool Storage::restore(size_t index, StoreSerializeBuffer& buffer)
+  
+  bool Storage::restore(size_t index, StoreSerializeBuffer& lbuffer)
   {
     size_t size = buffer.capacity();
     if (handle.readFn(index, buffer.data(), size)) {
-      buffer.uninitialized_resize(size);
+      lbuffer.uninitialized_resize(size);
       return size != 0;
     } else {
       return false;
@@ -106,7 +121,10 @@ namespace Persistant {
   
   bool Storage::restore(size_t index)
   {
-    StoreSerializeBuffer buffer;
+#ifdef TARGET_ARM_CHIBIOS
+    MutexGuard guard(mtx);
+#endif
+    
     if (restore(index, buffer) != true) {
       return false;
     }
@@ -137,7 +155,6 @@ namespace Persistant {
   
   bool Storage::restore(size_t frozenIndex, size_t storeIndex)
   {
-    StoreSerializeBuffer buffer;
     if (restore(storeIndex, buffer) != true) {
       return false;
     }
@@ -186,7 +203,6 @@ namespace Persistant {
     
     while (low <= high) {
         std::size_t mid = low + (high - low) / 2;
-	StoreSerializeBuffer buffer;
 	size_t size = buffer.capacity();
 	if (not handle.readFn(mid, buffer.data(), size)) {
 	  return -1;
@@ -228,7 +244,6 @@ namespace Persistant {
   {
     const ssize_t index = binarySearch(paramName);
     if (index >= 0) {
-      StoreSerializeBuffer buffer;
       if (restore(index, buffer) != true) {
 	return {};
       }
@@ -242,6 +257,11 @@ namespace Persistant {
       return {};
     }
   }
+
+#ifdef TARGET_ARM_CHIBIOS
+  __attribute__ ((section(DMA_SECTION), aligned(8)))
+#endif
+  StoreSerializeBuffer Storage::buffer;
 
 
 }
