@@ -149,7 +149,8 @@ CC_FORCE_INLINE
 static inline hal_xsnor_stm_m95p_c *m95pObjectInit(hal_xsnor_stm_m95p_c *self) {
   extern const struct hal_xsnor_stm_m95p_vmt __hal_xsnor_stm_m95p_vmt;
 
-  return __m95p_objinit_impl(self, &__hal_xsnor_stm_m95p_vmt);
+  return (hal_xsnor_stm_m95p_c *)
+    __m95p_objinit_impl(self, &__hal_xsnor_stm_m95p_vmt);
 }
 /** @} */
 
