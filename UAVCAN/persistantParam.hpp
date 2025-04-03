@@ -26,321 +26,370 @@
   FAIT :
 
 
- TODO :
+  TODO :
 
 
- ° /fix : fonctions de conversion UAV CAN : enforce minmax
+  ° /fix : fonctions de conversion UAV CAN : enforce minmax
  
- ° stoquer si getSet from UAVCan
+  ° stoquer si getSet from UAVCan
 
- ° refaire un tour : style, nom des fonctions/methodes (restore ??)
+  ° refaire un tour : style, nom des fonctions/methodes (restore ??)
 
- ° gestion CONST.PARAMETERS.CRC32 par get direct à haut niveau plutôt
-   que dans persistantStorage.cpp ?
+  ° gestion CONST.PARAMETERS.CRC32 par get direct à haut niveau plutôt
+  que dans persistantStorage.cpp ?
 
- ° gain en mémoire : remplacer le stockage d'un variant par le stockage du type
-   reel, en ayant un calcul constexpr de la place prise dimensionant un memory pool.
-   Pour chaque paramètre, on a une fonction constexpr qui donne son adresse dans le tableau.
-   Si le nom est literal, on force la resolution consteval du calcul de l'adresse, sion on parcourt
-   la map frozen.
+  ° gain en mémoire : remplacer le stockage d'un variant par le stockage du type
+  reel, en ayant un calcul constexpr de la place prise dimensionant un memory pool.
+  Pour chaque paramètre, on a une fonction constexpr qui donne son adresse dans le tableau.
+  Si le nom est literal, on force la resolution consteval du calcul de l'adresse, sion on parcourt
+  la map frozen.
 
 */
 
 namespace Persistant {
   
 
-/**
- * @brief Compute the required memory for string parameters.
- * @return The total size needed for string storage.
- */
-static consteval size_t getTinyStringMemoryPoolSize() {
-  struct Overload {
-    constexpr size_t operator()(Persistant::NoValue) const { return 0; }
-    constexpr size_t operator()(Integer) const { return 0; }
-    constexpr size_t operator()(float) const { return 0; }
-    constexpr size_t operator()(bool) const { return 0; }
-    constexpr size_t operator()(const frozen::string &) const {
-      return sizeof(TinyString<0, tinyStrSize>);
+  /**
+   * @brief Compute the required memory for string parameters.
+   * @return The total size needed for string storage.
+   */
+  static consteval size_t getTinyStringMemoryPoolSize() {
+    struct Overload {
+      constexpr size_t operator()(Persistant::NoValue) const { return 0; }
+      constexpr size_t operator()(Integer) const { return 0; }
+      constexpr size_t operator()(float) const { return 0; }
+      constexpr size_t operator()(bool) const { return 0; }
+      constexpr size_t operator()(const frozen::string &) const {
+	return sizeof(TinyString<0, tinyStrSize>);
+      }
+    };
+
+    size_t size = 0;
+    for (size_t i = 0; i < params_list_len; i++) {
+      std::visit([&](const auto &param) { size += Overload{}(param); },
+		 params_list[i].second.v);
     }
-  };
 
-  size_t size = 0;
-  for (size_t i = 0; i < params_list_len; i++) {
-    std::visit([&](const auto &param) { size += Overload{}(param); },
-               params_list[i].second.v);
+    return size;
   }
 
-  return size;
-}
+  using StoredString = TinyString<getTinyStringMemoryPoolSize(), tinyStrSize>;
+  using StoredValue = std::variant<NoValue, Integer, float, bool, StoredString *>;
+  using StoreData = std::pair<ssize_t, StoredValue>;
+  using StoreSerializeBuffer = etl::vector<uint8_t, 256>;
+  /**
+   * @brief Compile-time validation of a parameter entry.
+   * @param param The parameter definition to validate.
+   * @note    min and max are else NoValue or the same type as v
+   *		neither min or max for string parameters
+   *		default value is in the range min..max it they are supplied
+   * @return True if valid, false otherwise.
+   */
+  consteval bool isValidDefault(const ParamDefault &param) {
+    return std::visit(
+		      [&](const auto &v) -> bool {
+			using T = std::decay_t<decltype(v)>;
 
-using StoredString = TinyString<getTinyStringMemoryPoolSize(), tinyStrSize>;
-using StoredValue = std::variant<NoValue, Integer, float, bool, StoredString *>;
-using StoreData = std::pair<ssize_t, StoredValue>;
-using StoreSerializeBuffer = etl::vector<uint8_t, 256>;
-/**
- * @brief Compile-time validation of a parameter entry.
- * @param param The parameter definition to validate.
- * @note    min and max are else NoValue or the same type as v
- *		neither min or max for string parameters
- *		default value is in the range min..max it they are supplied
- * @return True if valid, false otherwise.
- */
-consteval bool isValidDefault(const ParamDefault &param) {
-  return std::visit(
-      [&](const auto &v) -> bool {
-        using T = std::decay_t<decltype(v)>;
+			if constexpr (std::is_same_v<T, Integer> || std::is_same_v<T, float>) {
+			  return std::visit(
+					    [&](const auto &min_val, const auto &max_val) -> bool {
+					      using MinT = std::decay_t<decltype(min_val)>;
+					      using MaxT = std::decay_t<decltype(max_val)>;
 
-        if constexpr (std::is_same_v<T, Integer> || std::is_same_v<T, float>) {
-          return std::visit(
-              [&](const auto &min_val, const auto &max_val) -> bool {
-                using MinT = std::decay_t<decltype(min_val)>;
-                using MaxT = std::decay_t<decltype(max_val)>;
+					      if constexpr (std::is_same_v<MinT, T>) {
+						if (v < min_val)
+						  return 0;
+					      }
+					      if constexpr (std::is_same_v<MaxT, T>) {
+						if (v > max_val)
+						  return 0;
+					      }
+					      return (std::is_same_v<MinT, NoValue> ||
+						      std::is_same_v<MinT, T>) &&
+						(std::is_same_v<MaxT, NoValue> ||
+						 std::is_same_v<MaxT, T>);
+					    },
+					    param.min, param.max);
 
-                if constexpr (std::is_same_v<MinT, T>) {
-                  if (v < min_val)
-                    return 0;
-                }
-                if constexpr (std::is_same_v<MaxT, T>) {
-                  if (v > max_val)
-                    return 0;
-                }
-                return (std::is_same_v<MinT, NoValue> ||
-                        std::is_same_v<MinT, T>) &&
-                       (std::is_same_v<MaxT, NoValue> ||
-                        std::is_same_v<MaxT, T>);
-              },
-              param.min, param.max);
+			} else {
+			  return std::visit(
+					    [](const auto &min_val, const auto &max_val) -> bool {
+					      using MinT = std::decay_t<decltype(min_val)>;
+					      using MaxT = std::decay_t<decltype(max_val)>;
 
-        } else {
-          return std::visit(
-              [](const auto &min_val, const auto &max_val) -> bool {
-                using MinT = std::decay_t<decltype(min_val)>;
-                using MaxT = std::decay_t<decltype(max_val)>;
-
-                return (std::is_same_v<MinT, NoValue>) &&
-                       (std::is_same_v<MaxT, NoValue>);
-              },
-              param.min, param.max);
-        }
-      },
-      param.v);
-}
-
-/**
- * @brief Compile-time validation of the entire parameter list.
- * @param paramsPairList The list of parameter definitions.
- * @return The index of the first invalid entry, or -1 if all are valid.
- */
-consteval int validateDefaultsList(const auto &paramsPairList) {
-  int index = 0;
-  for (const auto &entry : paramsPairList) {
-    if (!isValidDefault(entry.second))
-      return index;
-    index++;
+					      return (std::is_same_v<MinT, NoValue>) &&
+						(std::is_same_v<MaxT, NoValue>);
+					    },
+					    param.min, param.max);
+			}
+		      },
+		      param.v);
   }
-  return -1;
-}
 
-/// Static assert at compile-time
-/// if a check fail, compiler error message will show the first
-/// offending entry, numbered from 0
-static_assert(validateDefaultsList(params_list) < 0,
-              "❌ params_list contains invalid ParamDefault entries!");
+  /**
+   * @brief Compile-time validation of the entire parameter list.
+   * @param paramsPairList The list of parameter definitions.
+   * @return The index of the first invalid entry, or -1 if all are valid.
+   */
+  consteval int validateDefaultsList(const auto &paramsPairList) {
+    int index = 0;
+    for (const auto &entry : paramsPairList) {
+      if (!isValidDefault(entry.second))
+	return index;
+      index++;
+    }
+    return -1;
+  }
 
-/// Frozen map for fast parameter lookup.
+  /// Static assert at compile-time
+  /// if a check fail, compiler error message will show the first
+  /// offending entry, numbered from 0
+  static_assert(validateDefaultsList(params_list) < 0,
+		"❌ params_list contains invalid ParamDefault entries!");
+
+  /// Frozen map for fast parameter lookup.
   constexpr auto frozenParameters = frozen::make_map(params_list);
 
   class Parameter {
-public:
-  Parameter() = delete;
+  public:
+    Parameter() = delete;
 
-  /**
-   * @brief Find the index of a parameter by name.
-   * @param key The parameter name.
-   * @return The index of the parameter, or -1 if not found.
-   */
-  constexpr static ssize_t findIndex(const frozen::string& key);
-      consteval static ssize_t cfindIndex(const frozen::string& key) {
-	return findIndex(key);
-      }
+    /**
+     * @brief Find the index of a parameter by name.
+     * @param key The parameter name.
+     * @return The index of the parameter, or -1 if not found.
+     */
+    constexpr static ssize_t findIndex(const frozen::string& key);
+    consteval static ssize_t cfindIndex(const frozen::string& key) {
+      return findIndex(key);
+    }
 
-  constexpr static ssize_t findIndex(const uint8_t *str) {
-    return findIndex(frozen::string(reinterpret_cast<const char *>(str)));
-  }
+    constexpr static ssize_t findIndex(const uint8_t *str) {
+      return findIndex(frozen::string(reinterpret_cast<const char *>(str)));
+    }
 
-  constexpr static const frozen::string& findName(const size_t index);
+    constexpr static ssize_t findIndex(const char *str) {
+      return findIndex(frozen::string(str));
+    }
+
+    constexpr static const frozen::string& findName(const size_t index);
   
-  /**
-   * @brief Retrieve a parameter by index.
-   * @param index The parameter index.
-   * @return A reference to the stored value and its default settings.
-   */
-  constexpr static std::pair<StoredValue &, const ParamDefault &>
-  find(const ssize_t index);
+    /**
+     * @brief Retrieve a parameter by index.
+     * @param index The parameter index.
+     * @return A reference to the stored value and its default settings.
+     */
+    constexpr static std::pair<StoredValue &, const ParamDefault &>
+    find(const ssize_t index);
 
-  /**
-   * @brief Retrieve a parameter by name.
-   * @param key The parameter name.
-   * @return A reference to the stored value and its default settings.
-   */
-  constexpr static std::pair<StoredValue &, const ParamDefault &>
-  find(const frozen::string key);
+    /**
+     * @brief Retrieve a parameter by name.
+     * @param key The parameter name.
+     * @return A reference to the stored value and its default settings.
+     */
+    constexpr static std::pair<StoredValue &, const ParamDefault &>
+    find(const frozen::string key);
 
-  consteval static std::pair<StoredValue &, const ParamDefault &>
-  cfind(const frozen::string key);
+    consteval static std::pair<StoredValue &, const ParamDefault &>
+    cfind(const frozen::string key);
 
-  /**
-   * @brief Retrieve a parameter by name using a C-style string.
-   * @param key The parameter name.
-   * @return A reference to the stored value and its default settings.
-   */
-  constexpr static std::pair<StoredValue &, const ParamDefault &>
-  find(const char *key);
+    /**
+     * @brief Retrieve a parameter by name using a C-style string.
+     * @param key The parameter name.
+     * @return A reference to the stored value and its default settings.
+     */
+    constexpr static std::pair<StoredValue &, const ParamDefault &>
+    find(const char *key);
 
-  /**
-   * @brief Clamp an integer value within its defined min/max range.
-   */
-  constexpr static Integer clamp(const ParamDefault &deflt,
-                                 const Integer &value);
+    /**
+     * @brief Clamp an integer value within its defined min/max range.
+     */
+    constexpr static Integer clamp(const ParamDefault &deflt,
+				   const Integer &value);
 
-  /**
-   * @brief Clamp a float value within its defined min/max range.
-   */
-  constexpr static float clamp(const ParamDefault &deflt, const float &value);
+    /**
+     * @brief Clamp a float value within its defined min/max range.
+     */
+    constexpr static float clamp(const ParamDefault &deflt, const float &value);
 
-  /**
-   * @brief Set a new integer value for a parameter, ensuring constraints are
-   * met.
-   */
-  constexpr static void
-  set(const std::pair<StoredValue &, const ParamDefault &> &p,
-      const Integer &value);
+    /**
+     * @brief Set a new integer value for a parameter, ensuring constraints are
+     * met.
+     */
+    constexpr static void
+    set(const std::pair<StoredValue &, const ParamDefault &> &p,
+	const Integer &value);
 
-  /**
-   * @brief Set a new float value for a parameter, ensuring constraints are met.
-   */
-  constexpr static void
-  set(const std::pair<StoredValue &, const ParamDefault &> &p,
-      const float &value);
+   /**
+     * @brief Set a new bool value for a parameter
+     */
+    constexpr static void
+    set(const std::pair<StoredValue &, const ParamDefault &> &p,
+	const bool &value);
 
-  constexpr static void
-  set(const std::pair<StoredValue &, const ParamDefault &> &p,
-      const StoredString &value);
+    /**
+     * @brief Set a new float value for a parameter, ensuring constraints are met.
+     */
+    constexpr static void
+    set(const std::pair<StoredValue &, const ParamDefault &> &p,
+	const float &value);
 
-  template <typename T>
-  constexpr static T
-  get(const std::pair<StoredValue &, const ParamDefault &> &p);
+   /**
+     * @brief Set a new Stored String value for a parameter
+     */
+    constexpr static void
+    set(const std::pair<StoredValue &, const ParamDefault &> &p,
+	const StoredString &value);
 
-  static void serializeStoredValue(size_t index, StoreSerializeBuffer& buffer);
-  static bool deserializeStoredValue(StoredValue& value, const StoreSerializeBuffer& buffer);
-  static bool deserializeStoredValue(size_t index, const StoreSerializeBuffer& buffer);
-  static std::span<const uint8_t> deserializeGetName(const StoreSerializeBuffer& buffer);
+    /**
+     * @brief Set a new value from string, doing best effort to convert
+     * string to the holded type
+     */
+    constexpr static void
+    set(const std::pair<StoredValue &, const ParamDefault &> &p,
+	const char* value);
 
-   /**  
-   * @brief Populate default values into the parameter list.
-   */
-  static void populateDefaults();
-  static void enforceMinMax(size_t index);
-  static void enforceMinMax();
+    template <typename T>
+    constexpr static T
+    get(const std::pair<StoredValue &, const ParamDefault &> &p);
+
+    static void serializeStoredValue(size_t index, StoreSerializeBuffer& buffer);
+    static bool deserializeStoredValue(StoredValue& value, const StoreSerializeBuffer& buffer);
+    static bool deserializeStoredValue(size_t index, const StoreSerializeBuffer& buffer);
+    static std::span<const uint8_t> deserializeGetName(const StoreSerializeBuffer& buffer);
+
+    /**  
+     * @brief Populate default values into the parameter list.
+     */
+    static void populateDefaults();
+    static void enforceMinMax(size_t index);
+    static void enforceMinMax();
     
-private:
-  static std::array<StoredValue, params_list_len>
-      storedParamsList; ///< Runtime storage of parameter values
-};
+  private:
+    static std::array<StoredValue, params_list_len>
+    storedParamsList; ///< Runtime storage of parameter values
+  };
 
   
   constexpr ssize_t Parameter::findIndex(const frozen::string &key) {
-  const auto it = frozenParameters.find(key);
-  if (it == frozenParameters.end()) {
-    return -1; // Key not found
+    const auto it = frozenParameters.find(key);
+    if (it == frozenParameters.end()) {
+      return -1; // Key not found
+    }
+    return std::distance(frozenParameters.begin(), it);
   }
-  return std::distance(frozenParameters.begin(), it);
-}
   
   constexpr  const frozen::string& Parameter::findName(const size_t index)  {
     assert(index < params_list_len);
     return std::next(frozenParameters.begin(), index)->first;
   }
 
-constexpr std::pair<StoredValue &, const ParamDefault &>
-Parameter::find(const ssize_t index) {
-  static constexpr ParamDefault empty {};
-  if ((index >= 0) and (index < params_list_len)) {
-    return {storedParamsList[index], std::next(frozenParameters.begin(), index)->second};
-  } else {
-    return {storedParamsList[index], empty};
+  constexpr std::pair<StoredValue &, const ParamDefault &>
+  Parameter::find(const ssize_t index) {
+    static constexpr ParamDefault empty {};
+    if ((index >= 0) and (index < params_list_len)) {
+      return {storedParamsList[index], std::next(frozenParameters.begin(), index)->second};
+    } else {
+      return {storedParamsList[index], empty};
+    }
   }
-}
 
-constexpr std::pair<StoredValue &, const ParamDefault &>
-Parameter::find(const frozen::string key) {
-  const auto index = findIndex(key);
-  return find(index);
-}
-
-consteval std::pair<StoredValue &, const ParamDefault &>
-Parameter::cfind(const frozen::string key) {
-  const auto index = cfindIndex(key);
-  return find(index);
-}
-
-constexpr std::pair<StoredValue &, const ParamDefault &>
-Parameter::find(const char *key) {
-  const auto index = findIndex(frozen::string(key));
-  return find(index);
-}
-
-constexpr Integer Parameter::clamp(const ParamDefault &deflt,
-                                   const Integer &value) {
-  Integer ret = value;
-
-  if (std::holds_alternative<Integer>(deflt.min))
-    ret = std::max(value, std::get<Integer>(deflt.min));
-  if (std::holds_alternative<Integer>(deflt.max))
-    ret = std::min(value, std::get<Integer>(deflt.max));
-  return ret;
-}
-
-constexpr float Parameter::clamp(const ParamDefault &deflt,
-                                 const float &value) {
-  float ret = value;
-
-  if (std::holds_alternative<float>(deflt.min))
-    ret = std::max(value, std::get<float>(deflt.min));
-  if (std::holds_alternative<float>(deflt.max))
-    ret = std::min(value, std::get<float>(deflt.max));
-  return ret;
-}
-
-constexpr void
-Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
-               const Integer &value) {
-  const auto &[store, deflt] = p;
-  if (not std::holds_alternative<Integer>(store)) {
-    assert(0 && "cannot change StoredValue alternative");
+  constexpr std::pair<StoredValue &, const ParamDefault &>
+  Parameter::find(const frozen::string key) {
+    const auto index = findIndex(key);
+    return find(index);
   }
-  store = clamp(deflt, value);
-}
 
-constexpr void
-Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
-               const float &value) {
-  const auto &[store, deflt] = p;
-  if (not std::holds_alternative<float>(store)) {
-    assert(0 && "cannot change StoredValue alternative");
+  consteval std::pair<StoredValue &, const ParamDefault &>
+  Parameter::cfind(const frozen::string key) {
+    const auto index = cfindIndex(key);
+    return find(index);
   }
-  store = clamp(deflt, value);
-}
 
-constexpr void
-Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
-               const StoredString &value) {
-  const auto &[store, deflt] = p;
-  if (not std::holds_alternative<StoredString *>(store)) {
-    assert(0 && "cannot change StoredValue alternative");
+  constexpr std::pair<StoredValue &, const ParamDefault &>
+  Parameter::find(const char *key) {
+    const auto index = findIndex(frozen::string(key));
+    return find(index);
   }
-  *(std::get<StoredString *>(store)) = value;
-}
+
+  constexpr Integer Parameter::clamp(const ParamDefault &deflt,
+				     const Integer &value) {
+    Integer ret = value;
+
+    if (std::holds_alternative<Integer>(deflt.min))
+      ret = std::max(value, std::get<Integer>(deflt.min));
+    if (std::holds_alternative<Integer>(deflt.max))
+      ret = std::min(value, std::get<Integer>(deflt.max));
+    return ret;
+  }
+
+  constexpr float Parameter::clamp(const ParamDefault &deflt,
+				   const float &value) {
+    float ret = value;
+
+    if (std::holds_alternative<float>(deflt.min))
+      ret = std::max(value, std::get<float>(deflt.min));
+    if (std::holds_alternative<float>(deflt.max))
+      ret = std::min(value, std::get<float>(deflt.max));
+    return ret;
+  }
+
+  constexpr void
+  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
+		 const Integer &value) {
+    const auto &[store, deflt] = p;
+    if (not std::holds_alternative<Integer>(store)) {
+      assert(0 && "cannot change StoredValue alternative");
+    }
+    store = clamp(deflt, value);
+  }
+
+  constexpr void
+  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
+		 const bool &value) {
+    const auto &[store, deflt] = p;
+    if (not std::holds_alternative<bool>(store)) {
+      assert(0 && "cannot change StoredValue alternative");
+    }
+    store = value;
+  }
+
+  constexpr void
+  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
+		 const float &value) {
+    const auto &[store, deflt] = p;
+    if (not std::holds_alternative<float>(store)) {
+      assert(0 && "cannot change StoredValue alternative");
+    }
+    store = clamp(deflt, value);
+  }
+
+  constexpr void
+  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
+		 const StoredString &value) {
+    const auto &[store, deflt] = p;
+    if (not std::holds_alternative<StoredString *>(store)) {
+      assert(0 && "cannot change StoredValue alternative");
+    }
+    *(std::get<StoredString *>(store)) = value;
+  }
+
+  constexpr void
+  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
+		 const char *value) {
+    const auto &[store, deflt] = p;
+    if (std::holds_alternative<Integer>(store)) {
+      store = atoi(value);
+    } else if (std::holds_alternative<bool>(store)) {
+      store = (*value == '0') or (tolower(*value) == 'f') ? false : true;
+    } else if (std::holds_alternative<float>(store)) {
+      store =  static_cast<float>(atof(value));
+    } else if (std::holds_alternative<StoredString *>(store)) {
+      *(std::get<StoredString *>(store)) = value;
+    } else {
+      assert(0 && "cannot change StoredValue alternative");
+    }
+  }
 
   template <typename T>
   constexpr T
@@ -349,13 +398,13 @@ Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
     return std::get<T>(store);
   }
 
-void toUavcan(const StoredValue& storedValue, uavcan_protocol_param_Value& uavcanValue);
-void toUavcan(const FrozenDefault& defaultValue, uavcan_protocol_param_Value& uavcanValue);
-bool fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue);
-void toUavcan(const NumericValue& numericValue, uavcan_protocol_param_NumericValue& uavcanValue);
-bool fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue);
+  void toUavcan(const StoredValue& storedValue, uavcan_protocol_param_Value& uavcanValue);
+  void toUavcan(const FrozenDefault& defaultValue, uavcan_protocol_param_Value& uavcanValue);
+  bool fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue);
+  void toUavcan(const NumericValue& numericValue, uavcan_protocol_param_NumericValue& uavcanValue);
+  bool fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue);
 
-StoreData getSetResponse(uavcan_protocol_param_GetSetRequest &req,
-			 uavcan_protocol_param_GetSetResponse& resp);
+  StoreData getSetResponse(uavcan_protocol_param_GetSetRequest &req,
+			   uavcan_protocol_param_GetSetResponse& resp);
   
 } // namespace Persistant
