@@ -67,21 +67,27 @@ namespace {
 namespace Persistant {
   Storage::Storage(const EepromStoreHandle& _handle) : handle(_handle)
   {
-    Parameter::populateDefaults();
     chDbgAssert(handle.writeFn != nullptr, "handle.writeFn is null");
     chDbgAssert(handle.readFn != nullptr, "handle.readFn is null");
     chDbgAssert(handle.getLen != nullptr, "handle.getLen is null");
     chDbgAssert(handle.eraseFn != nullptr, "handle.eraseFn is null");
     
-    if (not restoreAll()) {
-      DebugTrace("DBG> total restore failed\n");
+  }
+
+  bool Storage::start()
+  {
+    Parameter::populateDefaults();
+    const bool restoreStatus = restoreAll();
+    if (not restoreStatus) {
+      DebugTrace("DBG> total restore failed");
       partialRestore();
       Parameter::enforceMinMax();
       eraseAll();
       storeAll();
     } else {
-      DebugTrace("DBG> total restore success\n");
+      DebugTrace("DBG> total restore success");
     }
+    return restoreStatus;
   }
   
   bool Storage::eraseAll()
@@ -129,7 +135,7 @@ namespace Persistant {
       return false;
     }
     const auto& name = Parameter::deserializeGetName(buffer);
-    DebugTrace("DBG> restore name = %s\n", name.data());
+    DebugTrace("DBG> restore name = %s", name.data());
     // for CRC32 : we don't restore, and if the value is different
     // we return false
     if (compareStrSpan(name, "CONST.PARAMETERS.CRC32"_u) == std::strong_ordering::equal) {
@@ -159,7 +165,7 @@ namespace Persistant {
       return false;
     }
     const auto& name = Parameter::deserializeGetName(buffer);
-    DebugTrace("DBG> restore name = %s\n", name.data());
+    DebugTrace("DBG> restore name = %s", name.data());
     
     // discard CONST\..* parameters
     if (compareStrSpan(name, "CONST."_u, true) != std::strong_ordering::equal) {
@@ -184,6 +190,11 @@ namespace Persistant {
       success = restore(index) && success;
     }
     return success;
+  }
+
+  size_t Storage::getLen()
+  {
+    return  handle.getLen();
   }
   
 // Binary search function (returns index of found string or -1 if not found)
@@ -230,12 +241,12 @@ namespace Persistant {
      const ssize_t paramIndex = binarySearch(paramName);
      if (paramIndex >= 0) {
        if (restore(idx, paramIndex) != true) {
-	 DebugTrace("DBG> partial restore alt('%s') ***FAILED***\n", paramName.data());
+	 DebugTrace("DBG> partial restore alt('%s') ***FAILED***", paramName.data());
        } else {
-	 DebugTrace("DBG> partial restore '%s' is SUCCESS\n", paramName.data());
+	 DebugTrace("DBG> partial restore '%s' is SUCCESS", paramName.data());
        }
      } else {
-       DebugTrace("DBG> %s not found in storage\n", paramName.data());
+       DebugTrace("DBG> %s not found in storage", paramName.data());
      }
    }
  }

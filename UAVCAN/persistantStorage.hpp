@@ -33,11 +33,13 @@ namespace Persistant {
   class Storage {
   public:
     Storage(const EepromStoreHandle& _handle);
-    bool eraseAll();
-    bool store(size_t index);
-    bool restore(size_t index);
-    bool storeAll();
-    bool restoreAll();
+    bool   start();
+    bool   eraseAll();
+    bool   store(size_t index);
+    bool   restore(size_t index);
+    bool   storeAll();
+    bool   restoreAll();
+    size_t getLen();
     
   private:
 #ifdef TARGET_ARM_CHIBIOS
