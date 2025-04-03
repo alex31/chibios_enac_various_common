@@ -471,7 +471,7 @@ namespace Persistant {
       if (std::holds_alternative<StoredString*>(value)) {
 	StoredString* strPtr = std::get<StoredString*>(value);
 	if (strPtr) {
-	  uint8_t len = std::min<uint8_t>(data[1], strPtr->capacity());
+	  uint8_t len = std::min<uint8_t>(data[0], strPtr->capacity());
 	  strPtr->assign(reinterpret_cast<const char*>(data + 1), len);
 	}
       } else {
