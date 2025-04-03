@@ -27,6 +27,13 @@ namespace  {
   namespace  Eeprom_M95 {
      
  
+    bool Device::start()
+    {
+      softwareReset();
+      readIdentification();
+      return isValid();
+    }
+    
     template <SingleByteIntegralOrEnum T, SingleByteIntegralOrEnum R>
     msg_t Device::spiTransaction(Command command, int32_t offset,
 				 const std::span<T> tx, std::span<R> rx) const
@@ -435,7 +442,9 @@ extern "C" {
 extern "C" {
   M95P_instance_t M95P_new(SPIDriver *spid, const SPIConfig *config)
   {
-    return (M95P_instance_t) {.device = new Eeprom_M95::Device(*spid, *config)};
+    auto device = new Eeprom_M95::Device(*spid, *config);
+    device->start();
+    return (M95P_instance_t) {.device = device};
   }
   
   msg_t M95P_read(M95P_instance_t self, uint32_t offset, uint32_t n, uint8_t *buffer)

@@ -64,6 +64,7 @@ namespace  Eeprom_M95 {
     constexpr Device(SPIDriver& driver, uint16_t divider, ioline_t cs);
     constexpr Device(SPIDriver& driver, const SPIConfig &_cfg);
     constexpr bool isValid() const {return capacity != 0;}
+    bool start();
     msg_t waitReady() {return buzyLoopWaitReady();}
     msg_t readStatus(Status& statusReg) const;
     msg_t readConfAndSafety(Configuration& conf, Safety& safety) const;
@@ -249,15 +250,12 @@ namespace  Eeprom_M95 {
     cfg.ssline = cs;
     int divexp = getDividerExponent(divider);
     cfg.cfg1 |= SPI_CFG1_MBR_VALUE(divexp-1);
-    softwareReset();
-    readIdentification();
+  }
+  
+  constexpr Device::Device(SPIDriver& driver, const SPIConfig &_cfg) :
+    spid(driver), cfg(_cfg), manage_bus(false)
+  {
   }
 
-constexpr Device::Device(SPIDriver& driver, const SPIConfig &_cfg) :
-  spid(driver), cfg(_cfg), manage_bus(false)
-{
-  softwareReset();
-  readIdentification();
-}
-
+  
 }
