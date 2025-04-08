@@ -300,18 +300,21 @@ namespace Persistant {
     Empty value (and/or empty name) indicates that there is no such parameter.
   */
 
-  StoreData getSetResponse(uavcan_protocol_param_GetSetRequest &req,
+  StoreData getSetResponse(const uavcan_protocol_param_GetSetRequest &req,
 			   uavcan_protocol_param_GetSetResponse& resp)
   {
     // request by name
     StoreData ret = {-1L, {}};
+    uint16_t index = req.index;
+    
     if (req.name.len != 0) {
       memcpy(&resp.name, &req.name, sizeof(req.name));
       // it's by name let's find the corresponding index
       // don't know if string is null terminated, so make it
-      req.name.data[std::min<uint16_t>(req.name.len, sizeof(req.name.data) -1U)] = 0;
-      const auto index = Parameter::findIndex(req.name.data);
-      if (index < 0) {
+      resp.name.len = req.name.len;
+      resp.name.data[std::min<uint16_t>(resp.name.len, sizeof(resp.name.data) -1U)] = 0;
+      index = Parameter::findIndex(resp.name.data);
+      if (index == 0) {
 	resp.value.union_tag = 
 	  resp.default_value.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
 	resp.max_value.union_tag = 
@@ -319,24 +322,20 @@ namespace Persistant {
 	return ret;
       }
       // if index is found, indicate it in response
-      req.index = index;
     } else {
       // request by index
-      const auto& paramName =  std::next(frozenParameters.begin(), req.index)->first;
+      const auto& paramName =  std::next(frozenParameters.begin(), index)->first;
       resp.name.len = paramName.size();
       memcpy(resp.name.data, paramName.data(),
 	     std::min<uint16_t>(sizeof(resp.name.data), resp.name.len + 1U));
     }
     // now we use index either found by name or directly given in message
     // is it a set_and_request or just request ?
-    const auto& [stored, deflt] = Parameter::find(req.index);
+    const auto& [stored, deflt] = Parameter::find(index);
     if (req.value.union_tag != UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY) {
-      fromUavcan(resp.value, stored);
-      Parameter::enforceMinMax(req.index);
-
-      // TODO: write value in eeprom or return an optional which will permit to store:
-      // std::pair<ssize_t, StoredValue> : if second in not NoValue, then store
-      ret = {req.index, stored};
+      fromUavcan(req.value, stored);
+      Parameter::enforceMinMax(index);
+      ret = {index, stored}; // responsability to the caller to make the permanent store
     }
     // fill all fields of response
     toUavcan(stored, resp.value);

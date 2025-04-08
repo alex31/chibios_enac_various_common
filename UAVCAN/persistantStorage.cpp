@@ -84,9 +84,7 @@ namespace Persistant {
       Parameter::enforceMinMax();
       eraseAll();
       storeAll();
-    } else {
-      DebugTrace("DBG> total restore success");
-    }
+    } 
     return restoreStatus;
   }
   
@@ -135,7 +133,7 @@ namespace Persistant {
       return false;
     }
     const auto& name = Parameter::deserializeGetName(buffer);
-    DebugTrace("DBG> restore name = %s", name.data());
+    //    DebugTrace("DBG> restore name = %s", name.data());
     // for CRC32 : we don't restore, and if the value is different
     // we return false
     if (compareStrSpan(name, "CONST.PARAMETERS.CRC32"_u) == std::strong_ordering::equal) {
@@ -165,7 +163,7 @@ namespace Persistant {
       return false;
     }
     const auto& name = Parameter::deserializeGetName(buffer);
-    DebugTrace("DBG> restore name = %s", name.data());
+    //    DebugTrace("DBG> restore name = %s", name.data());
     
     // discard CONST\..* parameters
     if (compareStrSpan(name, "CONST."_u, true) != std::strong_ordering::equal) {
@@ -243,7 +241,7 @@ namespace Persistant {
        if (restore(idx, paramIndex) != true) {
 	 DebugTrace("DBG> partial restore alt('%s') ***FAILED***", paramName.data());
        } else {
-	 DebugTrace("DBG> partial restore '%s' is SUCCESS", paramName.data());
+	 //	 DebugTrace("DBG> partial restore '%s' is SUCCESS", paramName.data());
        }
      } else {
        DebugTrace("DBG> %s not found in storage", paramName.data());

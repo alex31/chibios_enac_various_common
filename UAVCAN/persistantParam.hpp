@@ -22,6 +22,7 @@
 #include <span>
 #include "persistantParamTypes.hpp"
 #include "persistantParamCrc.hpp"
+#include "ch.h"
 /*
   FAIT :
 
@@ -216,28 +217,28 @@ namespace Persistant {
      * @brief Set a new integer value for a parameter, ensuring constraints are
      * met.
      */
-    constexpr static void
+    constexpr static bool
     set(const std::pair<StoredValue &, const ParamDefault &> &p,
 	const Integer &value);
 
    /**
      * @brief Set a new bool value for a parameter
      */
-    constexpr static void
+    constexpr static bool
     set(const std::pair<StoredValue &, const ParamDefault &> &p,
 	const bool &value);
 
     /**
      * @brief Set a new float value for a parameter, ensuring constraints are met.
      */
-    constexpr static void
+    constexpr static bool
     set(const std::pair<StoredValue &, const ParamDefault &> &p,
 	const float &value);
 
    /**
      * @brief Set a new Stored String value for a parameter
      */
-    constexpr static void
+    constexpr static bool
     set(const std::pair<StoredValue &, const ParamDefault &> &p,
 	const StoredString &value);
 
@@ -245,9 +246,15 @@ namespace Persistant {
      * @brief Set a new value from string, doing best effort to convert
      * string to the holded type
      */
-    constexpr static void
+    constexpr static bool
     set(const std::pair<StoredValue &, const ParamDefault &> &p,
 	const char* value);
+    /**
+     * @brief Set a new value from StoredValue
+     */
+    constexpr static bool
+    set(const std::pair<StoredValue &, const ParamDefault &> &p,
+	const StoredValue &value);
 
     template <typename T>
     constexpr static T
@@ -280,17 +287,17 @@ namespace Persistant {
   }
   
   constexpr  const frozen::string& Parameter::findName(const size_t index)  {
-    assert(index < params_list_len);
+    chDbgAssert(index < params_list_len, "index > params_list_len");
     return std::next(frozenParameters.begin(), index)->first;
   }
 
   constexpr std::pair<StoredValue &, const ParamDefault &>
   Parameter::find(const ssize_t index) {
-    static constexpr ParamDefault empty {};
+    static constexpr ParamDefault empty = {};
     if ((index >= 0) and (index < params_list_len)) {
       return {storedParamsList[index], std::next(frozenParameters.begin(), index)->second};
     } else {
-      return {storedParamsList[index], empty};
+      return {storedParamsList[0], empty};
     }
   }
 
@@ -334,63 +341,88 @@ namespace Persistant {
     return ret;
   }
 
-  constexpr void
+  constexpr bool
   Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
 		 const Integer &value) {
     const auto &[store, deflt] = p;
     if (not std::holds_alternative<Integer>(store)) {
-      assert(0 && "cannot change StoredValue alternative");
+      return false;
     }
     store = clamp(deflt, value);
+    return true;
   }
 
-  constexpr void
+  constexpr bool
   Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
 		 const bool &value) {
     const auto &[store, deflt] = p;
     if (not std::holds_alternative<bool>(store)) {
-      assert(0 && "cannot change StoredValue alternative");
+      return false;
     }
     store = value;
+    return true;
   }
 
-  constexpr void
+  constexpr bool
   Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
 		 const float &value) {
     const auto &[store, deflt] = p;
     if (not std::holds_alternative<float>(store)) {
-      assert(0 && "cannot change StoredValue alternative");
+      return false;
     }
     store = clamp(deflt, value);
+    return true;
   }
 
-  constexpr void
+  constexpr bool
   Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
 		 const StoredString &value) {
     const auto &[store, deflt] = p;
     if (not std::holds_alternative<StoredString *>(store)) {
-      assert(0 && "cannot change StoredValue alternative");
+      return false;
     }
     *(std::get<StoredString *>(store)) = value;
+    return true;
   }
 
-  constexpr void
+  constexpr bool
   Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
 		 const char *value) {
     const auto &[store, deflt] = p;
     if (std::holds_alternative<Integer>(store)) {
-      store = atoi(value);
+      store =  clamp(deflt, atoll(value));
     } else if (std::holds_alternative<bool>(store)) {
       store = (*value == '0') or (tolower(*value) == 'f') ? false : true;
     } else if (std::holds_alternative<float>(store)) {
-      store =  static_cast<float>(atof(value));
+      store = clamp(deflt, static_cast<float>(atof(value)));
     } else if (std::holds_alternative<StoredString *>(store)) {
       *(std::get<StoredString *>(store)) = value;
     } else {
-      assert(0 && "cannot change StoredValue alternative");
+      return false;
+    }
+    return true;
+  }
+
+  constexpr  bool
+  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
+		 const StoredValue &value)
+  {
+    auto &[store, deflt] = p;
+    if (store.index() == value.index()) {
+      if (std::holds_alternative<Integer>(store)) {
+	store =  clamp(deflt, std::get<Integer>(value));
+      } else if (std::holds_alternative<float>(store)) {
+	store =  clamp(deflt, std::get<float>(value));
+      } else {
+	store = value;
+      }
+      return true;
+    } else {
+      return false;
     }
   }
 
+  
   template <typename T>
   constexpr T
   Parameter::get(const std::pair<StoredValue &, const ParamDefault &> &p) {
@@ -404,7 +436,7 @@ namespace Persistant {
   void toUavcan(const NumericValue& numericValue, uavcan_protocol_param_NumericValue& uavcanValue);
   bool fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue);
 
-  StoreData getSetResponse(uavcan_protocol_param_GetSetRequest &req,
+  StoreData getSetResponse(const uavcan_protocol_param_GetSetRequest &req,
 			   uavcan_protocol_param_GetSetResponse& resp);
   
 } // namespace Persistant
