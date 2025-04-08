@@ -48,9 +48,9 @@ namespace Persistant {
   {
     size_t index = 0;
     for (const auto& [_, variant] : frozenParameters) {  
-      std::visit([&](const auto& value) {
+      variant.v.visit([&](const auto& value) {
 	Overload{}(storedParamsList[index++], value);  
-      }, variant.v);
+      });
     }
     const auto& crc32 = Persistant::Parameter::cfind("CONST.PARAMETERS.CRC32");
     set(crc32, computeParamsListCRC());
@@ -118,7 +118,7 @@ namespace Persistant {
    */
   void toUavcan(const StoredValue& storedValue, uavcan_protocol_param_Value& uavcanValue)
   {
-    std::visit([&](const auto& val) {
+    storedValue.visit([&](const auto& val) {
       using T = std::decay_t<decltype(val)>;
       
       if constexpr (std::is_same_v<T, NoValue>) {
@@ -141,7 +141,7 @@ namespace Persistant {
 	  uavcanValue.string_value.len = 0;
 	}
       }
-    }, storedValue);
+    });
   }
 
 
@@ -207,7 +207,7 @@ namespace Persistant {
    */
   void toUavcan(const NumericValue& numericValue, uavcan_protocol_param_NumericValue& uavcanValue)
   {
-    std::visit([&](const auto& val) {
+    numericValue.visit([&](const auto& val) {
       using T = std::decay_t<decltype(val)>;
 
       if constexpr (std::is_same_v<T, NoValue>) {
@@ -219,11 +219,12 @@ namespace Persistant {
 	uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_REAL_VALUE;
 	uavcanValue.real_value = val;
       }
-    }, numericValue);
+    });
   }
 
   void toUavcan(const FrozenDefault& defaultValue, uavcan_protocol_param_Value& uavcanValue)
-  {    std::visit([&](const auto& val) {
+  {
+    defaultValue.visit([&](const auto& val) {
     using T = std::decay_t<decltype(val)>;
       
     if constexpr (std::is_same_v<T, NoValue>) {
@@ -242,7 +243,7 @@ namespace Persistant {
       uavcanValue.string_value.len = std::min<uint8_t>(val.size(), 128);
       std::memcpy(uavcanValue.string_value.data, val.data(), uavcanValue.string_value.len);
     }
-  }, defaultValue);
+  });
   }
   /**
    * @brief Converts a UAVCAN NumericValue structure into a NumericValue (std::variant).
@@ -376,7 +377,7 @@ namespace Persistant {
     uint8_t type_id = static_cast<uint8_t>(value.index()); // Store type index
     buffer.push_back(type_id);
 
-    std::visit([&](const auto& val) {
+    value.visit([&](const auto& val) {
       using T = std::decay_t<decltype(val)>;
       if constexpr (std::is_same_v<T, Integer>) {
 	uint8_t bytes[sizeof(Integer)];
@@ -398,7 +399,7 @@ namespace Persistant {
 	}
       }
       // NoValue does not require extra storage
-    }, value);
+    });
   }
 
   /**

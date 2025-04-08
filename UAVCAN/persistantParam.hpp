@@ -67,8 +67,7 @@ namespace Persistant {
 
     size_t size = 0;
     for (size_t i = 0; i < params_list_len; i++) {
-      std::visit([&](const auto &param) { size += Overload{}(param); },
-		 params_list[i].second.v);
+      params_list[i].second.v.visit([&](const auto &param) { size += Overload{}(param); });
     }
 
     return size;
@@ -87,7 +86,7 @@ namespace Persistant {
    * @return True if valid, false otherwise.
    */
   consteval bool isValidDefault(const ParamDefault &param) {
-    return std::visit(
+    return param.v.visit(
 		      [&](const auto &v) -> bool {
 			using T = std::decay_t<decltype(v)>;
 
@@ -123,8 +122,7 @@ namespace Persistant {
 					    },
 					    param.min, param.max);
 			}
-		      },
-		      param.v);
+		      });
   }
 
   /**

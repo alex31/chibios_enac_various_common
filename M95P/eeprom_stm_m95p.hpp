@@ -146,8 +146,13 @@ namespace  Eeprom_M95 {
 	.error_cb       = [](hal_spi_driver*) {chSysHalt("spi cb error");},
 	//  .end_cb           = nullptr,
 	.ssline         = 0,
+#ifdef STM32H7XX
 	.cfg1           = SPI_CFG1_MBR_DIV32 | SPI_CFG1_DSIZE_VALUE(7),
 	.cfg2           = 0 // SPI_CFG2_CPOL=0 SPI_CFG2_CPHA=0
+#elifdef STM32G4XX
+	.cr1              = SPI_CR1_BR_0,
+	.cr2              = SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0
+#endif
 	};
 
     static constexpr size_t BLOCK_SIZE = 64 * 1024;
@@ -248,8 +253,14 @@ namespace  Eeprom_M95 {
     spid(driver), cfg(cfgTemplate), manage_bus(true)
   {
     cfg.ssline = cs;
-    int divexp = getDividerExponent(divider);
+    const int divexp = getDividerExponent(divider);
+#ifdef STM32H7XX
+    cfg.cfg1 &= ~SPI_CFG1_MBR_Msk;
     cfg.cfg1 |= SPI_CFG1_MBR_VALUE(divexp-1);
+#elifdef STM32G4XX
+    cfg.cr1 &= ~SPI_CR1_BR_Msk;
+    cfg.cr1 |=  (divexp << SPI_CR1_BR_Pos);
+#endif
   }
   
   constexpr Device::Device(SPIDriver& driver, const SPIConfig &_cfg) :
