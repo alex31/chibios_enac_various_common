@@ -13,6 +13,7 @@ namespace  {
     return (pageOffset + length) > PAGE_SIZE;
   }
 
+#ifdef STM32H7XX
   bool isValidDmaRam(const void *addr) {
     if ((uint32_t)addr < 0x20000000)
       return true;
@@ -20,7 +21,11 @@ namespace  {
       return true;
     return false;
   }
-
+#elifdef STM32G4XX
+  bool isValidDmaRam(const void *) {
+    return true;
+  }
+#endif
  }
 #define EXEC_AND_TEST(code) if (auto status = (code); status != MSG_OK) return status;
 

@@ -307,7 +307,7 @@ namespace Persistant {
     // request by name
     StoreData ret = {-1L, {}};
     uint16_t index = req.index;
-    
+
     if (req.name.len != 0) {
       memcpy(&resp.name, &req.name, sizeof(req.name));
       // it's by name let's find the corresponding index
@@ -315,14 +315,7 @@ namespace Persistant {
       resp.name.len = req.name.len;
       resp.name.data[std::min<uint16_t>(resp.name.len, sizeof(resp.name.data) -1U)] = 0;
       index = Parameter::findIndex(resp.name.data);
-      if (index == 0) {
-	resp.value.union_tag = 
-	  resp.default_value.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
-	resp.max_value.union_tag = 
-	  resp.min_value.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_EMPTY;
-	return ret;
-      }
-      // if index is found, indicate it in response
+       // if index is found, indicate it in response
     } else {
       // request by index
       const auto& paramName =  std::next(frozenParameters.begin(), index)->first;
@@ -330,9 +323,22 @@ namespace Persistant {
       memcpy(resp.name.data, paramName.data(),
 	     std::min<uint16_t>(sizeof(resp.name.data), resp.name.len + 1U));
     }
+
     // now we use index either found by name or directly given in message
     // is it a set_and_request or just request ?
-    const auto& [stored, deflt] = Parameter::find(index);
+    if ((index == 0) or (index >= params_list_len))
+      {
+	resp.name.len = req.name.len;
+	memcpy(resp.name.data, req.name.data,
+	       std::min<uint16_t>(sizeof(resp.name.data), resp.name.len));
+	resp.value.union_tag = 
+	resp.default_value.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
+      resp.max_value.union_tag = 
+	resp.min_value.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_EMPTY;
+      return ret;
+    }
+    
+   const auto& [stored, deflt] = Parameter::find(index);
     if (req.value.union_tag != UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY) {
       fromUavcan(req.value, stored);
       Parameter::enforceMinMax(index);
