@@ -201,6 +201,14 @@ namespace Persistant {
     find(const char *key);
 
     /**
+     * @brief Retrieve a parameter by name using a C-style string.
+     * @param key The parameter name.
+     * @return the value of the underlying variant selected by the type
+     */
+    template<typename T>
+    static const T& get(const char *key);
+
+    /**
      * @brief Clamp an integer value within its defined min/max range.
      */
     constexpr static Integer clamp(const ParamDefault &deflt,
@@ -315,6 +323,15 @@ namespace Persistant {
   Parameter::find(const char *key) {
     const auto index = findIndex(frozen::string(key));
     return find(index);
+  }
+
+  template<typename T>
+  const T& Parameter::get(const char *key)
+  {
+    const auto& [stored, _] = find(key);
+    chDbgAssert(std::holds_alternative<T>(stored),
+		"invalid tag for variant");
+    return std::get<T>(stored);
   }
 
   constexpr Integer Parameter::clamp(const ParamDefault &deflt,
