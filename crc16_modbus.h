@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-uint16_t modbus_crc16(const uint8_t *buf, size_t len);
+  uint16_t modbus_crc16 (const void *buf, size_t len);
 
 #ifdef __cplusplus
 }

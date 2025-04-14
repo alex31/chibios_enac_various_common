@@ -1,8 +1,9 @@
 #include "crc16_modbus.h"
 
 
-uint16_t modbus_crc16 (const uint8_t *buf, size_t len)
+uint16_t modbus_crc16 (const void *_buf, size_t len)
 {
+  const uint8_t *buf = (uint8_t *) _buf;
   static const uint16_t table[256] = {
 	       0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
 	       0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,
