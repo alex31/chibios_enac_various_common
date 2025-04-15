@@ -182,51 +182,7 @@ namespace UAVCAN
     chMtxObjectInit(&canard_mtx_s);
     chMtxObjectInit(&canard_mtx_r);
     chEvtObjectInit(&canard_tx_not_empty);
-
-    /*
-      if application has not bind callback to any of these 3 message id,
-      library should create entry in the map for internal message management
-      if  application has bind callback, the entry is already there and management
-      will be done
-     */
-    if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_GETNODEINFO_ID,
-	  CanardTransferTypeRequest})) {
-      if (not idToHandleMessage.full()) {
-	idToHandleMessage[{UAVCAN_PROTOCOL_GETNODEINFO_ID, CanardTransferTypeRequest}] = {
-	  UAVCAN_PROTOCOL_GETNODEINFO_REQUEST_SIGNATURE,
-	  UAVCAN::Node::requestMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoRequest>>
-	};
-      } else {
-	errorCb("idToHandleMessage is full");
-      }
-    }
-
-    if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_GETNODEINFO_ID,
-	  CanardTransferTypeResponse})) {
-      if (not idToHandleMessage.full()) {
-	idToHandleMessage[{UAVCAN_PROTOCOL_GETNODEINFO_ID,
-	  CanardTransferTypeResponse}] = {
-	  UAVCAN_PROTOCOL_GETNODEINFO_RESPONSE_SIGNATURE,
-	  UAVCAN::Node::responseMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoResponse>>
-	};
-      } else {
-	errorCb("idToHandleMessage is full");
-      }
-    }
-
-    if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_NODESTATUS_ID,
-	  CanardTransferTypeBroadcast})) {
-      if (not idToHandleMessage.full()) {
-	idToHandleMessage[{UAVCAN_PROTOCOL_NODESTATUS_ID,
-	  CanardTransferTypeBroadcast}] = {
-	  UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
-	  UAVCAN::Node::broadcastMessageCb<nullAppCb<uavcan_protocol_NodeStatus>>
-	};
-      } else {
-	errorCb("idToHandleMessage is full");
-      }
-    }
-  }
+}
   
   int8_t Node::configureHardwareFilters()
   {
@@ -289,6 +245,50 @@ namespace UAVCAN
   
   void Node::start()
   {
+    /*
+      if application has not bind callback to any of these 3 message id,
+      library should create entry in the map for internal message management
+      if  application has bind callback, the entry is already there and management
+      will be done
+     */
+    if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_GETNODEINFO_ID,
+	  CanardTransferTypeRequest})) {
+      if (not idToHandleMessage.full()) {
+	idToHandleMessage[{UAVCAN_PROTOCOL_GETNODEINFO_ID, CanardTransferTypeRequest}] = {
+	  UAVCAN_PROTOCOL_GETNODEINFO_REQUEST_SIGNATURE,
+	  UAVCAN::Node::requestMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoRequest>>
+	};
+      } else {
+	errorCb("idToHandleMessage is full");
+      }
+    }
+
+    if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_GETNODEINFO_ID,
+	  CanardTransferTypeResponse})) {
+      if (not idToHandleMessage.full()) {
+	idToHandleMessage[{UAVCAN_PROTOCOL_GETNODEINFO_ID,
+	  CanardTransferTypeResponse}] = {
+	  UAVCAN_PROTOCOL_GETNODEINFO_RESPONSE_SIGNATURE,
+	  UAVCAN::Node::responseMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoResponse>>
+	};
+      } else {
+	errorCb("idToHandleMessage is full");
+      }
+    }
+
+    if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_NODESTATUS_ID,
+	  CanardTransferTypeBroadcast})) {
+      if (not idToHandleMessage.full()) {
+	idToHandleMessage[{UAVCAN_PROTOCOL_NODESTATUS_ID,
+	  CanardTransferTypeBroadcast}] = {
+	  UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
+	  UAVCAN::Node::broadcastMessageCb<nullAppCb<uavcan_protocol_NodeStatus>>
+	};
+      } else {
+	errorCb("idToHandleMessage is full");
+      }
+    }
+
     canardInit(&canard, memory_pool, MEMORYPOOL_SIZE,
 	       &onTransferReceivedDispatch,
 	       &shouldAcceptTransferDispatch, this);
@@ -308,7 +308,7 @@ namespace UAVCAN
 #else
       (config.cancfg.RXGFC & FDCAN_CONFIG_GFC_ANFE_REJECT) != 0;
 #endif
-      chDbgAssert(rejectNonAcceptedId,
+      chDbgAssert(rejectNonAcceptedId || filtersInUse == 0,
 		  "cancfg.RXGFC must be corrected to reject filtered id");
       errorCb("INFO: hardware filtering use %d slots", filtersInUse);
     }
