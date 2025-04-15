@@ -32,9 +32,10 @@ struct ParamDefault {
   FrozenDefault v = (NoValue){};
 };
 
-/// Default parameter list stored in ROM.
+/// Default parameter list stored in EEPROM.
 using ParamDefaultEntry =  std::pair<frozen::string, ParamDefault>;
 static constexpr  ParamDefaultEntry params_list[] {
+  {"\x01 NOTFOUND", {.v = {}}}, // this entry is used when key is not found
 #include "nodeParameters.hpp"
 };
 

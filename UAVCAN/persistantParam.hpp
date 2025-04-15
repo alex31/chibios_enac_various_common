@@ -207,7 +207,14 @@ namespace Persistant {
      */
     template<typename T>
     static const T& get(const char *key);
-
+    
+   /**
+     * @brief Retrieve a parameter by index
+     * @param index The parameter index.
+     * @return the value of the underlying variant selected by the type
+     */
+    template<typename T>
+    static const T& get(const size_t index);
     /**
      * @brief Clamp an integer value within its defined min/max range.
      */
@@ -329,6 +336,15 @@ namespace Persistant {
   const T& Parameter::get(const char *key)
   {
     const auto& [stored, _] = find(key);
+    chDbgAssert(std::holds_alternative<T>(stored),
+		"invalid tag for variant");
+    return std::get<T>(stored);
+  }
+
+  template<typename T>
+  const T& Parameter::get(const size_t index)
+  {
+    const auto& [stored, _] = find(index);
     chDbgAssert(std::holds_alternative<T>(stored),
 		"invalid tag for variant");
     return std::get<T>(stored);
