@@ -355,9 +355,9 @@ namespace Persistant {
     Integer ret = value;
 
     if (std::holds_alternative<Integer>(deflt.min))
-      ret = std::max(value, std::get<Integer>(deflt.min));
+      ret = std::max(ret, std::get<Integer>(deflt.min));
     if (std::holds_alternative<Integer>(deflt.max))
-      ret = std::min(value, std::get<Integer>(deflt.max));
+      ret = std::min(ret, std::get<Integer>(deflt.max));
     return ret;
   }
 
@@ -366,9 +366,9 @@ namespace Persistant {
     float ret = value;
 
     if (std::holds_alternative<float>(deflt.min))
-      ret = std::max(value, std::get<float>(deflt.min));
+      ret = std::max(ret, std::get<float>(deflt.min));
     if (std::holds_alternative<float>(deflt.max))
-      ret = std::min(value, std::get<float>(deflt.max));
+      ret = std::min(ret, std::get<float>(deflt.max));
     return ret;
   }
 

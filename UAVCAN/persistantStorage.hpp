@@ -19,12 +19,14 @@ namespace Persistant {
  */
   using EepromStoreWriteFn = bool (*) (size_t recordIndex, const void *data, size_t size);
   using EepromStoreReadFn =  bool (*) (size_t recordIndex, void *data, size_t& size);
+  using EepromEraseRecord =  bool (*) (size_t recordIndex);
   using EepromErase =        bool (*) (void);
   using EepromGetLen =       size_t (*) ();
   
   struct EepromStoreHandle {
     EepromStoreWriteFn	writeFn;
     EepromStoreReadFn	readFn;
+    EepromEraseRecord	eraseRecordFn;
     EepromErase		eraseFn;
     EepromGetLen	getLen;
   };
@@ -49,6 +51,7 @@ namespace Persistant {
     bool store(size_t index, const StoreSerializeBuffer& buffer);
     bool restore(size_t index, StoreSerializeBuffer& buffer);
     bool restore(size_t frozenIndex, size_t storeIndex);
+    bool erase(size_t index);
     ssize_t binarySearch(const frozen::string& str);
     void partialRestore();
     StoredValue get(const frozen::string& name);

@@ -77,13 +77,13 @@ namespace Persistant {
   bool Storage::start()
   {
     Parameter::populateDefaults();
-    const bool restoreStatus = restoreAll();
+    bool restoreStatus = restoreAll();
     if (not restoreStatus) {
       DebugTrace("DBG> total restore failed");
       partialRestore();
       Parameter::enforceMinMax();
       eraseAll();
-      storeAll();
+      restoreStatus = storeAll();
     } 
     return restoreStatus;
   }
@@ -109,7 +109,15 @@ namespace Persistant {
     Parameter::serializeStoredValue(index, buffer);
     return store(index, buffer);
   }
-  
+
+  bool Storage::erase(size_t index)
+  {
+#ifdef TARGET_ARM_CHIBIOS
+    MutexGuard guard(mtx);
+#endif
+    return handle.eraseRecordFn(index);
+  }
+ 
   bool Storage::restore(size_t index, StoreSerializeBuffer& lbuffer)
   {
     size_t size = buffer.capacity();
@@ -136,7 +144,7 @@ namespace Persistant {
     //    DebugTrace("DBG> restore name = %s", name.data());
     // for CRC32 : we don't restore, and if the value is different
     // we return false
-    if (compareStrSpan(name, "CONST.PARAMETERS.CRC32"_u) == std::strong_ordering::equal) {
+    if (compareStrSpan(name, "const.parameters.crc32"_u) == std::strong_ordering::equal) {
       // if the crc32 is at another position something has changed
       if (strncmp(Parameter::findName(index).data(), (char *) name.data(), name.size()) != 0)
 	return false;
@@ -151,7 +159,7 @@ namespace Persistant {
     } 
     // for other parameters : we restore the ones which does
     // not begin with CONST and return true in both cases
-    else if (compareStrSpan(name, "CONST."_u, true) != std::strong_ordering::equal) {
+    else if (compareStrSpan(name, "const."_u, true) != std::strong_ordering::equal) {
       Parameter::deserializeStoredValue(index, buffer);
     }
     return true;
@@ -166,7 +174,7 @@ namespace Persistant {
     //    DebugTrace("DBG> restore name = %s", name.data());
     
     // discard CONST\..* parameters
-    if (compareStrSpan(name, "CONST."_u, true) != std::strong_ordering::equal) {
+    if (compareStrSpan(name, "const."_u, true) != std::strong_ordering::equal) {
       Parameter::deserializeStoredValue(frozenIndex, buffer);
     }
     return true;
@@ -178,6 +186,12 @@ namespace Persistant {
     for (size_t index=0; index < params_list_len; index++) {
       success = store(index) && success;
     }
+    
+    const size_t storeLen = getLen();
+    for (size_t index=params_list_len; index < storeLen; index++) {
+      erase(index);
+    }
+    
     return success;
   }
 
@@ -185,7 +199,11 @@ namespace Persistant {
   {
     bool success = true;
     for (size_t index=0; index < params_list_len; index++) {
-      success = restore(index) && success;
+      const bool restoreSucces = restore(index);
+      success = restoreSucces && success;
+      if (not restoreSucces) {
+	DebugTrace("*** restoreAll fail on index %u", index);
+      }
     }
     return success;
   }

@@ -52,7 +52,8 @@ namespace Persistant {
 	Overload{}(storedParamsList[index++], value);  
       });
     }
-    const auto& crc32 = Persistant::Parameter::cfind("CONST.PARAMETERS.CRC32");
+    static_assert(Persistant::Parameter::findIndex  ("const.parameters.crc32") > 0);
+    const auto& crc32 = Persistant::Parameter::cfind("const.parameters.crc32");
     set(crc32, computeParamsListCRC());
   }
 
@@ -332,13 +333,13 @@ namespace Persistant {
 	memcpy(resp.name.data, req.name.data,
 	       std::min<uint16_t>(sizeof(resp.name.data), resp.name.len));
 	resp.value.union_tag = 
-	resp.default_value.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
-      resp.max_value.union_tag = 
-	resp.min_value.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_EMPTY;
-      return ret;
-    }
+	  resp.default_value.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
+	resp.max_value.union_tag = 
+	  resp.min_value.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_EMPTY;
+	return ret;
+      }
     
-   const auto& [stored, deflt] = Parameter::find(index);
+    const auto& [stored, deflt] = Parameter::find(index);
     if (req.value.union_tag != UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY) {
       fromUavcan(req.value, stored);
       Parameter::enforceMinMax(index);
@@ -349,7 +350,7 @@ namespace Persistant {
     toUavcan(deflt.v, resp.default_value);
     toUavcan(deflt.min, resp.min_value);
     toUavcan(deflt.max, resp.max_value);
-
+    
     return ret;
   }
 

@@ -36,6 +36,8 @@ struct ParamDefault {
 using ParamDefaultEntry =  std::pair<frozen::string, ParamDefault>;
 static constexpr  ParamDefaultEntry params_list[] {
   {"\x01 NOTFOUND", {.v = {}}}, // this entry is used when key is not found
+  {"const.parameters.crc32", {.v = 0L}},
+
 #include "nodeParameters.hpp"
 };
 
