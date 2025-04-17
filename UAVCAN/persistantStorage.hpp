@@ -26,7 +26,6 @@ namespace Persistant {
   struct EepromStoreHandle {
     EepromStoreWriteFn	writeFn;
     EepromStoreReadFn	readFn;
-    EepromEraseRecord	eraseRecordFn;
     EepromErase		eraseFn;
     EepromGetLen	getLen;
   };
@@ -51,7 +50,6 @@ namespace Persistant {
     bool store(size_t index, const StoreSerializeBuffer& buffer);
     bool restore(size_t index, StoreSerializeBuffer& buffer);
     bool restore(size_t frozenIndex, size_t storeIndex);
-    bool erase(size_t index);
     ssize_t binarySearch(const frozen::string& str);
     void partialRestore();
     StoredValue get(const frozen::string& name);

@@ -109,14 +109,6 @@ namespace Persistant {
     Parameter::serializeStoredValue(index, buffer);
     return store(index, buffer);
   }
-
-  bool Storage::erase(size_t index)
-  {
-#ifdef TARGET_ARM_CHIBIOS
-    MutexGuard guard(mtx);
-#endif
-    return handle.eraseRecordFn(index);
-  }
  
   bool Storage::restore(size_t index, StoreSerializeBuffer& lbuffer)
   {
@@ -140,13 +132,15 @@ namespace Persistant {
     if (restore(index, buffer) != true) {
       return false;
     }
-    const auto& name = Parameter::deserializeGetName(buffer);
+    const std::span<const uint8_t> storedName = Parameter::deserializeGetName(buffer);
+    const auto fName = Parameter::findName(index);
+    const std::span<const uint8_t> frozenName{reinterpret_cast<const uint8_t*>(fName.data()), fName.size()};
     //    DebugTrace("DBG> restore name = %s", name.data());
     // for CRC32 : we don't restore, and if the value is different
     // we return false
-    if (compareStrSpan(name, "const.parameters.crc32"_u) == std::strong_ordering::equal) {
+    if (compareStrSpan(frozenName, "const.parameters.crc32"_u) == std::strong_ordering::equal) {
       // if the crc32 is at another position something has changed
-      if (strncmp(Parameter::findName(index).data(), (char *) name.data(), name.size()) != 0)
+      if (compareStrSpan(frozenName, storedName) != std::strong_ordering::equal)
 	return false;
       const auto crcp = Persistant::Parameter::find(index);
       const Integer crcBefore = Parameter::get<Integer>(crcp);
@@ -154,12 +148,13 @@ namespace Persistant {
       const Integer crcAfter = Parameter::get<Integer>(crcp);
       if (crcBefore != crcAfter) {
 	Parameter::set(crcp, crcBefore);
+	DebugTrace("set **crcBefore** = %llu, (crcAfter = %llu)", crcBefore, crcAfter);
 	return false;
       }
     } 
     // for other parameters : we restore the ones which does
     // not begin with CONST and return true in both cases
-    else if (compareStrSpan(name, "const."_u, true) != std::strong_ordering::equal) {
+    else if (compareStrSpan(frozenName, "const."_u, true) != std::strong_ordering::equal) {
       Parameter::deserializeStoredValue(index, buffer);
     }
     return true;
@@ -186,12 +181,6 @@ namespace Persistant {
     for (size_t index=0; index < params_list_len; index++) {
       success = store(index) && success;
     }
-    
-    const size_t storeLen = getLen();
-    for (size_t index=params_list_len; index < storeLen; index++) {
-      erase(index);
-    }
-    
     return success;
   }
 
