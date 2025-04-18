@@ -176,7 +176,10 @@ requires (QSZ != 0)
   template<size_t STS, size_t NBD>
   requires (NBD != 0)
   JobQueue<QSZ, MT...>& JobQueue<QSZ, MT...>::instance() {
-  static StackArray<STS, NBD> stacks;
+#if PORT_ENABLE_GUARD_PAGES
+  alignas(32)
+#endif
+    constinit static StackArray<STS, NBD> stacks ;
   static JobQueue jq(stacks);
   return jq;
 }

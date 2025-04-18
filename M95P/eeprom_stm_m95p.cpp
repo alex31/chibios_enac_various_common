@@ -22,7 +22,11 @@ namespace  {
     return false;
   }
 #elifdef STM32G4XX
-  bool isValidDmaRam(const void *) {
+  bool isValidDmaRam(const void *addr) {
+    if (((uint32_t)addr >= 0x20018000 - 512U) &&
+	((uint32_t)addr < (0x20018000 + (16U * 1024U))))
+      return false;
+
     return true;
   }
 #endif
@@ -53,11 +57,11 @@ namespace  {
       });
       
       if (offset == nullOffset) {
-	spicmd[0] = command;
-	status = spiSend(&spid, sizeof(spicmd[0]), &spicmd[0]);
+	dmaRamBuffer.spicmd[0] = command;
+	status = spiSend(&spid, sizeof(dmaRamBuffer.spicmd[0]), &dmaRamBuffer.spicmd[0]);
       } else {
-	spicmd = makeCmd(command, offset);
-	status = spiSend(&spid, spicmd.size(), spicmd.data());
+	dmaRamBuffer.spicmd = makeCmd(command, offset);
+	status = spiSend(&spid, dmaRamBuffer.spicmd.size(), dmaRamBuffer.spicmd.data());
       }
       
       if (tx.size() > 0) {
@@ -73,19 +77,27 @@ namespace  {
       return status;
     }
 
-    msg_t Device::getStatus(Status &eepromStatus) const
+    // msg_t Device::getStatus(Status &eepromStatus) const
+    // {
+    //   spiBusPrologue();
+    //   msg_t status = spiExchange(&spid, readStatusCmd.size(), readStatusCmd.data(), 
+    // 				 dmaRamBuffer2b.data());
+    //   eepromStatus = static_cast<Status>(dmaRamBuffer.b2[1]);
+    //   spiBusEpilogue();
+    //   return status;
+    // }
+   msg_t Device::getStatus(Status &eepromStatus) const
     {
       spiBusPrologue();
-      msg_t status = spiExchange(&spid, readStatusCmd.size(), readStatusCmd.data(), 
-				 dmaRamBuffer2b.data());
-      eepromStatus = static_cast<Status>(dmaRamBuffer2b[1]);
+      spiPolledExchange(&spid, readStatusCmd[0]);
+      eepromStatus = static_cast<Status>(spiPolledExchange(&spid, readStatusCmd[1]));
       spiBusEpilogue();
-      return status;
+      return MSG_OK;
     }
     
     msg_t Device::buzyLoopWaitReady(systime_t timout) const
     {
-      Status eepromStatus;
+      Status eepromStatus = Status::OK;
       systime_t beginTs = chVTGetSystemTimeX();
       do {
 	if (msg_t status = getStatus(eepromStatus); status != MSG_OK) {
@@ -94,7 +106,7 @@ namespace  {
 	chThdSleep(1);
       } while ((eepromStatus & Status::WIP) &&
 	       (chTimeDiffX(beginTs, chVTGetSystemTimeX()) < timout));
-      //      chDbgAssert((eepromStatus & Status::WIP) == 0, "buzy loop timeout");
+      chDbgAssert((eepromStatus & Status::WIP) == 0, "buzy loop timeout");
       return eepromStatus & Status::WIP ? MSG_TIMEOUT : MSG_OK;
     }
 
@@ -128,16 +140,16 @@ namespace  {
     
     msg_t Device::readStatus(Status& statusReg) const
     {
-      msg_t status = spiTransaction(Command::RDSR, nullOffset, nullBufferArray, dmaRamBuffer1b);
-      statusReg = static_cast<Status>(dmaRamBuffer1b[0]);
+      msg_t status = spiTransaction(Command::RDSR, nullOffset, nullBufferArray, dmaRamBuffer.b1);
+      statusReg = static_cast<Status>(dmaRamBuffer.b1[0]);
       return status;
     }
     
     msg_t Device::readConfAndSafety(Configuration& conf, Safety& safety) const
     {
-      msg_t status = spiTransaction(Command::RDCR, nullOffset, nullBufferArray, dmaRamBuffer2b);
-      conf = static_cast<Configuration>(dmaRamBuffer2b[0]);
-      safety = static_cast<Safety>(dmaRamBuffer2b[1]);
+      msg_t status = spiTransaction(Command::RDCR, nullOffset, nullBufferArray, dmaRamBuffer.b2);
+      conf = static_cast<Configuration>(dmaRamBuffer.b2[0]);
+      safety = static_cast<Safety>(dmaRamBuffer.b2[1]);
       return status;
     }
     
@@ -170,24 +182,24 @@ namespace  {
     
     msg_t Device::readVolatile(Volatile& vol) const
     {
-      msg_t status = spiTransaction(Command::RDVR, nullOffset, nullBufferArray, dmaRamBuffer1b);
-      vol = static_cast<Volatile>(dmaRamBuffer1b[0]);
+      msg_t status = spiTransaction(Command::RDVR, nullOffset, nullBufferArray, dmaRamBuffer.b1);
+      vol = static_cast<Volatile>(dmaRamBuffer.b1[0]);
       return status;
     }
 
     msg_t Device::writeVolatile(Volatile vol) const
     {
-      dmaRamBuffer1b[0] = vol;
+      dmaRamBuffer.b1[0] = vol;
       EXEC_AND_TEST(writeEnable());
-      msg_t status = spiTransaction(Command::WRVR, nullOffset, dmaRamBuffer1b);
+      msg_t status = spiTransaction(Command::WRVR, nullOffset, dmaRamBuffer.b1);
       return status;
     }
     
     msg_t Device::writeStatusAndConf(Status statusReg, Configuration conf) const
     {
-      dmaRamBuffer2b = {statusReg, conf};
+      dmaRamBuffer.b2 = {statusReg, conf};
       EXEC_AND_TEST(writeEnable());
-      return spiTransaction(Command::WRSR, nullOffset, dmaRamBuffer2b);
+      return spiTransaction(Command::WRSR, nullOffset, dmaRamBuffer.b2);
     }
 
     msg_t Device::read(int offset, std::span<uint8_t> readBuffer) const
@@ -199,10 +211,10 @@ namespace  {
     msg_t Device::readIdentification()
     {
       constexpr uint32_t mega = 1024 * 1024;
-      memset(&spicmd, 0, spicmd.size());
-      auto status = spiTransaction(Command::RDID, 0, nullBufferArray, spicmd);
+      memset(&dmaRamBuffer.spicmd, 0, dmaRamBuffer.spicmd.size());
+      auto status = spiTransaction(Command::RDID, 0, nullBufferArray, dmaRamBuffer.spicmd);
       if (status == MSG_OK) {
-	memcpy(&identification, &spicmd, sizeof(Identification));
+	memcpy(&identification, &dmaRamBuffer.spicmd, sizeof(Identification));
 	capacity = 1U << identification.density;
 	const size_t capacityM = capacity / mega;
 	if ((identification.manufacturer != 0x20) || (identification.family != 0)
@@ -344,11 +356,8 @@ namespace  {
 
     const std::array<uint8_t, 2> Device::readStatusCmd = {Command::RDSR, 0};
     __attribute__ ((section(DMA_SECTION)))
-    std::array<uint8_t, 4> Device::spicmd = {};
-    __attribute__ ((section(DMA_SECTION)))
-    std::array<uint8_t, 2> Device::dmaRamBuffer2b = {};
-     __attribute__ ((section(DMA_SECTION)))
-    std::array<uint8_t, 1> Device::dmaRamBuffer1b = {};
+    Device::dmaRamBuffer_t Device::dmaRamBuffer = {};
+
     
     
   } // namespace

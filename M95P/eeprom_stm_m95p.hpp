@@ -23,35 +23,36 @@ namespace  Eeprom_M95 {
   class Device {
   public:
     enum Status {
-      WIP  = 1 << 0,
-      WEL  = 1 << 1,
-      BP0  = 1 << 2,
-      BP1  = 1 << 3,
-      BP2  = 1 << 4,
-      TB   = 1 << 6,
-      SRWD = 1 << 7,
+      OK = 0,
+      WIP  = 1U << 0,
+      WEL  = 1U << 1,
+      BP0  = 1U << 2,
+      BP1  = 1U << 3,
+      BP2  = 1U << 4,
+      TB   = 1U << 6,
+      SRWD = 1U << 7,
     };
     
    enum Configuration {
-      LID  = 1 << 0,
-      DRV0 = 1 << 5,
-      DRV1 = 1 << 6,
+      LID  = 1U << 0,
+      DRV0 = 1U << 5,
+      DRV1 = 1U << 6,
     };
     
    enum Safety {
-      ECC3DS  = 1 << 0,
-      ECC3D  = 1 << 1,
-      ECC2C  = 1 << 2,
-      ECC1C  = 1 << 3,
-      PRF    = 1 << 4,
-      ERF    = 1 << 5,
-      PUF   = 1 << 6,
-      PAMAF = 1 << 7,
+      ECC3DS  = 1U << 0,
+      ECC3D  = 1U << 1,
+      ECC2C  = 1U << 2,
+      ECC1C  = 1U << 3,
+      PRF    = 1U << 4,
+      ERF    = 1U << 5,
+      PUF   = 1U << 6,
+      PAMAF = 1U << 7,
     };
 
   enum Volatile {
-      BUFLD  = 1 << 0,
-      BUFEN  = 1 << 1
+      BUFLD  = 1U << 0,
+      BUFEN  = 1U << 1
   };
 
   struct Identification {
@@ -163,10 +164,11 @@ namespace  Eeprom_M95 {
     static constexpr std::span<const uint8_t> nullBuffer = {};
 
     static const std::array<uint8_t, 2> readStatusCmd; 
-    static std::array<uint8_t, 4> spicmd;
-    static std::array<uint8_t, 2> dmaRamBuffer2b;
-    static std::array<uint8_t, 1> dmaRamBuffer1b;
-
+    alignas(4) static union dmaRamBuffer_t {
+      std::array<uint8_t, 4> spicmd;
+      std::array<uint8_t, 2> b2;
+      std::array<uint8_t, 1> b1;
+    } dmaRamBuffer;
 
     template <SingleByteIntegralOrEnum T, SingleByteIntegralOrEnum R,
               std::size_t TxSize, std::size_t RxSize>
