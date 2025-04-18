@@ -179,7 +179,7 @@ requires (QSZ != 0)
 #if PORT_ENABLE_GUARD_PAGES
   alignas(32)
 #endif
-    constinit static StackArray<STS, NBD> stacks ;
+    constinit static StackArray<STS, NBD> stacks __attribute__((section(FAST_SECTION "_clear")));
   static JobQueue jq(stacks);
   return jq;
 }
