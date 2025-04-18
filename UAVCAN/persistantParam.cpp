@@ -319,12 +319,13 @@ namespace Persistant {
        // if index is found, indicate it in response
     } else {
       // request by index
-      const auto& paramName =  std::next(frozenParameters.begin(), index)->first;
-      resp.name.len = paramName.size();
-      memcpy(resp.name.data, paramName.data(),
-	     std::min<uint16_t>(sizeof(resp.name.data), resp.name.len + 1U));
+      if ((index > 0) and (index < params_list_len)) {
+	const auto& paramName =  std::next(frozenParameters.begin(), index)->first;
+	resp.name.len = paramName.size();
+	memcpy(resp.name.data, paramName.data(),
+	       std::min<uint16_t>(sizeof(resp.name.data), resp.name.len + 1U));
+      }
     }
-
     // now we use index either found by name or directly given in message
     // is it a set_and_request or just request ?
     if ((index == 0) or (index >= params_list_len))
