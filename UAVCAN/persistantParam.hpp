@@ -471,3 +471,10 @@ namespace Persistant {
 			   uavcan_protocol_param_GetSetResponse& resp);
   
 } // namespace Persistant
+
+#define PARAM_CGET(type, name) \
+  ({								     \
+     constexpr ssize_t idx = Persistant::Parameter::findIndex(name); \
+     static_assert(idx >= 0, name " not found"); \
+     Persistant::Parameter::get<type>(idx); \
+  })
