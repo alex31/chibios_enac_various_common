@@ -215,6 +215,15 @@ namespace Persistant {
      */
     template<typename T>
     static const T& get(const size_t index);
+
+    /**
+     * @brief Retrieve a  by index and tag
+     * @param index The parameter index.
+     * @return the value of the underlying variant selected by the type
+     */
+    template<size_t TAG>
+    static const auto& get(const size_t index);
+
     /**
      * @brief Clamp an integer value within its defined min/max range.
      */
@@ -349,6 +358,13 @@ namespace Persistant {
 		"invalid tag for variant");
     return std::get<T>(stored);
   }
+  
+  template<size_t TAG>
+  const auto& Parameter::get(const size_t index)
+  {
+    const auto& [stored, _] = find(index);
+    return std::get<TAG>(stored);
+  }
 
   constexpr Integer Parameter::clamp(const ParamDefault &deflt,
 				     const Integer &value) {
@@ -472,9 +488,20 @@ namespace Persistant {
   
 } // namespace Persistant
 
-#define PARAM_CGET(type, name) \
+#define PARAM_TYPECGET(type, name)				     \
   ({								     \
      constexpr ssize_t idx = Persistant::Parameter::findIndex(name); \
-     static_assert(idx >= 0, name " not found"); \
-     Persistant::Parameter::get<type>(idx); \
+     static_assert(idx >= 0, name " not found");		     \
+     Persistant::Parameter::get<type>(idx);			     \
   })
+
+#define PARAM_CGET(name)					     \
+  ({								     \
+     constexpr ssize_t idx = Persistant::Parameter::findIndex(name); \
+     static_assert(idx >= 0, name " not found");		     \
+     constexpr auto& variant =					     \
+       std::next(frozenParameters.begin(), idx)->second.v;	     \
+     constexpr int tag = variant.index();			     \
+     Persistant::Parameter::get<tag>(idx);			     \
+  })
+
