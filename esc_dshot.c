@@ -155,9 +155,11 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
     .op_mode = DMA_ONESHOT,
     .error_cb = NULL,
     .end_cb = NULL,
+#if STM32_DMA_ADVANCED
     .pburst = 0,
     .mburst = 0,
     .fifo = 4
+#endif
   };
 
   driver->pwm_conf = (PWMConfig) {

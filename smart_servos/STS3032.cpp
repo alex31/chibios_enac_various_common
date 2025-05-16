@@ -1,31 +1,9 @@
 #include "STS3032.h"
 #include <algorithm>
 #include <cstring>
+#include "stdutil++.hpp"
 
 
-
-/**
- * @brief Remaps a value x from range [XMin, XMax] to [YMin, YMax], pure constexpr function.
- * 
- * @tparam XMin Input minimum
- * @tparam XMax Input maximum
- * @tparam YMin Output minimum
- * @tparam YMax Output maximum
- * @param x Input value to remap
- * @return Remapped output value
- */
-template<auto XMin, auto XMax, auto YMin, auto YMax, typename X>
-constexpr auto remap(X x) noexcept
-{
-    using T = std::common_type_t<decltype(XMin), decltype(XMax), decltype(YMin), decltype(YMax), X>;
-
-    static_assert(std::is_arithmetic_v<T>, "remap only supports arithmetic types");
-    static_assert(XMax != XMin, "XMax and XMin must be different");
-    static_assert(YMax != YMin, "YMax and YMin must be different");
-
-    constexpr T scale = (YMax - YMin) / static_cast<T>(XMax - XMin);
-    return YMin + (static_cast<T>(x) - XMin) * scale;
-}
 
 SmartServo::Status STS3032::writeRegisterEPROM(uint8_t id, uint8_t reg, uint8_t value)
 {

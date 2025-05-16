@@ -270,11 +270,13 @@ static void buildDmaConfig(DshotRpmCapture *drcp)
     .irq_priority = 7,
     .psize = 2,
     .msize = 2,
+#if STM32_DMA_ADVANCED
     .pburst = 0,
     .mburst = 0,
     .fifo = 4,
     .periph_inc_size_4 = false,
     .transfert_end_ctrl_by_periph = false
+#endif
   };
   
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {

@@ -8,9 +8,21 @@ static void rccEnableAndReset(const stm32_tim_t * const timer);
 
 void timerDmaCache_cache(TimerDmaCache *tdcp, const DMADriver *fromDma, const  stm32_tim_t *fromTim)
 {
+#if STM32_DMA_ADVANCED
+  static_assert(__builtin_types_compatible_p(typeof(tdcp->DMA_regs), typeof(*fromDma->dmastream->stream)),
+              "Incompatible types");
   memcpy(&tdcp->DMA_regs, fromDma->dmastream->stream, sizeof(tdcp->DMA_regs));
+#else
+  static_assert(__builtin_types_compatible_p(typeof(tdcp->DMA_regs), typeof(*fromDma->dmastream->channel)),
+              "Incompatible types");
+  memcpy(&tdcp->DMA_regs, fromDma->dmastream->channel, sizeof(tdcp->DMA_regs));
+#endif
   memcpy(&tdcp->TIM_regs, fromTim, sizeof(tdcp->TIM_regs));
+#if STM32_DMA_ADVANCED
   tdcp->DMA_regs.CR &= ~STM32_DMA_CR_EN;
+#else
+  tdcp->DMA_regs.CCR &= ~STM32_DMA_CR_EN;
+#endif
   tdcp->TIM_regs.CR1 &=  ~STM32_TIM_CR1_CEN;
 }
 
@@ -19,7 +31,12 @@ void timerDmaCache_restore(const TimerDmaCache *tdcp, DMADriver *toDma, stm32_ti
   rccEnableAndReset(toTim);
   toTim->CR1 = 0;
   memcpy((void *) &toTim->CR2, (void *) &tdcp->TIM_regs.CR2, sizeof(tdcp->TIM_regs) - 4U);
+#if STM32_DMA_ADVANCED
   memcpy(toDma->dmastream->stream, &tdcp->DMA_regs, sizeof(tdcp->DMA_regs));
+#else
+  memcpy(toDma->dmastream->channel, &tdcp->DMA_regs, sizeof(tdcp->DMA_regs));
+#endif
+
 }
 
 static void rccEnableAndReset(const stm32_tim_t * const timer)
