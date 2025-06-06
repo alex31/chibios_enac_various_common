@@ -24,11 +24,13 @@ static const uint32_t  TIM_PRESCALER = 1U;
  the more time you spend in the ISR and context switches,
  the less you have to wait for telemetry frame completion */
 #if defined STM32H7XX
-#define SWTICH_TO_CAPTURE_BASE_TIMOUT 38U
+#define SWITCH_TO_CAPTURE_BASE_TIMOUT 38U
 #elif defined STM32F7XX
-#define SWTICH_TO_CAPTURE_BASE_TIMOUT 32U
+#define SWITCH_TO_CAPTURE_BASE_TIMOUT 32U
+#elif defined STM32G4XX
+#define SWITCH_TO_CAPTURE_BASE_TIMOUT 28U
 #else
-#define SWTICH_TO_CAPTURE_BASE_TIMOUT 28U
+#define SWITCH_TO_CAPTURE_BASE_TIMOUT 28U
 #endif
 
 
@@ -56,7 +58,7 @@ static const struct  {
   uint32_t dier;
 } activeDier[4] = {
   {CH1_BOTH_EDGES,
-   TIM_DIER_CC1DE | TIM_DIER_TDE},
+   TIM_DIER_CC1DE | TIM_DIER_TDE /*| TIM_DIER_CC1IE*/},
   {CH1_BOTH_EDGES | CH2_BOTH_EDGES,
    TIM_DIER_CC1DE | TIM_DIER_CC2DE | TIM_DIER_TDE},
   {CH1_BOTH_EDGES | CH2_BOTH_EDGES | CH3_BOTH_EDGES,
@@ -65,10 +67,28 @@ static const struct  {
    TIM_DIER_CC1DE | TIM_DIER_CC2DE | TIM_DIER_CC3DE | TIM_DIER_CC4DE | TIM_DIER_TDE}
 };
 
+
+/*
+// DEBUG
+  static volatile uint32_t cbChannel = 0;
+  static volatile uint32_t cbCapture = 0;
+  static void captureCb(const TimICDriver *, uint32_t channel, uint32_t capture)
+  {
+  cbChannel = channel;
+  cbCapture = capture;
+  }
+  static void overflowCb(const TimICDriver *)
+  {
+  chSysHalt("overflowCb");
+  }
+  // END DEBUG
+  */
 static const TimICConfig timicCfgSkel = {
 	  .timer = NULL,
 	  .capture_cb = NULL,
 	  .overflow_cb = NULL,
+	  /* .capture_cb = &captureCb, */
+	  /* .overflow_cb = &overflowCb, */
 	  .mode = TIMIC_INPUT_CAPTURE,
 	  .active = activeDier[DSHOT_CHANNELS-1].active,
 	  .dier = activeDier[DSHOT_CHANNELS-1].dier,
@@ -164,12 +184,12 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   osalSysLock();
   // dma end callback will resume the thread upon completion of ALL dma transaction
   // else, the timeout will take care of thread resume
-  static const sysinterval_t timeoutUs = SWTICH_TO_CAPTURE_BASE_TIMOUT + 
+  static const sysinterval_t timeoutUs = SWITCH_TO_CAPTURE_BASE_TIMOUT + 
 					 (120U * 150U / DSHOT_SPEED);
   //palSetLine(LINE_LA_DBG_1);
   gptStartOneShotI(drcp->config->gptd, timeoutUs);
   //  palClearLine(LINE_LA_DBG_1);
-  chThdSuspendS(&drcp->dmads[0].thread);
+  const msg_t status = chThdSuspendS(&drcp->dmads[0].thread);
   //  palSetLine(LINE_LA_DBG_1);
   //  chSysPolledDelayX(1);
   //  palClearLine(LINE_LA_DBG_1);
@@ -202,7 +222,11 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
 #endif
   
 #if defined(DFREQ) && (DFREQ < 10) && (DFREQ != 0)
-  DebugTrace("dma out on %s", msg == MSG_OK ? "completion" : "timeout");
+  const systime_t now = chVTGetSystemTimeX();
+  if (TIME_I2MS(now - ts) > (1000U / DFREQ)) {
+    DebugTrace("dma out on %s", status == MSG_OK ? "completion" : "timeout");
+    ts = now;
+  }
 #endif
 }
 

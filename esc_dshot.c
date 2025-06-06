@@ -18,6 +18,8 @@
 #ifdef STM32H7XX
 // each H7 timer have the same max clock speed
 #define PWM_FREQ         (STM32_TIMCLK1 / 1000U) // the timer will beat @240Mhz on STM32H7
+#elsifdef STM32G4XX
+#define PWM_FREQ         (STM32_SYSCLK / 1000U) // the timer will beat @170Mhz on STM32G4
 #else
 // some F4 and F7 timers are limited to  / 2
 // others are limited to STM32_SYSCLK
