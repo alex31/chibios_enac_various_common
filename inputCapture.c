@@ -248,9 +248,11 @@ void timIcRccEnable(const TimICDriver * const timicp)
     if (use_isr) {
 #ifdef STM32_TIM1_UP_TIM10_NUMBER 
       nvicEnableVector(STM32_TIM1_UP_TIM10_NUMBER, STM32_IRQ_TIM1_UP_TIM10_PRIORITY);
-#endif
-#ifdef STM32_TIM1_CC_NUMBER 
+#warning "STM32_TIM1_UP_TIM10_NUMBER case"
+#elifdef STM32_TIM1_CC_NUMBER 
       nvicEnableVector(STM32_TIM1_CC_NUMBER, STM32_IRQ_TIM1_CC_PRIORITY);
+#else
+#error "nvicEnableVector not handled"  
 #endif
     }
   }
@@ -620,8 +622,17 @@ OSAL_IRQ_HANDLER(STM32_TIM1_UP_TIM10_HANDLER) {
 
   OSAL_IRQ_EPILOGUE();
 }
-#elif defined(STM32_TIM1_UP_HANDLER)
+#elifdef STM32_TIM1_UP_HANDLER
 OSAL_IRQ_HANDLER(STM32_TIM1_UP_HANDLER) {
+
+  OSAL_IRQ_PROLOGUE();
+
+  input_capture_lld_serve_interrupt(driverByTimerIndex[0]);
+
+  OSAL_IRQ_EPILOGUE();
+}
+#elifdef STM32_TIM1_UP_TIM16_HANDLER
+OSAL_IRQ_HANDLER(SSTM32_TIM1_UP_TIM16_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
