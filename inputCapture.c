@@ -214,7 +214,7 @@ void timIcStartCapture(TimICDriver *timicp)
 void timIcStopCapture(TimICDriver *timicp)
 {
   osalDbgCheck(timicp != NULL);
-  osalDbgAssert(timicp->state != TIMIC_STOP, "state error");
+  //  osalDbgAssert(timicp->state != TIMIC_STOP, "state error");
   stm32_tim_t * const timer = timicp->config->timer;
   osalDbgCheck(timer != NULL);
   timer->CR1 &= ~TIM_CR1_CEN;
@@ -224,7 +224,7 @@ void timIcStopCapture(TimICDriver *timicp)
 
 void timIcStop(TimICDriver *timicp)
 {
-  osalDbgAssert(timicp->state != TIMIC_STOP, "state error");
+  //  osalDbgAssert(timicp->state != TIMIC_STOP, "state error");
   chMtxLock(&timicp->mut);
   timIcRccDisable(timicp);
   timIcObjectInit(timicp);

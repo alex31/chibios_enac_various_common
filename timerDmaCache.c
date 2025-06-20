@@ -6,6 +6,41 @@ static void rccEnableAndReset(const stm32_tim_t * const timer);
 
 
 
+
+#define RESTORE_REG(r) toTim->r = tdcp->TIM_regs.r
+static inline __attribute__((always_inline))
+void register_restoreSelectedTimerReg(const TimerDmaCache *tdcp, stm32_tim_t *toTim)
+{
+  // just restore the needed registers to save few clock cycles
+  RESTORE_REG(SMCR);	   
+  RESTORE_REG(DIER);	   
+  RESTORE_REG(CCMR1);   
+  RESTORE_REG(CCMR2);   
+  RESTORE_REG(CCER);	   
+  RESTORE_REG(PSC);	   
+  RESTORE_REG(ARR);	   
+  RESTORE_REG(CCMR3);   
+  RESTORE_REG(DCR);     
+  RESTORE_REG(DMAR);    
+}
+
+#define SAVE_REG(r) tdcp->TIM_regs.r = toTim->r
+static inline __attribute__((always_inline))
+void register_cacheSelectedTimerReg(TimerDmaCache *tdcp, const stm32_tim_t *toTim)
+{
+  // just restore the needed registers to save few clock cycles
+  SAVE_REG(SMCR);	   
+  SAVE_REG(DIER);	   
+  SAVE_REG(CCMR1);   
+  SAVE_REG(CCMR2);   
+  SAVE_REG(CCER);	   
+  SAVE_REG(PSC);	   
+  SAVE_REG(ARR);	   
+  SAVE_REG(CCMR3);   
+  SAVE_REG(DCR);     
+  SAVE_REG(DMAR);    
+}
+
 void timerDmaCache_cache(TimerDmaCache *tdcp, const DMADriver *fromDma, const  stm32_tim_t *fromTim)
 {
 #if STM32_DMA_ADVANCED
@@ -17,7 +52,8 @@ void timerDmaCache_cache(TimerDmaCache *tdcp, const DMADriver *fromDma, const  s
               "Incompatible types");
   memcpy(&tdcp->DMA_regs, fromDma->dmastream->channel, sizeof(tdcp->DMA_regs));
 #endif
-  memcpy(&tdcp->TIM_regs, fromTim, sizeof(tdcp->TIM_regs));
+
+  register_cacheSelectedTimerReg(tdcp, fromTim);
 #if STM32_DMA_ADVANCED
   tdcp->DMA_regs.CR &= ~STM32_DMA_CR_EN;
 #else
@@ -26,11 +62,11 @@ void timerDmaCache_cache(TimerDmaCache *tdcp, const DMADriver *fromDma, const  s
   tdcp->TIM_regs.CR1 &=  ~STM32_TIM_CR1_CEN;
 }
 
+
 void timerDmaCache_restore(const TimerDmaCache *tdcp, DMADriver *toDma, stm32_tim_t *toTim)
 {
   rccEnableAndReset(toTim);
-  toTim->CR1 = 0;
-  memcpy((void *) &toTim->CR2, (void *) &tdcp->TIM_regs.CR2, sizeof(tdcp->TIM_regs) - 4U);
+  register_restoreSelectedTimerReg(tdcp, toTim);
 #if STM32_DMA_ADVANCED
   memcpy(toDma->dmastream->stream, &tdcp->DMA_regs, sizeof(tdcp->DMA_regs));
 #else
@@ -43,6 +79,7 @@ static void rccEnableAndReset(const stm32_tim_t * const timer)
 {
 #ifdef TIM1
   if (timer == STM32_TIM1) {
+    rccDisableTIM1();
     rccEnableTIM1(true);
     rccResetTIM1();
   }

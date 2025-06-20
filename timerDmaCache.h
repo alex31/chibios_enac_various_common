@@ -30,12 +30,28 @@ typedef struct
 */
 
 typedef struct {
+  uint32_t     CR1;
+  uint32_t     SMCR;
+  uint32_t     DIER;
+  uint32_t     CCMR1;
+  uint32_t     CCMR2;
+  uint32_t     CCMR3;
+  uint32_t     CCER;
+  uint32_t     PSC;
+  uint32_t     ARR;
+  uint32_t     BDTR;
+  uint32_t     DCR;
+  uint32_t     DMAR;
+} stm32_tim_cache_t;
+
+
+typedef struct {
 #if STM32_DMA_ADVANCED
   DMA_Stream_TypeDef DMA_regs;
 #else
   DMA_Channel_TypeDef DMA_regs;
 #endif
-  stm32_tim_t	     TIM_regs;
+  stm32_tim_cache_t   TIM_regs;
 } TimerDmaCache;
 
 void timerDmaCache_cache(TimerDmaCache *tdcp, const DMADriver *fromDma, const  stm32_tim_t *fromTim);

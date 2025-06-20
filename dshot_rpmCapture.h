@@ -182,6 +182,7 @@ typedef struct
 void dshotRpmCaptureStart(DshotRpmCapture *drcp, const DshotRpmCaptureConfig *cfg,
 			  stm32_tim_t	  *timer);
 void dshotRpmCaptureStop(DshotRpmCapture *drcp);
+void dshotRpmResetCaptureBuffer(DshotRpmCapture *drcp);
 void dshotRpmCatchErps(DshotRpmCapture *drcp);
 #if DSHOT_STATISTICS
 void dshotRpmTrace(DshotRpmCapture *drcp, uint8_t index);
