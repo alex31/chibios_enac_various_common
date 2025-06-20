@@ -381,7 +381,8 @@ void dshotSendFrame(DSHOTDriver *driver)
       setDshotPacketTlm(&driver->dshotMotors.dp[index], true);
       chMBPostTimeout(&driver->mb, index, TIME_IMMEDIATE);
     }
-
+    
+    dshotRpmResetCaptureBuffer(&driver->rpm_capture);
     buildDshotDmaBuffer(driver);
     dmaTransfert(&driver->dmap,
 		 &driver->config->pwmp->tim->DMAR,

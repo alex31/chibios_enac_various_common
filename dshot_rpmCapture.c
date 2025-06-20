@@ -158,7 +158,10 @@ return dmaErrs;
 }
 #endif
 
-
+void dshotRpmResetCaptureBuffer(DshotRpmCapture *drcp)
+{
+   memset(drcp->config->dma_capture->dma_buf, 0, sizeof(drcp->config->dma_capture->dma_buf));
+}
 /**
  * @brief   capture the DSHOT ERPS frame(s) : one frame for each DSHOT_CHANNELS
  *
@@ -169,11 +172,14 @@ return dmaErrs;
 void dshotRpmCatchErps(DshotRpmCapture *drcp)
 {
   startCapture(drcp);
+#ifdef LINE_LA_DBG_1
+  palSetLine(LINE_LA_DBG_1);
+#endif  
   static systime_t ts = 0;
   if (ts == 0)
     ts = chVTGetSystemTimeX();
 
-  memset(drcp->config->dma_capture->dma_buf, 0, sizeof(drcp->config->dma_capture->dma_buf));
+  //memset(drcp->config->dma_capture->dma_buf, 0, sizeof(drcp->config->dma_capture->dma_buf));
 
   for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     dmaStartTransfert(&drcp->dmads[i], &drcp->icd.config->timer->CCR[i],
@@ -186,17 +192,20 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   // else, the timeout will take care of thread resume
   static const sysinterval_t timeoutUs = SWITCH_TO_CAPTURE_BASE_TIMOUT + 
 					 (120U * 150U / DSHOT_SPEED);
-  //palSetLine(LINE_LA_DBG_1);
   gptStartOneShotI(drcp->config->gptd, timeoutUs);
-  //  palClearLine(LINE_LA_DBG_1);
-  const msg_t status = chThdSuspendS(&drcp->dmads[0].thread);
-  //  palSetLine(LINE_LA_DBG_1);
-  //  chSysPolledDelayX(1);
-  //  palClearLine(LINE_LA_DBG_1);
+#ifdef LINE_LA_DBG_1
+  palClearLine(LINE_LA_DBG_1);
+#endif
+  /* const msg_t status = */ chThdSuspendS(&drcp->dmads[0].thread);
+#ifdef LINE_LA_DBG_1
+  palSetLine(LINE_LA_DBG_1);
+  chSysPolledDelayX(1);
+  palClearLine(LINE_LA_DBG_1);
+#endif
   
-  for (size_t i = 0; i < DSHOT_CHANNELS; i++) 
+  for (size_t i = 0; i < DSHOT_CHANNELS; i++) {
     dmaStopTransfertI(&drcp->dmads[i]);
-  
+  }
   osalSysUnlock();
   stopCapture(drcp);
 
@@ -221,13 +230,13 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
   drcp->accumDecodeTime += (tstop - tstart);
 #endif
   
-#if defined(DFREQ) && (DFREQ < 10) && (DFREQ != 0)
-  const systime_t now = chVTGetSystemTimeX();
-  if (TIME_I2MS(now - ts) > (1000U / DFREQ)) {
-    DebugTrace("dma out on %s", status == MSG_OK ? "completion" : "timeout");
-    ts = now;
-  }
-#endif
+/* #if defined(DFREQ) && (DFREQ < 10) && (DFREQ != 0) */
+/*   const systime_t now = chVTGetSystemTimeX(); */
+/*   if (TIME_I2MS(now - ts) > (1000U / DFREQ)) { */
+/*     DebugTrace("dma out on %s", status == MSG_OK ? "completion" : "timeout"); */
+/*     ts = now; */
+/*   } */
+/* #endif */
 }
 
 #if DSHOT_STATISTICS
