@@ -199,7 +199,10 @@ void dshotRpmCatchErps(DshotRpmCapture *drcp)
 #ifdef LINE_LA_DBG_1
   palClearLine(LINE_LA_DBG_1);
 #endif
-  /* const msg_t status = */ chThdSuspendS(&drcp->dmads[0].thread);
+#if defined(DFREQ) && (DFREQ < 10) && (DFREQ != 0)
+  const msg_t status =
+#endif
+    chThdSuspendS(&drcp->dmads[0].thread);
 #ifdef LINE_LA_DBG_1
   palSetLine(LINE_LA_DBG_1);
   chSysPolledDelayX(1);
