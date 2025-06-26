@@ -1,25 +1,38 @@
 #include <ch.h>
 #include <hal.h>
-#include "futabaSbus.h"
+#include "futabaSbusUart.h"
 
 #define SBUS_START_BYTE 0x0f
 #define SBUS_END_BYTE   0x00
-#define SBUS_FLAGS_BYTE 22U
+#define SBUS_FLAGS_BYTE 23U
 #define SBUS_FRAME_LOST_BIT 2U
 #define SBUS_FAILSAFE_BIT 3U
-#define SBUS_BUFFLEN 24U
+#define SBUS_BUFFLEN 25U
+#define IN_SYNC_TIMEOUT TIME_MS2I(15)
+#define OUT_SYNC_TIMEOUT (IN_SYNC_TIMEOUT / 2U)
 
 
-static SerialConfig sbusSerialConfig =
+static UARTConfig sbusUartConfig =
+/*   { */
+/*     .timeout = 22, */
+/*     .speed = 100000, */
+/* #ifdef USART_CR2_RXINV // UARTv2 */
+/*     .cr1 = USART_CR1_PCE | USART_CR1_M0 | USART_CR1_IDLEIE, // 8 bits + even parity => 9 bits mode */
+/* #else			// UARTv1 */
+/*     .cr1 = USART_CR1_PCE | USART_CR1_M, // 8 bits + even parity => 9 bits mode */
+/* #endif */
+/*     .cr2 = USART_CR2_STOP2_BITS| USART_CR2_RTOEN, */
+/*     .cr3 = 0 */
+/*   }; */
   {
-   .speed = 100000,
+    .speed = 100000,
 #ifdef USART_CR2_RXINV // UARTv2
-   .cr1 = USART_CR1_PCE | USART_CR1_M0, // 8 bits + even parity => 9 bits mode
+    .cr1 = USART_CR1_PCE | USART_CR1_M0, // 8 bits + even parity => 9 bits mode
 #else			// UARTv1
-   .cr1 = USART_CR1_PCE | USART_CR1_M, // 8 bits + even parity => 9 bits mode
+    .cr1 = USART_CR1_PCE | USART_CR1_M, // 8 bits + even parity => 9 bits mode
 #endif
-   .cr2 = USART_CR2_STOP2_BITS,
-   .cr3 = 0
+    .cr2 = USART_CR2_STOP2_BITS,
+    .cr3 = 0
   };
 
 
@@ -43,15 +56,15 @@ void sbusStart(SBUSDriver *sbusp, const SBUSConfig *configp)
 	      "signal must have been inverted by external device on UARTv1 device");
 #else
   if (configp->externallyInverted == false)
-    sbusSerialConfig.cr2 |= (USART_CR2_RXINV | USART_CR2_TXINV);
+    sbusUartConfig.cr2 |= (USART_CR2_RXINV | USART_CR2_TXINV);
 #endif
 
-  sdStart(configp->sd, &sbusSerialConfig);
+  uartStart(configp->uartd, &sbusUartConfig);
 }
 
 void sbusStop(SBUSDriver *sbusp)
 {
-  sdStop(sbusp->config->sd);
+  uartStop(sbusp->config->uartd);
   sbusObjectInit(sbusp);
 }
 
@@ -85,53 +98,61 @@ static void receivingLoopThread (void *arg)
   const SBUSConfig *cfg = sbusp->config;
   uint8_t  sbusBuffer[SBUS_BUFFLEN];
   SBUSFrame frame;
-  int rbyte;
+  systime_t timout = OUT_SYNC_TIMEOUT;
 
   while (!chThdShouldTerminateX()) {
-    do {
-      rbyte = sdGetTimeout(cfg->sd, TIME_MS2I(100));
-      if (rbyte < 0) {
-	invoqueError(cfg, SBUS_TIMOUT);
-      }
-    } while (rbyte != SBUS_START_BYTE);
-
-    if (sdReadTimeout(cfg->sd, sbusBuffer, sizeof(sbusBuffer), TIME_MS2I(100))
-	!= sizeof(sbusBuffer)) {
+    size_t size = sizeof(sbusBuffer);
+    uartReceiveTimeout(cfg->uartd, &size, sbusBuffer, timout);
+    if (size != sizeof(sbusBuffer)) {
       invoqueError(cfg, SBUS_TIMOUT);
-      continue;
+      goto outOfSync;
+    }
+    
+    if (sbusBuffer[0] != SBUS_START_BYTE) {
+      invoqueError(cfg, SBUS_MALFORMED_FRAME);
+      goto outOfSync;
     }
 
     if (sbusBuffer[SBUS_BUFFLEN-1] != SBUS_END_BYTE) {
       invoqueError(cfg, SBUS_MALFORMED_FRAME);
-      continue;
+      goto outOfSync;
     }
-
+    
+    timout = IN_SYNC_TIMEOUT;
+    
     if ((sbusBuffer[SBUS_FLAGS_BYTE] >> SBUS_FRAME_LOST_BIT) & 0x1) {
       invoqueError(cfg, SBUS_LOST_FRAME);
       continue;
-     }
+    }
     
     if ((sbusBuffer[SBUS_FLAGS_BYTE] >> SBUS_FAILSAFE_BIT) & 0x1) {
       invoqueError(cfg, SBUS_FAILSAFE);
       continue;
     }
-
+    
     if (cfg->frameCb) {
-      decodeSbusBuffer (sbusBuffer, &frame);
+      decodeSbusBuffer (sbusBuffer+1, &frame);
       cfg->frameCb(&frame);
     }
-  }
 
+    continue;
+    
+  outOfSync :
+    timout = OUT_SYNC_TIMEOUT;
+    chThdSleepMilliseconds(1);
+  }
+  
   chThdExit(0);
 }
 
 
 void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame)
 {
-  uint8_t  sbusBuffer[SBUS_BUFFLEN+1];
+  uint8_t  sbusBuffer[SBUS_BUFFLEN];
+  size_t size = SBUS_BUFFLEN;
   encodeSbusBuffer(frame, sbusBuffer);
   // we should verify timing here, is the UART able to send 11 bits frame ? 
-  sdWrite(sbusp->config->sd, sbusBuffer, SBUS_BUFFLEN+1);
+  uartSendTimeout(sbusp->config->uartd, &size, sbusBuffer, TIME_INFINITE);
 }
 
 
