@@ -41,7 +41,7 @@ extern "C" {
   /**
    * @brief  type of regular frame function callback
    */
-  typedef void (SBUSFrameCb) (SBUSFrame *frame) ;
+  typedef void (SBUSFrameCb) (const SBUSFrame *frame) ;
 
   /**
    * @brief   Futaba Sbus Driver configuration structure.
