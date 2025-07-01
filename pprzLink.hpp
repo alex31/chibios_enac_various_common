@@ -26,12 +26,35 @@ using XbeeMsg_t = etl::vector<Byte_t, 260>;
 
 
 template <auto F>
-concept SendMsgConcept = requires(const PprzPayload_t &m) { { F(m) }; };
+concept SendMsgConcept = requires(const std::span<Byte_t> m) { { F(m) }; };
 
 template<auto SENDMSG_f, PprzPolicy P = PprzPolicy::PPRZ>
 requires SendMsgConcept<SENDMSG_f>
 class PprzDecoder {
-public: 
+public:
+  /*
+      0 XBEE_TX16 (0x01) / XBEE_RX16 (0x81)
+      1 FRAME_ID (0)     / SRC_ID_MSB
+      2 DEST_ID_MSB      / SRC_ID_LSB
+      3 DEST_ID_LSB      / XBEE_RSSI
+      4 TX16_OPTIONS (0) / RX16_OPTIONS
+
+   */
+  enum class XbeeRole {Tx = 0x01, Rx = 0x81};
+  struct XbeeHeaderTx {
+    uint8_t  role; // 
+    uint8_t  frameId;
+    uint16_t destId_bigEndian;
+    uint8_t  txOptions;
+  } __attribute((packed));
+
+  struct XbeeHeaderRx {
+    uint8_t  role;  
+    uint16_t srcId_bigEndian;
+    uint8_t  rssi;
+    uint8_t  rxOptions;
+  } __attribute((packed));
+   
   void feed(Byte_t b);
   static PprzMsg_t genPprzMsg(const PprzPayload_t &payload);
 private:
@@ -142,8 +165,7 @@ void PprzDecoder<SENDMSG_f, P>::feed(Byte_t b)
     const uint16_t calculatedChksum = fletcher16(std::span<const Byte_t>(payload.begin(),
 									 payload.end()));
     if (calculatedChksum == chksum) {
-      payload.erase(payload.begin());
-      SENDMSG_f(payload);
+      SENDMSG_f(std::span<const Byte_t>(payload.begin() + 1, payload.end()));
     } else {
       DebugTrace ("CHKSUM ERROR : calculated 0x%x != in message 0x%x", calculatedChksum, 
 		  chksum);
@@ -153,31 +175,24 @@ void PprzDecoder<SENDMSG_f, P>::feed(Byte_t b)
   }
 }
 
-
-
+/*
+  simplfied algo : overflow if len > 5802
+  which won't affect us, hope we'll use hardware crc32 when we'll have messages this long
+ */
 template<auto SENDMSG_f, PprzPolicy P>
 requires SendMsgConcept<SENDMSG_f>
 uint16_t PprzDecoder<SENDMSG_f, P>::fletcher16(std::span<const Byte_t> data)
 {
-  uint16_t sum1 = 0xff, sum2 = 0xff;
-  size_t bytes = data.size(); 
-  auto ptr = data.data();
-  
-  while (bytes) {
-    size_t tlen = bytes > 20 ? 20 : bytes;
-    bytes -= tlen;
-    do {
-      sum1 = (uint16_t)(sum1 + *ptr++);
-      sum2 = (uint16_t)(sum2 + sum1);
-    } while (--tlen);
-    sum1 = (uint16_t)((sum1 & 0xff) + (sum1 >> 8));
-    sum2 = (uint16_t)((sum2 & 0xff) + (sum2 >> 8));
+  uint32_t c0 = 0, c1 = 0;
+  for (const Byte_t b : data) { 
+    c0 += b;
+    c1 += c0;
   }
-  // Second reduction step to reduce sums to 8 bits
-  sum1 = (uint16_t)((sum1 & 0xff) + (sum1 >> 8));
-  sum2 = (uint16_t)((sum2 & 0xff) + (sum2 >> 8));
-  return (uint16_t)((sum2 % 0xff) << 8) | (sum1 % 0xff);
+  c0 %= 0xff;
+  c1 %= 0xff;
+  return (c1 << 8) | c0;
 }
+
 
 template<auto SENDMSG_f, PprzPolicy P>
 requires SendMsgConcept<SENDMSG_f>
