@@ -14,115 +14,155 @@
   un message valide
  */
 
+enum class PprzPolicy {PPRZ, XBEE_API};
 
-enum class pprzLinkDecoderState {WAIT_FOR_SYNC, WAIT_FOR_LEN,
+enum class PprzLinkDecoderState {WAIT_FOR_SYNC, WAIT_FOR_LEN1, WAIT_FOR_LEN2,
 				 PROCESSING_PAYLOAD, WAIT_FOR_CHECKSUM_1, WAIT_FOR_CHECKSUM_2};
 
 using Byte_t = uint8_t;
 using PprzPayload_t = etl::vector<Byte_t, 251>; 
 using PprzMsg_t = etl::vector<Byte_t, 255>; 
+using XbeeMsg_t = etl::vector<Byte_t, 260>; 
 
 
 template <auto F>
 concept SendMsgConcept = requires(const PprzPayload_t &m) { { F(m) }; };
 
-template<auto SENDMSG_f>
+template<auto SENDMSG_f, PprzPolicy P = PprzPolicy::PPRZ>
 requires SendMsgConcept<SENDMSG_f>
 class PprzDecoder {
 public: 
   void feed(Byte_t b);
-  static PprzMsg_t genMsg(const PprzPayload_t &payload);
+  static PprzMsg_t genPprzMsg(const PprzPayload_t &payload);
 private:
   PprzPayload_t payload = {};
   size_t	remaining = {};
-  uint16_t      crc = {};
-  pprzLinkDecoderState state = pprzLinkDecoderState::WAIT_FOR_SYNC;
+  uint16_t      chksum = {};
+  PprzLinkDecoderState state = PprzLinkDecoderState::WAIT_FOR_SYNC;
   static uint16_t fletcher16WithLen(std::span<const Byte_t> data);
+  static uint8_t chksum8(std::span<const Byte_t> data);
 };
 
 
-template<auto SENDMSG_f>
+template<auto SENDMSG_f, PprzPolicy P>
 requires SendMsgConcept<SENDMSG_f>
-PprzMsg_t PprzDecoder<SENDMSG_f>::genMsg(const PprzPayload_t &payload)
+PprzMsg_t PprzDecoder<SENDMSG_f, P>::genPprzMsg(const PprzPayload_t &payload)
 {
   PprzMsg_t msg;
   const uint8_t header[] = {0x99, static_cast<uint8_t>(payload.size() + 4U)};
   msg.insert(msg.begin(), std::begin(header), std::end(header));
   msg.insert(msg.end(), payload.begin(), payload.end());
-  const uint16_t crc = fletcher16WithLen(std::span<const Byte_t>(payload.begin(), payload.end()));
-  const uint8_t tail[] = { static_cast<uint8_t>(crc & 0xFF),
-			   static_cast<uint8_t>((crc >> 8) & 0xFF) };
+  const uint16_t chksum = fletcher16WithLen(std::span<const Byte_t>(payload.begin(), payload.end()));
+  const uint8_t tail[] = { static_cast<uint8_t>(chksum & 0xFF),
+			   static_cast<uint8_t>((chksum >> 8) & 0xFF) };
   msg.insert(msg.end(), std::begin(tail), std::end(tail));
   
   return msg;
 }
 
 
-  template<auto SENDMSG_f>
+template<auto SENDMSG_f, PprzPolicy P>
 requires SendMsgConcept<SENDMSG_f>
-void PprzDecoder<SENDMSG_f>::feed(Byte_t b)
+void PprzDecoder<SENDMSG_f, P>::feed(Byte_t b)
 {
+  static constexpr Byte_t syncBeacon = P == PprzPolicy::PPRZ ? 0x99 : 0x7E;
   switch (state) {
-    
-  case pprzLinkDecoderState::WAIT_FOR_SYNC :
+  case PprzLinkDecoderState::WAIT_FOR_SYNC :
     DebugTrace ("WAIT_FOR_SYNC 0x%x", b);
     payload[0] = b;
     
-    if (b  == 0x99) {
-      state = pprzLinkDecoderState::WAIT_FOR_LEN;
+    if (b  == syncBeacon) {
+      state = PprzLinkDecoderState::WAIT_FOR_LEN1;
     } 
     break;
     
-  case pprzLinkDecoderState::WAIT_FOR_LEN :
-    DebugTrace ("WAIT_FOR_LEN");
+  case PprzLinkDecoderState::WAIT_FOR_LEN1 :
+    DebugTrace ("WAIT_FOR_LEN1");
     // the length is the length of the entire message
     // payload length is len - (start, len, chks1, chks2)
-    remaining = b - 4U; 
+    if constexpr (P == PprzPolicy::PPRZ) {
+      remaining = b - 4U;
+    } else {
+      remaining = b << 8; // MSB First
+    }
     payload.clear();
     DebugTrace ("LEN = %u", remaining);
-    state = pprzLinkDecoderState::PROCESSING_PAYLOAD;
+    state = P == PprzPolicy::XBEE_API ? PprzLinkDecoderState::WAIT_FOR_LEN2 :
+      PprzLinkDecoderState::PROCESSING_PAYLOAD;
+    break;
+
+  case PprzLinkDecoderState::WAIT_FOR_LEN2 :
+    DebugTrace ("WAIT_FOR_LEN2");
+    // the length is the length of the entire message
+    // payload length is len - (start, len, chks1, chks2)
+    if constexpr (P == PprzPolicy::XBEE_API) {
+      remaining |= b; // LSB Last
+    } else {
+      chSysHalt("WAIT_FOR_LEN2 state incompatible with PPRZ format");
+    }
+    payload.clear();
+    DebugTrace ("LEN = %u", remaining);
+    state = PprzLinkDecoderState::PROCESSING_PAYLOAD;
     break;
     
-  case pprzLinkDecoderState::PROCESSING_PAYLOAD :
+  case PprzLinkDecoderState::PROCESSING_PAYLOAD :
     DebugTrace ("PROCESSING_PAYLOAD");
     payload.push_back(b);
     if (not (--remaining)) {
-      state = pprzLinkDecoderState::WAIT_FOR_CHECKSUM_1;
+      state = PprzLinkDecoderState::WAIT_FOR_CHECKSUM_1;
     }
     break;
     
-  case pprzLinkDecoderState::WAIT_FOR_CHECKSUM_1 :
+  case PprzLinkDecoderState::WAIT_FOR_CHECKSUM_1 :
     DebugTrace ("WAIT_FOR_CHECKSUM_1");
-    crc = b;
-    state = pprzLinkDecoderState::WAIT_FOR_CHECKSUM_2;
+    chksum = b;
+    state = P == PprzPolicy::XBEE_API ? PprzLinkDecoderState::WAIT_FOR_SYNC :
+                                        PprzLinkDecoderState::WAIT_FOR_CHECKSUM_2;
+    if constexpr (P == PprzPolicy::XBEE_API) {
+      const uint8_t calculatedChksum = chksum8(std::span<const Byte_t>(payload.begin(),
+									       payload.end()));
+      if (calculatedChksum == chksum) {
+	SENDMSG_f(payload);
+      } else {
+	DebugTrace ("CHKSUM ERROR : calculated 0x%x != in message 0x%x", calculatedChksum, 
+		    chksum);
+      }
+      state = PprzLinkDecoderState::WAIT_FOR_SYNC;
+    } else {
+      state = PprzLinkDecoderState::WAIT_FOR_CHECKSUM_2;
+    }
     break;
 
-  case pprzLinkDecoderState::WAIT_FOR_CHECKSUM_2 :
+  case PprzLinkDecoderState::WAIT_FOR_CHECKSUM_2 :
     DebugTrace ("WAIT_FOR_CHECKSUM_2");
-    crc = crc | (b << 8);
-    const uint16_t calculatedCrc = fletcher16WithLen(std::span<const Byte_t>(payload.begin(), payload.end()));
-    if (calculatedCrc == crc) {
+    if constexpr (P == PprzPolicy::XBEE_API) {
+      chSysHalt("WAIT_FOR_CHECKSUM_2 state incompatible with PPRZ format");
+    }
+    chksum = chksum | (b << 8);
+    const uint16_t calculatedChksum = fletcher16WithLen(std::span<const Byte_t>(payload.begin(), payload.end()));
+    if (calculatedChksum == chksum) {
       SENDMSG_f(payload);
     } else {
-      DebugTrace ("CRC ERROR : calculated 0x%x != in message 0x%x", calculatedCrc, 
-		  crc);
+      DebugTrace ("CHKSUM ERROR : calculated 0x%x != in message 0x%x", calculatedChksum, 
+		  chksum);
     }
-    state = pprzLinkDecoderState::WAIT_FOR_SYNC;
+    state = PprzLinkDecoderState::WAIT_FOR_SYNC;
     break;
   }
 }
 
 
 
-template<auto SENDMSG_f>
+template<auto SENDMSG_f, PprzPolicy P>
 requires SendMsgConcept<SENDMSG_f>
-uint16_t PprzDecoder<SENDMSG_f>::fletcher16WithLen (std::span<const Byte_t> data)
+uint16_t PprzDecoder<SENDMSG_f, P>::fletcher16WithLen (std::span<const Byte_t> data)
 {
   uint16_t sum1 = 0xff, sum2 = 0xff;
-  size_t bytes = data.size();
+  size_t bytes = data.size(); 
   auto ptr = data.data();
   
-  sum1 = (uint16_t)(sum1 + bytes);
+  // it's the len as in the pprz message : len of payload + header + trailer
+  sum1 = (uint16_t)(sum1 + bytes + 4U);
   sum2 = (uint16_t)(sum2 + sum1);
   sum1 = (uint16_t)((sum1 & 0xff) + (sum1 >> 8));
   sum2 = (uint16_t)((sum2 & 0xff) + (sum2 >> 8));
@@ -141,4 +181,15 @@ uint16_t PprzDecoder<SENDMSG_f>::fletcher16WithLen (std::span<const Byte_t> data
   sum1 = (uint16_t)((sum1 & 0xff) + (sum1 >> 8));
   sum2 = (uint16_t)((sum2 & 0xff) + (sum2 >> 8));
   return (uint16_t)((sum2 % 0xff) << 8) | (sum1 % 0xff);
+}
+
+template<auto SENDMSG_f, PprzPolicy P>
+requires SendMsgConcept<SENDMSG_f>
+uint8_t PprzDecoder<SENDMSG_f, P>::chksum8 (std::span<const Byte_t> data)
+{
+  uint8_t sum = 0;
+  for (const auto b : data) {
+    sum += b;
+  }
+  return sum;
 }
