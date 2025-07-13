@@ -1,5 +1,5 @@
 /**
- * @file    UAVCan.cpp
+ * @file    pubSub.cpp
  * @brief   C++ wrapper over libcanard
  *
  * @{
@@ -195,7 +195,7 @@ namespace UAVCAN
     32;
 #    elif ((STM32_CAN_USE_FDCAN1 + STM32_CAN_USE_FDCAN2 + STM32_CAN_USE_FDCAN3) == 2)
     16;
-#    elif ((STM32_CAN_USE_FDCAN1 + STM32_CAN_USE_FDCAN2 + STM32_CAN_USE_FDCAN3) == 2)
+#    elif ((STM32_CAN_USE_FDCAN1 + STM32_CAN_USE_FDCAN2 + STM32_CAN_USE_FDCAN3) == 3)
     10;
 #    endif
 #endif

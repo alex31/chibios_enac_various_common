@@ -1,5 +1,5 @@
 /**
- * @file    UAVCan.hpp
+ * @file    pubSub.hpp
  * @brief   C++ publish subscribe wrapper over libcanard
  *
  * @{
@@ -56,13 +56,13 @@
       sur un node distant et de quitter ce node distant
 */
 
-namespace {
+namespace  PubSub_private {
 
   /**
    * @brief   test if a value is between limits
    */
   template <typename T>
-  constexpr bool in_bounds(T value, T lower, T upper)
+  consteval bool in_bounds(T value, T lower, T upper)
   {
     return value >= lower && value <= upper;
   }
@@ -193,13 +193,13 @@ namespace UAVCAN {
   consteval uint32_t getNBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2,
 			     uint32_t synchroJumpWidth)
   {
-    if (not in_bounds(prescaler, 1UL, 512UL))
+    if (not PubSub_private::in_bounds(prescaler, 1UL, 512UL))
       return 0;
-    if (not in_bounds(seg1, 1UL, 256UL))
+    if (not PubSub_private::in_bounds(seg1, 1UL, 256UL))
       return 0;
-    if (not in_bounds(seg2, 1UL, 128UL))
+    if (not PubSub_private::in_bounds(seg2, 1UL, 128UL))
       return 0;
-    if (not in_bounds(synchroJumpWidth, 1UL, 128UL))
+    if (not PubSub_private::in_bounds(synchroJumpWidth, 1UL, 128UL))
       return 0;
     
     return FDCAN_CONFIG_NBTP_NSJW(synchroJumpWidth - 1U) |
@@ -223,13 +223,13 @@ namespace UAVCAN {
   consteval uint32_t getDBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2,
 			     uint32_t synchroJumpWidth, bool tdc)
   {
-    if (not in_bounds(prescaler, 1UL, 32UL))
+    if (not PubSub_private::in_bounds(prescaler, 1UL, 32UL))
       return 0;
-    if (not in_bounds(seg1, 1UL, 32UL))
+    if (not PubSub_private::in_bounds(seg1, 1UL, 32UL))
       return 0;
-    if (not in_bounds(seg2, 1UL, 16UL))
+    if (not PubSub_private::in_bounds(seg2, 1UL, 16UL))
       return 0;
-    if (not in_bounds(synchroJumpWidth, 1UL, 16UL))
+    if (not PubSub_private::in_bounds(synchroJumpWidth, 1UL, 16UL))
       return 0;
 
     return FDCAN_CONFIG_DBTP_DSJW(synchroJumpWidth - 1U) |
@@ -258,9 +258,10 @@ namespace UAVCAN {
 				  uint32_t dataBitRateK, float dataS1s2Ratio, bool transDelayCompens
 				  )
   {
-    const DivSeg divSegData = findDivSeg(canClk / (dataBitRateK * 1000U),
-					 32U, 32U, dataS1s2Ratio);
-    const DivSeg divSegArbitration = findDivSeg(canClk / (arbitrationBitRateK * 1000U),
+    const PubSub_private::DivSeg divSegData =
+      PubSub_private::findDivSeg(canClk / (dataBitRateK * 1000U), 32U, 32U, dataS1s2Ratio);
+    const PubSub_private::DivSeg divSegArbitration =
+      PubSub_private::findDivSeg(canClk / (arbitrationBitRateK * 1000U),
 						divSegData.prescaler, 256U,
 						arbitrationS1s2Ratio, true);
     
