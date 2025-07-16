@@ -489,7 +489,6 @@ char *binary_fmt(uintmax_t x, int fill)
 }
 #undef FMT_BUF_SIZE // don't pollute namespace
 
-#if CH_CFG_USE_DYNAMIC
 int32_t get_stack_free (const thread_t *tp)
 {
   int32_t index = 0;
@@ -507,7 +506,7 @@ int32_t get_stack_free (const thread_t *tp)
   const int32_t freeBytes =  index * (int32_t) sizeof(long long);
   return freeBytes;
 }
-#endif
+
 
 __attribute__((used))
 void _fini(void) {chSysHalt("_fini"); while(true) { asm volatile ("nop");};}

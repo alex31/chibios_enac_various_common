@@ -15,8 +15,11 @@
 #define SHELL_DYNAMIC_ENTRIES_NUMBER 0U
 #endif
 
-// legacy compatibility
+#if CH_CFG_USE_HEAP && CH_CFG_USE_DYNAMIC
 #define shellCreate(C, S, P) shellCreateFromHeap(C, S, P)
+#else
+#define shellCreate(C, S, P) shellCreateStatic(C, waShell, sizeof(waShell), P)
+#endif
 
 /**
  * @brief   Command handler function type.
