@@ -43,40 +43,81 @@
  * - All public and private members are documented with Doxygen.
  *
  * @section performance Performance
- * - Parse at a rate of 13Mb/s on stm32f7@216MHz compiled with -OFast 
- * - Parse at a rate of 5Mb/s on stm32g4@170MHz compiled with -OFast 
+ * - Parse at a rate of 13Mb/s on stm32f7@216MHz compiled with -OFast
+ * - Parse at a rate of 5Mb/s on stm32g4@170MHz compiled with -OFast
  *
  * @author alexandre.bustico@enac.fr
  * @date 06/2025
  */
-  
+
+/**
+ * @enum PprzPolicy
+ * @brief Defines the encapsulation policy for the decoder.
+ */
 enum class PprzPolicy {PPRZ, XBEE_API};
 
+/**
+ * @enum PprzLinkDecoderState
+ * @brief Defines the states of the PPRZLink decoder state machine.
+ */
 enum class PprzLinkDecoderState {WAIT_FOR_SYNC, WAIT_FOR_LEN1, WAIT_FOR_LEN2,
 				 PROCESSING_PAYLOAD, WAIT_FOR_CHECKSUM_1, WAIT_FOR_CHECKSUM_2};
 
-using PprzPayload_t = etl::vector<uint8_t, 251>; 
-using PprzMsg_t = etl::vector<uint8_t, PprzPayload_t::MAX_SIZE + 4>; 
-using XbeeMsg_t = etl::vector<uint8_t, PprzPayload_t::MAX_SIZE + 9>; 
+/**
+ * @typedef PprzPayload_t
+ * @brief ETL vector for storing a PPRZ message payload.
+ */
+using PprzPayload_t = etl::vector<uint8_t, 251>;
+/**
+ * @typedef PprzMsg_t
+ * @brief ETL vector for storing a complete PPRZ message.
+ */
+using PprzMsg_t = etl::vector<uint8_t, PprzPayload_t::MAX_SIZE + 4>;
+/**
+ * @typedef XbeeMsg_t
+ * @brief ETL vector for storing a complete XBee message.
+ */
+using XbeeMsg_t = etl::vector<uint8_t, PprzPayload_t::MAX_SIZE + 9>;
 
 
+/**
+ * @concept SendMsgConcept
+ * @brief Concept for a function that can send a message.
+ */
 template <auto F>
 concept SendMsgConcept = requires(PprzPolicy p, const std::span<uint8_t> m) { { F(p, m) }; };
+/**
+ * @concept TrapErrorConcept
+ * @brief Concept for a function that can handle a trap error.
+ */
 template <auto F>
 concept TrapErrorConcept = requires(uint32_t valid, uint32_t invalid) { { F(valid, invalid) }; };
 
 
+/**
+ * @enum XbeeRole
+ * @brief Defines the role of an XBee module (Transmitter or Receiver).
+ */
 enum class XbeeRole : uint8_t {Tx = 0x01, Rx = 0x81};
+/**
+ * @union XbeeHeader
+ * @brief Represents the header of an XBee API frame.
+ * @details This union provides multiple views of the XBee header for both transmit (Tx) and receive (Rx) modes.
+ *
+ *          **Tx Frame Structure:**
+ *          - `role`: `XbeeRole::Tx` (0x01)
+ *          - `frameId`: Frame identifier
+ *          - `destId_bigEndian`: 16-bit destination address (big-endian)
+ *          - `options`: Transmission options
+ *
+ *          **Rx Frame Structure:**
+ *          - `role`: `XbeeRole::Rx` (0x81)
+ *          - `srcId_bigEndian`: 16-bit source address (big-endian)
+ *          - `rssi`: Received Signal Strength Indicator
+ *          - `options`: Reception options
+ */
 union XbeeHeader {
-  /*
-    0 XBEE_TX16 (0x01) / XBEE_RX16 (0x81)
-    1 FRAME_ID (0)     / SRC_ID_MSB
-    2 DEST_ID_MSB      / SRC_ID_LSB
-    3 DEST_ID_LSB      / XBEE_RSSI
-    4 TX16_OPTIONS (0) / RX16_OPTIONS
-  */
-  
-  // Redéclaration explicite des constructeurs/opérateurs par défaut
+  // Explicit re-declaration of default constructors/operators
   XbeeHeader() = default;
   XbeeHeader(const XbeeHeader&) = default;
   XbeeHeader(XbeeHeader&&) = default;
@@ -90,7 +131,7 @@ union XbeeHeader {
     if (cmp > 0) return std::strong_ordering::greater;
     return std::strong_ordering::equal;
   }
-  
+
   bool operator!=(const XbeeHeader& other) const {
     return (*this <=> other) != 0;
   }
@@ -98,16 +139,24 @@ union XbeeHeader {
     return (*this <=> other) == 0;
   }
 
-  // modify the std::span by advancing in the span so the caller has no need to do the subspan
-  // to retreive the next field
+  /**
+   * @brief Constructs an XbeeHeader by copying data from a span and advancing it.
+   * @tparam T The type of data in the span (must be 1 byte and trivially copyable).
+   * @param bytes The span to copy from. It will be advanced by the size of the header.
+   */
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
   XbeeHeader(std::span<const T>& bytes)
   {
     this->bitCopy(bytes);
   }
-  
-   // Constructor for Tx
+
+   /**
+    * @brief Constructor for a transmit (Tx) header.
+    * @param _frameId Frame identifier.
+    * @param _dstId 16-bit destination address.
+    * @param _options Transmission options.
+    */
     constexpr XbeeHeader(uint8_t _frameId, uint16_t _dstId, uint8_t _options)
     : role(XbeeRole::Tx),
       frameId(_frameId),
@@ -115,7 +164,12 @@ union XbeeHeader {
       options(_options)
     {}
 
-    // Constructor for Rx
+    /**
+     * @brief Constructor for a receive (Rx) header.
+     * @param _srcId 16-bit source address.
+     * @param _rssi Received Signal Strength Indicator.
+     * @param _options Reception options.
+     */
     constexpr XbeeHeader(uint16_t _srcId, uint8_t _rssi, uint8_t _options)
     : role(XbeeRole::Rx),
       srcId_bigEndian(__builtin_bswap16(_srcId)),
@@ -132,8 +186,11 @@ union XbeeHeader {
     XbeeHeader(T1, T2, T3) = delete;
 
 
-  // modify the std::span by advancing in the span so the caller has no need to do the subspan
-  // to retreive the next field
+  /**
+   * @brief Copies data from a span into the header and advances the span.
+   * @tparam T The type of data in the span (must be 1 byte and trivially copyable).
+   * @param bytes The span to copy from. It will be advanced by the size of the header.
+   */
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
   void bitCopy(std::span<const T>& bytes)
@@ -144,19 +201,19 @@ union XbeeHeader {
   }
 
   struct {
-    XbeeRole  role; 
+    XbeeRole  role;
     union  {
       struct  {
 	uint8_t  frameId;
 	uint16_t destId_bigEndian;
       } __attribute((packed));
-      
+
       struct  {
 	uint16_t srcId_bigEndian;
 	uint8_t  rssi;
       } __attribute((packed));
     } __attribute((packed));
-    
+
     uint8_t  options;
   } __attribute((packed));
 
@@ -165,17 +222,19 @@ union XbeeHeader {
 static_assert(sizeof(XbeeHeader) == 5);
 
 
-/*
-     C PPRZ_DATA
-      0 SOURCE (~sender_ID)
-      1 DESTINATION (can be a broadcast ID)
-      2 CLASS/COMPONENT
-        bits 0-3: 16 class ID
-        bits 4-7: 16 component ID
-      3 MSG_ID
-      4 MSG_PAYLOAD
-      . DATA (messages.xml)
-*/
+/**
+ * @union PprzHeader
+ * @brief Represents the header of a PPRZLink message.
+ * @details This union defines the structure of a PPRZLink message header, including source,
+ *          destination, class ID, component ID, and message ID.
+ *
+ *          **PPRZ Data Structure:**
+ *          - `source`: Sender ID
+ *          - `destination`: Destination ID (can be a broadcast ID)
+ *          - `classId`: Class ID (4 bits)
+ *          - `componentId`: Component ID (4 bits)
+ *          - `msgId`: Message ID
+ */
 union PprzHeader {
   struct {
     uint8_t source;
@@ -186,6 +245,9 @@ union PprzHeader {
   } __attribute__((packed));
    uint8_t raw[4];
 
+  /**
+   * @brief Constructs a PprzHeader with specified values.
+   */
   constexpr PprzHeader(uint8_t src, uint8_t dst, uint8_t classid, uint8_t compid, uint8_t mid) {
     source = src; destination = dst; classId = classid; componentId = compid; msgId = mid;
   }
@@ -196,8 +258,11 @@ union PprzHeader {
   PprzHeader& operator=(PprzHeader&&) = default;
   ~PprzHeader() = default;
 
-  // modify the std::span by advancing in the span so the caller has no need to do the subspan
-  // to retreive the next field
+  /**
+   * @brief Constructs a PprzHeader by copying data from a span and advancing it.
+   * @tparam T The type of data in the span (must be 1 byte and trivially copyable).
+   * @param bytes The span to copy from. It will be advanced by the size of the header.
+   */
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
   PprzHeader(std::span<const T>& bytes)
@@ -205,8 +270,11 @@ union PprzHeader {
     this->bitCopy(bytes);
   }
 
-  // modify the std::span by advancing in the span so the caller has no need to do the subspan
-  // to retreive the next field
+  /**
+   * @brief Copies data from a span into the header and advances the span.
+   * @tparam T The type of data in the span (must be 1 byte and trivially copyable).
+   * @param bytes The span to copy from. It will be advanced by the size of the header.
+   */
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
   void bitCopy(std::span<const T>& bytes)
@@ -219,9 +287,18 @@ union PprzHeader {
 } __attribute__((packed));
 static_assert(sizeof(PprzHeader) == 4);
 
+/**
+ * @brief Default send message function (does nothing).
+ */
 constexpr auto default_sendmsg = [](PprzPolicy, const std::span<uint8_t>) {};
+/**
+ * @brief Default trap error function (does nothing).
+ */
 constexpr auto default_traperr = [](uint32_t, uint32_t) {};
 
+/**
+ * @brief User-defined literal for milliseconds.
+ */
 constexpr unsigned long long operator""_ms(unsigned long long ms) {
     return ms;
 }
@@ -229,34 +306,75 @@ constexpr unsigned long long operator""_ms(unsigned long long ms) {
 namespace {
   /**
    * @brief Computes the CRC-16 of the provided buffer (Fletcher16).
+   * @param data The data to compute the CRC on.
+   * @return The calculated CRC-16.
    */
   uint16_t fletcher16(std::span<const uint8_t> data);
-  
+
   /**
    * @brief Computes the CRC-8 of the provided buffer.
+   * @param data The data to compute the CRC on.
+   * @return The calculated CRC-8.
    */
   uint8_t chksum8(std::span<const uint8_t> data);
 }
 
+/**
+ * @namespace PprzEncoder
+ * @brief Contains functions for encoding PPRZLink and XBee messages.
+ */
 namespace PprzEncoder {
   /**
-   * @brief Generates a PPRZLink message from the given payload.
-   * @param payload Data to encapsulate
-   * @return Complete PPRZLink message (header + payload + CRC)
+   * @brief Generates a PPRZLink message from the given header and payload.
+   * @param[out] msg The generated PPRZLink message.
+   * @param ppHeader The PPRZLink header.
+   * @param payload The payload to encapsulate.
    */
   void genPprzMsg(PprzMsg_t& msg, const PprzHeader &ppHeader,
 			 const std::span<const uint8_t> &payload);
 
   /**
-   * @brief Generates an XBee API message from the given header and payload.
-   * @param xbHeader XBee header (5 bytes)
-   * @param payload  Payload to send
-   * @return Complete XBee message (header + payload + CRC)
+   * @brief Generates an XBee API message from the given headers and payload.
+   * @param[out] msg The generated XBee message.
+   * @param xbHeader The XBee header.
+   * @param ppHeader The PPRZLink header.
+   * @param payload  The payload to encapsulate.
    */
   void genXbeeMsg(XbeeMsg_t& msg, const XbeeHeader &xbHeader,
 		  const PprzHeader &ppHeader, const std::span<const uint8_t> &payload);
 }
 
+/**
+ * @class PprzDecoder
+ * @brief PPRZLink/XBee API frame decoder.
+ *
+ * This parser handles the segmentation and validation of PPRZLink messages (optionally with XBee API framing).
+ *
+ * @tparam P         Encapsulation policy (PPRZ, XBEE_API, etc.)
+ * @tparam TIMEOUT_MS Timeout in milliseconds for receiving a message.
+ * @tparam SENDMSG_f Callback called when a valid message is received.
+ * @tparam TRAPERR_f Callback called on a parsing error.
+ *
+ * @details
+ * The class implements a robust state machine to process a serial stream (byte-by-byte or by buffer).
+ *
+ * \par State machine transitions:
+ * @dot
+ * digraph G {
+ *   WAIT_FOR_SYNC    -> WAIT_FOR_LEN1       [label="SYNC received"]
+ *   WAIT_FOR_LEN1    -> WAIT_FOR_LEN2       [label="LEN MSB received (XBEE)" URL="@ref PprzLinkDecoderState::WAIT_FOR_LEN2"]
+ *   WAIT_FOR_LEN1    -> PROCESSING_PAYLOAD  [label="LEN received (PPRZ)" URL="@ref PprzLinkDecoderState::PROCESSING_PAYLOAD"]
+ *   WAIT_FOR_LEN2    -> PROCESSING_PAYLOAD  [label="LEN LSB received" URL="@ref PprzLinkDecoderState::PROCESSING_PAYLOAD"]
+ *   PROCESSING_PAYLOAD -> WAIT_FOR_CHECKSUM_1 [label="Payload complete" URL="@ref PprzLinkDecoderState::WAIT_FOR_CHECKSUM_1"]
+ *   WAIT_FOR_CHECKSUM_1 -> WAIT_FOR_CHECKSUM_2 [label="CRC LSB received (PPRZ)" URL="@ref PprzLinkDecoderState::WAIT_FOR_CHECKSUM_2"]
+ *   WAIT_FOR_CHECKSUM_1 -> WAIT_FOR_SYNC     [label="CRC OK (XBEE)" URL="@ref PprzLinkDecoderState::WAIT_FOR_SYNC"]
+ *   WAIT_FOR_CHECKSUM_2 -> WAIT_FOR_SYNC     [label="CRC OK/ERROR (PPRZ)" URL="@ref PprzLinkDecoderState::WAIT_FOR_SYNC"]
+ *   PROCESSING_PAYLOAD -> WAIT_FOR_SYNC      [label="Payload overflow/error" URL="@ref PprzLinkDecoderState::WAIT_FOR_SYNC"]
+ * }
+ * @enddot
+ *
+ * Any parsing error (invalid size, CRC mismatch, overflow) triggers a reset to WAIT_FOR_SYNC.
+ */
 template<PprzPolicy P,
 	 auto TIMEOUT_MS = 1000,
 	 auto SENDMSG_f = default_sendmsg,
@@ -267,17 +385,18 @@ public:
 
   /**
    * @brief Feeds the parser with a buffer of bytes (from stream DMA/IRQ).
-   * @param data Buffer of bytes to parse
+   * @param data Buffer of bytes to parse.
    */
   void feed(std::span<const uint8_t> data);
 
 
   /**
-   * @brief return number of valid and invalid parsed frames
+   * @brief Returns the number of valid and invalid parsed frames.
+   * @return A pair containing the number of valid and invalid frames.
    */
   std::pair<uint32_t, uint32_t> getStat() {return {valid, invalid};}
 
-  
+
 private:
   /**
    * @brief Buffer for accumulating the payload of the current message.
@@ -313,7 +432,7 @@ private:
    * @brief Timestamp of the last received data.
    */
   systime_t last_activity = 0;
-  
+
   /**
    * @brief Resets the parser to the initial state.
    */
@@ -339,31 +458,12 @@ private:
 
 
 /**
- * @brief PPRZLink/XBee API frame decoder.
- *
- * This parser handles the segmentation and validation of PPRZLink messages (optionally with XBee API framing).
- *
- * @tparam P         Encapsulation policy (PPRZ, XBEE_API, etc.)
- * @tparam SENDMSG_f Callback called when a valid message is received.
- * @tparam TRAPERR_f Callback called on a parsing error.
- *
- * @details
- * The class implements a robust state machine to process a serial stream (byte-by-byte or by buffer).
- *
- * \par State machine transitions:
- * @dot
- * digraph G {
- *   WAIT_FOR_SYNC    -> WAIT_FOR_LEN        [label="SYNC received"]
- *   WAIT_FOR_LEN     -> PROCESSING_PAYLOAD  [label="LEN received"]
- *   PROCESSING_PAYLOAD -> WAIT_FOR_CHECKSUM_1 [label="Payload complete"]
- *   WAIT_FOR_CHECKSUM_1 -> WAIT_FOR_CHECKSUM_2 [label="CRC LSB received"]
- *   WAIT_FOR_CHECKSUM_2 -> WAIT_FOR_SYNC     [label="CRC OK"]
- *   WAIT_FOR_CHECKSUM_2 -> WAIT_FOR_SYNC     [label="CRC ERROR"]
- *   PROCESSING_PAYLOAD -> WAIT_FOR_SYNC      [label="Payload overflow/error"]
- * }
- * @enddot
- *
- * Any parsing error (invalid size, CRC mismatch, overflow) triggers a reset to WAIT_FOR_SYNC.
+ * @brief Feeds the decoder with a span of data.
+ * @tparam P The PPRZ policy.
+ * @tparam TIMEOUT_MS The timeout in milliseconds.
+ * @tparam SENDMSG_f The send message callback.
+ * @tparam TRAPERR_f The trap error callback.
+ * @param data The data to feed.
  */
 template<PprzPolicy P, auto TIMEOUT_MS, auto SENDMSG_f, auto TRAPERR_f>
 requires SendMsgConcept<SENDMSG_f> && TrapErrorConcept<TRAPERR_f>
@@ -375,7 +475,7 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
   // previous message, but the beginning of a new one, so we reset the state machine not to miss
   // the start of message.
   check_timeout();
-  
+
   while (!data.empty()) {
     switch (state) {
     case PprzLinkDecoderState::WAIT_FOR_SYNC :
@@ -385,7 +485,7 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
       }
       data = data.subspan(1);
       break;
-      
+
     case PprzLinkDecoderState::WAIT_FOR_LEN1 : {
       // DebugTrace ("WAIT_FOR_LEN1");
       // the length is the length of the entire message
@@ -404,7 +504,7 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
 	PprzLinkDecoderState::PROCESSING_PAYLOAD;
       break;
     }
-      
+
     case PprzLinkDecoderState::WAIT_FOR_LEN2 : {
       // DebugTrace ("WAIT_FOR_LEN2");
       // the length is the length of the entire message
@@ -421,7 +521,7 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
       state = PprzLinkDecoderState::PROCESSING_PAYLOAD;
       break;
     }
-      
+
     case PprzLinkDecoderState::PROCESSING_PAYLOAD : {
       // copy largest possible chunk in an optimised way instead byte by byte
       // DebugTrace ("PROCESSING_PAYLOAD %u left", remaining);
@@ -441,8 +541,8 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
       }
       break;
     }
-      
-      
+
+
     case PprzLinkDecoderState::WAIT_FOR_CHECKSUM_1 : {
       // DebugTrace ("WAIT_FOR_CHECKSUM_1");
       const auto b = data.front();
@@ -493,10 +593,16 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
   which won't affect us, hope we'll use hardware crc32 when we'll have messages this long
 */
 namespace {
+  /**
+   * @brief Computes the Fletcher-16 checksum.
+   * @param data The data to checksum.
+   * @return The Fletcher-16 checksum.
+   * @note Simplified algorithm: overflows if len > 5802.
+   */
   uint16_t fletcher16(std::span<const uint8_t> data)
   {
     uint32_t c0 = 0, c1 = 0;
-    for (const uint8_t b : data) { 
+    for (const uint8_t b : data) {
       c0 += b;
       c1 += c0;
     }
@@ -504,8 +610,13 @@ namespace {
     c1 %= 0xff;
     return (c1 << 8) | c0;
   }
-  
 
+
+  /**
+   * @brief Computes an 8-bit checksum.
+   * @param data The data to checksum.
+   * @return The 8-bit checksum.
+   */
   uint8_t chksum8(std::span<const uint8_t> data)
   {
     uint8_t sum = 0;
