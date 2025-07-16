@@ -7,6 +7,7 @@
 #include <array>
 #include <etl/vector.h>
 #include "ch.h"
+//#include "stdutil.h"
 
 
 /**
@@ -49,7 +50,6 @@
  * @date 06/2025
  */
   
-
 enum class PprzPolicy {PPRZ, XBEE_API};
 
 enum class PprzLinkDecoderState {WAIT_FOR_SYNC, WAIT_FOR_LEN1, WAIT_FOR_LEN2,
@@ -97,20 +97,50 @@ union XbeeHeader {
   bool operator==(const XbeeHeader& other) const {
     return (*this <=> other) == 0;
   }
-  
+
+  // modify the std::span by advancing in the span so the caller has no need to do the subspan
+  // to retreive the next field
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
-  XbeeHeader(std::span<const T> bytes)
+  XbeeHeader(std::span<const T>& bytes)
   {
     this->bitCopy(bytes);
   }
   
+   // Constructor for Tx
+    constexpr XbeeHeader(uint8_t _frameId, uint16_t _dstId, uint8_t _options)
+    : role(XbeeRole::Tx),
+      frameId(_frameId),
+      destId_bigEndian(__builtin_bswap16(_dstId)),
+      options(_options)
+    {}
+
+    // Constructor for Rx
+    constexpr XbeeHeader(uint16_t _srcId, uint8_t _rssi, uint8_t _options)
+    : role(XbeeRole::Rx),
+      srcId_bigEndian(__builtin_bswap16(_srcId)),
+      rssi(_rssi),
+      options(_options)
+    {}
+
+  // Suppress possibility of conversion
+    template<typename T1, typename T2, typename T3>
+    requires (!(std::is_same_v<T1, uint8_t> && std::is_same_v<T2, uint16_t> &&
+		std::is_same_v<T3, uint8_t>) &&
+              !(std::is_same_v<T1, uint16_t> && std::is_same_v<T2, uint8_t>
+		&& std::is_same_v<T3, uint8_t>))
+    XbeeHeader(T1, T2, T3) = delete;
+
+
+  // modify the std::span by advancing in the span so the caller has no need to do the subspan
+  // to retreive the next field
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
-  void bitCopy(std::span<const T> bytes)
+  void bitCopy(std::span<const T>& bytes)
   {
     chDbgAssert(bytes.size() >= sizeof(XbeeHeader), "Buffer too small for XbeeHeader");
     memcpy(this, bytes.data(), sizeof(XbeeHeader));
+    bytes = bytes.subspan(sizeof(XbeeHeader));
   }
 
   struct {
@@ -156,6 +186,9 @@ union PprzHeader {
   } __attribute__((packed));
    uint8_t raw[4];
 
+  constexpr PprzHeader(uint8_t src, uint8_t dst, uint8_t classid, uint8_t compid, uint8_t mid) {
+    source = src; destination = dst; classId = classid; componentId = compid; msgId = mid;
+  }
   PprzHeader() = default;
   PprzHeader(const PprzHeader&) = default;
   PprzHeader(PprzHeader&&) = default;
@@ -163,19 +196,24 @@ union PprzHeader {
   PprzHeader& operator=(PprzHeader&&) = default;
   ~PprzHeader() = default;
 
+  // modify the std::span by advancing in the span so the caller has no need to do the subspan
+  // to retreive the next field
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
-  PprzHeader(std::span<const T> bytes)
+  PprzHeader(std::span<const T>& bytes)
   {
     this->bitCopy(bytes);
   }
 
+  // modify the std::span by advancing in the span so the caller has no need to do the subspan
+  // to retreive the next field
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
-  void bitCopy(std::span<const T> bytes)
+  void bitCopy(std::span<const T>& bytes)
   {
     chDbgAssert(bytes.size() >= sizeof(PprzHeader), "Buffer too small for PprzHeader");
     memcpy(this, bytes.data(), sizeof(PprzHeader));
+    bytes = bytes.subspan(sizeof(PprzHeader));
   }
 
 } __attribute__((packed));
@@ -206,7 +244,6 @@ namespace PprzEncoder {
    * @param payload Data to encapsulate
    * @return Complete PPRZLink message (header + payload + CRC)
    */
-  PprzMsg_t genPprzMsg(const PprzPayload_t &payload);
   void genPprzMsg(PprzMsg_t& msg, const PprzHeader &ppHeader,
 			 const std::span<const uint8_t> &payload);
 
@@ -216,7 +253,6 @@ namespace PprzEncoder {
    * @param payload  Payload to send
    * @return Complete XBee message (header + payload + CRC)
    */
-  XbeeMsg_t genXbeeMsg(const XbeeHeader &xbHeader, const PprzPayload_t &payload);
   void genXbeeMsg(XbeeMsg_t& msg, const XbeeHeader &xbHeader,
 		  const PprzHeader &ppHeader, const std::span<const uint8_t> &payload);
 }
@@ -343,7 +379,7 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
   while (!data.empty()) {
     switch (state) {
     case PprzLinkDecoderState::WAIT_FOR_SYNC :
-      // DebugTrace ("WAIT_FOR_SYNC 0x%x", b);
+      // DebugTrace ("WAIT_FOR_SYNC");
       if (data.front() == syncBeacon) {
 	state = PprzLinkDecoderState::WAIT_FOR_LEN1;
       }
@@ -398,6 +434,8 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
 	  state = PprzLinkDecoderState::WAIT_FOR_CHECKSUM_1;
 	}
       } else { // LEN Error
+	// DebugTrace("PROCESSING_PAYLOAD paylaod too small need %u have %u",
+	//		   to_copy, payload.available());
 	TRAPERR_f(valid, ++invalid);
 	reset();
       }
@@ -417,6 +455,7 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
 	  ++valid;
 	  SENDMSG_f(P, payload);
 	} else {
+	  // DebugTrace("Checksum error");
 	  TRAPERR_f(valid, ++invalid);
 	}
 	reset();
