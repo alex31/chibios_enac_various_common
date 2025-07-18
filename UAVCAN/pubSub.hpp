@@ -498,7 +498,8 @@ namespace UAVCAN {
      * @brief       return true if underlying CAN driver is in OPMODE_FDCAN mode
      *
      */
-    bool isCanfdEnabled() {return canFD;}
+    bool isCanfdEnabled() const {return canFD;}
+    uint8_t getNodeId() const {return config.nodeId;};
 
     template<auto Fn>
     static constexpr subscribeMapEntry_t makeRequestCb();
