@@ -1,6 +1,7 @@
 #include <ch.h>
 #include <hal.h>
 #include "futabaSbusUart.h"
+#include "stdutil.h"
 
 #define SBUS_START_BYTE 0x0f
 #define SBUS_END_BYTE   0x00
@@ -25,13 +26,15 @@ static UARTConfig sbusUartConfig =
 /*     .cr3 = 0 */
 /*   }; */
   {
+    .timeout_cb = nullptr,
+    .timeout = 20,
     .speed = 100000,
 #ifdef USART_CR2_RXINV // UARTv2
-    .cr1 = USART_CR1_PCE | USART_CR1_M0, // 8 bits + even parity => 9 bits mode
+    .cr1 = USART_CR1_PCE | USART_CR1_M0 | USART_CR1_RTOIE, // 8 bits + even parity => 9 bits mode
 #else			// UARTv1
     .cr1 = USART_CR1_PCE | USART_CR1_M, // 8 bits + even parity => 9 bits mode
 #endif
-    .cr2 = USART_CR2_STOP2_BITS,
+    .cr2 = USART_CR2_STOP2_BITS | USART_CR2_RTOEN,
     .cr3 = 0
   };
 
@@ -98,12 +101,12 @@ static void receivingLoopThread (void *arg)
   const SBUSConfig *cfg = sbusp->config;
   uint8_t  sbusBuffer[SBUS_BUFFLEN];
   SBUSFrame frame;
-  systime_t timout = OUT_SYNC_TIMEOUT;
 
   while (!chThdShouldTerminateX()) {
     size_t size = sizeof(sbusBuffer);
-    uartReceiveTimeout(cfg->uartd, &size, sbusBuffer, timout);
-    if (size != sizeof(sbusBuffer)) {
+    uartReceiveTimeout(cfg->uartd, &size, sbusBuffer, TIME_INFINITE);
+
+    if (size !=  sizeof(sbusBuffer)) {
       invoqueError(cfg, SBUS_TIMOUT);
       goto outOfSync;
     }
@@ -112,13 +115,11 @@ static void receivingLoopThread (void *arg)
       invoqueError(cfg, SBUS_MALFORMED_FRAME);
       goto outOfSync;
     }
-
-    if (sbusBuffer[SBUS_BUFFLEN-1] != SBUS_END_BYTE) {
+    
+    if (sbusBuffer[SBUS_BUFFLEN - 1] != SBUS_END_BYTE) {
       invoqueError(cfg, SBUS_MALFORMED_FRAME);
       goto outOfSync;
     }
-    
-    timout = IN_SYNC_TIMEOUT;
     
     if ((sbusBuffer[SBUS_FLAGS_BYTE] >> SBUS_FRAME_LOST_BIT) & 0x1) {
       invoqueError(cfg, SBUS_LOST_FRAME);
@@ -138,20 +139,18 @@ static void receivingLoopThread (void *arg)
     continue;
     
   outOfSync :
-    timout = OUT_SYNC_TIMEOUT;
     chThdSleepMilliseconds(1);
   }
   
   chThdExit(0);
 }
 
-
+// not reentrant
 void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame)
 {
-  uint8_t  sbusBuffer[SBUS_BUFFLEN];
+  static uint8_t IN_DMA_SECTION_NOINIT(sbusBuffer[SBUS_BUFFLEN]);
   size_t size = SBUS_BUFFLEN;
   encodeSbusBuffer(frame, sbusBuffer);
-  // we should verify timing here, is the UART able to send 11 bits frame ? 
   uartSendTimeout(sbusp->config->uartd, &size, sbusBuffer, TIME_INFINITE);
 }
 
@@ -183,10 +182,14 @@ static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
 }
 
 
-static void encodeSbusBuffer (const SBUSFrame  *frm, uint8_t *dest)
+static void encodeSbusBuffer (const SBUSFrame  *_frm, uint8_t *dest)
 {
-  const int16_t *chan = frm->channel;
-  
+  SBUSFrame  frm = *_frm;
+  int16_t *chan = frm.channel;
+  for (size_t i=0; i<SBUS_NUM_CHANNEL; i++) {
+    chan[i] += 1024;
+  }
+ 
   dest[0] = SBUS_START_BYTE;
   dest[1] =   (uint8_t) ((chan[0]   & 0x07FF));
   dest[2] =   (uint8_t) ((chan[0]   & 0x07FF) >> 8  | (chan[1]  & 0x07FF) << 3);
@@ -210,6 +213,6 @@ static void encodeSbusBuffer (const SBUSFrame  *frm, uint8_t *dest)
   dest[20] =  (uint8_t) ((chan[13]  & 0x07FF) >> 9  | (chan[14] & 0x07FF) << 2);
   dest[21] =  (uint8_t) ((chan[14]  & 0x07FF) >> 6  | (chan[15] & 0x07FF) << 5);
   dest[22] =  (uint8_t) ((chan[15]  & 0x07FF) >> 3);
-  dest[23] = frm->flags;
+  dest[23] = frm.flags;
   dest[24] = SBUS_END_BYTE;
 }
