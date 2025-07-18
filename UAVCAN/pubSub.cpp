@@ -625,6 +625,7 @@ uint8_t Node::getNbActiveAgents()
 	break;
       }
       case MSG_TIMEOUT: {
+	canSTM32ResumeOnline(&config.cand);
 	setCanStatus(TRANSMIT_TIMOUT);
 	errorCb("Transmit MSG_TIMEOUT");
 	break;
