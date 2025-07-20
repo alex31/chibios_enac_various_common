@@ -4,6 +4,7 @@
 #include "frozen/string.h"
 #include "frozen/map.h"
 #include "tinyString.hpp"
+#include "nodeParametersEnum.hpp"
 #include <array>
 #include <variant>
 
