@@ -9,7 +9,7 @@
 #include "stdutil.h"
 
 /*
-  TODO : integrer tout dans un firmware H7
+  TODO :
   * callback du message getset
  */
 
