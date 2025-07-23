@@ -231,7 +231,7 @@ namespace UAVCAN
 	.identifier1 = filterId,
 	.identifier2 = masks[cttype]
       };
-      if (++filterIndex > filtersSize)
+      if (++filterIndex >= filtersSize)
 	goto overfill;
     }
     
