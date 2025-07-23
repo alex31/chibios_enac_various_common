@@ -297,19 +297,21 @@ namespace UAVCAN
     canStart(&config.cand, &config.cancfg);
     
     int8_t filtersInUse = configureHardwareFilters();
+    const bool rejectNonAcceptedId =
+#ifdef FDCAN_CONFIG_RXGFC_ANFE_REJECT
+      (config.cancfg.RXGFC & FDCAN_CONFIG_RXGFC_ANFE_REJECT) != 0;
+#else
+    (config.cancfg.RXGFC & FDCAN_CONFIG_GFC_ANFE_REJECT) != 0;
+#endif
     //    int8_t filtersInUse = 0;
     if (filtersInUse < 0) {
       errorCb("WARN: too many messages fo hardware filtering, "
-		    "revert to software filtering");
+	      "revert to software filtering");
+       chDbgAssert(not rejectNonAcceptedId,
+		  "cancfg.RXGFC must be corrected to accept all msg id");
     } else {
-      const bool rejectNonAcceptedId =
-#ifdef FDCAN_CONFIG_RXGFC_ANFE_REJECT
-	(config.cancfg.RXGFC & FDCAN_CONFIG_RXGFC_ANFE_REJECT) != 0;
-#else
-      (config.cancfg.RXGFC & FDCAN_CONFIG_GFC_ANFE_REJECT) != 0;
-#endif
       chDbgAssert(rejectNonAcceptedId || filtersInUse == 0,
-		  "cancfg.RXGFC must be corrected to reject filtered id");
+		  "cancfg.RXGFC must be corrected to reject filtered msg id");
       errorCb("INFO: hardware filtering use %d slots", filtersInUse);
     }
     sender_thd = chThdCreateFromHeap(nullptr, 2048U, "sender_thd",
