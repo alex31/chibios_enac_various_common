@@ -303,8 +303,9 @@ void crcSetInitialValueI(CRCDriver *crcp, uint32_t init)
 uint32_t crcGetFinalValue(CRCDriver *crcp)
 {
   osalSysLock();
-  return crcGetFinalValueI(crcp);
+  const int32_t crc = crcGetFinalValueI(crcp);
   osalSysUnlock();
+  return crc;
 }
 
 uint32_t crcGetFinalValueI(CRCDriver *crcp)

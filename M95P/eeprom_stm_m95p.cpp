@@ -307,57 +307,57 @@ namespace  {
       return status;
    }
 
- msg_t Device::program(int offset, std::span<const uint8_t> tx) const
- {
-   chDbgAssert((offset + tx.size()) <= capacity, "Device::program overflow capacity");
-   while (!tx.empty()) {
-     // Compute the maximum writable size within the page
-     const int pageRemaining = PAGE_SIZE - (offset % PAGE_SIZE);
-     const int writeSize = std::min<int>(tx.size(), pageRemaining);
+    msg_t Device::program(int offset, std::span<const uint8_t> tx) const
+    {
+      chDbgAssert((offset + tx.size()) <= capacity, "Device::program overflow capacity");
+      while (!tx.empty()) {
+	// Compute the maximum writable size within the page
+	const int pageRemaining = PAGE_SIZE - (offset % PAGE_SIZE);
+	const int writeSize = std::min<int>(tx.size(), pageRemaining);
 
-     // Ensure that we're not crossing a page boundary
-     chDbgAssert(not crossesPageBoundary(offset, writeSize),
-		 "writePage: Attempting to cross page boundary");
+	// Ensure that we're not crossing a page boundary
+	chDbgAssert(not crossesPageBoundary(offset, writeSize),
+		    "writePage: Attempting to cross page boundary");
+	
+	// Program the current page segment
+	EXEC_AND_TEST(programPage(offset, tx.first(writeSize)));
+	
+	// Move to the next chunk
+	offset += writeSize;
+	tx = tx.subspan(writeSize);
+      }
+      
+      return MSG_OK;
+    }
 
-     // Program the current page segment
-     EXEC_AND_TEST(programPage(offset, tx.first(writeSize)));
-     
-     // Move to the next chunk
-     offset += writeSize;
-     tx = tx.subspan(writeSize);
-   }
-
-    return MSG_OK;
-}
-
- msg_t Device::write(int offset, std::span<const uint8_t> tx) const
- {
-   chDbgAssert((offset + tx.size()) <= capacity, "Device::program overflow capacity");
-   while (!tx.empty()) {
-     // Compute the maximum writable size within the page
-     const int pageRemaining = PAGE_SIZE - (offset % PAGE_SIZE);
-     const int writeSize = std::min<int>(tx.size(), pageRemaining);
-
-     // Ensure that we're not crossing a page boundary
-     chDbgAssert(not crossesPageBoundary(offset, writeSize),
-		 "writePage: Attempting to cross page boundary");
-
-     // Write the current page segment
-     EXEC_AND_TEST(writePage(offset, tx.first(writeSize)));
-     
-     // Move to the next chunk
-     offset += writeSize;
-     tx = tx.subspan(writeSize);
-   }
-
-    return MSG_OK;
-}
-
-
+    msg_t Device::write(int offset, std::span<const uint8_t> tx) const
+    {
+      chDbgAssert((offset + tx.size()) <= capacity, "Device::program overflow capacity");
+      while (!tx.empty()) {
+	// Compute the maximum writable size within the page
+	const int pageRemaining = PAGE_SIZE - (offset % PAGE_SIZE);
+	const int writeSize = std::min<int>(tx.size(), pageRemaining);
+	
+	// Ensure that we're not crossing a page boundary
+	chDbgAssert(not crossesPageBoundary(offset, writeSize),
+		    "writePage: Attempting to cross page boundary");
+	
+	// Write the current page segment
+	EXEC_AND_TEST(writePage(offset, tx.first(writeSize)));
+	
+	// Move to the next chunk
+	offset += writeSize;
+	tx = tx.subspan(writeSize);
+      }
+      
+      return MSG_OK;
+    }
+    
+    
     const std::array<uint8_t, 2> Device::readStatusCmd = {Command::RDSR, 0};
     __attribute__ ((section(DMA_SECTION)))
     Device::dmaRamBuffer_t Device::dmaRamBuffer = {};
-
+    
     
     
   } // namespace
