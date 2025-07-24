@@ -148,7 +148,7 @@ namespace Persistant {
 		"❌ params_list contains invalid ParamDefault entries!");
 
   /// Frozen map for fast parameter lookup.
-  constexpr auto frozenParameters = frozen::make_map(params_list);
+  inline constexpr const auto frozenParameters = frozen::make_map(params_list);
 
   class Parameter {
   public:
