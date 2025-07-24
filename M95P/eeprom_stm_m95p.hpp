@@ -7,6 +7,7 @@
 #include <cstdint>
 #include "eeprom_stm_m95p.h"
 #include "stdutil.h"
+#include "etl/span.h"
 
 /*
   TODO :
@@ -75,20 +76,20 @@ namespace  Eeprom_M95 {
     msg_t readVolatile(Volatile& vol) const;
     msg_t writeVolatile(Volatile vol) const;
     msg_t writeStatusAndConf(Status statusReg, Configuration conf) const;
-    msg_t read(int offset, std::span<uint8_t> readBuffer) const;
+    msg_t read(int offset, etl::span<uint8_t> readBuffer) const;
     msg_t eraseChip() const; // whole chip
     msg_t eraseBlock(int offset) const; // block : 64K bytes  
     msg_t eraseSector(int offset) const; // sector : 4K bytes
     msg_t erasePage(int offset) const; // page : 512 bytes
     msg_t erase(int offset, size_t size) const; // optimised for arbitrary size
     // max 512 bytes , page should have been previsously erased
-    msg_t programPage(int offset, std::span<const uint8_t> tx) const; 
+    msg_t programPage(int offset, etl::span<const uint8_t> tx) const; 
     // max 512 bytes , auto erase
-    msg_t writePage(int offset, std::span<const uint8_t> tx) const; // max 512 bytes, auto erase
+    msg_t writePage(int offset, etl::span<const uint8_t> tx) const; // max 512 bytes, auto erase
     Identification getIdentification() const {return identification;}
 
-    msg_t program(int offset, std::span<const uint8_t> tx) const; 
-    msg_t write(int offset, std::span<const uint8_t> tx) const; 
+    msg_t program(int offset, etl::span<const uint8_t> tx) const; 
+    msg_t write(int offset, etl::span<const uint8_t> tx) const; 
     M95P_instance_t c_obj() {
       return (M95P_instance_t) {.device = this};
     }
@@ -135,7 +136,7 @@ namespace  Eeprom_M95 {
 
     static constexpr std::array<uint8_t, 4> makeCmd(Command cmd, uint32_t addr);
     static constexpr int getDividerExponent(uint16_t divider);
-    static constexpr bool isValidBuffer(std::span<const uint8_t> v);
+    static constexpr bool isValidBuffer(etl::span<const uint8_t> v);
 
     // with 100Mhz clock source : 
     // 50Mhz spi is SPI_CFG1_MBR_DIV2
@@ -161,7 +162,7 @@ namespace  Eeprom_M95 {
     static constexpr size_t PAGE_SIZE = 512;
     static constexpr int nullOffset = -1;
     static constexpr std::array<uint8_t, 0> nullBufferArray = {};
-    static constexpr std::span<const uint8_t> nullBuffer = {};
+    static constexpr etl::span<const uint8_t> nullBuffer = {};
 
     static const std::array<uint8_t, 2> readStatusCmd; 
     alignas(4) static union dmaRamBuffer_t {
@@ -175,26 +176,26 @@ namespace  Eeprom_M95 {
     msg_t spiTransaction(Command command, int32_t offset,
 			 const std::array<T, TxSize> &tx, std::array<R, RxSize> &rx) const {
       return spiTransaction(command, offset,
-			    std::span<const uint8_t>(tx), std::span<uint8_t>(rx));
+			    etl::span<const uint8_t>(tx), etl::span<uint8_t>(rx));
     }
     
     template <SingleByteIntegralOrEnum T, std::size_t TxSize>
     msg_t spiTransaction(Command command, int32_t offset,
 			 const std::array<T, TxSize> &tx) const {
       return spiTransaction(command, offset,
-			    std::span<const uint8_t>(tx));
+			    etl::span<const uint8_t>(tx));
     }
     
     template <SingleByteIntegralOrEnum T = const uint8_t, SingleByteIntegralOrEnum R = uint8_t>
     msg_t spiTransaction(Command command, int32_t offset,
-			 const std::span<T> tx, std::span<R> rx) const;
+			 const etl::span<T> tx, etl::span<R> rx) const;
     
     template <SingleByteIntegralOrEnum T = const uint8_t>
     msg_t spiTransaction(Command command, int32_t offset,
-			 const std::span<T> tx) const
+			 const etl::span<T> tx) const
     {
       static  std::array<uint8_t, 0> nullBufferArrayMutable = {};
-      static  std::span<uint8_t> nullBufferMutable = nullBufferArrayMutable;
+      static  etl::span<uint8_t> nullBufferMutable = nullBufferArrayMutable;
       return spiTransaction(command, offset, tx, nullBufferMutable);
     }
     
@@ -235,7 +236,7 @@ namespace  Eeprom_M95 {
        return valid ? std::countr_zero(divider) : -1;
   }
 
-  constexpr bool Device::isValidBuffer(std::span<const uint8_t> v)
+  constexpr bool Device::isValidBuffer(etl::span<const uint8_t> v)
   {
     return not (v.data() == nullBuffer.data() && v.size() == nullBuffer.size());
   }

@@ -6,6 +6,7 @@
 #include <span>
 #include <array>
 #include <etl/vector.h>
+#include "etl/span.h"
 #include "ch.h"
 //#include "stdutil.h"
 
@@ -33,7 +34,7 @@
  *
  * @section usage Usage
  * Instantiate a @c PprzDecoder with appropriate callbacks and policy. Feed incoming data
- * either byte-by-byte or in chunks (std::span). The decoder will automatically synchronize,
+ * either byte-by-byte or in chunks (etl::span). The decoder will automatically synchronize,
  * extract messages, validate CRC, and invoke callbacks.
  *
  * @section design Design Notes
@@ -85,7 +86,7 @@ using XbeeMsg_t = etl::vector<uint8_t, PprzPayload_t::MAX_SIZE + 9>;
  * @brief Concept for a function that can send a message.
  */
 template <auto F>
-concept SendMsgConcept = requires(PprzPolicy p, const std::span<uint8_t> m) { { F(p, m) }; };
+concept SendMsgConcept = requires(PprzPolicy p, const etl::span<uint8_t> m) { { F(p, m) }; };
 /**
  * @concept TrapErrorConcept
  * @brief Concept for a function that can handle a trap error.
@@ -146,7 +147,7 @@ union XbeeHeader {
    */
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
-  XbeeHeader(std::span<const T>& bytes)
+  XbeeHeader(etl::span<const T>& bytes)
   {
     this->bitCopy(bytes);
   }
@@ -193,7 +194,7 @@ union XbeeHeader {
    */
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
-  void bitCopy(std::span<const T>& bytes)
+  void bitCopy(etl::span<const T>& bytes)
   {
     chDbgAssert(bytes.size() >= sizeof(XbeeHeader), "Buffer too small for XbeeHeader");
     memcpy(this, bytes.data(), sizeof(XbeeHeader));
@@ -265,7 +266,7 @@ union PprzHeader {
    */
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
-  PprzHeader(std::span<const T>& bytes)
+  PprzHeader(etl::span<const T>& bytes)
   {
     this->bitCopy(bytes);
   }
@@ -277,7 +278,7 @@ union PprzHeader {
    */
   template<typename T>
   requires (sizeof(T) == 1 && std::is_trivially_copyable_v<T>)
-  void bitCopy(std::span<const T>& bytes)
+  void bitCopy(etl::span<const T>& bytes)
   {
     chDbgAssert(bytes.size() >= sizeof(PprzHeader), "Buffer too small for PprzHeader");
     memcpy(this, bytes.data(), sizeof(PprzHeader));
@@ -290,7 +291,7 @@ static_assert(sizeof(PprzHeader) == 4);
 /**
  * @brief Default send message function (does nothing).
  */
-constexpr auto default_sendmsg = [](PprzPolicy, const std::span<uint8_t>) {};
+constexpr auto default_sendmsg = [](PprzPolicy, const etl::span<uint8_t>) {};
 /**
  * @brief Default trap error function (does nothing).
  */
@@ -309,14 +310,14 @@ namespace {
    * @param data The data to compute the CRC on.
    * @return The calculated CRC-16.
    */
-  uint16_t fletcher16(std::span<const uint8_t> data);
+  uint16_t fletcher16(etl::span<const uint8_t> data);
 
   /**
    * @brief Computes the CRC-8 of the provided buffer.
    * @param data The data to compute the CRC on.
    * @return The calculated CRC-8.
    */
-  uint8_t chksum8(std::span<const uint8_t> data);
+  uint8_t chksum8(etl::span<const uint8_t> data);
 }
 
 /**
@@ -331,7 +332,7 @@ namespace PprzEncoder {
    * @param payload The payload to encapsulate.
    */
   void genPprzMsg(PprzMsg_t& msg, const PprzHeader &ppHeader,
-			 const std::span<const uint8_t> &payload);
+			 const etl::span<const uint8_t> &payload);
 
   /**
    * @brief Generates an XBee API message from the given headers and payload.
@@ -341,7 +342,7 @@ namespace PprzEncoder {
    * @param payload  The payload to encapsulate.
    */
   void genXbeeMsg(XbeeMsg_t& msg, const XbeeHeader &xbHeader,
-		  const PprzHeader &ppHeader, const std::span<const uint8_t> &payload);
+		  const PprzHeader &ppHeader, const etl::span<const uint8_t> &payload);
 }
 
 /**
@@ -387,7 +388,7 @@ public:
    * @brief Feeds the parser with a buffer of bytes (from stream DMA/IRQ).
    * @param data Buffer of bytes to parse.
    */
-  void feed(std::span<const uint8_t> data);
+  void feed(etl::span<const uint8_t> data);
 
 
   /**
@@ -467,7 +468,7 @@ private:
  */
 template<PprzPolicy P, auto TIMEOUT_MS, auto SENDMSG_f, auto TRAPERR_f>
 requires SendMsgConcept<SENDMSG_f> && TrapErrorConcept<TRAPERR_f>
-void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint8_t> data)
+void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(etl::span<const uint8_t> data)
 {
   static constexpr uint8_t syncBeacon = P == PprzPolicy::PPRZ ? 0x99 : 0x7E;
 
@@ -577,7 +578,7 @@ void PprzDecoder<P, TIMEOUT_MS, SENDMSG_f, TRAPERR_f>::feed(std::span<const uint
       const uint16_t calculatedChksum = fletcher16(payload);
       if (calculatedChksum == chksum) {
 	++valid;
-	SENDMSG_f(P, std::span(payload.begin() + 1, payload.end()));
+	SENDMSG_f(P, etl::span(payload.begin() + 1, payload.end()));
       } else {
 	TRAPERR_f(valid, ++invalid);
       }
@@ -599,7 +600,7 @@ namespace {
    * @return The Fletcher-16 checksum.
    * @note Simplified algorithm: overflows if len > 5802.
    */
-  uint16_t fletcher16(std::span<const uint8_t> data)
+  uint16_t fletcher16(etl::span<const uint8_t> data)
   {
     uint32_t c0 = 0, c1 = 0;
     for (const uint8_t b : data) {
@@ -617,7 +618,7 @@ namespace {
    * @param data The data to checksum.
    * @return The 8-bit checksum.
    */
-  uint8_t chksum8(std::span<const uint8_t> data)
+  uint8_t chksum8(etl::span<const uint8_t> data)
   {
     uint8_t sum = 0;
     for (const auto b : data) {

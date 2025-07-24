@@ -1,6 +1,7 @@
 #include "eeprom_stm_m95p.hpp"
 #include "stdutil++.hpp"
 #include <cstring>
+#include "etl/span.h"
 
 namespace  {
   constexpr bool crossesPageBoundary(uint32_t offset, std::size_t length) {
@@ -45,7 +46,7 @@ namespace  {
     
     template <SingleByteIntegralOrEnum T, SingleByteIntegralOrEnum R>
     msg_t Device::spiTransaction(Command command, int32_t offset,
-				 const std::span<T> tx, std::span<R> rx) const
+				 const etl::span<T> tx, etl::span<R> rx) const
     {
       msg_t status = MSG_OK;
       chDbgAssert(not(isValidBuffer(tx) && isValidBuffer(rx)),
@@ -202,7 +203,7 @@ namespace  {
       return spiTransaction(Command::WRSR, nullOffset, dmaRamBuffer.b2);
     }
 
-    msg_t Device::read(int offset, std::span<uint8_t> readBuffer) const
+    msg_t Device::read(int offset, etl::span<uint8_t> readBuffer) const
     {
       buzyLoopWaitReady();
       return spiTransaction(Command::READ, offset, nullBuffer, readBuffer);
@@ -287,7 +288,7 @@ namespace  {
     }
 
 
-    msg_t Device::programPage(int offset, std::span<const uint8_t> tx) const
+    msg_t Device::programPage(int offset, etl::span<const uint8_t> tx) const
     {
       EXEC_AND_TEST(writeEnable());
       chDbgAssert(not crossesPageBoundary(offset, tx.size()),
@@ -297,7 +298,7 @@ namespace  {
       return status;
     }
 
-    msg_t Device::writePage(int offset, std::span<const uint8_t> tx) const
+    msg_t Device::writePage(int offset, etl::span<const uint8_t> tx) const
     {
       EXEC_AND_TEST(writeEnable());
       chDbgAssert(not crossesPageBoundary(offset, tx.size()),
@@ -307,7 +308,7 @@ namespace  {
       return status;
    }
 
-    msg_t Device::program(int offset, std::span<const uint8_t> tx) const
+    msg_t Device::program(int offset, etl::span<const uint8_t> tx) const
     {
       chDbgAssert((offset + tx.size()) <= capacity, "Device::program overflow capacity");
       while (!tx.empty()) {
@@ -330,7 +331,7 @@ namespace  {
       return MSG_OK;
     }
 
-    msg_t Device::write(int offset, std::span<const uint8_t> tx) const
+    msg_t Device::write(int offset, etl::span<const uint8_t> tx) const
     {
       chDbgAssert((offset + tx.size()) <= capacity, "Device::program overflow capacity");
       while (!tx.empty()) {
@@ -464,7 +465,7 @@ extern "C" {
   msg_t M95P_read(M95P_instance_t self, uint32_t offset, uint32_t n, uint8_t *buffer)
   {
     const Eeprom_M95::Device *device = static_cast<Eeprom_M95::Device *>(self.device);
-    std::span spanBuffer(buffer, n);
+    etl::span spanBuffer(buffer, n);
     return device->read(offset, spanBuffer);
   }
 
@@ -495,14 +496,14 @@ extern "C" {
  msg_t M95P_program(M95P_instance_t self, uint32_t offset, uint32_t n, const uint8_t *buffer)
   {
     const Eeprom_M95::Device *device = static_cast<Eeprom_M95::Device *>(self.device);
-    std::span spanBuffer(buffer, n);
+    etl::span spanBuffer(buffer, n);
     return device->program(offset, spanBuffer);
   }
   
  msg_t M95P_write(M95P_instance_t self, uint32_t offset, uint32_t n, const uint8_t *buffer)
   {
     const Eeprom_M95::Device *device = static_cast<Eeprom_M95::Device *>(self.device);
-    std::span spanBuffer(buffer, n);
+    etl::span spanBuffer(buffer, n);
     return device->write(offset, spanBuffer);
   }
   

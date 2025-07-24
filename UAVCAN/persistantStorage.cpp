@@ -33,8 +33,8 @@ namespace {
   }
   
   constexpr std::strong_ordering compareStrSpan(
-						std::span<const uint8_t> lhs, 
-						std::span<const uint8_t> rhs, 
+						etl::span<const uint8_t> lhs, 
+						etl::span<const uint8_t> rhs, 
 						bool use_min_length = false) 
   {
     const size_t strLhsLen = strnlen(reinterpret_cast<const char *>(lhs.data()), lhs.size());
@@ -132,9 +132,9 @@ namespace Persistant {
     if (restore(index, buffer) != true) {
       return false;
     }
-    const std::span<const uint8_t> storedName = Parameter::deserializeGetName(buffer);
+    const etl::span<const uint8_t> storedName = Parameter::deserializeGetName(buffer);
     const auto fName = Parameter::findName(index);
-    const std::span<const uint8_t> frozenName{reinterpret_cast<const uint8_t*>(fName.data()), fName.size()};
+    const etl::span<const uint8_t> frozenName{reinterpret_cast<const uint8_t*>(fName.data()), fName.size()};
     //    DebugTrace("DBG> restore name = %s", name.data());
     // for CRC32 : we don't restore, and if the value is different
     // we return false
@@ -213,7 +213,7 @@ namespace Persistant {
     std::size_t high = total_strings - 1;
 
 
-    std::span<const uint8_t> target {
+    etl::span<const uint8_t> target {
         reinterpret_cast<const uint8_t*>(ftarget.data()), ftarget.size()
     };
     

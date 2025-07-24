@@ -5,8 +5,8 @@
 #include <cstddef>
 #include <cstring>
 #include <optional>
-#include <span>
 #include <etl/vector.h> // Assumed include for ETL vector
+#include <etl/span.h> // Assumed include for ETL vector
 
 // Lightweight circular buffer without dynamic allocation, no exceptions.
 // Templated on element type T, capacity S, and optional MutexPolicy (stubbed for now).
@@ -18,7 +18,7 @@ public:
     using size_type = std::size_t;
     static constexpr size_type capacity = S;
     static constexpr size_type max_view_spans = 2;
-    using Span = std::span<T>;
+    using Span = etl::span<T>;
     using SpanList = etl::vector<Span, max_view_spans>;
 
     CircularBuffer() noexcept
@@ -37,8 +37,8 @@ public:
     }
 
   // Write multiple elements. Returns number of elements written (0 if no space).
-  // Dans votre méthode write(std::span<const T> items)
-  size_type write(std::span<const T> items) noexcept {
+  // Dans votre méthode write(etl::span<const T> items)
+  size_type write(etl::span<const T> items) noexcept {
     size_type available = capacity - count_;
     size_type to_write = (items.size() < available ? items.size() : available);
     if constexpr (std::is_trivially_copyable_v<T>) {
@@ -165,7 +165,7 @@ void test_circular_buffer()
 
     // 4) write(span)
     std::vector<int> v = {10, 11, 12, 13, 14, 15};
-    size_t w = buf.write(std::span(v));
+    size_t w = buf.write(etl::span(v));
     chDbgAssert(w == CAP, "write(span) should write up to capacity");
     chDbgAssert(buf.full(), "Buffer should be full after write(span)");
     chDbgAssert(buf.size() == CAP, "Size should be CAP after write(span)");
@@ -183,10 +183,10 @@ void test_circular_buffer()
 
     // 6) test wrap-around pour view
     buf = {}; // remettre à zéro
-    buf.write(std::span(v));         // écrit CAP éléments
+    buf.write(etl::span(v));         // écrit CAP éléments
     buf.read(); buf.read();          // lit 2 => size=3
     std::vector<int> v3 = {20,21,22,23};
-    w = buf.write(std::span(v3));    // doit écrire min(4, CAP-3)=2
+    w = buf.write(etl::span(v3));    // doit écrire min(4, CAP-3)=2
     chDbgAssert(w == 2, "write(span) should write only available space");
     chDbgAssert(buf.size() == CAP, "Buffer should be full after wrap-around writes");
     {

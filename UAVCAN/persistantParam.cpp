@@ -415,14 +415,14 @@ namespace Persistant {
    * @param buffer The input buffer containing serialized data.
    * @param index The index of output StoredValue that will be reconstructed.
    */
-  std::span<const uint8_t>
+  etl::span<const uint8_t>
   Parameter::deserializeGetName(const StoreSerializeBuffer& buffer)
   {
     chDbgAssert(!buffer.empty(), "Buffer is empty!");
     // unstore parameter name first
     // unstore the length of the parameter name
     const size_t paramNameLen = buffer[0];
-    const std::span<const uint8_t> paramName(std::next(buffer.begin(), 1), paramNameLen);
+    const etl::span<const uint8_t> paramName(std::next(buffer.begin(), 1), paramNameLen);
 
     return paramName;
   }

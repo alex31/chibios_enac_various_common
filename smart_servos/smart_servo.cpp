@@ -184,7 +184,7 @@ SmartServo::Status SmartServo::reset(uint8_t id) {
 
 
 
-SmartServo::Status SmartServo::detectBaudrateBroadcast(std::span<const uint32_t> baudrates)
+SmartServo::Status SmartServo::detectBaudrateBroadcast(etl::span<const uint32_t> baudrates)
 {
   for(auto baud: baudrates) {
     setSerialBaudrate(baud);
@@ -195,7 +195,7 @@ SmartServo::Status SmartServo::detectBaudrateBroadcast(std::span<const uint32_t>
   return Status::STATUS_TIMEOUT;
 }
 
-SmartServo::Status SmartServo::detectBaudrateUnicast(std::span<const uint32_t> baudrates)
+SmartServo::Status SmartServo::detectBaudrateUnicast(etl::span<const uint32_t> baudrates)
 {
   uint32_t firstMatchingBaudrate = 0;
   for(auto baud: baudrates) {
@@ -214,7 +214,7 @@ SmartServo::Status SmartServo::detectBaudrateUnicast(std::span<const uint32_t> b
   return firstMatchingBaudrate == 0 ? Status::STATUS_TIMEOUT : SmartServo::OK;
 }
 
-SmartServo::Status SmartServo::detectBaudrate(std::span<const uint32_t> baudrates)
+SmartServo::Status SmartServo::detectBaudrate(etl::span<const uint32_t> baudrates)
 {
   if (detectBaudrateBroadcast(baudrates) == SmartServo::OK) {
     return SmartServo::OK;
@@ -225,7 +225,7 @@ SmartServo::Status SmartServo::detectBaudrate(std::span<const uint32_t> baudrate
 
 SmartServo::Status SmartServo::detectBaudrate(std::initializer_list<uint32_t> baudrates)
 {
-    return detectBaudrate(std::span<const uint32_t>{baudrates.begin(), baudrates.size()});
+    return detectBaudrate(etl::span<const uint32_t>{baudrates.begin(), baudrates.size()});
 }
 
 

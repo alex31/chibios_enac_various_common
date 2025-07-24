@@ -2,7 +2,7 @@
 #include <ch.h>
 #include <hal.h>
 #include "stdutil++.hpp"
-#include <span>
+#include <etl/span.h>
 
 constexpr size_t MAX_DATA_LEN = 15;
 constexpr uint8_t BROADCAST_ID = 254;
@@ -109,15 +109,15 @@ public:
 
   servo_msg_t* getStatus() {return &servo_status;}
 
-  Status detectBaudrate(std::span<const uint32_t> baudrates);
+  Status detectBaudrate(etl::span<const uint32_t> baudrates);
   Status detectBaudrate(std::initializer_list<uint32_t> baudrates);
 
   // void setResponseLevel(uint8_t rl) {response_level = (ResponseLevel)rl;}
 
 protected:
 
-  Status detectBaudrateBroadcast(std::span<const uint32_t> baudrates);
-  Status detectBaudrateUnicast(std::span<const uint32_t> baudrates);
+  Status detectBaudrateBroadcast(etl::span<const uint32_t> baudrates);
+  Status detectBaudrateUnicast(etl::span<const uint32_t> baudrates);
   /**
    * Read @record.len bytes from servo @record.id, starting at address record.reg.
    */

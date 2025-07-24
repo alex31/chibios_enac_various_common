@@ -23,6 +23,7 @@
 #include "persistantParamTypes.hpp"
 #include "persistantParamCrc.hpp"
 #include "ch.h"
+#include "etl/span.h"
 /*
   FAIT :
 
@@ -285,7 +286,7 @@ namespace Persistant {
     static void serializeStoredValue(size_t index, StoreSerializeBuffer& buffer);
     static bool deserializeStoredValue(StoredValue& value, const StoreSerializeBuffer& buffer);
     static bool deserializeStoredValue(size_t index, const StoreSerializeBuffer& buffer);
-    static std::span<const uint8_t> deserializeGetName(const StoreSerializeBuffer& buffer);
+    static etl::span<const uint8_t> deserializeGetName(const StoreSerializeBuffer& buffer);
 
     /**  
      * @brief Populate default values into the parameter list.
