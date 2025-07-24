@@ -188,9 +188,11 @@ template <uint16_t QSZ, typename... MT>
 requires (QSZ != 0)
 [[noreturn]]void JobQueue<QSZ, MT...>::jobDispatch(void *_fifo)
 {
+#ifdef TRACE
   char thdName[20];
   chsnprintf(thdName, sizeof(thdName), "dispatch S[%d]<%d>", count++, QSZ);
   chRegSetThreadName(thdName);
+#endif
   
   auto fifo = static_cast<ObjectFifo<Job, QSZ> *>(_fifo);
   while (true) {
@@ -207,4 +209,6 @@ requires (QSZ != 0)
 }
 
 // STATIC Members
+#ifdef TRACE
 uint8_t InstCount::count = 0;
+#endif
