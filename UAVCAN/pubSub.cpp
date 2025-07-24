@@ -297,20 +297,14 @@ namespace UAVCAN
     canStart(&config.cand, &config.cancfg);
     
     int8_t filtersInUse = configureHardwareFilters();
-    const bool rejectNonAcceptedId =
-#ifdef FDCAN_CONFIG_RXGFC_ANFE_REJECT
-      (config.cancfg.RXGFC & FDCAN_CONFIG_RXGFC_ANFE_REJECT) != 0;
-#else
-    (config.cancfg.RXGFC & FDCAN_CONFIG_GFC_ANFE_REJECT) != 0;
-#endif
     //    int8_t filtersInUse = 0;
     if (filtersInUse < 0) {
       errorCb("WARN: too many messages fo hardware filtering, "
 	      "revert to software filtering");
-       chDbgAssert(not rejectNonAcceptedId,
+      chDbgAssert(not rejectNonAcceptedId(),
 		  "cancfg.RXGFC must be corrected to accept all msg id");
     } else {
-      chDbgAssert(rejectNonAcceptedId || filtersInUse == 0,
+      chDbgAssert(rejectNonAcceptedId() || filtersInUse == 0,
 		  "cancfg.RXGFC must be corrected to reject filtered msg id");
       errorCb("INFO: hardware filtering use %d slots", filtersInUse);
     }
@@ -437,23 +431,23 @@ uint8_t Node::getNbActiveAgents()
 
 
 
-  bool Node::shouldAcceptTransfer(const CanardInstance *ins,
+  bool Node::shouldAcceptTransfer(const CanardInstance * ins,
 			    uint64_t *out_data_type_signature,
 			    uint16_t data_type_id,
 			    CanardTransferType transfer_type,
-			    uint8_t source_node_id)
+				  uint8_t /* source_node_id */)
   {
-    (void) ins;
-    (void) source_node_id;
-    
     if (auto sigItr = idToHandleMessage.find({data_type_id,transfer_type});
 	sigItr !=  idToHandleMessage.end()) {
       *out_data_type_signature = sigItr->second.signature;
       return true;
     }
     
-    errorCb("INFO: id %x of type %d is not hardware filtered",
-	    transfer_type, data_type_id);
+    Node *node = static_cast<Node *>(canardGetUserReference(ins));
+    if(node->rejectNonAcceptedId()) {
+	errorCb("WARN: id %x of type %d is not hardware filtered",
+		transfer_type, data_type_id);
+      }
     return false;
   }
   
