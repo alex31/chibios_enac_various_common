@@ -568,10 +568,10 @@ namespace UAVCAN {
     void transmitQueue();
     void sendNodeStatus();
     void setCanStatus(canStatus_t cs) {canStatus = cs;}
-    bool rejectNonAcceptedId() {
+    bool rejectNonAcceptedId() const {
       const bool reject =
 #ifdef FDCAN_CONFIG_RXGFC_ANFE_REJECT
-	(config.cancfg.RXGFC & FDCAN_CONFIG_RXGFC_ANFE_REJECT) != 0;
+      (config.cancfg.RXGFC & FDCAN_CONFIG_RXGFC_ANFE_REJECT) != 0;
 #else
       (config.cancfg.RXGFC & FDCAN_CONFIG_GFC_ANFE_REJECT) != 0;
 #endif

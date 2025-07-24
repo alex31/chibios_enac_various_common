@@ -443,8 +443,8 @@ uint8_t Node::getNbActiveAgents()
       return true;
     }
     
-    Node *node = static_cast<Node *>(canardGetUserReference(ins));
-    if(node->rejectNonAcceptedId()) {
+    const Node *node = static_cast<Node *>(canardGetUserReference(ins));
+    if (node->rejectNonAcceptedId()) {
 	errorCb("WARN: id %x of type %d is not hardware filtered",
 		transfer_type, data_type_id);
       }
