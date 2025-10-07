@@ -34,8 +34,8 @@ typedef struct {
     float v;       // a fraction between 0 and 1
 } HSV;
 
-[[maybe_unused]] static HSV   rgb2hsv(const RGB in);
-[[maybe_unused]] static RGB   hsv2rgb(const HSV in);
+[[maybe_unused]] static HSV   constexpr rgb2hsv(const RGB in);
+[[maybe_unused]] static RGB   constexpr hsv2rgb(const HSV in);
 
 
 template<typename T>
@@ -322,7 +322,7 @@ void Led2812Strip<N, LT>::rotate(int32_t n)
 
 
 
-HSV rgb2hsv(const RGB in)
+constexpr HSV rgb2hsv(const RGB in)
 {
     HSV         out;
     float      min, max, delta;
@@ -369,7 +369,7 @@ HSV rgb2hsv(const RGB in)
 }
 
 
-RGB hsv2rgb(HSV in)
+constexpr RGB hsv2rgb(HSV in)
 {
     float      hh, p, q, t, ff;
     long        i;
