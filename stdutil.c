@@ -13,10 +13,12 @@
 #if HAL_USE_SERIAL_USB == TRUE
 SerialUSBDriver SDU1;
 #endif
+#ifdef TRACE
 #if defined CONSOLE_DEV_SD
 BaseSequentialStream *chp = (BaseSequentialStream *) &CONSOLE_DEV_SD;
 #elif (CONSOLE_DEV_USB == TRUE)
 BaseSequentialStream *chp = (BaseSequentialStream *) &SDU1;
+#endif
 #endif
  
 

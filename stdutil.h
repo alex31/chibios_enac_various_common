@@ -441,8 +441,9 @@ char *binary_fmt(uintmax_t x, const int fill);
 uint16_t fletcher16 (uint8_t const *data, size_t bytes);
 float powi(int x, int y) ;
 const char* getGpioName (const ioportid_t p);
+#if defined(CH_DBG_SYSTEM_STATE_CHECK) &&  CH_DBG_SYSTEM_STATE_CHECK
 int32_t get_stack_free (const thread_t *tp);
-
+#endif
 
 #if HAL_USE_PWM 
 __attribute__((const))
