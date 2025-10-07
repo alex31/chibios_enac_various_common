@@ -22,7 +22,7 @@
  *
  * ### Color Management
  * The driver supports both direct RGB color setting and an indexed color table
- * of size `COLOR_TABLE_SIZE`. fdsUseColorIndex() selects a pre-configured
+ * of size `FDS_COLOR_TABLE_SIZE`. fdsUseColorIndex() selects a pre-configured
  * color from the tables for subsequent text operations.
  *
  * ### Escape Sequences in fdsPrintFmt
@@ -105,11 +105,13 @@ typedef enum {
 /** @brief General status return values for driver functions. */
 typedef enum {
     FDS_OK,    /**< Operation successful. */
-	FDS_ERROR  /**< An error occurred during the last serial transaction. */
+    FDS_ERROR  /**< An error occurred during the last serial transaction. */
 } FdsStatus;
 
-/** @brief Size of the indexed color table (0-10). */
-#define COLOR_TABLE_SIZE 11U
+/** @brief Size of the indexed color table (0 to FDS_COLOR_TABLE_SIZE - 1). */
+#ifndef FDS_COLOR_TABLE_SIZE
+#define FDS_COLOR_TABLE_SIZE 11U
+#endif
 
 /** @brief Structure to represent a 2D point for polygon drawing. */
 typedef struct {
@@ -168,7 +170,7 @@ void fdsReleaseLock (FdsDriver *fdsDriver);
 /**
  * @brief Prints formatted text to the display at the current cursor position.
  * @details This function works like `printf` and supports special escape sequences:
- *          - `\cn`: (e.g. `\c0` to `\c9`) Sets the text color using a pre-defined index.
+ *          - `\cn`: (e.g. `\c0`, `\c1`, ...) Sets the text color using a pre-defined index.
  *          - `\n`: Moves the cursor to the start of the next line.
  *          - `\t`: Moves the cursor to the next tab stop (8 characters wide).
  * @param[in] fdsDriver Pointer to the FdsDriver structure.
@@ -226,7 +228,7 @@ void fdsSetTextBgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b);
 /**
  * @brief Sets a color in the indexed background color table.
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
- * @param[in] colorIndex  The index in the table to set (0-9).
+ * @param[in] colorIndex  The index in the table to set (0 to FDS_COLOR_TABLE_SIZE - 1).
  * @param[in] r           Red component (0-100).
  * @param[in] g           Green component (0-100).
  * @param[in] b           Blue component (0-100).
@@ -237,7 +239,7 @@ void fdsSetTextBgColorTable (FdsDriver *fdsDriver, uint8_t colorIndex,
 /**
  * @brief Sets a color in the indexed foreground color table.
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
- * @param[in] colorIndex  The index in the table to set (0-9).
+ * @param[in] colorIndex  The index in the table to set (0 to FDS_COLOR_TABLE_SIZE - 1).
  * @param[in] r           Red component (0-100).
  * @param[in] g           Green component (0-100).
  * @param[in] b           Blue component (0-100).
@@ -248,7 +250,7 @@ void fdsSetTextFgColorTable (FdsDriver *fdsDriver,  uint8_t colorIndex,
 /**
  * @brief Selects the current foreground/background color pair from the color tables.
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
- * @param[in] colorIndex  The color index to use (0-9).
+ * @param[in] colorIndex  The color index to use (0 to FDS_COLOR_TABLE_SIZE - 1).
  */
 void fdsUseColorIndex (FdsDriver *fdsDriver, uint8_t colorIndex);
 
@@ -619,8 +621,8 @@ struct FdsDriver {
   enum FdsDriver_Device deviceType; /**< @internal Type of the display controller. */
   // =============
   uint16_t bg;                    /**< @internal Current background color (16-bit). */
-  Color24 tbg[COLOR_TABLE_SIZE];  /**< @internal Indexed background color table. */
-  Color24 fg[COLOR_TABLE_SIZE];   /**< @internal Indexed foreground color table. */
+  Color24 tbg[FDS_COLOR_TABLE_SIZE];  /**< @internal Indexed background color table. */
+  Color24 fg[FDS_COLOR_TABLE_SIZE];   /**< @internal Indexed foreground color table. */
   uint8_t colIdx;                 /**< @internal Current color index. */
   uint8_t curXpos;                /**< @internal Current cursor X position (character column). */
   uint8_t curYpos;                /**< @internal Current cursor Y position (character row). */

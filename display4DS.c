@@ -467,7 +467,7 @@ void fdsSetTextFgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b)
 void fdsSetTextBgColorTable (FdsDriver *fdsDriver, uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsDriver);
-  if (++colorIndex >= COLOR_TABLE_SIZE) return;
+  if (++colorIndex >= FDS_COLOR_TABLE_SIZE) return;
 
   fdsDriver->tbg[colorIndex] = mkColor24(r,g,b);
 }
@@ -475,7 +475,7 @@ void fdsSetTextBgColorTable (FdsDriver *fdsDriver, uint8_t colorIndex, uint8_t r
 void fdsSetTextFgColorTable (FdsDriver *fdsDriver,  uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsDriver);
-  if (++colorIndex >= COLOR_TABLE_SIZE) return;
+  if (++colorIndex >= FDS_COLOR_TABLE_SIZE) return;
 
   fdsDriver->fg[colorIndex] = mkColor24(r,g,b);
 }
@@ -483,7 +483,7 @@ void fdsSetTextFgColorTable (FdsDriver *fdsDriver,  uint8_t colorIndex, uint8_t 
 void fdsUseColorIndex (FdsDriver *fdsDriver, uint8_t colorIndex)
 {
   RET_UNLESS_INIT(fdsDriver);
-  if (++colorIndex >= COLOR_TABLE_SIZE) return;
+  if (++colorIndex >= FDS_COLOR_TABLE_SIZE) return;
   fdsDriver->colIdx = colorIndex;
   if (fdsDriver->deviceType != FDS_TERM_VT100) {
     if (fdsDriver->fg[0].rgb != fdsDriver->fg[colorIndex].rgb)  {
