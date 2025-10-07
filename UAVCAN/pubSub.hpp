@@ -516,12 +516,24 @@ namespace UAVCAN {
       return ( subscribeBroadcastOneMessage<Fn>() && ... );
     }
     template<auto ...Fn>
+    bool unsubscribeBroadcastMessages() {
+      return ( unsubscribeBroadcastOneMessage<Fn>() && ... );
+    }
+    template<auto ...Fn>
     bool subscribeRequestMessages() {
+      return ( subscribeRequestOneMessage<Fn>() && ... );
+    }
+    template<auto ...Fn>
+    bool unsubscribeRequestMessages() {
       return ( subscribeRequestOneMessage<Fn>() && ... );
     }
     template<auto ...Fn>
     bool subscribeResponseMessages() {
       return ( subscribeResponseOneMessage<Fn>() && ... );
+    }
+    template<auto ...Fn>
+    bool unsubscribeResponseMessages() {
+      return ( unsubscribeResponseOneMessage<Fn>() && ... );
     }
 
   private:
@@ -582,9 +594,15 @@ namespace UAVCAN {
     template<auto Fn>
     bool subscribeBroadcastOneMessage();
     template<auto Fn>
+    bool unsubscribeBroadcastOneMessage();
+    template<auto Fn>
     bool subscribeRequestOneMessage();
     template<auto Fn>
+    bool unsubscribeRequestOneMessage();
+    template<auto Fn>
     bool subscribeResponseOneMessage();
+    template<auto Fn>
+    bool unsubscribeResponseOneMessage();
 
      
    /**
@@ -828,6 +846,24 @@ namespace UAVCAN {
     }
 
   template<auto Fn>
+  bool Node::unsubscribeBroadcastOneMessage()
+  {
+    constexpr auto key = makeBroadcastCb<Fn>().first;
+    
+    // Protection thread-safe
+    MutexGuard guard(canard_mtx_r);
+    
+    // erase(key) renvoie le nombre d’éléments supprimés (0 ou 1)
+    if (idToHandleMessage.erase(key) == 0)
+      {
+        errorCb("No subscription found to unsubscribe");
+        return false;
+      }
+    
+    return true;
+  }
+  
+  template<auto Fn>
     bool Node::subscribeRequestOneMessage() {
       if (idToHandleMessage.full()) {
 	errorCb("idToHandleMessage is full");
@@ -840,18 +876,52 @@ namespace UAVCAN {
     }
 
   template<auto Fn>
-    bool Node::subscribeResponseOneMessage() {
-      if (idToHandleMessage.full()) {
-	errorCb("idToHandleMessage is full");
-	return false;
+  bool Node::unsubscribeRequestOneMessage()
+  {
+     constexpr auto key = makeRequestCb<Fn>().first;
+    // Protection thread-safe
+    MutexGuard guard(canard_mtx_r);
+    
+    // erase(key) renvoie le nombre d’éléments supprimés (0 ou 1)
+    if (idToHandleMessage.erase(key) == 0)
+      {
+        errorCb("No subscription found to unsubscribe");
+        return false;
       }
-      constexpr subscribeMapEntry_t keyValue = makeResponseCb<Fn>();
-      MutexGuard gard(canard_mtx_r);
-      idToHandleMessage.insert(keyValue);
-      return true;
+    
+    return true;
+  }
+
+  template<auto Fn>
+  bool Node::subscribeResponseOneMessage() {
+    if (idToHandleMessage.full()) {
+      errorCb("idToHandleMessage is full");
+      return false;
     }
+    constexpr subscribeMapEntry_t keyValue = makeResponseCb<Fn>();
+    MutexGuard gard(canard_mtx_r);
+    idToHandleMessage.insert(keyValue);
+    return true;
+  }
+  
+  template<auto Fn>
+  bool Node::unsubscribeResponseOneMessage()
+  {
+    constexpr auto key = makeResponseCb<Fn>().first;
 
-
+    // Protection thread-safe
+    MutexGuard guard(canard_mtx_r);
+    
+    // erase(key) renvoie le nombre d’éléments supprimés (0 ou 1)
+    if (idToHandleMessage.erase(key) == 0)
+      {
+        errorCb("No subscription found to unsubscribe");
+        return false;
+      }
+    
+    return true;
+  }
+  
 template<typename...Params>
 void Node::errorCb(const char * format, [[maybe_unused]] Params&&... params)
 {
