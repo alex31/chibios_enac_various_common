@@ -226,9 +226,10 @@ void fdsSetTextFgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b);
 void fdsSetTextBgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b);
 
 /**
- * @brief Sets a color in the indexed background color table.
+ * @brief Sets a color in the indexed background color table palette.
+ * @note Index 0 is reserved for the current color and cannot be set by this function.
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
- * @param[in] colorIndex  The index in the table to set (0 to FDS_COLOR_TABLE_SIZE - 1).
+ * @param[in] colorIndex  The index in the palette to set (1 to FDS_COLOR_TABLE_SIZE - 1).
  * @param[in] r           Red component (0-100).
  * @param[in] g           Green component (0-100).
  * @param[in] b           Blue component (0-100).
@@ -237,9 +238,10 @@ void fdsSetTextBgColorTable (FdsDriver *fdsDriver, uint8_t colorIndex,
 			      uint8_t r, uint8_t g, uint8_t b);
 
 /**
- * @brief Sets a color in the indexed foreground color table.
+ * @brief Sets a color in the indexed foreground color table palette.
+ * @note Index 0 is reserved for the current color and cannot be set by this function.
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
- * @param[in] colorIndex  The index in the table to set (0 to FDS_COLOR_TABLE_SIZE - 1).
+ * @param[in] colorIndex  The index in the palette to set (1 to FDS_COLOR_TABLE_SIZE - 1).
  * @param[in] r           Red component (0-100).
  * @param[in] g           Green component (0-100).
  * @param[in] b           Blue component (0-100).

@@ -467,7 +467,8 @@ void fdsSetTextFgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b)
 void fdsSetTextBgColorTable (FdsDriver *fdsDriver, uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsDriver);
-  if (++colorIndex >= FDS_COLOR_TABLE_SIZE) return;
+  if ((colorIndex == 0) || (colorIndex >= FDS_COLOR_TABLE_SIZE))
+    return;
 
   fdsDriver->tbg[colorIndex] = mkColor24(r,g,b);
 }
@@ -475,7 +476,8 @@ void fdsSetTextBgColorTable (FdsDriver *fdsDriver, uint8_t colorIndex, uint8_t r
 void fdsSetTextFgColorTable (FdsDriver *fdsDriver,  uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsDriver);
-  if (++colorIndex >= FDS_COLOR_TABLE_SIZE) return;
+  if ((colorIndex == 0) || (colorIndex >= FDS_COLOR_TABLE_SIZE))
+    return;
 
   fdsDriver->fg[colorIndex] = mkColor24(r,g,b);
 }
@@ -483,7 +485,8 @@ void fdsSetTextFgColorTable (FdsDriver *fdsDriver,  uint8_t colorIndex, uint8_t 
 void fdsUseColorIndex (FdsDriver *fdsDriver, uint8_t colorIndex)
 {
   RET_UNLESS_INIT(fdsDriver);
-  if (++colorIndex >= FDS_COLOR_TABLE_SIZE) return;
+  if (colorIndex >= FDS_COLOR_TABLE_SIZE)
+    return;
   fdsDriver->colIdx = colorIndex;
   if (fdsDriver->deviceType != FDS_TERM_VT100) {
     if (fdsDriver->fg[0].rgb != fdsDriver->fg[colorIndex].rgb)  {
@@ -646,7 +649,7 @@ void fdsDrawPoint (FdsDriver *fdsDriver, const uint16_t x, const uint16_t y,
 {
   RET_UNLESS_INIT(fdsDriver);
 
-  const uint16_t fg = fgColorIndexTo16b(fdsDriver, (uint8_t) (colorIndex+1));
+  const uint16_t fg = fgColorIndexTo16b(fdsDriver, colorIndex);
   gfx_putPixel(fdsDriver, x, y, fg);
 }
 
@@ -658,7 +661,7 @@ void fdsDrawLine (FdsDriver *fdsDriver,
 {
   RET_UNLESS_INIT(fdsDriver);
 
-  const uint16_t fg = fgColorIndexTo16b(fdsDriver, (uint8_t) (colorIndex+1));
+  const uint16_t fg = fgColorIndexTo16b(fdsDriver, colorIndex);
   gfx_line(fdsDriver, x1, y1, x2, y2, fg);
 }
 
@@ -670,7 +673,7 @@ void fdsDrawRect (FdsDriver *fdsDriver,
 {
   RET_UNLESS_INIT(fdsDriver);
 
-  const uint16_t fg = fgColorIndexTo16b(fdsDriver, (uint8_t) (colorIndex+1));
+  const uint16_t fg = fgColorIndexTo16b(fdsDriver, colorIndex);
   if (filled) 
     gfx_rectangleFilled(fdsDriver, x1, y1, x2, y2, fg);
   else
@@ -694,7 +697,7 @@ void fdsDrawPolyLine (FdsDriver *fdsDriver,
     command.vx[i] = __builtin_bswap16(pp[i].x);
     command.vy[i] = __builtin_bswap16(pp[i].y);
   }
-  command.color =  fgColorIndexTo16b(fdsDriver, (uint8_t) (colorIndex+1));
+  command.color =  fgColorIndexTo16b(fdsDriver, colorIndex);
   gfx_polyline(fdsDriver, len, command.vx, command.vy, command.color);
 }
 
