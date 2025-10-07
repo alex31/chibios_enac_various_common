@@ -672,9 +672,9 @@ void fdsDrawRect (FdsDriver *fdsDriver,
 
   const uint16_t fg = fgColorIndexTo16b(fdsDriver, (uint8_t) (colorIndex+1));
   if (filled) 
-    gfx_rectangle(fdsDriver, x1, y1, x2, y2, fg);
-  else
     gfx_rectangleFilled(fdsDriver, x1, y1, x2, y2, fg);
+  else
+    gfx_rectangle(fdsDriver, x1, y1, x2, y2, fg);
  }
 
 void fdsDrawPolyLine (FdsDriver *fdsDriver, 
