@@ -96,6 +96,7 @@ static void fdsPreInit (FdsDriver *fdsDriver, uint32_t baud)
 bool fdsStart (FdsDriver *fdsDriver,  FDS_LINK_DRIVER *fds, const uint32_t baud,
 		ioline_t rstLine, enum FdsDriver_Device dev)
 {
+  bool baudCorrected = false;
   fdsDriver->rstLine = rstLine;
   fdsDriver->deviceType = dev;
 
@@ -117,9 +118,14 @@ bool fdsStart (FdsDriver *fdsDriver,  FDS_LINK_DRIVER *fds, const uint32_t baud,
 
   // test is no error on kind of device : picaso, goldelox, diablo ...
   if (!fdsIsCorrectDevice(fdsDriver)) {
-    DebugTrace("Error incorrect device type @ %s:%d", __FUNCTION__, __LINE__);
-    return false;
+    fdsSetBaud(fdsDriver, baud);
+    baudCorrected = true;
+    if (!fdsIsCorrectDevice(fdsDriver)) {
+      DebugTrace("Error incorrect device type @ %s:%d", __FUNCTION__, __LINE__);
+      return false;
+    }
   }
+      
 
   // opaque background
   fdsClearScreen(fdsDriver);
@@ -130,8 +136,10 @@ bool fdsStart (FdsDriver *fdsDriver,  FDS_LINK_DRIVER *fds, const uint32_t baud,
   fdsScreenSaverTimout(fdsDriver, 20000);
   
   // use greater speed
-  if ((fdsDriver->deviceType != FDS_TERM_VT100) && (baud != 9600))
-    return fdsSetBaud(fdsDriver, baud);
+  if (!baudCorrected) {
+    if ((fdsDriver->deviceType != FDS_TERM_VT100) && (baud != 9600))
+      return fdsSetBaud(fdsDriver, baud);
+  }
   return true;
 }
 
