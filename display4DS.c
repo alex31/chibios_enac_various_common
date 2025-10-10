@@ -56,7 +56,7 @@ static void fdsScreenSaverTimout (const FdsDriver *fdsDriver, uint16_t timout);
 static void fdsPreInit (FdsDriver *fdsDriver, uint32_t baud);
 static uint32_t fdsGetFileError  (const FdsDriver *fdsDriver);
 static bool fdsFileSeek  (const FdsDriver *fdsDriver, const uint16_t handle, const uint32_t offset);
-static uint16_t fgColorIndexTo16b (const FdsDriver *fdsDriver, const uint8_t colorIndex);
+static uint16_t paletteFgColorTo16b (const FdsDriver *fdsDriver, const uint8_t colorIndex);
 static uint8_t colorDimmed (const uint8_t channel, const uint8_t luminosity);
 static uint16_t fdsTouchGet (const FdsDriver *fdsDriver, uint16_t mode);
 static uint16_t getResponseAsUint16 (const uint8_t *buff);
@@ -75,9 +75,9 @@ static uint8_t colorDimmed (const uint8_t channel, const uint8_t luminosity)
 
 static void fdsPreInit (FdsDriver *fdsDriver, uint32_t baud)
 {
-  fdsDriver->bg = fds_colorDecTo16b(0,0,0);
-  fdsDriver->tbg[0] = mkColor24 (0,0,0);
-  fdsDriver->fg[0] = mkColor24(50,50,50);
+  fdsDriver->screenBackgroundColor = fds_colorDecTo16b(0,0,0);
+  fdsDriver->currentColor.bg = mkColor24 (0,0,0);
+  fdsDriver->currentColor.fg = mkColor24(50,50,50);
   fdsDriver->colIdx = 0;
   fdsDriver->curXpos = 0;
   fdsDriver->curYpos = 0;
@@ -365,7 +365,7 @@ bool fdsPrintFmt (FdsDriver *fdsDriver, const char *fmt, ...)
       // next two char a color coding scheme
       if (tolower((uint32_t) (*token)) == 'c') { 
 	const int32_t colorIndex = *++token - '0';
-	fdsUseColorIndex(fdsDriver, (uint8_t) colorIndex);
+	fdsUsePaletteIndex(fdsDriver, (uint8_t) colorIndex);
 	//	DebugTrace ("useColorIndex %d", colorIndex);
 	curBuf=token+1;
       } else if (tolower((uint32_t) (*token)) == 'n') { 	
@@ -379,6 +379,69 @@ bool fdsPrintFmt (FdsDriver *fdsDriver, const char *fmt, ...)
 	space[tabLength] = 0;
 	ret = fdsPrintBuffer(fdsDriver, space);
 	fdsGotoX(fdsDriver, (uint8_t) (fdsDriver->curXpos + tabLength));
+	curBuf=token+1;
+      }
+    }
+  }
+  return ret;
+}
+
+bool fdsPrintStr (FdsDriver *fdsConfig, const char *str)
+{
+  char buffer[120];
+  char *token, *curBuf;
+  bool lastLoop = false;
+  bool ret = false;
+
+  RET_UNLESS_INIT_BOOL(fdsConfig);
+  strncpy(buffer, str, sizeof(buffer));
+
+  if (buffer[0] == 0)
+    return true;
+
+  if (buffer[1] == 0) {
+    return fdsPrintBuffer(fdsConfig, buffer);
+  }
+  
+  const char* endPtr = &(buffer[strnlen(buffer, sizeof(buffer)) -1]);
+  // replace escape color sequence by color command for respective backend
+  // ESC c 0 à 9 : couleur index of background and foreground
+  // replace escape n by carriage return, line feed
+  // replace escape t by horizontal tabulation
+  for (curBuf=buffer;(curBuf<endPtr) && (lastLoop == false);) {
+    token = index(curBuf, 033);
+    if (token == NULL) {
+      // on peut imprimer les derniers caractères et terminer
+      lastLoop = true;
+    } else {
+      // token pointe sur le char d'echappement ESC
+      // on met un caractère de fin de chaine à la place
+      *token++ =0;
+    }
+    
+    if (*curBuf != 0) {
+      ret = fdsPrintBuffer(fdsConfig, curBuf);
+      fdsConfig->curXpos =  (uint8_t) (fdsConfig->curXpos + strnlen(curBuf, sizeof(buffer)));
+    }
+    
+    if (lastLoop == false) {
+      // next two char a color coding scheme
+      if (tolower((uint32_t) (*token)) == 'c') { 
+	const int32_t colorIndex = *++token - '0';
+	fdsUsePaletteIndex(fdsConfig, (uint8_t) colorIndex);
+	//	DebugTrace ("useColorIndex %d", colorIndex);
+	curBuf=token+1;
+      } else if (tolower((uint32_t) (*token)) == 'n') { 	
+	//	DebugTrace ("carriage return");
+	fdsGotoXY(fdsConfig, 0,  (uint8_t) (fdsConfig->curYpos+1));
+	curBuf=token+1;
+      } else if (tolower((uint32_t) (*token)) == 't') { 	
+	//	DebugTrace ("tabulation");
+	const uint8_t tabLength =  (uint8_t) (8-(fdsConfig->curXpos%8));
+	char space[8] = {[0 ... 7] = ' '};
+	space[tabLength] = 0;
+	ret = fdsPrintBuffer(fdsConfig, space);
+	fdsGotoX(fdsConfig, (uint8_t) (fdsConfig->curXpos + tabLength));
 	curBuf=token+1;
       }
     }
@@ -417,8 +480,8 @@ void fdsChangeBgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsDriver);
   
-  const uint16_t oldCol = fdsDriver->bg;
-  const uint16_t newCol = fdsDriver->bg = fds_colorDecTo16b(r,g,b);
+  const uint16_t oldCol = fdsDriver->screenBackgroundColor;
+  const uint16_t newCol = fdsDriver->screenBackgroundColor = fds_colorDecTo16b(r,g,b);
   RET_UNLESS_4DSYS(fdsDriver);
   gfx_changeColour(fdsDriver, oldCol, newCol);
 } 
@@ -428,7 +491,7 @@ void fdsSetTextBgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsDriver);
 
-  fdsDriver->tbg[0] = mkColor24(r,g,b);
+  fdsDriver->currentColor.bg = mkColor24(r,g,b);
   switch(fdsDriver->deviceType) {
   case FDS_GOLDELOX :
   case FDS_PIXXI:
@@ -440,14 +503,14 @@ void fdsSetTextBgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b)
     sendVt100Seq(fdsDriver->serial, "48;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
     break;
   default: osalSysHalt("incorrect fdsDriver->deviceType");
-  } 
-}
+  }
+} 
 
 void fdsSetTextFgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsDriver);
   
-  fdsDriver->fg[0] = mkColor24(r,g,b);
+  fdsDriver->currentColor.fg = mkColor24(r,g,b);
   switch(fdsDriver->deviceType) {
   case FDS_GOLDELOX :
   case FDS_PIXXI:
@@ -459,57 +522,59 @@ void fdsSetTextFgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b)
     sendVt100Seq(fdsDriver->serial, "38;2;%d;%d;%dm", r*255/100, g*255/100, b*255/100);
     break;
   default: osalSysHalt("incorrect fdsDriver->deviceType");
-  } 
-}
+  }
+} 
 
 
 
-void fdsSetTextBgColorTable (FdsDriver *fdsDriver, uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
+void fdsSetPaletteBgColor (FdsDriver *fdsDriver, uint8_t paletteIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsDriver);
-  if ((colorIndex == 0) || (colorIndex >= FDS_COLOR_TABLE_SIZE))
+  if (paletteIndex >= FDS_PALETTE_SIZE)
     return;
 
-  fdsDriver->tbg[colorIndex] = mkColor24(r,g,b);
+  fdsDriver->colorPalette[paletteIndex].bg = mkColor24(r,g,b);
 }
 
-void fdsSetTextFgColorTable (FdsDriver *fdsDriver,  uint8_t colorIndex, uint8_t r, uint8_t g, uint8_t b)
+void fdsSetPaletteFgColor (FdsDriver *fdsDriver,  uint8_t paletteIndex, uint8_t r, uint8_t g, uint8_t b)
 {
   RET_UNLESS_INIT(fdsDriver);
-  if ((colorIndex == 0) || (colorIndex >= FDS_COLOR_TABLE_SIZE))
+  if (paletteIndex >= FDS_PALETTE_SIZE)
     return;
 
-  fdsDriver->fg[colorIndex] = mkColor24(r,g,b);
+  fdsDriver->colorPalette[paletteIndex].fg = mkColor24(r,g,b);
 }
 
-void fdsUseColorIndex (FdsDriver *fdsDriver, uint8_t colorIndex)
+void fdsUsePaletteIndex (FdsDriver *fdsDriver, uint8_t paletteIndex)
 {
   RET_UNLESS_INIT(fdsDriver);
-  if (colorIndex >= FDS_COLOR_TABLE_SIZE)
+  if (paletteIndex >= FDS_PALETTE_SIZE)
     return;
-  fdsDriver->colIdx = colorIndex;
+  
+  fdsDriver->colIdx = paletteIndex;
+  const FdsColor newColor = fdsDriver->colorPalette[paletteIndex];
+  
   if (fdsDriver->deviceType != FDS_TERM_VT100) {
-    if (fdsDriver->fg[0].rgb != fdsDriver->fg[colorIndex].rgb)  {
-      fdsSetTextFgColor(fdsDriver, colorDimmed(fdsDriver->fg[colorIndex].r, fdsDriver->luminosity), 
-			 colorDimmed(fdsDriver->fg[colorIndex].g, fdsDriver->luminosity),
-			 colorDimmed(fdsDriver->fg[colorIndex].b, fdsDriver->luminosity));
+    if (fdsDriver->currentColor.fg.rgb != newColor.fg.rgb)  {
+      fdsSetTextFgColor(fdsDriver, colorDimmed(newColor.fg.r, fdsDriver->luminosity), 
+			 colorDimmed(newColor.fg.g, fdsDriver->luminosity),
+			 colorDimmed(newColor.fg.b, fdsDriver->luminosity));
     }
     
-    if (fdsDriver->tbg[0].rgb != fdsDriver->tbg[colorIndex].rgb)  {
-      fdsSetTextBgColor(fdsDriver, colorDimmed(fdsDriver->tbg[colorIndex].r, fdsDriver->luminosity), 
-			 colorDimmed(fdsDriver->tbg[colorIndex].g, fdsDriver->luminosity),
-			 colorDimmed(fdsDriver->tbg[colorIndex].b, fdsDriver->luminosity));
+    if (fdsDriver->currentColor.bg.rgb != newColor.bg.rgb)  {
+      fdsSetTextBgColor(fdsDriver, colorDimmed(newColor.bg.r, fdsDriver->luminosity), 
+			 colorDimmed(newColor.bg.g, fdsDriver->luminosity),
+			 colorDimmed(newColor.bg.b, fdsDriver->luminosity));
     }
   } else {
-    fdsSetTextFgColor(fdsDriver, colorDimmed(fdsDriver->fg[colorIndex].r, fdsDriver->luminosity), 
-		       colorDimmed(fdsDriver->fg[colorIndex].g, fdsDriver->luminosity),
-		       colorDimmed(fdsDriver->fg[colorIndex].b, fdsDriver->luminosity));
-    fdsSetTextBgColor(fdsDriver, colorDimmed(fdsDriver->tbg[colorIndex].r, fdsDriver->luminosity), 
-		       colorDimmed(fdsDriver->tbg[colorIndex].g, fdsDriver->luminosity),
-		       colorDimmed(fdsDriver->tbg[colorIndex].b, fdsDriver->luminosity));
+    fdsSetTextFgColor(fdsDriver, colorDimmed(newColor.fg.r, fdsDriver->luminosity), 
+		       colorDimmed(newColor.fg.g, fdsDriver->luminosity),
+		       colorDimmed(newColor.fg.b, fdsDriver->luminosity));
+    fdsSetTextBgColor(fdsDriver, colorDimmed(newColor.bg.r, fdsDriver->luminosity), 
+		       colorDimmed(newColor.bg.g, fdsDriver->luminosity),
+		       colorDimmed(newColor.bg.b, fdsDriver->luminosity));
   }
 }
-
 
 void fdsSetTextOpacity (FdsDriver *fdsDriver, bool opaque)
 {
@@ -649,7 +714,7 @@ void fdsDrawPoint (FdsDriver *fdsDriver, const uint16_t x, const uint16_t y,
 {
   RET_UNLESS_INIT(fdsDriver);
 
-  const uint16_t fg = fgColorIndexTo16b(fdsDriver, colorIndex);
+  const uint16_t fg = paletteFgColorTo16b(fdsDriver, colorIndex);
   gfx_putPixel(fdsDriver, x, y, fg);
 }
 
@@ -661,7 +726,7 @@ void fdsDrawLine (FdsDriver *fdsDriver,
 {
   RET_UNLESS_INIT(fdsDriver);
 
-  const uint16_t fg = fgColorIndexTo16b(fdsDriver, colorIndex);
+  const uint16_t fg = paletteFgColorTo16b(fdsDriver, colorIndex);
   gfx_line(fdsDriver, x1, y1, x2, y2, fg);
 }
 
@@ -673,7 +738,7 @@ void fdsDrawRect (FdsDriver *fdsDriver,
 {
   RET_UNLESS_INIT(fdsDriver);
 
-  const uint16_t fg = fgColorIndexTo16b(fdsDriver, colorIndex);
+  const uint16_t fg = paletteFgColorTo16b(fdsDriver, colorIndex);
   if (filled) 
     gfx_rectangleFilled(fdsDriver, x1, y1, x2, y2, fg);
   else
@@ -697,7 +762,7 @@ void fdsDrawPolyLine (FdsDriver *fdsDriver,
     command.vx[i] = __builtin_bswap16(pp[i].x);
     command.vy[i] = __builtin_bswap16(pp[i].y);
   }
-  command.color =  fgColorIndexTo16b(fdsDriver, colorIndex);
+  command.color =  paletteFgColorTo16b(fdsDriver, colorIndex);
   gfx_polyline(fdsDriver, len, command.vx, command.vy, command.color);
 }
 
@@ -751,7 +816,7 @@ uint16_t fdsTouchGetYcoord (FdsDriver *fdsDriver)
 
 
 bool fdsInitSdCard (FdsDriver *fdsDriver)
-{ 
+{
   if (fdsIsInitialised(fdsDriver) == false) return false;
 
   uint16_t status = 0;
@@ -905,8 +970,10 @@ static uint16_t getResponseAsUint16 (const uint8_t *buffer)
   return __builtin_bswap16(*(uint16_t *) (buffer+1));
 }
 
-static  uint16_t fgColorIndexTo16b (const FdsDriver *fdsDriver, const uint8_t colorIndex) {
-  const Color24 fg = fdsDriver->fg[colorIndex];
+static  uint16_t paletteFgColorTo16b (const FdsDriver *fdsDriver, const uint8_t colorIndex) {
+  if (colorIndex >= FDS_PALETTE_SIZE)
+    return 0;
+  const Color24 fg = fdsDriver->colorPalette[colorIndex].fg;
   
   return (fds_colorDecTo16b(fg.r, fg.g, fg.b));
 }

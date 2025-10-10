@@ -108,9 +108,29 @@ typedef enum {
     FDS_ERROR  /**< An error occurred during the last serial transaction. */
 } FdsStatus;
 
-/** @brief Size of the indexed color table (0 to FDS_COLOR_TABLE_SIZE - 1). */
-#ifndef FDS_COLOR_TABLE_SIZE
-#define FDS_COLOR_TABLE_SIZE 11U
+/** @brief Union to represent a 24-bit color. */
+typedef union  {
+  struct {
+    uint8_t r; /**< Red component. */
+    uint8_t g; /**< Green component. */
+    uint8_t b; /**< Blue component. */
+  };
+  uint32_t rgb:24; /**< 24-bit packed color. */
+} Color24;
+
+/** @brief Represents a foreground/background color pair. */
+typedef struct {
+    Color24 fg; /**< Foreground color. */
+    Color24 bg; /**< Background color. */
+} FdsColor;
+
+/** 
+ * @brief Size of the indexed color palette. 
+ * @details This defines the number of user-configurable color palette entries, indexed from 0.
+ *          The "current" color is stored separately and is not part of this palette.
+ */
+#ifndef FDS_PALETTE_SIZE
+#define FDS_PALETTE_SIZE 10U
 #endif
 
 /** @brief Structure to represent a 2D point for polygon drawing. */
@@ -181,8 +201,25 @@ void fdsReleaseLock (FdsDriver *fdsDriver);
 bool fdsPrintFmt (FdsDriver *fdsDriver, const char *txt, ...)
   __attribute__ ((format (printf, 2, 3)));
 
+
+
 /**
- * @brief Prints a raw string buffer to the display at the current cursor position.
+ * @brief Prints string with escape sequence to the display at the current cursor position.
+ * @details This function supports special escape sequences:
+ *          - `\cn`: (e.g. `\c0`, `\c1`, ...) Sets the text color using a pre-defined index.
+ *          - `\n`: Moves the cursor to the start of the next line.
+ *          - `\t`: Moves the cursor to the next tab stop (8 characters wide).
+ * @param[in] fdsDriver Pointer to the FdsDriver structure.
+ * @param[in] buffer    The null-terminated string to print.
+ * @return              `true` on success, `false` on failure.
+ */
+bool fdsPrintStr (FdsDriver *fdsConfig, const char *str);
+
+
+
+/**
+ * @brief Prints string to the display at the current cursor position.
+ * @details This function does *NOT* supports escape sequences
  * @param[in] fdsDriver Pointer to the FdsDriver structure.
  * @param[in] buffer    The null-terminated string to print.
  * @return              `true` on success, `false` on failure.
@@ -208,7 +245,8 @@ void fdsGetVersion (FdsDriver *fdsDriver, char *buffer, const size_t buflen);
 void fdsChangeBgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b);
 
 /**
- * @brief Sets the foreground color for subsequent text, using the color in index 0.
+ * @brief Sets the current foreground color for text.
+ * @details This color is used for subsequent text operations.
  * @param[in] fdsDriver Pointer to the FdsDriver structure.
  * @param[in] r         Red component (0-100).
  * @param[in] g         Green component (0-100).
@@ -217,7 +255,7 @@ void fdsChangeBgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b);
 void fdsSetTextFgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b);
 
 /**
- * @brief Sets the background color for subsequent text, using the color in index 0.
+ * @brief Sets the current background color for text.
  * @param[in] fdsDriver Pointer to the FdsDriver structure.
  * @param[in] r         Red component (0-100).
  * @param[in] g         Green component (0-100).
@@ -226,35 +264,33 @@ void fdsSetTextFgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b);
 void fdsSetTextBgColor (FdsDriver *fdsDriver, uint8_t r, uint8_t g, uint8_t b);
 
 /**
- * @brief Sets a color in the indexed background color table palette.
- * @note Index 0 is reserved for the current color and cannot be set by this function.
+ * @brief Sets the background color for a specific entry in the color palette.
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
- * @param[in] colorIndex  The index in the palette to set (1 to FDS_COLOR_TABLE_SIZE - 1).
+ * @param[in] paletteIndex The index in the palette to set (0 to FDS_PALETTE_SIZE - 1).
  * @param[in] r           Red component (0-100).
  * @param[in] g           Green component (0-100).
  * @param[in] b           Blue component (0-100).
  */
-void fdsSetTextBgColorTable (FdsDriver *fdsDriver, uint8_t colorIndex, 
+void fdsSetPaletteBgColor (FdsDriver *fdsDriver, uint8_t paletteIndex, 
 			      uint8_t r, uint8_t g, uint8_t b);
 
 /**
- * @brief Sets a color in the indexed foreground color table palette.
- * @note Index 0 is reserved for the current color and cannot be set by this function.
+ * @brief Sets the foreground color for a specific entry in the color palette.
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
- * @param[in] colorIndex  The index in the palette to set (1 to FDS_COLOR_TABLE_SIZE - 1).
+ * @param[in] paletteIndex The index in the palette to set (0 to FDS_PALETTE_SIZE - 1).
  * @param[in] r           Red component (0-100).
  * @param[in] g           Green component (0-100).
  * @param[in] b           Blue component (0-100).
  */
-void fdsSetTextFgColorTable (FdsDriver *fdsDriver,  uint8_t colorIndex, 
+void fdsSetPaletteFgColor (FdsDriver *fdsDriver,  uint8_t paletteIndex, 
 			      uint8_t r, uint8_t g, uint8_t b);
 
 /**
- * @brief Selects the current foreground/background color pair from the color tables.
+ * @brief Selects a color from the palette to become the new current color.
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
- * @param[in] colorIndex  The color index to use (0 to FDS_COLOR_TABLE_SIZE - 1).
+ * @param[in] paletteIndex  The palette index to use (0 to FDS_PALETTE_SIZE - 1).
  */
-void fdsUseColorIndex (FdsDriver *fdsDriver, uint8_t colorIndex);
+void fdsUsePaletteIndex (FdsDriver *fdsDriver, uint8_t paletteIndex);
 
 /**
  * @brief Sets text opacity.
@@ -283,7 +319,7 @@ void fdsSetTextGap (FdsDriver *fdsDriver, uint8_t xgap, uint8_t ygap);
  * @brief Adjusts the display\'s backlight luminosity by scaling current colors.
  * @details This function does not send a command. It modifies the color values
  *          in the driver\'s state, which are then used for subsequent color-setting
- *          commands. Call `fdsUseColorIndex` to apply the new luminosity.
+ *          commands. Call `fdsUsePaletteIndex` to apply the new luminosity.
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
  * @param[in] luminosity  Luminosity level (0-100).
  */
@@ -358,7 +394,7 @@ bool fdsInitSdCard (FdsDriver *fdsDriver);
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
  * @param[in] x           X coordinate.
  * @param[in] y           Y coordinate.
- * @param[in] colorIndex  Index of the color to use from the foreground color table.
+ * @param[in] colorIndex  Index of the color to use from the color palette.
  */
 void fdsDrawPoint (FdsDriver *fdsDriver, const uint16_t x, 
 		    const uint16_t y, const uint8_t colorIndex);
@@ -370,7 +406,7 @@ void fdsDrawPoint (FdsDriver *fdsDriver, const uint16_t x,
  * @param[in] y1          Starting Y coordinate.
  * @param[in] x2          Ending X coordinate.
  * @param[in] y2          Ending Y coordinate.
- * @param[in] colorIndex  Index of the color to use from the foreground color table.
+ * @param[in] colorIndex  Index of the color to use from the color palette.
  */
 void fdsDrawLine (FdsDriver *fdsDriver, 
 		   const uint16_t x1, const uint16_t y1, 
@@ -385,7 +421,7 @@ void fdsDrawLine (FdsDriver *fdsDriver,
  * @param[in] x2          Bottom-right X coordinate.
  * @param[in] y2          Bottom-right Y coordinate.
  * @param[in] filled      If `true`, the rectangle is filled (currently draws outline due to bug).
- * @param[in] colorIndex  Index of the color to use from the foreground color table.
+ * @param[in] colorIndex  Index of the color to use from the color palette.
  */
 void fdsDrawRect (FdsDriver *fdsDriver, 
 		   const uint16_t x1, const uint16_t y1, 
@@ -397,7 +433,7 @@ void fdsDrawRect (FdsDriver *fdsDriver,
  * @param[in] fdsDriver   Pointer to the FdsDriver structure.
  * @param[in] len         Number of points in the polyline (max 300).
  * @param[in] pp          Pointer to an array of `PolyPoint` structures.
- * @param[in] colorIndex  Index of the color to use from the foreground color table.
+ * @param[in] colorIndex  Index of the color to use from the color palette.
  */
 void fdsDrawPolyLine (FdsDriver *fdsDriver, 
 		       const uint16_t len,
@@ -572,16 +608,6 @@ FdsStatus fdsGetStatus(void);
  */
 #define fds_colorDecTo16b(r,v,b) (fds_clampColor((r*31/100), (v*63/100), (b*31/100)))
 
-/** @brief Union to represent a 24-bit color. */
-typedef union  {
-  struct {
-    uint8_t r; /**< Red component. */
-    uint8_t g; /**< Green component. */
-    uint8_t b; /**< Blue component. */
-  };
-  uint32_t rgb:24; /**< 24-bit packed color. */
-} Color24;
-
   
 /**
  * @brief Creates a Color24 structure from RGB components.
@@ -622,10 +648,10 @@ struct FdsDriver {
   ioline_t rstLine;               /**< @internal Reset I/O line. */
   enum FdsDriver_Device deviceType; /**< @internal Type of the display controller. */
   // =============
-  uint16_t bg;                    /**< @internal Current background color (16-bit). */
-  Color24 tbg[FDS_COLOR_TABLE_SIZE];  /**< @internal Indexed background color table. */
-  Color24 fg[FDS_COLOR_TABLE_SIZE];   /**< @internal Indexed foreground color table. */
-  uint8_t colIdx;                 /**< @internal Current color index. */
+  uint16_t screenBackgroundColor; /**< @internal Global screen background color (16-bit). Used by fdsChangeBgColor. */
+  FdsColor currentColor;          /**< @internal Current fg/bg color for text and drawing. */
+  FdsColor colorPalette[FDS_PALETTE_SIZE]; /**< @internal Indexed color palette. */
+  uint8_t colIdx;                 /**< @internal Current palette index. */
   uint8_t curXpos;                /**< @internal Current cursor X position (character column). */
   uint8_t curYpos;                /**< @internal Current cursor Y position (character row). */
   uint8_t luminosity;             /**< @internal Current backlight luminosity percentage. */
