@@ -66,11 +66,6 @@ namespace {
     }
   }
 
-  typedef struct {
-    uint8_t id[16];
-  } UniqId_t;
-
-  
   /**
    * @brief   DLC -> Data length converter.
    */
@@ -147,15 +142,73 @@ namespace {
    * @brief   Unique ID Fetcher.
    * @note    Retrieves the first two bytes of the MCU's unique id.
    */
-  void getUniqueID(UniqId_t *uid)
+  void getUniqueID(UAVCAN::UniqId_t *uid)
   {
-    memcpy(uid->id, (const uint8_t *)UID_BASE, sizeof(uid->id));
+    memcpy(uid->id.data(), (const uint8_t *)UID_BASE, sizeof(uid->id));
   } 
 
-
-
-
+  template <uint32_t MIN, uint32_t MAX>
+  uint32_t getrng()
+  {
+    static_assert(MIN <= MAX, "MIN must be <= MAX");
+    constexpr uint64_t RANGE = uint64_t(MAX) - uint64_t(MIN) + 1ULL;
+    if constexpr (RANGE == 1) return MIN;
+    
+    // Espace source = 2^32, limite d'acceptation pour éviter tout biais.
+    constexpr uint64_t SPACE   = 1ULL << 32;                    // 2^32
+    constexpr uint32_t LIMIT32 = uint32_t((SPACE / RANGE) * RANGE - 1ULL);
+    
+    for (;;) {
+      uint32_t r;
+      trngGenerate(&TRNGD1, sizeof r, reinterpret_cast<uint8_t*>(&r));
+      if (r <= LIMIT32) {
+	// % sur 64 bits pour éviter tout overflow intermédiaire
+	return MIN + uint32_t(uint64_t(r) % RANGE);
+      }
+      // sinon, on rejette et on retente
+    }
+  }
   
+  void processNodeIdAllocation(CanardRxTransfer *transfer,
+			 const uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation)
+  {
+    if (transfer->source_node_id != 0) {
+      UAVCAN::Node::dynNodeIdState.update(nodeIdAllocation);
+      // if node id is obtained, wa are done
+      if (UAVCAN::Node::dynNodeIdState.receivedNodeId != 0)
+	return;
+
+      // else, we need to continue to send parts
+      UAVCAN::UniqId_t uid;
+      getUniqueID(&uid);
+
+      const uint8_t remainLen = std::min(uid.id.size() - UAVCAN::Node::dynNodeIdState.recLen,
+					 (unsigned) UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_LENGTH_OF_UNIQUE_ID_IN_REQUEST);
+      if (remainLen == 0) {
+	// should not happen -> todo : display error message
+	DebugTrace("remainLen = 0 without obtained Id -> dynid logic error");
+	return;
+      }
+      
+      uavcan_protocol_dynamic_node_id_Allocation nodeIdRequest {
+	.node_id = 0,
+	.first_part_of_unique_id = false,
+	.unique_id = {
+	  .len = UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_LENGTH_OF_UNIQUE_ID_IN_REQUEST,
+	  .data = {}
+	}
+      };
+      memcpy(nodeIdRequest.unique_id.data, uid.id.data() + UAVCAN::Node::dynNodeIdState.recLen,
+	     remainLen);
+      // wait for a randomly bounded time for following chunk
+      chThdSleepMilliseconds((getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_FOLLOWUP_DELAY_MS,
+			      UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_FOLLOWUP_DELAY_MS>()));
+      // send following part of query, random priority to avoid collision
+      UAVCAN::Node::dynNodeIdState.slaveNode->sendBroadcast(nodeIdRequest,
+		    getrng<CANARD_TRANSFER_PRIORITY_HIGH, CANARD_TRANSFER_PRIORITY_LOW>());
+      
+    }
+  }
 }
 
 namespace UAVCAN
@@ -168,21 +221,39 @@ namespace UAVCAN
     
   }
   
+  uint8_t  DynNodeIdState::update(const uavcan_protocol_dynamic_node_id_Allocation
+				  &nodeIdAllocation) {
+    // complete uid with received chunk
+    memcpy(recUid.id.data() + recLen, nodeIdAllocation.unique_id.data,
+	   nodeIdAllocation.unique_id.len);
+    recLen += nodeIdAllocation.unique_id.len;
+    // if receveid id is complete test integrity
+    if (recLen == sizeof(nodeIdAllocation.unique_id.data)) {
+      UAVCAN::UniqId_t uid;
+      getUniqueID(&uid);
+      if (recUid.id == uid.id) {
+	receivedNodeId = nodeIdAllocation.node_id;
+      }
+    }
+    return receivedNodeId;
+  }
   
   Node::Node(const Config &_config) : config(_config),
+				      nodeId(_config.nodeId),
 				      node_status{
-			.uptime_sec = 0,
-			.health = UAVCAN_PROTOCOL_NODESTATUS_HEALTH_OK,
-			.mode = UAVCAN_PROTOCOL_NODESTATUS_MODE_INITIALIZATION,
-			.sub_mode = 0,
-			.vendor_specific_status_code = SPECIFIC_OK},
+					.uptime_sec = 0,
+					.health = UAVCAN_PROTOCOL_NODESTATUS_HEALTH_OK,
+					.mode = UAVCAN_PROTOCOL_NODESTATUS_MODE_INITIALIZATION,
+					.sub_mode = 0,
+					.vendor_specific_status_code = SPECIFIC_OK},
 				      canFD(_config.cancfg.op_mode == OPMODE_FDCAN)
-    
+				      
   {
     chMtxObjectInit(&canard_mtx_s);
     chMtxObjectInit(&canard_mtx_r);
     chEvtObjectInit(&canard_tx_not_empty);
-}
+    dynNodeIdState.slaveNode = this;
+  }
   
   int8_t Node::configureHardwareFilters()
   {
@@ -243,6 +314,7 @@ namespace UAVCAN
     return -1;
   }
   
+
   void Node::start()
   {
     /*
@@ -251,6 +323,11 @@ namespace UAVCAN
       if  application has bind callback, the entry is already there and management
       will be done
      */
+    if (nodeId == 0) {
+      nodeId = obtainDynamicNodeId();
+      DebugTrace("get dynamic nodeId %d", nodeId);
+    }
+    
     if (not idToHandleMessage.contains({UAVCAN_PROTOCOL_GETNODEINFO_ID,
 	  CanardTransferTypeRequest})) {
       if (not idToHandleMessage.full()) {
@@ -292,7 +369,7 @@ namespace UAVCAN
     canardInit(&canard, memory_pool, MEMORYPOOL_SIZE,
 	       &onTransferReceivedDispatch,
 	       &shouldAcceptTransferDispatch, this);
-    canardSetLocalNodeID(&canard, config.nodeId);
+    canardSetLocalNodeID(&canard, nodeId);
     initNodesList();
     canStart(&config.cand, &config.cancfg);
     
@@ -321,7 +398,67 @@ namespace UAVCAN
 				       NORMALPRIO,
 				       &canErrorThdDispatch, this);
   }
+
+  int8_t Node::obtainDynamicNodeId()
+  {
+    UniqId_t uid;
+    getUniqueID(&uid);
+    
+    subscribeBroadcastMessages<processNodeIdAllocation>();
+    canardInit(&canard, memory_pool, MEMORYPOOL_SIZE,
+	       &onTransferReceivedDispatch,
+	       &shouldAcceptTransferDispatch, this);
+    initNodesList();
+    canStart(&config.cand, &config.cancfg);
+    
+    sender_thd = chThdCreateFromHeap(nullptr, 2048U, "sender_thd",
+				     NORMALPRIO,
+				     &senderThdDispatch, this);
+    receiver_thd = chThdCreateFromHeap(nullptr, 4096U, "receiver_thd",
+				       NORMALPRIO,
+				       &receiverThdDispatch, this);
+
+    while (dynNodeIdState.receivedNodeId == 0) {
+      DebugTrace("try nodeId request sequence");
+      uavcan_protocol_dynamic_node_id_Allocation nodeIdRequest {
+	.node_id = 0,
+	.first_part_of_unique_id = true,
+	.unique_id = {
+	  .len = UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_LENGTH_OF_UNIQUE_ID_IN_REQUEST,
+	  .data = {}
+	}
+      };
+      memcpy(nodeIdRequest.unique_id.data, uid.id.data(),
+	     sizeof(nodeIdRequest.unique_id.data));
+      
+      // wait for a randomly bounded time
+      chThdSleepMilliseconds((getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_REQUEST_PERIOD_MS,
+			      UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_REQUEST_PERIOD_MS>()));
+      // send first part of query, random priority to avoid collision
+      sendBroadcast(nodeIdRequest,
+		    getrng<CANARD_TRANSFER_PRIORITY_HIGH, CANARD_TRANSFER_PRIORITY_LOW>());
+      
+      
+      for (size_t attempts = 0; (attempts < 100) && (dynNodeIdState.receivedNodeId == 0); ++attempts) {
+	chThdSleepMilliseconds(10);
+      }
+    }
+    
+    chThdTerminate(sender_thd);
+    chThdTerminate(receiver_thd);
+    chThdWait(receiver_thd);
+    chThdWait(sender_thd);
+    sender_thd = receiver_thd = nullptr;
+    stop();
+    return dynNodeIdState.receivedNodeId;
+  }
   
+  void Node::stop()
+  {
+    canStop(&config.cand);
+    bzero(&canard, sizeof(canard));
+  }
+
   /*
     #                        _              _      _                 
     #                       | |            | |    (_)                
@@ -363,8 +500,11 @@ namespace UAVCAN
     event_listener_t el;
     chEvtRegister(&node->canard_tx_not_empty, &el, 0);
     while(not chThdShouldTerminateX()) {
-      chEvtWaitAny(ALL_EVENTS);
-      node->senderStep();
+      // if nodeId == 0 we are in dynamic nodeid acquisition
+      // this thread need to be terminated, so it must check
+      // chThdShouldTerminateX and cannot be stuck indefinitely
+      if (chEvtWaitAnyTimeout(ALL_EVENTS, node->nodeId ? TIME_INFINITE : TIME_MS2I(100)))
+	node->senderStep();
     }
     chEvtUnregister(&node->canard_tx_not_empty, &el);
     chThdExit(0);
@@ -374,7 +514,10 @@ namespace UAVCAN
   {
     Node *node = static_cast<Node *>(opt);
     while(not chThdShouldTerminateX()) {
-      node->receiverStep();
+      // if nodeId == 0 we are in dynamic nodeid acquisition
+      // this thread need to be terminated, so it must check
+      // chThdShouldTerminateX and cannot be stuck indefinitely
+      node->receiverStep(node->nodeId ? TIME_INFINITE : TIME_MS2I(100));
     }
     chThdExit(0);
   }
@@ -473,11 +616,11 @@ uint8_t Node::getNbActiveAgents()
     transmitQueue();
   }
   
-  void Node::receiverStep()
+  void Node::receiverStep(const sysinterval_t timout)
   {
     CANRxFrame rxmsg;
-    while (canReceiveTimeout(&config.cand, CAN_ANY_MAILBOX, &rxmsg,
-                             TIME_INFINITE) == MSG_OK) {
+    if (canReceiveTimeout(&config.cand, CAN_ANY_MAILBOX, &rxmsg,
+			  timout) == MSG_OK) {
       // Traitement de la trame.
       // errorCb("INFO Receive Msg from 0x%x, length %u",
       //  		    uint32_t(rxmsg.ext.EID), uint32_t(rxmsg.DLC));
@@ -600,8 +743,9 @@ uint8_t Node::getNbActiveAgents()
     if (config.flagCb != nullptr) {
       pkt.software_version.optional_field_flags = config.flagCb();
     }
-    
-    getUniqueID((UniqId_t *)pkt.hardware_version.unique_id);
+    static_assert(sizeof(pkt.hardware_version.unique_id) ==
+		  sizeof(UniqId_t));
+    getUniqueID(reinterpret_cast<UniqId_t *>(pkt.hardware_version.unique_id));
     Node::sendResponse(pkt, transfer);
   }
 
@@ -659,6 +803,7 @@ void Node::setStatus(const uavcan_protocol_NodeStatus& status)
   node_status.vendor_specific_status_code = status.vendor_specific_status_code;
 }
 
+DynNodeIdState Node::dynNodeIdState= {};
 
 }
 

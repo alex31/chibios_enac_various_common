@@ -339,6 +339,7 @@ namespace UAVCAN {
 
     /**
      * @brief       id [1 .. 127] of the node
+     * @note        special value 0 is allowed and used for dynamic node id
      *
      */
     uint8_t		nodeId = 0;
@@ -401,7 +402,19 @@ namespace UAVCAN {
     (void) std::remove_cvref_t<SecondArgType<Func>>::cxx_iface::ID;
   };
  
+  struct UniqId_t {
+    std::array<uint8_t, sizeof(uavcan_protocol_dynamic_node_id_Allocation().unique_id.data)> id = {};
+  };
 
+  class Node;
+  struct DynNodeIdState {
+    uint8_t  update(const uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation);
+    uint8_t	recLen = 0;
+    UniqId_t    recUid = {};
+    int8_t	receivedNodeId = 0;
+    Node	*slaveNode = nullptr;
+  };
+  
   /**
    * @brief       UAVCan object
    * @details     manage messaging agents on an UAVCan bus
@@ -427,10 +440,13 @@ namespace UAVCAN {
 
     /**
      * @brief       Construct Node object
-     * @param[in]   _config Configuration structure
-     *
      */
     void start();
+
+    /**
+     * @brief       stop node en uninit canard
+     */
+    void stop();
 
     /**
      * @brief       set internal node health status
@@ -499,7 +515,7 @@ namespace UAVCAN {
      *
      */
     bool isCanfdEnabled() const {return canFD;}
-    uint8_t getNodeId() const {return config.nodeId;};
+    uint8_t getNodeId() const {return nodeId;};
 
     template<auto Fn>
     static constexpr subscribeMapEntry_t makeRequestCb();
@@ -536,6 +552,8 @@ namespace UAVCAN {
       return ( unsubscribeResponseOneMessage<Fn>() && ... );
     }
 
+    static  DynNodeIdState dynNodeIdState;
+
   private:
    /**
      * @brief	  map of message id to callback
@@ -544,6 +562,8 @@ namespace UAVCAN {
     idToHandleMessage_t   idToHandleMessage;
     
     const Config &config;
+    uint8_t nodeId; // if nodeId is static, it's a copy of confif::nodeId, else
+    // it's 
     mutex_t canard_mtx_r, canard_mtx_s;
     event_source_t canard_tx_not_empty;
     CanardInstance canard;
@@ -561,7 +581,6 @@ namespace UAVCAN {
     // perte de paquets.
     uint8_t  transferRequestId = 0, transferBroadcastId = 0;
     bool canFD;
-    
     bool shouldAcceptTransfer(const CanardInstance *ins,
 			      uint64_t *out_data_type_signature,
 			      uint16_t data_type_id,
@@ -572,7 +591,7 @@ namespace UAVCAN {
 			    CanardRxTransfer *transfer);
  
     void senderStep();
-    void receiverStep();
+    void receiverStep(const sysinterval_t timout);
     void heartbeatStep();
     void initNodesList();
     void updateNodesList(uint8_t node_id, uint64_t timestamp);
@@ -590,6 +609,7 @@ namespace UAVCAN {
       return reject;
     }
     int8_t configureHardwareFilters();
+    int8_t obtainDynamicNodeId();
 
     template<auto Fn>
     bool subscribeBroadcastOneMessage();
