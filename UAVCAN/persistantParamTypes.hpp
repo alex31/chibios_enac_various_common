@@ -7,6 +7,7 @@
 #include "nodeParametersEnum.hpp"
 #include <array>
 #include <variant>
+#include "ch.h"
 
 namespace Persistant {
 /// must be (4*N)-1 to avoid to spill ram in padding
