@@ -407,11 +407,25 @@ namespace UAVCAN {
   };
 
   class Node;
+  union DynEvt {
+    enum From {Anonymous, Allocator, Timeout};
+    msg_t from;
+  };
+  static_assert(sizeof(DynEvt) == 4);
+
   struct DynNodeIdState {
+    DynNodeIdState();
     uint8_t  update(const uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation);
+    bool     checkCurrentChunkValidity();
+    void     copyNextChunk(uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation);
+    void     armSendTimout(systime_t duration);
+    msg_t  _mbBuf[4];
+    MAILBOX_DECL(mb, _mbBuf, sizeof(_mbBuf)/sizeof(_mbBuf[0])); 
     uint8_t	recLen = 0;
+    const UniqId_t& selfUid;
     UniqId_t    recUid = {};
     int8_t	receivedNodeId = 0;
+    virtual_timer_t vt;
     Node	*slaveNode = nullptr;
   };
   
@@ -552,7 +566,7 @@ namespace UAVCAN {
       return ( unsubscribeResponseOneMessage<Fn>() && ... );
     }
 
-    static  DynNodeIdState dynNodeIdState;
+    static DynNodeIdState dynNodeIdState;
 
   private:
    /**
