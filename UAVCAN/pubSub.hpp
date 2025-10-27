@@ -408,24 +408,27 @@ namespace UAVCAN {
 
   class Node;
   union DynEvt {
-    enum From {Anonymous, Allocator, Timeout};
+    enum From {Anonymous,
+	       Allocator_partial, Allocator_complete, Allocator_mismatch,
+	       TimeoutRequest, TimeoutFollowup};
     msg_t from;
   };
   static_assert(sizeof(DynEvt) == 4);
 
   struct DynNodeIdState {
     DynNodeIdState();
-    uint8_t  update(const uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation);
-    bool     checkCurrentChunkValidity();
+    uint8_t  processAllocator(const uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation);
+    bool     checkLastChunkValidity(const uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation);
     void     copyNextChunk(uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation);
-    void     armSendTimout(systime_t duration);
+    void     setTimer(DynEvt::From timer);
+    void     cancelTimer(DynEvt::From timer);
     msg_t  _mbBuf[4];
     MAILBOX_DECL(mb, _mbBuf, sizeof(_mbBuf)/sizeof(_mbBuf[0])); 
-    uint8_t	recLen = 0;
     const UniqId_t& selfUid;
-    UniqId_t    recUid = {};
+    uint8_t     recLen;
     int8_t	receivedNodeId = 0;
-    virtual_timer_t vt;
+    virtual_timer_t vtRequest;
+    virtual_timer_t vtFollowup;
     Node	*slaveNode = nullptr;
   };
   

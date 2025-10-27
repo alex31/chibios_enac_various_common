@@ -191,15 +191,14 @@ namespace {
   void processNodeIdAllocation(CanardRxTransfer *transfer,
 			 const uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation)
   {
-    UAVCAN::DynEvt evt = {
-      .from = UAVCAN::DynEvt::From::Allocator
-    };
     if (transfer->source_node_id != 0) {
-      UAVCAN::Node::dynNodeIdState.update(nodeIdAllocation);
+      UAVCAN::Node::dynNodeIdState.processAllocator(nodeIdAllocation);
     } else { // anonymous request from another allocatee
-      evt.from = UAVCAN::DynEvt::From::Anonymous;
+      const UAVCAN::DynEvt evt = {
+	.from = UAVCAN::DynEvt::From::Anonymous
+      };
+      chMBPostTimeout(&UAVCAN::Node::dynNodeIdState.mb, evt.from, TIME_INFINITE);
     };
-    chMBPostTimeout(&UAVCAN::Node::dynNodeIdState.mb, evt.from, TIME_INFINITE);
   }
 }
 
@@ -214,13 +213,14 @@ namespace UAVCAN
   }
   
   DynNodeIdState::DynNodeIdState() : selfUid(getUniqueID()) {
-    chVTObjectInit(&vt);
+    chVTObjectInit(&vtRequest);
+    chVTObjectInit(&vtFollowup);
   }
 
-  bool DynNodeIdState::checkCurrentChunkValidity()
+  bool DynNodeIdState::checkLastChunkValidity(const uavcan_protocol_dynamic_node_id_Allocation &nodeIdAllocation)
   {
     // on ne compare que ce que l'on a déjà reçu
-    return memcmp(selfUid.id.data(), recUid.id.data(), recLen) == 0 ? true : false;
+    return memcmp(selfUid.id.data(), nodeIdAllocation.unique_id.data, nodeIdAllocation.unique_id.len) == 0 ? true : false;
   }
   
   
@@ -236,35 +236,69 @@ namespace UAVCAN
     memcpy(&nodeIdAllocation.unique_id.data, selfUid.id.data() + recLen, chunkLen);
   }
 
-  void DynNodeIdState::armSendTimout(systime_t duration)
+  void DynNodeIdState::setTimer(DynEvt::From timer)
   {
-    chVTSet(&vt, duration,
-	    [](ch_virtual_timer *, void *self) {
-	      auto obj = static_cast<DynNodeIdState *>(self);
-	      const UAVCAN::DynEvt evt = {
-		.from = UAVCAN::DynEvt::From::Timeout,
-	      };
-	      chMBPostI(&obj->mb, evt.from);
-	    }
-	    , this);
+    if (timer == DynEvt::From::TimeoutRequest) {
+      const systime_t duration = getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_REQUEST_PERIOD_MS,
+					UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_REQUEST_PERIOD_MS>();
+      recLen = 0; // reset state for a new round
+      chVTSet(&vtRequest, duration,
+	      [](ch_virtual_timer *, void *self) {
+		auto obj = static_cast<DynNodeIdState *>(self);
+		const UAVCAN::DynEvt evt = {
+		  .from = DynEvt::From::TimeoutRequest,
+		};
+		chMBPostI(&obj->mb, evt.from);
+	      }
+	      , this);
+    } else if (timer == DynEvt::From::TimeoutFollowup) {
+      const systime_t duration = getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_FOLLOWUP_DELAY_MS,
+					UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_FOLLOWUP_DELAY_MS>();
+      chVTSet(&vtFollowup, duration,
+	      [](ch_virtual_timer *, void *self) {
+		auto obj = static_cast<DynNodeIdState *>(self);
+		const UAVCAN::DynEvt evt = {
+		  .from = DynEvt::From::TimeoutFollowup,
+		};
+		chMBPostI(&obj->mb, evt.from);
+	      }
+	      , this);
+    } else {
+      chDbgAssert(false, "unknown timer");
+    }
+  }
+
+  void DynNodeIdState::cancelTimer(DynEvt::From timer)
+  {
+    if (timer == DynEvt::From::TimeoutRequest) {
+      chVTReset(&vtRequest);
+    } else if (timer == DynEvt::From::TimeoutFollowup) {
+      chVTReset(&vtFollowup);
+    } else {
+      chDbgAssert(false, "unknown timer");
+    }
   }
   
-  uint8_t  DynNodeIdState::update(const uavcan_protocol_dynamic_node_id_Allocation
+  uint8_t  DynNodeIdState::processAllocator(const uavcan_protocol_dynamic_node_id_Allocation
 				  &nodeIdAllocation) {
-    // complete uid with received chunk
-    memcpy(recUid.id.data() + recLen, nodeIdAllocation.unique_id.data,
-	   nodeIdAllocation.unique_id.len);
-    recLen += nodeIdAllocation.unique_id.len;
+    // check uid (which can be partial) from received chunk
+    recLen = nodeIdAllocation.unique_id.len;
+    const UAVCAN::UniqId_t &uid = getUniqueID();
+    UAVCAN::DynEvt evt;
+    // nodeIdAllocation.unique_id.data, recLen
     // if receveid id is complete test integrity
-    if (recLen == sizeof(nodeIdAllocation.unique_id.data)) {
-      const UAVCAN::UniqId_t &uid = getUniqueID();
-      if (recUid.id == uid.id) {
+    const bool match = memcmp(nodeIdAllocation.unique_id.data, uid.id.data(), recLen) == 0;
+    if (match) {
+      if (recLen == sizeof(nodeIdAllocation.unique_id.data)) {
 	receivedNodeId = nodeIdAllocation.node_id;
+	evt.from = UAVCAN::DynEvt::From::Allocator_complete;
+      } else {
+	evt.from = UAVCAN::DynEvt::From::Allocator_partial;
       }
+    } else {// mismatch
+      evt.from = UAVCAN::DynEvt::From::Allocator_mismatch;
     }
-    const UAVCAN::DynEvt evt = {
-      .from = UAVCAN::DynEvt::From::Allocator,
-    };
+
     chMBPostTimeout(&mb, evt.from, TIME_INFINITE);
     return receivedNodeId;
   }
@@ -432,7 +466,7 @@ namespace UAVCAN
 
   int8_t Node::obtainDynamicNodeId()
   {
-    subscribeBroadcastMessages<processNodeIdAllocation>();
+    subscribeBroadcastMessages<processNodeIdAllocation>(); // Rule A.1
     const size_t randomPriority =  getrng<CANARD_TRANSFER_PRIORITY_HIGH, CANARD_TRANSFER_PRIORITY_LOW>();
     
     canardInit(&canard, memory_pool, MEMORYPOOL_SIZE,
@@ -448,45 +482,48 @@ namespace UAVCAN
 				       NORMALPRIO,
 				       &receiverThdDispatch, this);
 
-    while (dynNodeIdState.receivedNodeId == 0) {
-      dynNodeIdState.armSendTimout(getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_REQUEST_PERIOD_MS,
-				   UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_REQUEST_PERIOD_MS>());
+    dynNodeIdState.setTimer(DynEvt::From::TimeoutRequest); // Rule A.2
+    
+    DebugTrace("try nodeId request sequence");
+    uavcan_protocol_dynamic_node_id_Allocation nodeIdRequest;
+    
+    while(dynNodeIdState.receivedNodeId == 0) {
+      UAVCAN::DynEvt evt;
+      chMBFetchTimeout(&dynNodeIdState.mb, &evt.from, TIME_INFINITE);
+      // cf file 1.Allocation.uavcan
+      switch (evt.from) {
+      case DynEvt::From::TimeoutRequest :
+	dynNodeIdState.setTimer(DynEvt::From::TimeoutRequest); // Rule B.1
+	dynNodeIdState.copyNextChunk(nodeIdRequest); 
+	sendBroadcast(nodeIdRequest, randomPriority); // Rule B.2
+	break;
+	
+      case DynEvt::From::TimeoutFollowup :
+	dynNodeIdState.copyNextChunk(nodeIdRequest); 
+	sendBroadcast(nodeIdRequest, randomPriority); // Rule D.2
+	break;
+	
+      case DynEvt::From::Anonymous :
+	dynNodeIdState.cancelTimer(DynEvt::From::TimeoutFollowup); // Rule D.1
+	dynNodeIdState.setTimer(DynEvt::From::TimeoutRequest); // Rule C.1
+	break;
 
-      DebugTrace("try nodeId request sequence");
-      uavcan_protocol_dynamic_node_id_Allocation nodeIdRequest;
+      case DynEvt::From::Allocator_partial :
+	dynNodeIdState.setTimer(DynEvt::From::TimeoutFollowup); // Rule D.1
+	break;
 
-      while(dynNodeIdState.receivedNodeId == 0) {
-	UAVCAN::DynEvt evt;
-	chMBFetchTimeout(&dynNodeIdState.mb, &evt.from, TIME_INFINITE);
-	// si on a un timout : on demande le prochain chunk
-	// si on reçoit un anonymous : on reset le timout du timer
-	// si on reçoit une reponse de l'allocateur :
-	//  + si le uuid reçu correspond au notre :
-	//    ° on relance le timer avec le temps FOLLOWING
-	//  + si le uuid reçu *NE CORRESPOND PAS* au notre :
-	//    ° on recommance au début
-	switch (evt.from) {
-	case DynEvt::From::Timeout :
-	  dynNodeIdState.copyNextChunk(nodeIdRequest);
-	  sendBroadcast(nodeIdRequest, randomPriority);
-	  break;
-	case DynEvt::From::Anonymous :
-	  dynNodeIdState.armSendTimout(getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_REQUEST_PERIOD_MS,
-				       UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_REQUEST_PERIOD_MS>());
-	  break;
-	case DynEvt::From::Allocator :
-	  if (dynNodeIdState.checkCurrentChunkValidity()) {
-	    dynNodeIdState.armSendTimout(getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_FOLLOWUP_DELAY_MS,
-					 UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_FOLLOWUP_DELAY_MS>());
-	  } else {
-	    // uuid validity has failed  : we restart the allocation sequence
-	    goto next; // next is not an option because it only exit the switch
-	  }
-
-	  }
-	} 
-    next:
-    }
+      case DynEvt::From::Allocator_mismatch :
+	dynNodeIdState.cancelTimer(DynEvt::From::TimeoutFollowup); // Rule D.1
+	dynNodeIdState.setTimer(DynEvt::From::TimeoutRequest);
+	break;
+	
+      case DynEvt::From::Allocator_complete :
+	dynNodeIdState.cancelTimer(DynEvt::From::TimeoutRequest); // Rule E.1
+	dynNodeIdState.cancelTimer(DynEvt::From::TimeoutFollowup);
+	
+	break; // Rules E.2, E.3, E.4
+      }
+    } 
     
     chThdTerminate(sender_thd);
     chThdTerminate(receiver_thd);
