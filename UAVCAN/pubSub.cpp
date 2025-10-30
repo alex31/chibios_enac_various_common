@@ -114,7 +114,8 @@ CanardCANFrame chibiRx2canard(const CANRxFrame frame) {
 /**
  * @brief   Canard CanardCANFrame to ChibiOS CANTxFrame Type converter.
  */
-CANTxFrame canard2chibiTx(const CanardCANFrame* framep) {
+CANTxFrame canard2chibiTx(const CanardCANFrame* framep)
+{
   CANTxFrame out_frame;
   out_frame.common.XTD = 1;
   out_frame.common.RTR = 0;
@@ -135,23 +136,23 @@ CANTxFrame canard2chibiTx(const CanardCANFrame* framep) {
  * @brief   Unique ID Fetcher.
  * @note    Retrieves the first two bytes of the MCU's unique id.
  */
-const UAVCAN::UniqId_t& getUniqueID() {
-#warning "restore getUniqueID after debug"
+const UAVCAN::UniqId_t& getUniqueID()
+{
   static UAVCAN::UniqId_t uuid;
-
+    
   static bool firstCall = true;
   if (firstCall) {
     firstCall = false;
     const uint8_t* uuid12 = reinterpret_cast<const uint8_t*>(UID_BASE);
     uuid = uuid_map::uuid16_from_uuid12(uuid12);
-    uuid = (UAVCAN::UniqId_t::Storage) {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
   }
 
   return uuid;
 }
 
 template<uint32_t MIN, uint32_t MAX>
-uint32_t getrng() {
+uint32_t getrng()
+{
   static_assert(MIN <= MAX, "MIN must be <= MAX");
   constexpr uint64_t RANGE = uint64_t(MAX) - uint64_t(MIN) + 1ULL;
   if constexpr (RANGE == 1)

@@ -414,12 +414,13 @@ public:
   }
   void updateFrom(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation, size_t offset)
   {
-    const ssize_t available = id.size() - (offset + nodeIdAllocation.unique_id.len);
+    const ssize_t available = std::min(id.size() - offset, static_cast<size_t>(nodeIdAllocation.unique_id.len));
     if (available > 0) {
       memcpy(id.data() + offset, nodeIdAllocation.unique_id.data, available);
     }
   }
   auto operator<=>(const UniqId_t&) const = default;
+  
   void reset() {id.fill(0);}
   static constexpr size_t size() {return sizeof(id);} 
 private:
