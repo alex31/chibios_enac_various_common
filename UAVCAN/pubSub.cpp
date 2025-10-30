@@ -136,20 +136,18 @@ CANTxFrame canard2chibiTx(const CanardCANFrame* framep) {
  * @note    Retrieves the first two bytes of the MCU's unique id.
  */
 const UAVCAN::UniqId_t& getUniqueID() {
-  // return *reinterpret_cast<const UAVCAN::UniqId_t*>(UID_BASE);
+#warning "restore getUniqueID after debug"
   static UAVCAN::UniqId_t uuid;
+
   static bool firstCall = true;
   if (firstCall) {
     firstCall = false;
     const uint8_t* uuid12 = reinterpret_cast<const uint8_t*>(UID_BASE);
-    uuid.id = uuid_map::uuid16_from_uuid12(uuid12);
+    uuid = uuid_map::uuid16_from_uuid12(uuid12);
+    uuid = (UAVCAN::UniqId_t::Storage) {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
   }
 
   return uuid;
-}
-
-void getUniqueID(UAVCAN::UniqId_t* uid) {
-  memcpy(uid->id.data(), (const uint8_t*)UID_BASE, sizeof(uid->id));
 }
 
 template<uint32_t MIN, uint32_t MAX>
@@ -211,24 +209,25 @@ DynNodeIdState::~DynNodeIdState() {
 
 bool DynNodeIdState::checkLastChunkValidity(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation) {
   // on ne compare que ce que l'on a déjà reçu
-  return memcmp(selfUid.id.data(), nodeIdAllocation.unique_id.data, nodeIdAllocation.unique_id.len) == 0 ? true : false;
+  return selfUid == nodeIdAllocation;
 }
 
 void DynNodeIdState::copyNextChunk(uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation) {
   MutexGuard gard(mtx); // Protect recLen reads
   // on copie le prochain chunk de l'uuid dans buffer
   constexpr size_t maxReqLen = UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_LENGTH_OF_UNIQUE_ID_IN_REQUEST;
-  const size_t remainingCapacity = selfUid.id.size() - recLen;
+  const size_t remainingCapacity = selfUid.size() - recLen;
   const size_t chunkLen = std::min(remainingCapacity, maxReqLen);
   nodeIdAllocation.node_id = 0;
   nodeIdAllocation.first_part_of_unique_id = recLen == 0;
   nodeIdAllocation.unique_id.len = chunkLen;
-  memcpy(&nodeIdAllocation.unique_id.data, selfUid.id.data() + recLen, chunkLen);
+  selfUid.copyChunk(nodeIdAllocation, recLen, chunkLen);
+  //  memcpy(&nodeIdAllocation.unique_id.data, selfUid.id.data() + recLen, chunkLen);
 }
 
 void DynNodeIdState::setTimer(DynEvt::From timer) {
   if (timer == DynEvt::From::TimeoutRequest) {
-    const systime_t duration = getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_REQUEST_PERIOD_MS,
+    const systime_t msDuration = getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_REQUEST_PERIOD_MS,
                                       UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_REQUEST_PERIOD_MS>();
     {
       MutexGuard gard(mtx); // Protect recLen
@@ -236,27 +235,31 @@ void DynNodeIdState::setTimer(DynEvt::From timer) {
     }
     chVTSet(
       &vtRequest,
-      duration,
+      TIME_MS2I(msDuration),
       [](ch_virtual_timer*, void* self) {
         auto obj = static_cast<DynNodeIdState*>(self);
         const UAVCAN::DynEvt evt = {
           .from = DynEvt::From::TimeoutRequest,
         };
+	chSysLockFromISR();
         chMBPostI(&obj->mb, evt.from);
+	chSysUnlockFromISR();
       },
       this);
   } else if (timer == DynEvt::From::TimeoutFollowup) {
-    const systime_t duration = getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_FOLLOWUP_DELAY_MS,
+    const systime_t msDuration = getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_FOLLOWUP_DELAY_MS + 1U,
                                       UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_FOLLOWUP_DELAY_MS>();
     chVTSet(
       &vtFollowup,
-      duration,
+      TIME_MS2I(msDuration),
       [](ch_virtual_timer*, void* self) {
         auto obj = static_cast<DynNodeIdState*>(self);
         const UAVCAN::DynEvt evt = {
           .from = DynEvt::From::TimeoutFollowup,
         };
+	chSysLockFromISR();
         chMBPostI(&obj->mb, evt.from);
+	chSysUnlockFromISR();
       },
       this);
   } else {
@@ -282,7 +285,7 @@ uint8_t DynNodeIdState::processAllocator(const uavcan_protocol_dynamic_node_id_A
   UAVCAN::DynEvt evt;
   // nodeIdAllocation.unique_id.data, recLen
   // if receveid id is complete test integrity
-  const bool match = memcmp(nodeIdAllocation.unique_id.data, uid.id.data(), recLen) == 0;
+  const bool match = uid == nodeIdAllocation;
   if (match) {
     if (recLen == sizeof(nodeIdAllocation.unique_id.data)) {
       receivedNodeId = nodeIdAllocation.node_id;
@@ -298,6 +301,7 @@ uint8_t DynNodeIdState::processAllocator(const uavcan_protocol_dynamic_node_id_A
 
   return receivedNodeId;
 }
+  
 Node::Node(const Config& _config)
   : config(_config)
   , nodeId(_config.nodeId)
@@ -337,7 +341,11 @@ int8_t Node::configureHardwareFilters() {
   };
 
   CANFilter filterList[filtersSize];
-
+  if (not rejectNonAcceptedId()) {
+    // hardware filtering is not compatible with anonymous can message
+    // so this is not mandatory
+    return -1;
+  }
   for (const auto& [msg_id_type, _] : idToHandleMessage) {
     const auto& [msg_id, cttype] = msg_id_type;
     uint32_t filterId;
@@ -421,7 +429,7 @@ void Node::start() {
   initNodesList();
   canStart(&config.cand, &config.cancfg);
 
-  int8_t filtersInUse = configureHardwareFilters();
+  const int8_t filtersInUse = configureHardwareFilters();
   //    int8_t filtersInUse = 0;
   if (filtersInUse < 0) {
     errorCb("WARN: too many messages fo hardware filtering, "
@@ -464,17 +472,22 @@ int8_t Node::obtainDynamicNodeId() {
     }
     UAVCAN::DynEvt evt;
     chMBFetchTimeout(&dynNodeIdState->mb, &evt.from, TIME_INFINITE);
+    if (evt.from != DynEvt::From::TimeoutRequest)
+      DebugTrace("DBG> get event.from %ld", evt.from);
+
     // cf file 1.Allocation.uavcan
     switch (evt.from) {
       case DynEvt::From::TimeoutRequest:
+	DebugTrace("DBG> get event.from DynEvt::From::TimeoutRequest");
         dynNodeIdState->setTimer(DynEvt::From::TimeoutRequest); // Rule B.1
         dynNodeIdState->copyNextChunk(nodeIdRequest);
-        sendBroadcast(nodeIdRequest, randomPriority); // Rule B.2
+        sendBroadcast(nodeIdRequest, randomPriority, true); // Rule B.2
+	DebugTrace("sendBroadcast done");
         break;
 
       case DynEvt::From::TimeoutFollowup:
         dynNodeIdState->copyNextChunk(nodeIdRequest);
-        sendBroadcast(nodeIdRequest, randomPriority); // Rule D.2
+        sendBroadcast(nodeIdRequest, randomPriority, true); // Rule D.2
         break;
 
       case DynEvt::From::Anonymous:
@@ -509,10 +522,10 @@ int8_t Node::obtainDynamicNodeId() {
   dynNodeIdState = nullptr;
   return retNodeId;
 }
-
+  
 void Node::stop() {
   canStop(&config.cand);
-  bzero(&canard, sizeof(canard));
+  memset(&canard, 0, sizeof(canard)); // bzero is obsolete
 }
 
 /*
@@ -763,7 +776,8 @@ void Node::handleNodeInfoRequest(CanardInstance* ins, CanardRxTransfer* transfer
     pkt.software_version.optional_field_flags = config.flagCb();
   }
   static_assert(sizeof(pkt.hardware_version.unique_id) == sizeof(UniqId_t));
-  getUniqueID(reinterpret_cast<UniqId_t*>(pkt.hardware_version.unique_id));
+  const UAVCAN::UniqId_t& uid = getUniqueID();
+  uid.copy(pkt.hardware_version.unique_id);
   Node::sendResponse(pkt, transfer);
 }
 

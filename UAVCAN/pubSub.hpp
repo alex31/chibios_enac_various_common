@@ -389,8 +389,41 @@ concept MessageCb = requires(Func f) {
   (void)std::remove_cvref_t<SecondArgType<Func>>::cxx_iface::ID;
 };
 
-struct UniqId_t {
-  std::array<uint8_t, sizeof(uavcan_protocol_dynamic_node_id_Allocation().unique_id.data)> id = {};
+class UniqId_t {
+public:
+  using Storage = std::array<uint8_t,
+			     sizeof((uavcan_protocol_dynamic_node_id_Allocation){}.unique_id.data)>;
+  const Storage& operator=(const Storage& from) {
+    id = from;
+    return id;
+  }
+  bool operator==(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation) const
+  {
+    // on ne compare que ce que l'on a déjà reçu
+    return memcmp(id.data(), nodeIdAllocation.unique_id.data, nodeIdAllocation.unique_id.len) == 0 ? true : false;
+  }
+  void copyChunk(uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation,
+		 size_t offset = 0,
+		 size_t len = std::tuple_size_v<Storage>) const
+  {
+    memcpy(&nodeIdAllocation.unique_id.data, id.data() + offset, len);
+  }
+  void copy(uint8_t *data16) const
+  {
+    memcpy(data16, id.data(), id.size());
+  }
+  void updateFrom(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation, size_t offset)
+  {
+    const ssize_t available = id.size() - (offset + nodeIdAllocation.unique_id.len);
+    if (available > 0) {
+      memcpy(id.data() + offset, nodeIdAllocation.unique_id.data, available);
+    }
+  }
+  auto operator<=>(const UniqId_t&) const = default;
+  void reset() {id.fill(0);}
+  static constexpr size_t size() {return sizeof(id);} 
+private:
+  Storage id = {};
 };
 
 class Node;
@@ -477,7 +510,7 @@ public:
    *              in the 3 preceding seconds. The lists also contains inactive
    *              nodes
    */
-  const std::array<node_activity, MAX_CAN_NODES>& getNodeList() { return nodes_list; }
+  const std::array<node_activity, MAX_CAN_NODES>& getNodeList() const { return nodes_list; }
 
   /**
    * @brief       send broadcast message
@@ -701,7 +734,7 @@ void Node::sendBroadcast(MSG_T& msg, const uint8_t priority, bool forceBxCan) {
                                  .payload = buffer,
                                  .payload_len = len,
                                  .canfd = fdFrame,
-                                 .tao = not fdFrame };
+                                 .tao = (not fdFrame) && (nodeId != 0) };
   {
     MutexGuard gard(canard_mtx_s);
     canardBroadcastObj(&canard, &broadcast);
