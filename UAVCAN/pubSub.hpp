@@ -326,11 +326,12 @@ struct Config {
   busNodeType_t busNodeType;
 
   /**
-   * @brief       id [1 .. 127] of the node
-   * @note        special value 0 is allowed and used for dynamic node id
-   *
+   * @brief       id [-124 .. 124] of the node
+   * @note        special value 0 is allowed and used for dynamic node id without preference
+   *		  use positive value for pure static id
+   *		  use negative value for dynamic node id with preference
    */
-  uint8_t nodeId = 0;
+  int8_t nodeId = 0;
 
   /**
    * @brief    node information that others node can gather on demand
@@ -556,7 +557,7 @@ public:
    *
    */
   bool isCanfdEnabled() const { return canFD; }
-  uint8_t getNodeId() const { return nodeId; };
+  int8_t getNodeId() const { return nodeId; };
 
   template<auto Fn>
   static constexpr subscribeMapEntry_t makeRequestCb();
@@ -602,8 +603,8 @@ private:
   idToHandleMessage_t idToHandleMessage;
 
   const Config& config;
-  uint8_t nodeId; // if nodeId is static, it's a copy of confif::nodeId, else
-  // it's
+  int8_t nodeId; // if nodeId is static, it's a copy of confif::nodeId, else
+  // it's allocated dynamically
   mutex_t canard_mtx_r, canard_mtx_s;
   event_source_t canard_tx_not_empty;
   CanardInstance canard;
@@ -648,7 +649,7 @@ private:
     return reject;
   }
   int8_t configureHardwareFilters();
-  int8_t obtainDynamicNodeId();
+  int8_t obtainDynamicNodeId(int8_t prefered);
 
   template<auto Fn>
   bool subscribeBroadcastOneMessage();

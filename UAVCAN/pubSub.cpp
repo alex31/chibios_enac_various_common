@@ -219,7 +219,6 @@ void DynNodeIdState::copyNextChunk(uavcan_protocol_dynamic_node_id_Allocation& n
   constexpr size_t maxReqLen = UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_LENGTH_OF_UNIQUE_ID_IN_REQUEST;
   const size_t remainingCapacity = selfUid.size() - recLen;
   const size_t chunkLen = std::min(remainingCapacity, maxReqLen);
-  nodeIdAllocation.node_id = 0;
   nodeIdAllocation.first_part_of_unique_id = recLen == 0;
   nodeIdAllocation.unique_id.len = chunkLen;
   selfUid.copyChunk(nodeIdAllocation, recLen, chunkLen);
@@ -388,8 +387,8 @@ void Node::start() {
     if  application has bind callback, the entry is already there and management
     will be done
    */
-  if (nodeId == 0) {
-    nodeId = obtainDynamicNodeId();
+  if (nodeId <= 0) {
+    nodeId = obtainDynamicNodeId(std::abs(nodeId));
     DebugTrace("get dynamic nodeId %d", nodeId);
   }
 
@@ -433,8 +432,7 @@ void Node::start() {
   const int8_t filtersInUse = configureHardwareFilters();
   //    int8_t filtersInUse = 0;
   if (filtersInUse < 0) {
-    errorCb("WARN: too many messages fo hardware filtering, "
-            "revert to software filtering");
+    errorCb("revert to software filtering");
     chDbgAssert(not rejectNonAcceptedId(), "cancfg.RXGFC must be corrected to accept all msg id");
   } else {
     chDbgAssert(rejectNonAcceptedId() || filtersInUse == 0, "cancfg.RXGFC must be corrected to reject filtered msg id");
@@ -446,7 +444,7 @@ void Node::start() {
   can_error_thd = chThdCreateFromHeap(nullptr, 1024U, "can_error_thd", NORMALPRIO, &canErrorThdDispatch, this);
 }
 
-int8_t Node::obtainDynamicNodeId() {
+int8_t Node::obtainDynamicNodeId(int8_t prefered) {
   dynNodeIdState = new DynNodeIdState();
   subscribeBroadcastMessages<processNodeIdAllocation>(); // Rule A.1
   const size_t randomPriority = getrng<CANARD_TRANSFER_PRIORITY_HIGH, CANARD_TRANSFER_PRIORITY_LOW>();
@@ -460,9 +458,8 @@ int8_t Node::obtainDynamicNodeId() {
 
   dynNodeIdState->setTimer(DynEvt::From::TimeoutRequest); // Rule A.2
 
-  DebugTrace("try nodeId request sequence");
   uavcan_protocol_dynamic_node_id_Allocation nodeIdRequest;
-
+  nodeIdRequest.node_id = prefered;
   while (true) { // cannot express  dynNodeIdState->receivedNodeId == 0 condition here
 		// because dynNodeIdState->receivedNodeId must be mutex garded
     {
@@ -473,8 +470,8 @@ int8_t Node::obtainDynamicNodeId() {
     }
     UAVCAN::DynEvt evt;
     chMBFetchTimeout(&dynNodeIdState->mb, &evt.from, TIME_INFINITE);
-    if (evt.from != DynEvt::From::TimeoutRequest)
-      DebugTrace("DBG> get event.from %ld", evt.from);
+        if (evt.from != DynEvt::From::TimeoutRequest)
+          DebugTrace("DBG> get event.from %ld", evt.from);
 
     // cf file 1.Allocation.uavcan
     switch (evt.from) {
@@ -483,7 +480,6 @@ int8_t Node::obtainDynamicNodeId() {
         dynNodeIdState->setTimer(DynEvt::From::TimeoutRequest); // Rule B.1
         dynNodeIdState->copyNextChunk(nodeIdRequest);
         sendBroadcast(nodeIdRequest, randomPriority, true); // Rule B.2
-	DebugTrace("sendBroadcast done");
         break;
 
       case DynEvt::From::TimeoutFollowup:
@@ -568,7 +564,7 @@ void Node::senderThdDispatch(void* opt) {
     // if nodeId == 0 we are in dynamic nodeid acquisition
     // this thread need to be terminated, so it must check
     // chThdShouldTerminateX and cannot be stuck indefinitely
-    if (chEvtWaitAnyTimeout(ALL_EVENTS, node->nodeId ? TIME_INFINITE : TIME_MS2I(100)))
+    if (chEvtWaitAnyTimeout(ALL_EVENTS, node->nodeId > 0 ? TIME_INFINITE : TIME_MS2I(100)))
       node->senderStep();
   }
   chEvtUnregister(&node->canard_tx_not_empty, &el);
@@ -581,7 +577,7 @@ void Node::receiverThdDispatch(void* opt) {
     // if nodeId == 0 we are in dynamic nodeid acquisition
     // this thread need to be terminated, so it must check
     // chThdShouldTerminateX and cannot be stuck indefinitely
-    node->receiverStep(node->nodeId ? TIME_INFINITE : TIME_MS2I(100));
+    node->receiverStep(node->nodeId > 0 ? TIME_INFINITE : TIME_MS2I(100));
   }
   chThdExit(0);
 }
