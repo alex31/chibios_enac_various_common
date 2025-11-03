@@ -197,7 +197,8 @@ void nullAppCb(CanardRxTransfer*, const MSG_T) {
 }
 
 DynNodeIdState::DynNodeIdState()
-  : selfUid(getUniqueID()) {
+  : selfUid(getUniqueID())
+{
   chVTObjectInit(&vtRequest);
   chVTObjectInit(&vtFollowup);
   chMtxObjectInit(&mtx);
@@ -208,12 +209,14 @@ DynNodeIdState::~DynNodeIdState() {
   chVTReset(&vtFollowup);
 }
 
-bool DynNodeIdState::checkLastChunkValidity(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation) {
+bool DynNodeIdState::checkLastChunkValidity(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation)
+{
   // on ne compare que ce que l'on a déjà reçu
   return selfUid == nodeIdAllocation;
 }
 
-void DynNodeIdState::copyNextChunk(uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation) {
+void DynNodeIdState::copyNextChunk(uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation)
+{
   MutexGuard gard(mtx); // Protect recLen reads
   // on copie le prochain chunk de l'uuid dans buffer
   constexpr size_t maxReqLen = UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_LENGTH_OF_UNIQUE_ID_IN_REQUEST;
@@ -222,10 +225,19 @@ void DynNodeIdState::copyNextChunk(uavcan_protocol_dynamic_node_id_Allocation& n
   nodeIdAllocation.first_part_of_unique_id = recLen == 0;
   nodeIdAllocation.unique_id.len = chunkLen;
   selfUid.copyChunk(nodeIdAllocation, recLen, chunkLen);
-  //  memcpy(&nodeIdAllocation.unique_id.data, selfUid.id.data() + recLen, chunkLen);
 }
 
-void DynNodeIdState::setTimer(DynEvt::From timer) {
+void DynNodeIdState::copyFullUID(uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation)
+{
+  MutexGuard gard(mtx); // Protect recLen reads
+  // on copie le prochain chunk de l'uuid dans buffer
+  nodeIdAllocation.first_part_of_unique_id = true;
+  nodeIdAllocation.unique_id.len = sizeof(nodeIdAllocation.unique_id.data);
+  selfUid.copyChunk(nodeIdAllocation);
+}
+
+void DynNodeIdState::setTimer(DynEvt::From timer)
+{
   if (timer == DynEvt::From::TimeoutRequest) {
     const systime_t msDuration = getrng<UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MIN_REQUEST_PERIOD_MS,
                                       UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_MAX_REQUEST_PERIOD_MS>();
@@ -267,7 +279,8 @@ void DynNodeIdState::setTimer(DynEvt::From timer) {
   }
 }
 
-void DynNodeIdState::cancelTimer(DynEvt::From timer) {
+void DynNodeIdState::cancelTimer(DynEvt::From timer)
+{
   if (timer == DynEvt::From::TimeoutRequest) {
     chVTReset(&vtRequest);
   } else if (timer == DynEvt::From::TimeoutFollowup) {
@@ -277,7 +290,8 @@ void DynNodeIdState::cancelTimer(DynEvt::From timer) {
   }
 }
 
-uint8_t DynNodeIdState::processAllocator(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation) {
+uint8_t DynNodeIdState::processAllocator(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation)
+{
   MutexGuard gard(mtx); // Protect shared members
   // check uid (which can be partial) from received chunk
   recLen = nodeIdAllocation.unique_id.len;
@@ -447,7 +461,7 @@ void Node::start() {
 int8_t Node::obtainDynamicNodeId(int8_t prefered) {
   dynNodeIdState = new DynNodeIdState();
   subscribeBroadcastMessages<processNodeIdAllocation>(); // Rule A.1
-  const size_t randomPriority = getrng<CANARD_TRANSFER_PRIORITY_HIGH, CANARD_TRANSFER_PRIORITY_LOW>();
+  constexpr uint8_t priority = CANARD_TRANSFER_PRIORITY_HIGH;
 
   canardInit(&canard, memory_pool, MEMORYPOOL_SIZE, &onTransferReceivedDispatch, &shouldAcceptTransferDispatch, this);
   initNodesList();
@@ -478,13 +492,18 @@ int8_t Node::obtainDynamicNodeId(int8_t prefered) {
       case DynEvt::From::TimeoutRequest:
 	DebugTrace("DBG> get event.from DynEvt::From::TimeoutRequest");
         dynNodeIdState->setTimer(DynEvt::From::TimeoutRequest); // Rule B.1
-        dynNodeIdState->copyNextChunk(nodeIdRequest);
-        sendBroadcast(nodeIdRequest, randomPriority, true); // Rule B.2
+	if (config.busNodeType == BUS_FD_ONLY) {
+	  dynNodeIdState->copyFullUID(nodeIdRequest);
+	  sendBroadcast(nodeIdRequest, priority, false); // Rule B.2
+	} else {
+	  dynNodeIdState->copyNextChunk(nodeIdRequest);
+	  sendBroadcast(nodeIdRequest, priority, true); // Rule B.2
+	}
         break;
 
       case DynEvt::From::TimeoutFollowup:
         dynNodeIdState->copyNextChunk(nodeIdRequest);
-        sendBroadcast(nodeIdRequest, randomPriority, true); // Rule D.2
+        sendBroadcast(nodeIdRequest, priority, true); // Rule D.2
         break;
 
       case DynEvt::From::Anonymous:

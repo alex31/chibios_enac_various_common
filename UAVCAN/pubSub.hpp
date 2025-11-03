@@ -39,13 +39,9 @@
 
   ° review of mutex usage : can that be simplified ?
 
-  ° unsubscribe API : is it needed ?
-
   ° alive message should be sent in classic CAN : check
     + when sending a message to classic can node : should be sent accordingly
 
-
-  ° find a scheme to attribute ID (1..127) and roles to the can slaves
 
   ° mettre en œuvre un tunnel au dessus du shell :
     + chaque node a un shell dans un thread au dessus du message
@@ -299,7 +295,7 @@ using subscribeMapEntry_t = std::pair<subscribeMapKey_t, canardHandle_t>;
  */
 using idToHandleMessage_t = etl::map<subscribeMapKey_t, canardHandle_t, UAVNODE_DICTIONARY_SIZE>;
 
-enum busNodeType_t { BUS_FD_ONLY, BUS_FD_BX_MIXED };
+  enum busNodeType_t {BUS_FD_ONLY, BUS_FD_BX_MIXED, BUS_BX_ONLY};
 
 /**
  * @brief       Node configuration structure
@@ -403,6 +399,11 @@ public:
     // on ne compare que ce que l'on a déjà reçu
     return memcmp(id.data(), nodeIdAllocation.unique_id.data, nodeIdAllocation.unique_id.len) == 0 ? true : false;
   }
+  UniqId_t& operator=(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation)
+  {
+    memcpy(id.data(), nodeIdAllocation.unique_id.data, nodeIdAllocation.unique_id.len);
+    return *this;
+  }
   void copyChunk(uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation,
 		 size_t offset = 0,
 		 size_t len = std::tuple_size_v<Storage>) const
@@ -441,6 +442,7 @@ struct DynNodeIdState {
   uint8_t processAllocator(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation);
   bool checkLastChunkValidity(const uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation);
   void copyNextChunk(uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation);
+  void copyFullUID(uavcan_protocol_dynamic_node_id_Allocation& nodeIdAllocation);
   void setTimer(DynEvt::From timer);
   void cancelTimer(DynEvt::From timer);
   msg_t _mbBuf[4];
@@ -472,6 +474,8 @@ public:
     REQUEST_UNHANDLED_ID,
     RESPONSE_UNHANDLED_ID,
     BROADCAST_UNHANDLED_ID,
+    INVALID_ANONYMOUS_FRAME,
+    CANARD_INVALID_ARG,
     NODE_OFFLINE
   };
 
@@ -522,7 +526,7 @@ public:
    * @param[in]   forceBxCan : force sending message with classical CAN protocol
    */
   template<typename MSG_T>
-  void sendBroadcast(MSG_T& msg, const uint8_t priority, bool forceBxCan = false);
+  canStatus_t sendBroadcast(MSG_T& msg, const uint8_t priority, bool forceBxCan = false);
 
   /**
    * @brief       send request message
@@ -532,7 +536,7 @@ public:
    * @param[in]   forceBxCan : force sending message with classical CAN protocol
    */
   template<typename MSG_T>
-  void sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id, bool forceBxCan = false);
+  canStatus_t sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id, bool forceBxCan = false);
 
   /**
    * @brief       send response message
@@ -542,7 +546,7 @@ public:
    * @param[in]   forceBxCan : force sending message with classical CAN protocol
    */
   template<typename MSG_T>
-  void sendResponse(MSG_T& msg, CanardRxTransfer* transfer);
+  canStatus_t sendResponse(MSG_T& msg, CanardRxTransfer* transfer);
 
   /**
    * @brief       get fdcan layer status
@@ -723,7 +727,7 @@ private:
 };
 
 template<typename MSG_T>
-void Node::sendBroadcast(MSG_T& msg, const uint8_t priority, bool forceBxCan) {
+Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority, bool forceBxCan) {
   uint8_t buffer[MSG_T::cxx_iface::MAX_SIZE];
 
   const bool fdFrame = isCanfdEnabled() and not forceBxCan;
@@ -737,15 +741,25 @@ void Node::sendBroadcast(MSG_T& msg, const uint8_t priority, bool forceBxCan) {
                                  .payload_len = len,
                                  .canfd = fdFrame,
                                  .tao = (not fdFrame) && (nodeId != 0) };
-  {
-    MutexGuard gard(canard_mtx_s);
-    canardBroadcastObj(&canard, &broadcast);
+  canStatus_t status;
+  chMtxLock(&canard_mtx_s);
+  const int16_t canardStatus = canardBroadcastObj(&canard, &broadcast);
+  chMtxUnlock(&canard_mtx_s);
+
+  if (canardStatus == -CANARD_ERROR_NODE_ID_NOT_SET) {
+    status = INVALID_ANONYMOUS_FRAME;
+  } else if (canardStatus < 0) {
+    status = CANARD_INVALID_ARG;
+  } else {
+    status = CAN_OK;
+    chEvtBroadcast(&canard_tx_not_empty); 
   }
-  chEvtBroadcast(&canard_tx_not_empty);
+
+  return status;
 }
 
 template<typename MSG_T>
-void Node::sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id, bool forceBxCan) {
+Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id, bool forceBxCan) {
   uint8_t buffer[MSG_T::cxx_iface::REQ_MAX_SIZE];
   const bool fdFrame = isCanfdEnabled() and not forceBxCan;
   const uint16_t len = MSG_T::cxx_iface::req_encode(&msg, buffer, not fdFrame);
@@ -758,15 +772,25 @@ void Node::sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id
                                .payload_len = len,
                                .canfd = fdFrame,
                                .tao = not fdFrame };
-  {
-    MutexGuard gard(canard_mtx_s);
-    canardRequestOrRespondObj(&canard, dest_id, &request);
+  canStatus_t status;
+  chMtxLock(&canard_mtx_s);
+  const int16_t canardStatus = canardRequestOrRespondObj(&canard, dest_id, &request);
+  chMtxUnlock(&canard_mtx_s);
+  
+  if (canardStatus == -CANARD_ERROR_NODE_ID_NOT_SET) {
+    status = INVALID_ANONYMOUS_FRAME;
+  } else if (canardStatus < 0) {
+    status = CANARD_INVALID_ARG;
+  } else {
+    status = CAN_OK;
+    chEvtBroadcast(&canard_tx_not_empty); 
   }
-  chEvtBroadcast(&canard_tx_not_empty);
+  
+  return status;
 }
 
 template<typename MSG_T>
-void Node::sendResponse(MSG_T& msg, CanardRxTransfer* transfer) {
+Node::canStatus_t Node::sendResponse(MSG_T& msg, CanardRxTransfer* transfer) {
   uint8_t buffer[MSG_T::cxx_iface::RSP_MAX_SIZE];
   const bool fdFrame = transfer->canfd;
   const uint16_t len = MSG_T::cxx_iface::rsp_encode(&msg, buffer, not fdFrame);
@@ -779,11 +803,22 @@ void Node::sendResponse(MSG_T& msg, CanardRxTransfer* transfer) {
                                 .payload_len = len,
                                 .canfd = fdFrame,
                                 .tao = not fdFrame };
-  {
-    MutexGuard gard(canard_mtx_s);
+  canStatus_t status;
+  chMtxLock(&canard_mtx_s);
+  const int16_t canardStatus =  
     canardRequestOrRespondObj(&canard, transfer->source_node_id, &response);
+  chMtxUnlock(&canard_mtx_s);
+  
+  if (canardStatus == -CANARD_ERROR_NODE_ID_NOT_SET) {
+    status = INVALID_ANONYMOUS_FRAME;
+  } else if (canardStatus < 0) {
+    status = CANARD_INVALID_ARG;
+  } else {
+    status = CAN_OK;
+    chEvtBroadcast(&canard_tx_not_empty); 
   }
-  chEvtBroadcast(&canard_tx_not_empty);
+  
+  return status;
 }
 
 template<auto Fn>
