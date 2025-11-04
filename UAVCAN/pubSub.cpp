@@ -324,7 +324,6 @@ Node::Node(const Config& _config)
                  .mode = UAVCAN_PROTOCOL_NODESTATUS_MODE_INITIALIZATION,
                  .sub_mode = 0,
                  .vendor_specific_status_code = SPECIFIC_OK }
-  , canFD(_config.cancfg.op_mode == OPMODE_FDCAN)
 
 {
   chMtxObjectInit(&canard_mtx_s);
@@ -492,18 +491,18 @@ int8_t Node::obtainDynamicNodeId(int8_t prefered) {
       case DynEvt::From::TimeoutRequest:
 	DebugTrace("DBG> get event.from DynEvt::From::TimeoutRequest");
         dynNodeIdState->setTimer(DynEvt::From::TimeoutRequest); // Rule B.1
-	if (config.busNodeType == BUS_FD_ONLY) {
+	if (isCanfdEnabled()) {
 	  dynNodeIdState->copyFullUID(nodeIdRequest);
-	  sendBroadcast(nodeIdRequest, priority, false); // Rule B.2
+	  sendBroadcast(nodeIdRequest, priority); // Rule B.2
 	} else {
 	  dynNodeIdState->copyNextChunk(nodeIdRequest);
-	  sendBroadcast(nodeIdRequest, priority, true); // Rule B.2
+	  sendBroadcast(nodeIdRequest, priority); // Rule B.2
 	}
         break;
 
       case DynEvt::From::TimeoutFollowup:
         dynNodeIdState->copyNextChunk(nodeIdRequest);
-        sendBroadcast(nodeIdRequest, priority, true); // Rule D.2
+        sendBroadcast(nodeIdRequest, priority); // Rule D.2
         break;
 
       case DynEvt::From::Anonymous:
@@ -757,7 +756,7 @@ void Node::askNodeInfo(uint8_t dest_node_id) {
    * transmission canard. Appelée par updateNodesList().
    */
   uavcan_protocol_GetNodeInfoRequest req = {};
-  sendRequest(req, CANARD_TRANSFER_PRIORITY_LOW, dest_node_id, config.busNodeType == BUS_FD_BX_MIXED);
+  sendRequest(req, CANARD_TRANSFER_PRIORITY_LOW, dest_node_id);
 }
 
 void Node::handleNodeInfoResponse(CanardInstance*,
@@ -835,7 +834,7 @@ void Node::sendNodeStatus() {
    * (doit être appelée à au moins 1 Hz).
    */
   node_status.uptime_sec = getTimestampS();
-  sendBroadcast(node_status, CANARD_TRANSFER_PRIORITY_LOW, config.busNodeType == BUS_FD_BX_MIXED);
+  sendBroadcast(node_status, CANARD_TRANSFER_PRIORITY_LOW);
 }
 
 void Node::setStatus(const uavcan_protocol_NodeStatus& status) {

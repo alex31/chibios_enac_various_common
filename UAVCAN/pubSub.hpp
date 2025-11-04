@@ -59,7 +59,7 @@ namespace PubSub_private {
  * @brief   test if a value is between limits
  */
 template<typename T>
-consteval bool in_bounds(T value, T lower, T upper) {
+constexpr bool in_bounds(T value, T lower, T upper) {
   return value >= lower && value <= upper;
 }
 
@@ -100,7 +100,7 @@ struct DivSeg {
  *
  * @notapi
  */
-consteval DivSeg findDivSeg(uint32_t clockRatio,
+constexpr DivSeg findDivSeg(uint32_t clockRatio,
                             uint32_t preMax,
                             uint32_t s1max,
                             float ratios1s2,
@@ -170,12 +170,15 @@ struct RegTimings {
    *          in a reliable way
    */
   uint32_t tdcr;
+
+  uint32_t cccr;
+  fdcanopmode_t op_mode;
 };
 
 /**
  * @brief       calculate NBTP register value from field values for arbitration
  * timing
- * @details     consteval : evaluated @ compile time
+ * @details     constexpr : evaluated @ compile time
  *
  * @param[in]   prescaler : commun prescaler for timing
  * @param[in]   seg1 : segment 1 duration in tq
@@ -185,7 +188,7 @@ struct RegTimings {
  *
  * @notapi
  */
-consteval uint32_t getNBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2, uint32_t synchroJumpWidth) {
+constexpr uint32_t getNBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2, uint32_t synchroJumpWidth) {
   if (not PubSub_private::in_bounds(prescaler, 1UL, 512UL))
     return 0;
   if (not PubSub_private::in_bounds(seg1, 1UL, 256UL))
@@ -201,7 +204,7 @@ consteval uint32_t getNBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2, uin
 
 /**
  * @brief       calculate DBTP register value from field values for data timing
- * @details     consteval : evaluated @ compile time
+ * @details     constexpr : evaluated @ compile time
  *
  * @param[in]   prescaler : commun prescaler for timing
  * @param[in]   seg1 : segment 1 duration in tq
@@ -211,7 +214,7 @@ consteval uint32_t getNBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2, uin
  *
  * @notapi
  */
-consteval uint32_t getDBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2, uint32_t synchroJumpWidth, bool tdc) {
+constexpr uint32_t getDBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2, uint32_t synchroJumpWidth, bool tdc) {
   if (not PubSub_private::in_bounds(prescaler, 1UL, 32UL))
     return 0;
   if (not PubSub_private::in_bounds(seg1, 1UL, 32UL))
@@ -227,7 +230,7 @@ consteval uint32_t getDBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2, uin
 
 /**
  * @brief       calculate timing registers values for desired bitrate
- * @details     consteval : evaluated @ compile time
+ * @details     constexpr : evaluated @ compile time
  *              respect rules found in
  * https://www.can-cia.org/fileadmin/cia/documents/publications/cnlm/march_2018/18-1_p28_recommendation_for_the_canfd_bit-timing_holger_zeltwanger_cia.pdf
  * @param[in]   canClk: can clock in Hz
@@ -243,7 +246,7 @@ consteval uint32_t getDBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2, uin
  * values
  *
  */
-consteval RegTimings getTimings(uint32_t canClk,
+constexpr RegTimings getTimings(uint32_t canClk,
                                 uint32_t arbitrationBitRateK,
                                 float arbitrationS1s2Ratio,
                                 uint32_t dataBitRateK,
@@ -265,9 +268,24 @@ consteval RegTimings getTimings(uint32_t canClk,
   const uint32_t tdc_offset = offset <= 127U ? offset : 127U;
   const uint32_t tdc_filter = tdc_offset * 2 / 3;
   const uint32_t tdcr = (tdc_offset << FDCAN_TDCR_TDCO_Pos) | (tdc_filter << FDCAN_TDCR_TDCF_Pos);
-  return { nbtp, dbtp, transDelayCompens ? tdcr : 0 };
+  const uint32_t cccr = dataBitRateK != arbitrationBitRateK ? FDCAN_CONFIG_CCCR_BRSE : 0;
+  const fdcanopmode_t op_mode = dataBitRateK > 1000 ? OPMODE_FDCAN : OPMODE_CAN;
+  return { nbtp, dbtp, transDelayCompens ? tdcr : 0, cccr, op_mode};
 }
 
+  constexpr UAVCAN::RegTimings getTimings(const uint32_t sysclk, const uint32_t freqMhz)
+  {
+    const bool freqOver1Mhz =  freqMhz > 1000;
+    constexpr float arbitrationRatio = 0.5f;
+    const float dataRatio = freqOver1Mhz ? .75f : 0.6f;
+    const float arbitrationFreq = freqOver1Mhz ? 1000 : freqMhz;
+    const bool transDelayCompens =  freqOver1Mhz ? true : false;
+    return UAVCAN::getTimings(sysclk,
+			      arbitrationFreq, arbitrationRatio,
+			      freqMhz, dataRatio,
+			      transDelayCompens);
+  }
+  
 using receivedCbPtr_t = void (*)(CanardInstance* ins, CanardRxTransfer* transfer);
 using flagCbPtr_t = uint8_t (*)();
 using errorCbPtr_t = void (*)(const etl::string_view sv);
@@ -295,8 +313,6 @@ using subscribeMapEntry_t = std::pair<subscribeMapKey_t, canardHandle_t>;
  */
 using idToHandleMessage_t = etl::map<subscribeMapKey_t, canardHandle_t, UAVNODE_DICTIONARY_SIZE>;
 
-  enum busNodeType_t {BUS_FD_ONLY, BUS_FD_BX_MIXED, BUS_BX_ONLY};
-
 /**
  * @brief       Node configuration structure
  *
@@ -319,7 +335,6 @@ struct Config {
    * @brief       FD only or classic CAN and FDCan mixed bus topoly
    *
    */
-  busNodeType_t busNodeType;
 
   /**
    * @brief       id [-124 .. 124] of the node
@@ -526,17 +541,16 @@ public:
    * @param[in]   forceBxCan : force sending message with classical CAN protocol
    */
   template<typename MSG_T>
-  canStatus_t sendBroadcast(MSG_T& msg, const uint8_t priority, bool forceBxCan = false);
+  canStatus_t sendBroadcast(MSG_T& msg, const uint8_t priority);
 
   /**
    * @brief       send request message
    * @notes	    templated function : can send any UAVNode message type
    * @param[in]   msg : UAVCan message
    * @param[in]   priority : 5 bit priority [0 .. 31] (lowest = higher priority)
-   * @param[in]   forceBxCan : force sending message with classical CAN protocol
    */
   template<typename MSG_T>
-  canStatus_t sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id, bool forceBxCan = false);
+  canStatus_t sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id);
 
   /**
    * @brief       send response message
@@ -560,7 +574,7 @@ public:
    * @brief       return true if underlying CAN driver is in OPMODE_FDCAN mode
    *
    */
-  bool isCanfdEnabled() const { return canFD; }
+  bool isCanfdEnabled() const { return config.cancfg.op_mode == OPMODE_FDCAN;}
   int8_t getNodeId() const { return nodeId; };
 
   template<auto Fn>
@@ -625,7 +639,7 @@ private:
   // incrémenté à chaque transfert pour détecter la
   // perte de paquets.
   uint8_t transferRequestId = 0, transferBroadcastId = 0;
-  bool canFD;
+
   bool shouldAcceptTransfer(const CanardInstance* ins,
                             uint64_t* out_data_type_signature,
                             uint16_t data_type_id,
@@ -727,10 +741,10 @@ private:
 };
 
 template<typename MSG_T>
-Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority, bool forceBxCan) {
+Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
   uint8_t buffer[MSG_T::cxx_iface::MAX_SIZE];
 
-  const bool fdFrame = isCanfdEnabled() and not forceBxCan;
+  const bool fdFrame = isCanfdEnabled();
   const uint16_t len = MSG_T::cxx_iface::encode(&msg, buffer, not fdFrame);
   CanardTxTransfer broadcast = { .transfer_type = CanardTransferTypeBroadcast,
                                  .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
@@ -759,9 +773,9 @@ Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority, bool f
 }
 
 template<typename MSG_T>
-Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id, bool forceBxCan) {
+Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id) {
   uint8_t buffer[MSG_T::cxx_iface::REQ_MAX_SIZE];
-  const bool fdFrame = isCanfdEnabled() and not forceBxCan;
+  const bool fdFrame = isCanfdEnabled();
   const uint16_t len = MSG_T::cxx_iface::req_encode(&msg, buffer, not fdFrame);
   CanardTxTransfer request = { .transfer_type = CanardTransferTypeRequest,
                                .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
