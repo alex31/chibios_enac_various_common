@@ -247,11 +247,18 @@ constexpr uint32_t getDBTP(uint32_t prescaler, uint32_t seg1, uint32_t seg2, uin
  *
  */
 constexpr RegTimings getTimings(uint32_t canClk,
-                                uint32_t arbitrationBitRateK,
+                                int32_t arbitrationBitRateK,
                                 float arbitrationS1s2Ratio,
-                                uint32_t dataBitRateK,
+                                int32_t dataBitRateK,
                                 float dataS1s2Ratio,
                                 bool transDelayCompens) {
+  const bool modeCanFD = (dataBitRateK < 0) || (dataBitRateK > 1000);
+  if (dataBitRateK < 0) {
+    dataBitRateK = -dataBitRateK;
+  }
+  if (arbitrationBitRateK < 0) {
+    arbitrationBitRateK = -arbitrationBitRateK;
+  }
   const PubSub_private::DivSeg divSegData =
     PubSub_private::findDivSeg(canClk / (dataBitRateK * 1000U), 32U, 32U, dataS1s2Ratio);
   const PubSub_private::DivSeg divSegArbitration = PubSub_private::findDivSeg(
@@ -269,11 +276,11 @@ constexpr RegTimings getTimings(uint32_t canClk,
   const uint32_t tdc_filter = tdc_offset * 2 / 3;
   const uint32_t tdcr = (tdc_offset << FDCAN_TDCR_TDCO_Pos) | (tdc_filter << FDCAN_TDCR_TDCF_Pos);
   const uint32_t cccr = dataBitRateK != arbitrationBitRateK ? FDCAN_CONFIG_CCCR_BRSE : 0;
-  const fdcanopmode_t op_mode = dataBitRateK > 1000 ? OPMODE_FDCAN : OPMODE_CAN;
+  const fdcanopmode_t op_mode = modeCanFD ? OPMODE_FDCAN : OPMODE_CAN;
   return { nbtp, dbtp, transDelayCompens ? tdcr : 0, cccr, op_mode};
 }
 
-  constexpr UAVCAN::RegTimings getTimings(const uint32_t sysclk, const uint32_t freqMhz)
+  constexpr UAVCAN::RegTimings getTimings(const uint32_t sysclk, int32_t freqMhz)
   {
     const bool freqOver1Mhz =  freqMhz > 1000;
     constexpr float arbitrationRatio = 0.5f;
@@ -288,7 +295,7 @@ constexpr RegTimings getTimings(uint32_t canClk,
   
 using receivedCbPtr_t = void (*)(CanardInstance* ins, CanardRxTransfer* transfer);
 using flagCbPtr_t = uint8_t (*)();
-using errorCbPtr_t = void (*)(const etl::string_view sv);
+using infoCbPtr_t = void (*)(const etl::string_view sv);
 
 /**
  * @brief       structure associating message signature with message callback
@@ -362,7 +369,7 @@ struct Config {
    *          internal errors during development
    *
    */
-  errorCbPtr_t errorCb;
+  infoCbPtr_t infoCb;
 };
 
 struct node_activity {
@@ -737,7 +744,7 @@ private:
   void handleNodeStatusBroadcast(CanardInstance* ins, CanardRxTransfer* transfer);
   void handleNodeInfoRequest(CanardInstance* ins, CanardRxTransfer* transfer);
   template<typename... Params>
-  void errorCb(const char* format, Params&&... params);
+  void infoCb(const char* format, Params&&... params);
 };
 
 template<typename MSG_T>
@@ -849,7 +856,7 @@ void Node::requestMessageCb(CanardInstance* ins, CanardRxTransfer* transfer) {
     Fn(transfer, msg);
   } else {
     node->setCanStatus(REQUEST_DECODE_ERROR);
-    node->errorCb("requestMessageCb decode error on id %u", MsgType::cxx_iface::ID);
+    node->infoCb("ERROR: requestMessageCb decode error on id %u", MsgType::cxx_iface::ID);
   }
 }
 
@@ -867,7 +874,7 @@ void Node::responseMessageCb(CanardInstance* ins, CanardRxTransfer* transfer) {
     Fn(transfer, msg);
   } else {
     node->setCanStatus(RESPONSE_DECODE_ERROR);
-    node->errorCb("responseMessageCb decode error on id %u", MsgType::cxx_iface::ID);
+    node->infoCb("ERROR: responseMessageCb decode error on id %u", MsgType::cxx_iface::ID);
   }
 }
 
@@ -885,7 +892,7 @@ void Node::broadcastMessageCb(CanardInstance* ins, CanardRxTransfer* transfer) {
     Fn(transfer, msg);
   } else {
     node->setCanStatus(BROADCAST_DECODE_ERROR);
-    node->errorCb("broadcastMessageCb decode error on id %u", MsgType::cxx_iface::ID);
+    node->infoCb("ERROR: broadcastMessageCb decode error on id %u", MsgType::cxx_iface::ID);
   }
 }
 
@@ -916,7 +923,7 @@ constexpr subscribeMapEntry_t Node::makeBroadcastCb() {
 template<auto Fn>
 bool Node::subscribeBroadcastOneMessage() {
   if (idToHandleMessage.full()) {
-    errorCb("idToHandleMessage is full");
+    infoCb("ERROR: idToHandleMessage is full");
     return false;
   }
   constexpr subscribeMapEntry_t keyValue = makeBroadcastCb<Fn>();
@@ -934,7 +941,7 @@ bool Node::unsubscribeBroadcastOneMessage() {
 
   // erase(key) renvoie le nombre d’éléments supprimés (0 ou 1)
   if (idToHandleMessage.erase(key) == 0) {
-    errorCb("No subscription found to unsubscribe");
+    infoCb("ERROR: No subscription found to unsubscribe");
     return false;
   }
 
@@ -944,7 +951,7 @@ bool Node::unsubscribeBroadcastOneMessage() {
 template<auto Fn>
 bool Node::subscribeRequestOneMessage() {
   if (idToHandleMessage.full()) {
-    errorCb("idToHandleMessage is full");
+    infoCb("ERROR: idToHandleMessage is full");
     return false;
   }
   constexpr subscribeMapEntry_t keyValue = makeRequestCb<Fn>();
@@ -961,7 +968,7 @@ bool Node::unsubscribeRequestOneMessage() {
 
   // erase(key) renvoie le nombre d’éléments supprimés (0 ou 1)
   if (idToHandleMessage.erase(key) == 0) {
-    errorCb("No subscription found to unsubscribe");
+    infoCb("ERROR: No subscription found to unsubscribe");
     return false;
   }
 
@@ -971,7 +978,7 @@ bool Node::unsubscribeRequestOneMessage() {
 template<auto Fn>
 bool Node::subscribeResponseOneMessage() {
   if (idToHandleMessage.full()) {
-    errorCb("idToHandleMessage is full");
+    infoCb("ERROR: idToHandleMessage is full");
     return false;
   }
   constexpr subscribeMapEntry_t keyValue = makeResponseCb<Fn>();
@@ -989,7 +996,7 @@ bool Node::unsubscribeResponseOneMessage() {
 
   // erase(key) renvoie le nombre d’éléments supprimés (0 ou 1)
   if (idToHandleMessage.erase(key) == 0) {
-    errorCb("No subscription found to unsubscribe");
+    infoCb("ERROR: No subscription found to unsubscribe");
     return false;
   }
 
@@ -997,13 +1004,13 @@ bool Node::unsubscribeResponseOneMessage() {
 }
 
 template<typename... Params>
-void Node::errorCb(const char* format, [[maybe_unused]] Params&&... params) {
+void Node::infoCb(const char* format, [[maybe_unused]] Params&&... params) {
 #if CH_DBG_ENABLE_CHECKS
-  if (config.errorCb) {
+  if (config.infoCb) {
     etl::string<80> s;
     const auto len = chsnprintf(s.data(), s.capacity(), format, std::forward<Params>(params)...);
     s.uninitialized_resize(len);
-    config.errorCb(etl::string_view(s));
+    config.infoCb(etl::string_view(s));
   }
 #else
   (void)format;

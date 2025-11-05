@@ -412,7 +412,7 @@ void Node::start() {
         UAVCAN::Node::requestMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoRequest>>
       };
     } else {
-      errorCb("idToHandleMessage is full");
+      infoCb("ERROR: idToHandleMessage is full");
     }
   }
 
@@ -423,7 +423,7 @@ void Node::start() {
         UAVCAN::Node::responseMessageCb<nullAppCb<uavcan_protocol_GetNodeInfoResponse>>
       };
     } else {
-      errorCb("idToHandleMessage is full");
+      infoCb("ERROR: idToHandleMessage is full");
     }
   }
 
@@ -433,7 +433,7 @@ void Node::start() {
         UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE, UAVCAN::Node::broadcastMessageCb<nullAppCb<uavcan_protocol_NodeStatus>>
       };
     } else {
-      errorCb("idToHandleMessage is full");
+      infoCb("ERROR: idToHandleMessage is full");
     }
   }
 
@@ -445,11 +445,11 @@ void Node::start() {
   const int8_t filtersInUse = configureHardwareFilters();
   //    int8_t filtersInUse = 0;
   if (filtersInUse < 0) {
-    errorCb("revert to software filtering");
+    infoCb("INFO: revert to software filtering");
     chDbgAssert(not rejectNonAcceptedId(), "cancfg.RXGFC must be corrected to accept all msg id");
   } else {
     chDbgAssert(rejectNonAcceptedId() || filtersInUse == 0, "cancfg.RXGFC must be corrected to reject filtered msg id");
-    errorCb("INFO: hardware filtering use %d slots", filtersInUse);
+    infoCb("INFO: hardware filtering use %d slots", filtersInUse);
   }
   sender_thd = chThdCreateFromHeap(nullptr, 2048U, "sender_thd", NORMALPRIO, &senderThdDispatch, this);
   receiver_thd = chThdCreateFromHeap(nullptr, 4096U, "receiver_thd", NORMALPRIO, &receiverThdDispatch, this);
@@ -621,7 +621,7 @@ void Node::canErrorThdDispatch(void* opt) {
     chEvtWaitOne(fdcanBusOffEvent);
     canSTM32ResumeOnline(&node->config.cand);
     node->setCanStatus(NODE_OFFLINE);
-    node->errorCb("canErrorThdDispatch bus_off condition");
+    node->infoCb("WARN: canErrorThdDispatch bus_off condition");
     if (node->hasReceiveMsg) {
       chThdSleepSeconds(300);
     }
@@ -658,7 +658,7 @@ bool Node::shouldAcceptTransfer(const CanardInstance* ins,
 
   const Node* node = static_cast<Node*>(canardGetUserReference(ins));
   if (node->rejectNonAcceptedId()) {
-    errorCb("WARN: id %x of type %d is not hardware filtered", transfer_type, data_type_id);
+    infoCb("WARN: id %x of type %d is not hardware filtered", transfer_type, data_type_id);
   }
   return false;
 }
@@ -671,7 +671,7 @@ void Node::onTransferReceived(CanardInstance* ins, CanardRxTransfer* transfer) {
   } else {
     Node* node = static_cast<Node*>(canardGetUserReference(ins));
     node->setCanStatus(REQUEST_UNHANDLED_ID);
-    node->errorCb(
+    node->infoCb(
       "INFO onTransferReceived Request id %u type %d not handled", transfer->data_type_id, transfer->transfer_type);
   }
 }
@@ -685,7 +685,7 @@ void Node::receiverStep(const sysinterval_t timout) {
   CANRxFrame rxmsg;
   if (canReceiveTimeout(&config.cand, CAN_ANY_MAILBOX, &rxmsg, timout) == MSG_OK) {
     // Traitement de la trame.
-    // errorCb("INFO Receive Msg from 0x%x, length %u",
+    // infoCb("INFO Receive Msg from 0x%x, length %u",
     //  		    uint32_t(rxmsg.ext.EID), uint32_t(rxmsg.DLC));
     hasReceiveMsg = true;
     CanardCANFrame rx_frame_canard = chibiRx2canard(rxmsg);
@@ -716,7 +716,7 @@ void Node::heartbeatStep() {
         node.active = ((current_time_ms - timestamp_ms) < UAVCAN_PROTOCOL_NODESTATUS_OFFLINE_TIMEOUT_MS);
       } else {
         setCanStatus(UAVCAN_TIMEWRAP);
-        errorCb("Warning : current time wraparound or "
+        infoCb("WARN: current time wraparound or "
                 "message recieved in the future (unlikely)");
       }
     }
@@ -805,23 +805,23 @@ void Node::transmitQueue() {
       case MSG_OK: {
         canardPopTxQueue(&canard);
         // static uint32_t countOk = 0;
-        // errorCb("INFO Transmit OK [%ld]", ++countOk);
+        // infoCb("INFO Transmit OK [%ld]", ++countOk);
         break;
       }
       case MSG_TIMEOUT: {
         canSTM32ResumeOnline(&config.cand);
         setCanStatus(TRANSMIT_TIMOUT);
-        errorCb("Transmit MSG_TIMEOUT");
+        infoCb("ERROR: Transmit MSG_TIMEOUT");
         break;
       }
       case MSG_RESET: {
         setCanStatus(TRANSMIT_RESET);
         canardPopTxQueue(&canard);
-        errorCb("Transmit MSG_RESET");
+        infoCb("ERROR: Transmit MSG_RESET");
         break;
       }
       default: {
-        errorCb("ERROR canTransmit status %ld not handled in switch", tx_ok);
+        infoCb("ERROR: canTransmit status %ld not handled in switch", tx_ok);
         break;
       }
     }

@@ -307,7 +307,7 @@ namespace Persistant {
   {
     // request by name
     StoreData ret = {-1L, {}};
-    uint16_t index = req.index;
+    ssize_t index = req.index;
 
     if (req.name.len != 0) {
       memcpy(&resp.name, &req.name, sizeof(req.name));
@@ -319,7 +319,7 @@ namespace Persistant {
        // if index is found, indicate it in response
     } else {
       // request by index
-      if ((index > 0) and (index < params_list_len)) {
+      if ((index >= 0) and (index < params_list_len)) {
 	const auto& paramName =  std::next(frozenParameters.begin(), index)->first;
 	resp.name.len = paramName.size();
 	memcpy(resp.name.data, paramName.data(),
@@ -328,7 +328,7 @@ namespace Persistant {
     }
     // now we use index either found by name or directly given in message
     // is it a set_and_request or just request ?
-    if ((index == 0) or (index >= params_list_len))
+    if ((index < 0) or (index >= params_list_len))
       {
 	resp.name.len = req.name.len;
 	memcpy(resp.name.data, req.name.data,
