@@ -146,7 +146,7 @@ struct cbTraits<void (*)(Arg1, Arg2)> {
 
 namespace UAVCAN {
 static constexpr size_t MAX_CAN_NODES = 128;
-static constexpr size_t MEMORYPOOL_SIZE = 4096;
+static constexpr size_t MEMORYPOOL_SIZE = 6144;
 
 /**
  * @brief   structure describing STM32 FDcan peripheral register for timing
@@ -619,6 +619,8 @@ public:
   }
 
   static DynNodeIdState* dynNodeIdState;
+  template<typename... Params>
+  void infoCb(const char* format, Params&&... params);
 
 private:
   /**
@@ -743,8 +745,6 @@ private:
                               const uavcan_protocol_GetNodeInfoResponse& res);
   void handleNodeStatusBroadcast(CanardInstance* ins, CanardRxTransfer* transfer);
   void handleNodeInfoRequest(CanardInstance* ins, CanardRxTransfer* transfer);
-  template<typename... Params>
-  void infoCb(const char* format, Params&&... params);
 };
 
 template<typename MSG_T>
