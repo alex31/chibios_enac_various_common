@@ -483,8 +483,9 @@ int8_t Node::obtainDynamicNodeId(int8_t prefered) {
     }
     UAVCAN::DynEvt evt;
     chMBFetchTimeout(&dynNodeIdState->mb, &evt.from, TIME_INFINITE);
-        if (evt.from != DynEvt::From::TimeoutRequest)
+    if (evt.from != DynEvt::From::TimeoutRequest) {
           DebugTrace("DBG> get event.from %ld", evt.from);
+    }
 
     // cf file 1.Allocation.uavcan
     switch (evt.from) {
@@ -842,6 +843,24 @@ void Node::setStatus(const uavcan_protocol_NodeStatus& status) {
   node_status.mode = status.mode;
   node_status.vendor_specific_status_code = status.vendor_specific_status_code;
 }
+
+
+void Node::infoCb(const char* format, ...) {
+#if CH_DBG_ENABLE_CHECKS
+  if (config.infoCb) {
+    va_list ap;
+    etl::string<80> s;
+    va_start(ap, format);
+    const auto len = chvsnprintf(s.data(), s.capacity(), format, ap);
+    va_end(ap);
+    s.uninitialized_resize(len);
+    config.infoCb(etl::string_view(s));
+  }
+#else
+  (void)format;
+#endif
+}
+ 
 DynNodeIdState* Node::dynNodeIdState = nullptr;
 
 }

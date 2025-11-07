@@ -619,9 +619,11 @@ public:
   }
 
   static DynNodeIdState* dynNodeIdState;
-  template<typename... Params>
-  void infoCb(const char* format, Params&&... params);
-
+  //  template<typename... Params>
+  //  void infoCb(const char* format, Params&&... params);
+  void infoCb(const char* format, ...)
+    __attribute__ ((format (printf, 2, 3)));
+  
 private:
   /**
    * @brief	  map of message id to callback
@@ -776,6 +778,11 @@ Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
     chEvtBroadcast(&canard_tx_not_empty); 
   }
 
+  if (status != CAN_OK) {
+    infoCb("Node::sendBroadcast message %u canard status = %d",
+	   broadcast.data_type_id, canardStatus);
+  }
+  
   return status;
 }
 
@@ -805,6 +812,11 @@ Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const ui
   } else {
     status = CAN_OK;
     chEvtBroadcast(&canard_tx_not_empty); 
+  }
+  
+  if (status != CAN_OK) {
+    infoCb("Node::sendRequest message %u canard status = %d",
+	   request.data_type_id, canardStatus);
   }
   
   return status;
@@ -837,6 +849,11 @@ Node::canStatus_t Node::sendResponse(MSG_T& msg, CanardRxTransfer* transfer) {
   } else {
     status = CAN_OK;
     chEvtBroadcast(&canard_tx_not_empty); 
+  }
+
+  if (status != CAN_OK) {
+    infoCb("Node::sendResponse message %u canard status = %d",
+	   response.data_type_id, canardStatus);
   }
   
   return status;
@@ -1003,19 +1020,6 @@ bool Node::unsubscribeResponseOneMessage() {
   return true;
 }
 
-template<typename... Params>
-void Node::infoCb(const char* format, [[maybe_unused]] Params&&... params) {
-#if CH_DBG_ENABLE_CHECKS
-  if (config.infoCb) {
-    etl::string<80> s;
-    const auto len = chsnprintf(s.data(), s.capacity(), format, std::forward<Params>(params)...);
-    s.uninitialized_resize(len);
-    config.infoCb(etl::string_view(s));
-  }
-#else
-  (void)format;
-#endif
-}
 
 }
 
