@@ -358,7 +358,19 @@ The device ID is:
 #ifdef PORT_COMPILER_NAME
   chprintf(lchp, "Compiler:     %s\r\n", PORT_COMPILER_NAME);
 #endif
-
+#ifdef __OPTIMIZE__
+# ifdef __OPTIMIZE_SIZE__
+  chprintf(lchp, "Release:     Minimum size : -Os\r\n");
+# else
+#   ifdef __FAST_MATH__
+  chprintf(lchp, "Release:     Optimised: -Ofastr\r\n");
+#   else
+  chprintf(lchp, "Release:     Optimised: -O[g,1,2,3]\r\n");
+#   endif
+# endif
+#else
+  chprintf(lchp, "Release:     Debug : -O0\r\n");
+#endif
 #ifdef CH_ARCHITECTURE_NAME
   chprintf(lchp, "Architecture: %s\r\n", CH_ARCHITECTURE_NAME);
 #endif
