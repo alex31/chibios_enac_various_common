@@ -163,7 +163,7 @@ uint32_t getrng()
   constexpr uint32_t LIMIT32 = uint32_t((SPACE / RANGE) * RANGE - 1ULL);
 
   for (;;) {
-    uint32_t r;
+    uint32_t r = 0;
     trngGenerate(&TRNGD1, sizeof r, reinterpret_cast<uint8_t*>(&r));
     if (r <= LIMIT32) {
       // % sur 64 bits pour éviter tout overflow intermédiaire
@@ -481,7 +481,7 @@ int8_t Node::obtainDynamicNodeId(int8_t prefered) {
         break; // Exit loop if ID received
       }
     }
-    UAVCAN::DynEvt evt;
+    UAVCAN::DynEvt evt = {};
     chMBFetchTimeout(&dynNodeIdState->mb, &evt.from, TIME_INFINITE);
     if (evt.from != DynEvt::From::TimeoutRequest) {
           DebugTrace("DBG> get event.from %ld", evt.from);
