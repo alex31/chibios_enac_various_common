@@ -134,7 +134,10 @@ namespace  {
     {
       spiUnselect(&spid);
       if (manage_bus) {
-	spiStop(&spid);
+	// spiStop probably not required,
+	// driver can be reloaded with new config with spiStart
+	// without beeing stoped before
+	// spiStop(&spid); 
 	spiReleaseBus(&spid);
       }
     }

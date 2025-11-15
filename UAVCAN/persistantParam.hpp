@@ -310,8 +310,7 @@ namespace Persistant {
   }
   
   constexpr  const frozen::string& Parameter::findName(const size_t index)  {
-    chDbgAssert(index < params_list_len, "index > params_list_len");
-    return std::next(frozenParameters.begin(), index)->first;
+    return std::next(frozenParameters.begin(), index < params_list_len ? index : 0)->first;
   }
 
   constexpr std::pair<StoredValue &, const ParamDefault &>
