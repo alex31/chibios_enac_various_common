@@ -455,6 +455,7 @@ void Node::start() {
   receiver_thd = chThdCreateFromHeap(nullptr, 4096U, "receiver_thd", NORMALPRIO, &receiverThdDispatch, this);
   heartbeat_thd = chThdCreateFromHeap(nullptr, 2048U, "heartbeat_thd", NORMALPRIO, &heartbeatThdDispatch, this);
   can_error_thd = chThdCreateFromHeap(nullptr, 1024U, "can_error_thd", NORMALPRIO, &canErrorThdDispatch, this);
+  
 }
 
 int8_t Node::obtainDynamicNodeId(int8_t prefered) {
@@ -842,6 +843,10 @@ void Node::setStatus(const uavcan_protocol_NodeStatus& status) {
   node_status.health = status.health;
   node_status.mode = status.mode;
   node_status.vendor_specific_status_code = status.vendor_specific_status_code;
+}
+
+void Node::setStatusMode(const uint8_t mode) {
+  node_status.mode = mode;
 }
 
 

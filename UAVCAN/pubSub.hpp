@@ -526,6 +526,13 @@ public:
   void setStatus(const uavcan_protocol_NodeStatus& status);
 
   /**
+   * @brief       set internal node health status mode field
+   * @notes	    can be gathered by other nodes
+   *
+   */
+  void setStatusMode(const uint8_t mode);
+
+  /**
    * @brief       return number of active nodes on the bus
    * @notes       actives nodes are the ones which have sent alive messages
    *              in the 3 preceding seconds
