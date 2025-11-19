@@ -283,8 +283,8 @@ constexpr RegTimings getTimings(uint32_t canClk,
   constexpr UAVCAN::RegTimings getTimings(const uint32_t sysclk, int32_t freqMhz)
   {
     const bool freqOver1Mhz =  freqMhz > 1000;
-    constexpr float arbitrationRatio = 0.5f;
-    const float dataRatio = freqOver1Mhz ? .75f : 0.6f;
+    constexpr float arbitrationRatio = 0.87f;
+    const float dataRatio =  freqMhz <= 5000 ? .75f : 0.50;
     const float arbitrationFreq = freqOver1Mhz ? 1000 : freqMhz;
     const bool transDelayCompens =  freqOver1Mhz ? true : false;
     return UAVCAN::getTimings(sysclk,
@@ -555,7 +555,7 @@ public:
    * @param[in]   forceBxCan : force sending message with classical CAN protocol
    */
   template<typename MSG_T>
-  canStatus_t sendBroadcast(MSG_T& msg, const uint8_t priority);
+  canStatus_t sendBroadcast(MSG_T& msg, const uint8_t priority = CANARD_TRANSFER_PRIORITY_MEDIUM);
 
   /**
    * @brief       send request message
