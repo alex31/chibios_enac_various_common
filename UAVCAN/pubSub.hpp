@@ -252,6 +252,17 @@ constexpr RegTimings getTimings(uint32_t canClk,
                                 int32_t dataBitRateK,
                                 float dataS1s2Ratio,
                                 bool transDelayCompens) {
+#ifdef STM32G4XX
+  constexpr uint32_t tdc_max_value = 63U;
+#elifdef STM32H7XX
+  constexpr uint32_t tdc_max_value = 127U;
+#else
+  // Fallback or error if neither is defined, or if you want a default behavior
+  // For safety, you might want to pick the smaller value or raise a compile-time error
+#warning "STM32 series not defined, using default TDCO max value (63U)"
+  constexpr uint32_t tdc_max_value = 63U; 
+#endif
+    
   const bool modeCanFD = (dataBitRateK < 0) || (dataBitRateK > 1000);
   if (dataBitRateK < 0) {
     dataBitRateK = -dataBitRateK;
@@ -272,19 +283,19 @@ constexpr RegTimings getTimings(uint32_t canClk,
   const uint32_t dbtp = getDBTP(
     divSegData.prescaler, divSegData.s1, divSegData.s2, std::min(divSegData.s1, divSegData.s2), transDelayCompens);
   const uint32_t offset = divSegData.prescaler * divSegData.s1;
-  const uint32_t tdc_offset = offset <= 127U ? offset : 127U;
+  const uint32_t tdc_offset = offset <= tdc_max_value ? offset : tdc_max_value;
   const uint32_t tdc_filter = tdc_offset * 2 / 3;
   const uint32_t tdcr = (tdc_offset << FDCAN_TDCR_TDCO_Pos) | (tdc_filter << FDCAN_TDCR_TDCF_Pos);
   const uint32_t cccr = dataBitRateK != arbitrationBitRateK ? FDCAN_CONFIG_CCCR_BRSE : 0;
   const fdcanopmode_t op_mode = modeCanFD ? OPMODE_FDCAN : OPMODE_CAN;
-  return { nbtp, dbtp, transDelayCompens ? tdcr : 0, cccr, op_mode};
+  return { nbtp, dbtp, (transDelayCompens && tdc_offset != 0) ? tdcr : 0, cccr, op_mode};
 }
 
   constexpr UAVCAN::RegTimings getTimings(const uint32_t sysclk, int32_t freqMhz)
   {
     const bool freqOver1Mhz =  freqMhz > 1000;
     constexpr float arbitrationRatio = 0.87f;
-    const float dataRatio =  freqMhz <= 5000 ? .75f : 0.50;
+    constexpr float dataRatio = 0.75f;
     const float arbitrationFreq = freqOver1Mhz ? 1000 : freqMhz;
     const bool transDelayCompens =  freqOver1Mhz ? true : false;
     return UAVCAN::getTimings(sysclk,
