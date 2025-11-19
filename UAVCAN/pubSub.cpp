@@ -302,8 +302,12 @@ uint8_t DynNodeIdState::processAllocator(const uavcan_protocol_dynamic_node_id_A
   const bool match = uid == nodeIdAllocation;
   if (match) {
     if (recLen == sizeof(nodeIdAllocation.unique_id.data)) {
-      receivedNodeId = nodeIdAllocation.node_id;
-      evt.from = UAVCAN::DynEvt::From::Allocator_complete;
+      if (receivedNodeId = nodeIdAllocation.node_id;
+	  receivedNodeId != 0) {
+	    evt.from = UAVCAN::DynEvt::From::Allocator_complete;
+	  } else {
+	    evt.from = UAVCAN::DynEvt::From::Allocator_mismatch;
+	  }
     } else {
       evt.from = UAVCAN::DynEvt::From::Allocator_partial;
     }
@@ -493,7 +497,7 @@ int8_t Node::obtainDynamicNodeId(int8_t prefered) {
       case DynEvt::From::TimeoutRequest:
 	DebugTrace("DBG> get event.from DynEvt::From::TimeoutRequest");
         dynNodeIdState->setTimer(DynEvt::From::TimeoutRequest); // Rule B.1
-	if (isCanfdEnabled()) {
+	if (isCanfdEnabled() && config.dynamicId_fd) {
 	  dynNodeIdState->copyFullUID(nodeIdRequest);
 	  sendBroadcast(nodeIdRequest, priority); // Rule B.2
 	} else {
@@ -777,7 +781,9 @@ void Node::handleNodeInfoResponse(CanardInstance*,
 void Node::handleNodeStatusBroadcast(CanardInstance*, CanardRxTransfer* transfer) {
   const uint8_t node_id = transfer->source_node_id;
   const uint64_t timestamp = transfer->timestamp_usec;
-  updateNodesList(node_id, timestamp);
+  if (nodeId > 0) {
+    updateNodesList(node_id, timestamp);
+  }
 }
 
 void Node::handleNodeInfoRequest(CanardInstance* ins, CanardRxTransfer* transfer) {

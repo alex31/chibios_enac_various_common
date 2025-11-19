@@ -363,6 +363,11 @@ struct Config {
   int8_t nodeId = 0;
 
   /**
+   * @brief       enable fdcan jumbo frame for dynamic node_id allocation
+   */
+  bool dynamicId_fd = false;
+  
+  /**
    * @brief    node information that others node can gather on demand
    *
    */
