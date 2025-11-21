@@ -472,7 +472,7 @@ const char* getGpioName (const ioportid_t p)
 
 
 // obviously not reentrant
-#define FMT_BUF_SIZE (sizeof(uintmax_t) * 16)
+#define FMT_BUF_SIZE (1 + sizeof(uintmax_t) * 8)
 char *binary_fmt(uintmax_t x, int fill)
 {
   static char buf[FMT_BUF_SIZE];
