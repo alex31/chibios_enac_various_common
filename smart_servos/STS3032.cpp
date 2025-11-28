@@ -272,7 +272,7 @@ STS3032::StateVector STS3032::readStates (uint8_t id)
     .data = {0}
   };
   
-  STS3032::StateVector vec;
+  STS3032::StateVector vec{};
   
   if(read(&rec) == SmartServo::Status::OK) {
     StateInRam *sir = reinterpret_cast<StateInRam *>(rec.data);
@@ -286,6 +286,8 @@ STS3032::StateVector STS3032::readStates (uint8_t id)
       .temperature = sir->temperature,
       .moving = sir->moving ? true : false
     };
+  } else {
+    vec.status = SmartServo::STATUS_TIMEOUT;
   }
   return vec;
 }

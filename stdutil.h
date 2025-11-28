@@ -388,6 +388,9 @@ F7
   void free_m(void *p);
 #endif
 
+#if CH_CFG_USE_HEAP &&  defined(DMA_HEAP_SIZE) && (DMA_HEAP_SIZE > 0)
+void *malloc_dma (size_t size);
+#endif
 
 // c++20 define std::lerp
 #if (! defined(__cplusplus)) || __cplusplus <= 201703L

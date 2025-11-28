@@ -99,6 +99,10 @@ float powi(int x, int y)
 
 static uint8_t ccmHeapBuffer[CH_HEAP_SIZE]  __attribute__ ((section(STD_SECTION), aligned(8))) ;
 memory_heap_t ccmHeap;
+#if    defined(DMA_HEAP_SIZE) && (DMA_HEAP_SIZE > 0)
+static uint8_t ccmDmaHeapBuffer[DMA_HEAP_SIZE]  __attribute__ ((section(DMA_SECTION), aligned(16))) ;
+memory_heap_t ccmDmaHeap;
+#      endif
 #endif
 
 #endif // #if CH_CFG_USE_HEAP || CH_HEAP_USE_TLSF
@@ -116,8 +120,11 @@ size_t initHeap (void)
   size_t size;
   chHeapObjectInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
   chHeapStatus(&ccmHeap, &size, NULL);
-  return size;
 #endif
+#if    defined(DMA_HEAP_SIZE) && (DMA_HEAP_SIZE > 0)
+  chHeapObjectInit(&ccmDmaHeap, (void *) ccmDmaHeapBuffer, sizeof (ccmDmaHeapBuffer));
+#endif
+  return size;
 }
 
 size_t getHeapFree (void)
@@ -145,6 +152,13 @@ void *malloc_m (size_t size)
   /* chThdSleepMilliseconds(10); */
   return ret;
 }
+
+#if CH_CFG_USE_HEAP &&  defined(DMA_HEAP_SIZE) && (DMA_HEAP_SIZE > 0)
+void *malloc_dma (size_t size)
+{
+  return chHeapAllocAligned(&ccmDmaHeap, size, 16);
+}
+#endif
 
 void free_m(void *p)
 {
