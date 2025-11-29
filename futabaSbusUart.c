@@ -6,8 +6,6 @@
 #define SBUS_START_BYTE 0x0f
 #define SBUS_END_BYTE   0x00
 #define SBUS_FLAGS_BYTE 23U
-#define SBUS_FRAME_LOST_BIT 2U
-#define SBUS_FAILSAFE_BIT 3U
 #define SBUS_BUFFLEN 25U
 #define IN_SYNC_TIMEOUT TIME_MS2I(15)
 #define OUT_SYNC_TIMEOUT (IN_SYNC_TIMEOUT / 2U)
@@ -157,7 +155,7 @@ void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame)
 
 static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
 {
-  int16_t *dst = frm->channel;
+  uint16_t *dst = frm->channel;
   // decode sbus data
   dst[0]  = ((src[0]    ) | (src[1]<<8))                  & 0x07FF;
   dst[1]  = ((src[1]>>3 ) | (src[2]<<5))                  & 0x07FF;
@@ -175,9 +173,7 @@ static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
   dst[13] = ((src[17]>>7) | (src[18]<<1) | (src[19]<<9))  & 0x07FF;
   dst[14] = ((src[19]>>2) | (src[20]<<6))                 & 0x07FF;
   dst[15] = ((src[20]>>5) | (src[21]<<3))                 & 0x07FF;
-  for (size_t i=0; i<SBUS_NUM_CHANNEL; i++) {
-    dst[i] -= 1024;
-  }
+
   frm->flags = src[SBUS_FLAGS_BYTE];
 }
 
@@ -185,10 +181,7 @@ static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
 static void encodeSbusBuffer (const SBUSFrame  *_frm, uint8_t *dest)
 {
   SBUSFrame  frm = *_frm;
-  int16_t *chan = frm.channel;
-  for (size_t i=0; i<SBUS_NUM_CHANNEL; i++) {
-    chan[i] += 1024;
-  }
+  uint16_t *chan = frm.channel;
  
   dest[0] = SBUS_START_BYTE;
   dest[1] =   (uint8_t) ((chan[0]   & 0x07FF));

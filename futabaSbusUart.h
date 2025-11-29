@@ -11,6 +11,8 @@ extern "C" {
    * @brief  number of 11 bits payload value in a SBUS frame
    */
 #define SBUS_NUM_CHANNEL 16U
+#define SBUS_FRAME_LOST_BIT 2U
+#define SBUS_FAILSAFE_BIT 3U
 
   /**
    * @brief  kind of errors that can be returned by the driver
@@ -26,7 +28,7 @@ extern "C" {
     /**
      * @brief   array of  11 bits signed number from
      */
-    int16_t channel[SBUS_NUM_CHANNEL];
+    uint16_t channel[SBUS_NUM_CHANNEL];
     /**
      * @brief   sbus special flags
      */
