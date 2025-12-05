@@ -390,6 +390,7 @@ F7
 
 #if CH_CFG_USE_HEAP &&  defined(DMA_HEAP_SIZE) && (DMA_HEAP_SIZE > 0)
 void *malloc_dma (size_t size);
+void free_dma(void *p);
 #endif
 
 // c++20 define std::lerp

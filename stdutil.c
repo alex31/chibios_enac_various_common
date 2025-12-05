@@ -158,6 +158,13 @@ void *malloc_dma (size_t size)
 {
   return chHeapAllocAligned(&ccmDmaHeap, size, 16);
 }
+
+void free_dma(void *p)
+{
+  if (p) {
+    chHeapFree(p);
+  }
+}
 #endif
 
 void free_m(void *p)
