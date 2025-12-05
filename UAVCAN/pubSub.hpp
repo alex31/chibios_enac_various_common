@@ -26,12 +26,16 @@
             broadcast, request, response messages
  * @notes   Wish it could be estimated at compile time
  */
+#ifndef UAVNODE_MEMORYPOOL_SIZE
+#define UAVNODE_MEMORYPOOL_SIZE 6144
+#endif
+
 #ifndef UAVNODE_DICTIONARY_SIZE
 #define UAVNODE_DICTIONARY_SIZE 32
 #endif
 
-#if (!CANARD_ENABLE_TAO_OPTION) || (!CANARD_ENABLE_CANFD)
-#error "CANARD_ENABLE_TAO_OPTION and CANARD_ENABLE_CANFD must be set to true"
+#if (!CANARD_ENABLE_TAO_OPTION)
+#error "CANARD_ENABLE_TAO_OPTION must be set to true"
 #endif
 
 /*
@@ -146,7 +150,7 @@ struct cbTraits<void (*)(Arg1, Arg2)> {
 
 namespace UAVCAN {
 static constexpr size_t MAX_CAN_NODES = 128;
-static constexpr size_t MEMORYPOOL_SIZE = 6144;
+static constexpr size_t MEMORYPOOL_SIZE = UAVNODE_MEMORYPOOL_SIZE;
 
 /**
  * @brief   structure describing STM32 FDcan peripheral register for timing
@@ -776,8 +780,12 @@ template<typename MSG_T>
 Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
   uint8_t buffer[MSG_T::cxx_iface::MAX_SIZE];
 
-  const bool fdFrame = isCanfdEnabled();
+#if CANARD_ENABLE_CANFD
+  const bool fdFrame = transfer->canfd;
   const uint16_t len = MSG_T::cxx_iface::encode(&msg, buffer, not fdFrame);
+#else
+  const uint16_t len = MSG_T::cxx_iface::encode(&msg, buffer, true);
+#endif
   CanardTxTransfer broadcast = { .transfer_type = CanardTransferTypeBroadcast,
                                  .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
                                  .data_type_id = MSG_T::cxx_iface::ID,
@@ -785,8 +793,13 @@ Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
                                  .priority = priority,
                                  .payload = buffer,
                                  .payload_len = len,
-                                 .canfd = fdFrame,
-                                 .tao = (not fdFrame) && (nodeId != 0) };
+#if CANARD_ENABLE_CANFD
+                                .canfd = fdFrame,
+                                .tao = (not fdFrame) && (nodeId != 0)
+#else
+                                 .tao = nodeId != 0
+#endif
+				};
   canStatus_t status;
   chMtxLock(&canard_mtx_s);
   const int16_t canardStatus = canardBroadcastObj(&canard, &broadcast);
@@ -821,7 +834,9 @@ Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const ui
                                .priority = priority,
                                .payload = buffer,
                                .payload_len = len,
-                               .canfd = fdFrame,
+#if CANARD_ENABLE_CANFD
+                                .canfd = fdFrame,
+#endif
                                .tao = not fdFrame };
   canStatus_t status;
   chMtxLock(&canard_mtx_s);
@@ -848,8 +863,12 @@ Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const ui
 template<typename MSG_T>
 Node::canStatus_t Node::sendResponse(MSG_T& msg, CanardRxTransfer* transfer) {
   uint8_t buffer[MSG_T::cxx_iface::RSP_MAX_SIZE];
+#if CANARD_ENABLE_CANFD
   const bool fdFrame = transfer->canfd;
   const uint16_t len = MSG_T::cxx_iface::rsp_encode(&msg, buffer, not fdFrame);
+#else
+  const uint16_t len = MSG_T::cxx_iface::rsp_encode(&msg, buffer, true);
+#endif
   CanardTxTransfer response = { .transfer_type = CanardTransferTypeResponse,
                                 .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
                                 .data_type_id = MSG_T::cxx_iface::ID,
@@ -857,8 +876,13 @@ Node::canStatus_t Node::sendResponse(MSG_T& msg, CanardRxTransfer* transfer) {
                                 .priority = transfer->priority,
                                 .payload = buffer,
                                 .payload_len = len,
+#if CANARD_ENABLE_CANFD
                                 .canfd = fdFrame,
-                                .tao = not fdFrame };
+                                .tao = not fdFrame 
+#else
+                                .tao = true
+#endif
+				};
   canStatus_t status;
   chMtxLock(&canard_mtx_s);
   const int16_t canardStatus =  
