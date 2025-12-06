@@ -48,6 +48,93 @@
 
 */
 
+/*
+
+Using gcc15.2 in C++26 mode :
+  
+in /home/alex/DEV/STM32/CHIBIOS/COMMON/various/UAVCAN directory, there is a module that store persistant
+  parameters : persistantParam.hpp + persistantParam.cpp .
+  The parameters name are constant described by a
+  frozen::map of variant. We find the name, minmum, maximun and
+  default value. Associated are values, that can be changed, and are
+  in ram. The actual code is not optimal in size (target = small MCU)
+  because the ram value is also stored as a variant, and take 16 bytes
+  when most parameters are integer values that occupy 4 bytes on arm32.
+  My idea is to store all
+  ram value in a flat dedicated space. whole size can be calculated at
+  compile time adding each size for the frozen map entries. Also,
+  given a key in the map, we can compute the address in the ram store
+  where is the data, at compile time. We can generate at compile a frozen map key -> ram address so that we can easyly find ram address at runtime given the key (which is parameter name) or if we want to save flash size, we also can compute this at runtime but we have to walk thru the entire map to sum the size and compute the address in the flat ram table.
+
+  With this architecture, we should not need anymore getTinyStringMemoryPoolSize() since string will be associated with a flat space in this ram table.
+
+  example
+
+  ° baudrate 19200 // is an integer : 4 bytes : address in the ram store 0
+  ° ROLE.gps true // is bool : 1 byte : address in the ram store 4
+  ° node.name "MINICAN" :  TinyString : 47 bytes : address in the ram store 5
+  ° pid.k : float : 4 bytes : address in the ram store 52
+  ° total size 56 bytes
+
+
+  Ideally, I would made internal changes to save RAM, but keeping the externam API so that
+  all the modules that use the API continue to compile cleanly.
+
+  What do you think of that idea ?
+  do you understand my demand ?
+  do you want I explain points and details ?
+  do you think you are up to the task ?
+
+  - Question : Rough count/types of parameters and whether any
+   non–trivially-copyable types beyond TinyString/bool/int/float
+   exist.
+
+   - Answer : you will find modules that use theses API in COMMON/source, and the
+  actual list of parameters is in COMMON/source/nodeParameters.hpp.
+
+   - Question : Current API surface you need preserved (get/set by name?
+   iterating? serialization?).
+
+   - Answer :  I want to preserve all API surface, at least all the surface that is
+  used in the modules. 
+
+  -Question : Alignment requirements for the flat  buffer (e.g., 4-byte align for ints/floats).
+   - Answer : No alignment required, armv7-m can manage
+  unaligned access at the price of a slighty more cpu cycles, but
+  access are scarce, and when value is needed in a scarce loop, it is
+  cache in a local variable.
+
+  
+  -Question : Acceptable trade-off: more flash for a precomputed frozen offset map
+    vs. small runtime cost to sum sizes. Which do you prefer?
+
+  - Answer :  For the trade off, I don't know, it will
+  depend on the size that the map will occupy. In fact most of the map
+  size will be occupy by the key (frozen string), if there is a
+  possibility that theses string are shared between the two frozen
+  map, the index map will not cost a lot
+
+ if you ask yoursel question about the variant visit method : I use g++15.2 in gnu++26 mode,
+ so the visit method, which is a c++26 addiction, is available. Consider you can
+  use all c++26 options that are available with gcc15.2
+
+
+Questions :
+  1. Precomputed frozen offset map vs. runtime prefix-sum walk?
+  2. OK to ship a small proxy that mimics the variant surface (to avoid touching callers), or should I instead patch the couple of holds_alternative/visit uses?
+
+Answers :
+ 1/when the retreive function is called for a constant key, we don't need holds_alternative/visit since the type is known at compile time. But when we call the API
+  with a runtime key, the type is unknown and the variant API is the best, is is well known from programmers, son don't reinvent the wheel.
+
+  2/ Give a try to precomputed frozen map : To save space, it could be a map "index of parameter" -> "ram offset" instead of "name" -> "ram offset". You first get the index from the big frozen map,
+  then ram offset from the smaller offset map
+
+
+
+  
+ */
+
 namespace Persistant {
   
 
