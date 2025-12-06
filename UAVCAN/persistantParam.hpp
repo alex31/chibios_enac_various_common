@@ -1,460 +1,661 @@
-/**
- * @file persistantParam.hpp
- * @brief Persistent parameter storage and management for MCU applications.
- *
- * This module provides a parameter system that stores default values in ROM
- * using frozen::unordered_map and allows runtime modifications in RAM.
- *
- * Features:
- * - Compile-time validation of default parameters.
- * - Efficient memory allocation using a static memory pool.
- * - Optimized storage for strings using TinyString.
- * - Support for integer and floating-point values with constraints.
- * - Custom allocator for string storage in a static memory buffer.
- */
-
 #pragma once
 
+/**
+ * @file persistantParam.hpp
+ * @brief Flat in-RAM parameter storage built from constexpr metadata.
+ *
+ * The UAVCAN parameter defaults live in the compile-time `params_list` frozen map.
+ * This header computes, at compile time:
+ *  - the ValueKind for each parameter (int/float/bool/string/none),
+ *  - the per-parameter size and offset inside a contiguous byte buffer,
+ *  - the total buffer size and alignment.
+ *
+ * At runtime, all parameter values are stored in a single `ramStore` buffer.
+ * The `StoredValue` proxy exposes a variant-like API (`visit`, `get`, `holds_alternative`)
+ * while reading/writing directly into the flat buffer. This keeps the external API stable
+ * (callers still use `Parameter::get/set/find`, PARAM_* macros, std::visit) but removes
+ * the per-parameter std::variant footprint in RAM.
+ *
+ * Usage:
+ *  - `Parameter::populateDefaults()` constructs in-place values into `ramStore`.
+ *  - `Parameter::find()` returns the StoredValue proxy and the ParamDefault metadata.
+ *  - `Parameter::set/get` mirror the previous API; string values live in-place.
+ *  - Serialization uses the same on-wire format as before.
+ */
 
 #include "dronecan_msgs.h"
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <iterator>
+#include <new>
 #include <type_traits>
+#include <utility>
 #include <etl/vector.h>
 #include <span>
 #include "persistantParamTypes.hpp"
 #include "persistantParamCrc.hpp"
 #include "ch.h"
 #include "etl/span.h"
-/*
-  FAIT :
-
-
-  TODO :
-
-
-  ° /fix : fonctions de conversion UAV CAN : enforce minmax
- 
-  ° stoquer si getSet from UAVCan
-
-  ° refaire un tour : style, nom des fonctions/methodes (restore ??)
-
-  ° gestion CONST.PARAMETERS.CRC32 par get direct à haut niveau plutôt
-  que dans persistantStorage.cpp ?
-
-  ° gain en mémoire : remplacer le stockage d'un variant par le stockage du type
-  reel, en ayant un calcul constexpr de la place prise dimensionant un memory pool.
-  Pour chaque paramètre, on a une fonction constexpr qui donne son adresse dans le tableau.
-  Si le nom est literal, on force la resolution consteval du calcul de l'adresse, sion on parcourt
-  la map frozen.
-
-*/
-
-/*
-
-Using gcc15.2 in C++26 mode :
-  
-in /home/alex/DEV/STM32/CHIBIOS/COMMON/various/UAVCAN directory, there is a module that store persistant
-  parameters : persistantParam.hpp + persistantParam.cpp .
-  The parameters name are constant described by a
-  frozen::map of variant. We find the name, minmum, maximun and
-  default value. Associated are values, that can be changed, and are
-  in ram. The actual code is not optimal in size (target = small MCU)
-  because the ram value is also stored as a variant, and take 16 bytes
-  when most parameters are integer values that occupy 4 bytes on arm32.
-  My idea is to store all
-  ram value in a flat dedicated space. whole size can be calculated at
-  compile time adding each size for the frozen map entries. Also,
-  given a key in the map, we can compute the address in the ram store
-  where is the data, at compile time. We can generate at compile a frozen map key -> ram address so that we can easyly find ram address at runtime given the key (which is parameter name) or if we want to save flash size, we also can compute this at runtime but we have to walk thru the entire map to sum the size and compute the address in the flat ram table.
-
-  With this architecture, we should not need anymore getTinyStringMemoryPoolSize() since string will be associated with a flat space in this ram table.
-
-  example
-
-  ° baudrate 19200 // is an integer : 4 bytes : address in the ram store 0
-  ° ROLE.gps true // is bool : 1 byte : address in the ram store 4
-  ° node.name "MINICAN" :  TinyString : 47 bytes : address in the ram store 5
-  ° pid.k : float : 4 bytes : address in the ram store 52
-  ° total size 56 bytes
-
-
-  Ideally, I would made internal changes to save RAM, but keeping the externam API so that
-  all the modules that use the API continue to compile cleanly.
-
-  What do you think of that idea ?
-  do you understand my demand ?
-  do you want I explain points and details ?
-  do you think you are up to the task ?
-
-  - Question : Rough count/types of parameters and whether any
-   non–trivially-copyable types beyond TinyString/bool/int/float
-   exist.
-
-   - Answer : you will find modules that use theses API in COMMON/source, and the
-  actual list of parameters is in COMMON/source/nodeParameters.hpp.
-
-   - Question : Current API surface you need preserved (get/set by name?
-   iterating? serialization?).
-
-   - Answer :  I want to preserve all API surface, at least all the surface that is
-  used in the modules. 
-
-  -Question : Alignment requirements for the flat  buffer (e.g., 4-byte align for ints/floats).
-   - Answer : No alignment required, armv7-m can manage
-  unaligned access at the price of a slighty more cpu cycles, but
-  access are scarce, and when value is needed in a scarce loop, it is
-  cache in a local variable.
-
-  
-  -Question : Acceptable trade-off: more flash for a precomputed frozen offset map
-    vs. small runtime cost to sum sizes. Which do you prefer?
-
-  - Answer :  For the trade off, I don't know, it will
-  depend on the size that the map will occupy. In fact most of the map
-  size will be occupy by the key (frozen string), if there is a
-  possibility that theses string are shared between the two frozen
-  map, the index map will not cost a lot
-
- if you ask yoursel question about the variant visit method : I use g++15.2 in gnu++26 mode,
- so the visit method, which is a c++26 addiction, is available. Consider you can
-  use all c++26 options that are available with gcc15.2
-
-
-Questions :
-  1. Precomputed frozen offset map vs. runtime prefix-sum walk?
-  2. OK to ship a small proxy that mimics the variant surface (to avoid touching callers), or should I instead patch the couple of holds_alternative/visit uses?
-
-Answers :
- 1/when the retreive function is called for a constant key, we don't need holds_alternative/visit since the type is known at compile time. But when we call the API
-  with a runtime key, the type is unknown and the variant API is the best, is is well known from programmers, son don't reinvent the wheel.
-
-  2/ Give a try to precomputed frozen map : To save space, it could be a map "index of parameter" -> "ram offset" instead of "name" -> "ram offset". You first get the index from the big frozen map,
-  then ram offset from the smaller offset map
-
-
-
-  
- */
 
 namespace Persistant {
-  
-
-  /**
-   * @brief Compute the required memory for string parameters.
-   * @return The total size needed for string storage.
-   */
-  static consteval size_t getTinyStringMemoryPoolSize() {
-    struct Overload {
-      constexpr size_t operator()(Persistant::NoValue) const { return 0; }
-      constexpr size_t operator()(Integer) const { return 0; }
-      constexpr size_t operator()(float) const { return 0; }
-      constexpr size_t operator()(bool) const { return 0; }
-      constexpr size_t operator()(const frozen::string &) const {
-	return sizeof(TinyString<0, tinyStrSize>);
-      }
-    };
-
-    size_t size = 0;
-    for (size_t i = 0; i < params_list_len; i++) {
-      params_list[i].second.v.visit([&](const auto &param) { size += Overload{}(param); });
-    }
-
-    return size;
-  }
-
-  using StoredString = TinyString<getTinyStringMemoryPoolSize(), tinyStrSize>;
-  using StoredValue = std::variant<NoValue, Integer, float, bool, StoredString *>;
-  using StoreData = std::pair<ssize_t, StoredValue>;
+  /// Compact in-place string; storage is provided by the flat buffer, not by a pool.
+  using StoredString = TinyString<tinyStrSize, tinyStrSize>;
   using StoreSerializeBuffer = etl::vector<uint8_t, 256>;
+
   /**
-   * @brief Compile-time validation of a parameter entry.
-   * @param param The parameter definition to validate.
-   * @note    min and max are else NoValue or the same type as v
-   *		neither min or max for string parameters
-   *		default value is in the range min..max it they are supplied
-   * @return True if valid, false otherwise.
+   * @brief Runtime kind of a parameter value stored in the flat buffer.
    */
-  consteval bool isValidDefault(const ParamDefault &param) {
-    return param.v.visit(
-		      [&](const auto &v) -> bool {
-			using T = std::decay_t<decltype(v)>;
+  enum class ValueKind : std::uint8_t {
+    None = 0,
+    Int  = 1,
+    Real = 2,
+    Bool = 3,
+    Str  = 4,
+  };
 
-			if constexpr (std::is_same_v<T, Integer> || std::is_same_v<T, float>) {
-			  return std::visit(
-					    [&](const auto &min_val, const auto &max_val) -> bool {
-					      using MinT = std::decay_t<decltype(min_val)>;
-					      using MaxT = std::decay_t<decltype(max_val)>;
+  /**
+   * @brief Per-parameter layout info: offset, size and kind.
+   */
+  struct ParamLayout {
+    size_t offset{};
+    size_t size{};
+    ValueKind kind{ValueKind::None};
+  };
 
-					      if constexpr (std::is_same_v<MinT, T>) {
-						if (v < min_val)
-						  return 0;
-					      }
-					      if constexpr (std::is_same_v<MaxT, T>) {
-						if (v > max_val)
-						  return 0;
-					      }
-					      return (std::is_same_v<MinT, NoValue> ||
-						      std::is_same_v<MinT, T>) &&
-						(std::is_same_v<MaxT, NoValue> ||
-						 std::is_same_v<MaxT, T>);
-					    },
-					    param.min, param.max);
+  /**
+   * @brief Full layout of the flat buffer.
+   */
+  struct LayoutInfo {
+    std::array<ParamLayout, params_list_len> entries{};
+    size_t totalSize{};
+    size_t maxAlign{};
+  };
 
-			} else {
-			  return std::visit(
-					    [](const auto &min_val, const auto &max_val) -> bool {
-					      using MinT = std::decay_t<decltype(min_val)>;
-					      using MaxT = std::decay_t<decltype(max_val)>;
-
-					      return (std::is_same_v<MinT, NoValue>) &&
-						(std::is_same_v<MaxT, NoValue>);
-					    },
-					    param.min, param.max);
-			}
-		      });
+  /**
+   * @brief Deduce the storage kind from the default value.
+   */
+  inline constexpr ValueKind defaultKind(const FrozenDefault &deflt) {
+    return deflt.visit([](const auto &value) {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (std::is_same_v<T, NoValue>) {
+        return ValueKind::None;
+      } else if constexpr (std::is_same_v<T, Integer>) {
+        return ValueKind::Int;
+      } else if constexpr (std::is_same_v<T, float>) {
+        return ValueKind::Real;
+      } else if constexpr (std::is_same_v<T, bool>) {
+        return ValueKind::Bool;
+      } else if constexpr (std::is_same_v<T, frozen::string>) {
+        return ValueKind::Str;
+      } else {
+        static_assert([] { return false; }(), "Unsupported default kind");
+      }
+    });
   }
 
   /**
-   * @brief Compile-time validation of the entire parameter list.
-   * @param paramsPairList The list of parameter definitions.
-   * @return The index of the first invalid entry, or -1 if all are valid.
+   * @brief Return the byte footprint of a given ValueKind.
    */
-  consteval int validateDefaultsList(const auto &paramsPairList) {
+  inline constexpr size_t kindSize(ValueKind kind) {
+    switch (kind) {
+    case ValueKind::None:
+      return 0;
+    case ValueKind::Int:
+      return sizeof(Integer);
+    case ValueKind::Real:
+      return sizeof(float);
+    case ValueKind::Bool:
+      return sizeof(bool);
+    case ValueKind::Str:
+      return sizeof(StoredString);
+    }
+    return 0;
+  }
+
+  /**
+   * @brief Return the alignment requirement for a given ValueKind.
+   */
+  inline constexpr size_t kindAlign(ValueKind kind) {
+    switch (kind) {
+    case ValueKind::None:
+      return 1;
+    case ValueKind::Int:
+      return alignof(Integer);
+    case ValueKind::Real:
+      return alignof(float);
+    case ValueKind::Bool:
+      return alignof(bool);
+    case ValueKind::Str:
+      return alignof(StoredString);
+    }
+    return 1;
+  }
+
+  /**
+   * @brief Compute offset/size/kind for every parameter at compile time.
+   * @return LayoutInfo containing per-entry layout and total buffer size.
+   */
+  inline constexpr LayoutInfo computeLayout() {
+    LayoutInfo info{};
+    size_t offset = 0;
+    size_t maxAlign = 1;
+    for (size_t i = 0; i < params_list_len; i++) {
+      const ValueKind kind = defaultKind(params_list[i].second.v);
+      const size_t align = kindAlign(kind);
+      const size_t size = kindSize(kind);
+      offset = (offset + (align - 1)) & ~(align - 1);
+      info.entries[i] = ParamLayout{offset, size, kind};
+      offset += size;
+      maxAlign = std::max(maxAlign, align);
+    }
+    info.totalSize = offset;
+    info.maxAlign = maxAlign;
+    return info;
+  }
+
+  template <typename T> struct TypeToKind;
+  template <> struct TypeToKind<NoValue> { static constexpr ValueKind value = ValueKind::None; };
+  template <> struct TypeToKind<Integer> { static constexpr ValueKind value = ValueKind::Int; };
+  template <> struct TypeToKind<float> { static constexpr ValueKind value = ValueKind::Real; };
+  template <> struct TypeToKind<bool> { static constexpr ValueKind value = ValueKind::Bool; };
+  template <> struct TypeToKind<StoredString> { static constexpr ValueKind value = ValueKind::Str; };
+
+  template <size_t TAG> struct TagToType;
+  template <> struct TagToType<0> { using type = NoValue; };
+  template <> struct TagToType<1> { using type = Integer; };
+  template <> struct TagToType<2> { using type = float; };
+  template <> struct TagToType<3> { using type = bool; };
+  template <> struct TagToType<4> { using type = StoredString; };
+
+  /**
+   * @brief Ensure a ParamDefault's min/max match the default type.
+   * @return true when the default and constraints are coherent.
+   */
+  inline consteval bool isValidDefault(const ParamDefault &param) {
+    return param.v.visit(
+                      [&](const auto &v) -> bool {
+                        using T = std::decay_t<decltype(v)>;
+
+                        if constexpr (std::is_same_v<T, Integer> || std::is_same_v<T, float>) {
+                          return std::visit(
+                                            [&](const auto &min_val, const auto &max_val) -> bool {
+                                              using MinT = std::decay_t<decltype(min_val)>;
+                                              using MaxT = std::decay_t<decltype(max_val)>;
+
+                                              if constexpr (std::is_same_v<MinT, T>) {
+                                                if (v < min_val)
+                                                  return 0;
+                                              }
+                                              if constexpr (std::is_same_v<MaxT, T>) {
+                                                if (v > max_val)
+                                                  return 0;
+                                              }
+                                              return (std::is_same_v<MinT, NoValue> ||
+                                                      std::is_same_v<MinT, T>) &&
+                                                (std::is_same_v<MaxT, NoValue> ||
+                                                 std::is_same_v<MaxT, T>);
+                                            },
+                                            param.min, param.max);
+
+                        } else {
+                          return std::visit(
+                                            [](const auto &min_val, const auto &max_val) -> bool {
+                                              using MinT = std::decay_t<decltype(min_val)>;
+                                              using MaxT = std::decay_t<decltype(max_val)>;
+
+                                              return (std::is_same_v<MinT, NoValue>) &&
+                                                (std::is_same_v<MaxT, NoValue>);
+                                            },
+                                            param.min, param.max);
+                        }
+                      });
+  }
+
+  /**
+   * @brief Validate the entire params_list at compile time.
+   * @return -1 when all entries are valid, otherwise the failing index.
+   */
+  inline consteval int validateDefaultsList(const auto &paramsPairList) {
     int index = 0;
     for (const auto &entry : paramsPairList) {
       if (!isValidDefault(entry.second))
-	return index;
+        return index;
       index++;
     }
     return -1;
   }
 
-  /// Static assert at compile-time
-  /// if a check fail, compiler error message will show the first
-  /// offending entry, numbered from 0
   static_assert(validateDefaultsList(params_list) < 0,
-		"❌ params_list contains invalid ParamDefault entries!");
+                "❌ params_list contains invalid ParamDefault entries!");
 
-  /// Frozen map for fast parameter lookup.
   inline constexpr const auto frozenParameters = frozen::make_map(params_list);
+  inline constexpr auto layoutInfo = computeLayout();
 
+  /**
+   * @brief Proxy exposing a variant-like API backed by the flat buffer.
+   *
+   * StoredValue holds only a parameter index. Accessors compute the address in
+   * `ramStore` via `layoutInfo` and return references to the in-place objects.
+   * This lets existing code keep using std::visit/std::get/std::holds_alternative
+   * while we avoid per-parameter std::variant storage.
+   */
+  class StoredValue;
+  class Parameter;
+
+  class StoredValue {
+  public:
+    /**
+     * @brief Create a proxy pointing to a parameter slot.
+     * @param idx Index in `params_list` / `layoutInfo.entries` (0-based). The default
+     *            constructor leaves the proxy bound to index 0, which is safe because
+     *            callers immediately replace it via Parameter::find().
+     */
+    constexpr StoredValue(size_t idx = 0) : paramIndex(idx) {}
+
+    /**
+     * @brief Runtime kind of the referenced parameter.
+     * @return ValueKind enumeration describing the active payload type.
+     */
+    constexpr ValueKind kind() const;
+
+    /**
+     * @brief Type tag usable with TagToType.
+     * @return Kind encoded as a small integer; matches the variant index.
+     */
+    constexpr size_t index() const { return static_cast<size_t>(kind()); }
+
+    /**
+     * @brief Check if the payload can be viewed as T.
+     * @tparam T One of Integer, float, bool, StoredString, NoValue.
+     */
+    template <typename T>
+    constexpr bool is() const;
+
+    /**
+     * @brief Mutable typed view of the payload.
+     * @tparam T One of the supported parameter types.
+     * @return Reference to the object living inside the flat buffer.
+     * @warning Asserts if the kind does not match T.
+     */
+    template <typename T>
+    constexpr T &get();
+
+    /**
+     * @brief Const typed view of the payload.
+     * @tparam T One of the supported parameter types.
+     * @return Const reference to the object living inside the flat buffer.
+     * @warning Asserts if the kind does not match T.
+     */
+    template <typename T>
+    constexpr const T &get() const;
+
+    /**
+     * @brief Access by numeric tag (variant-style).
+     * @tparam TAG 0..4 corresponding to NoValue/Integer/float/bool/StoredString.
+     */
+    template <size_t TAG>
+    constexpr auto &get();
+
+    /**
+     * @brief Const access by numeric tag (variant-style).
+     * @tparam TAG 0..4 corresponding to NoValue/Integer/float/bool/StoredString.
+     */
+    template <size_t TAG>
+    constexpr const auto &get() const;
+
+    /**
+     * @brief Assign a new value into the buffer.
+     */
+    template <typename T>
+    constexpr void set(const T &value) { get<T>() = value; }
+
+    /**
+     * @brief Apply a visitor over the active payload.
+     * @param vis Callable with operator() overloads for each supported type.
+     * @return Whatever the visitor returns.
+     */
+    template <typename Visitor>
+    constexpr decltype(auto) visit(Visitor &&vis);
+
+    /**
+     * @brief Const-qualified visitor application.
+     * @param vis Callable with operator() overloads for each supported type.
+     * @return Whatever the visitor returns.
+     */
+    template <typename Visitor>
+    constexpr decltype(auto) visit(Visitor &&vis) const;
+
+  private:
+    friend class Parameter;
+    constexpr std::byte *raw();
+    constexpr const std::byte *raw() const;
+
+    size_t paramIndex{};
+  };
+
+  using StoreData = std::pair<ssize_t, StoredValue>;
+
+  /**
+   * @brief Facade to access parameters by name/index, get/set, and serialize.
+   *
+   * The class preserves the previous public surface but now operates on a flat buffer.
+   * Callers primarily use:
+   *  - find()/cfind()/findIndex() to locate a parameter,
+   *  - get()/set() to read or mutate,
+   *  - serializeStoredValue()/deserializeStoredValue() for EEPROM/storage.
+   *
+   * @note All indices are the order of entries in `params_list`.
+   */
   class Parameter {
   public:
     Parameter() = delete;
 
     /**
-     * @brief Find the index of a parameter by name.
-     * @param key The parameter name.
-     * @return The index of the parameter, or -1 if not found.
+     * @brief Locate a parameter by its frozen key.
+     * @param key `frozen::string` from the table or from a literal.
+     * @return 0-based index in `params_list`, or -1 when not found.
      */
-    constexpr static ssize_t findIndex(const frozen::string& key);
-    consteval static ssize_t cfindIndex(const frozen::string& key) {
+    constexpr static ssize_t findIndex(const frozen::string &key);
+
+    /** @brief constexpr-friendly variant of findIndex for compile-time usage. */
+    consteval static ssize_t cfindIndex(const frozen::string &key) {
       return findIndex(key);
     }
 
+    /** @overload */
     constexpr static ssize_t findIndex(const uint8_t *str) {
       return findIndex(frozen::string(reinterpret_cast<const char *>(str)));
     }
 
+    /** @overload */
     constexpr static ssize_t findIndex(const char *str) {
       return findIndex(frozen::string(str));
     }
 
-    constexpr static const frozen::string& findName(const size_t index);
-  
     /**
-     * @brief Retrieve a parameter by index.
-     * @param index The parameter index.
-     * @return A reference to the stored value and its default settings.
+     * @brief Get the parameter name by index (no bounds check).
+     * @param index 0-based index within `params_list`.
      */
-    constexpr static std::pair<StoredValue &, const ParamDefault &>
+    constexpr static const frozen::string &findName(const size_t index);
+
+    /**
+     * @brief Retrieve both the StoredValue proxy and its metadata.
+     * @param index 0-based index; out-of-range returns a dummy NoValue pair.
+     */
+    constexpr static std::pair<StoredValue, const ParamDefault &>
     find(const ssize_t index);
 
-    /**
-     * @brief Retrieve a parameter by name.
-     * @param key The parameter name.
-     * @return A reference to the stored value and its default settings.
-     */
-    constexpr static std::pair<StoredValue &, const ParamDefault &>
+    /** @overload Retrieve by frozen key. */
+    constexpr static std::pair<StoredValue, const ParamDefault &>
     find(const frozen::string key);
 
-    consteval static std::pair<StoredValue &, const ParamDefault &>
+    /** @brief constexpr wrapper over find() for compile-time literals. */
+    consteval static std::pair<StoredValue, const ParamDefault &>
     cfind(const frozen::string key);
 
-    /**
-     * @brief Retrieve a parameter by name using a C-style string.
-     * @param key The parameter name.
-     * @return A reference to the stored value and its default settings.
-     */
-    constexpr static std::pair<StoredValue &, const ParamDefault &>
+    /** @overload Retrieve by C string key. */
+    constexpr static std::pair<StoredValue, const ParamDefault &>
     find(const char *key);
 
     /**
-     * @brief Retrieve a parameter by name using a C-style string.
-     * @param key The parameter name.
-     * @return the value of the underlying variant selected by the type
+     * @brief Typed accessor by name; asserts on mismatched type.
+     * @tparam T Desired runtime type (Integer/float/bool/StoredString).
+     * @param key Parameter name.
+     * @return Const reference to the in-place value.
      */
-    template<typename T>
-    static const T& get(const char *key);
-    
-   /**
-     * @brief Retrieve a parameter by index
-     * @param index The parameter index.
-     * @return the value of the underlying variant selected by the type
-     */
-    template<typename T>
-    static const T& get(const size_t index);
+    template <typename T>
+    static const T &get(const char *key);
+
+    /** @overload Typed accessor by index. */
+    template <typename T>
+    static const T &get(const size_t index);
 
     /**
-     * @brief Retrieve a  by index and tag
-     * @param index The parameter index.
-     * @return the value of the underlying variant selected by the type
+     * @brief Variant-style getter by tag.
+     * @tparam TAG 0..4 corresponding to TagToType entries.
+     * @param index Parameter index.
      */
-    template<size_t TAG>
-    static const auto& get(const size_t index);
+    template <size_t TAG>
+    static const auto &get(const size_t index);
 
     /**
-     * @brief Clamp an integer value within its defined min/max range.
+     * @brief Clamp an Integer against its ParamDefault min/max.
      */
     constexpr static Integer clamp(const ParamDefault &deflt,
-				   const Integer &value);
+                                   const Integer &value);
 
     /**
-     * @brief Clamp a float value within its defined min/max range.
+     * @brief Clamp a float against its ParamDefault min/max.
      */
     constexpr static float clamp(const ParamDefault &deflt, const float &value);
 
     /**
-     * @brief Set a new integer value for a parameter, ensuring constraints are
-     * met.
+     * @brief Assign an Integer value (applies clamping).
+     * @return true if the storage kind matches.
      */
     constexpr static bool
-    set(const std::pair<StoredValue &, const ParamDefault &> &p,
-	const Integer &value);
+    set(const std::pair<StoredValue, const ParamDefault &> &p,
+        const Integer &value);
 
-   /**
-     * @brief Set a new bool value for a parameter
-     */
+    /** @overload Assign a bool. */
     constexpr static bool
-    set(const std::pair<StoredValue &, const ParamDefault &> &p,
-	const bool &value);
+    set(const std::pair<StoredValue, const ParamDefault &> &p,
+        const bool &value);
+
+    /** @overload Assign a float (applies clamping). */
+    constexpr static bool
+    set(const std::pair<StoredValue, const ParamDefault &> &p,
+        const float &value);
+
+    /** @overload Assign a TinyString (copy into flat buffer slot). */
+    constexpr static bool
+    set(const std::pair<StoredValue, const ParamDefault &> &p,
+        const StoredString &value);
+
+    /** @overload Parse and assign from a textual literal. */
+    constexpr static bool
+    set(const std::pair<StoredValue, const ParamDefault &> &p,
+        const char *value);
+
+    /** @overload Assign from the frozen default variant. */
+    constexpr static bool
+    set(const std::pair<StoredValue, const ParamDefault &> &p,
+        const FrozenDefault &value);
+
+    /** @overload Assign from another StoredValue (same kind only). */
+    constexpr static bool
+    set(const std::pair<StoredValue, const ParamDefault &> &p,
+        const StoredValue &value);
 
     /**
-     * @brief Set a new float value for a parameter, ensuring constraints are met.
+     * @brief Copy out the current value with compile-time type.
+     * @tparam T Desired return type.
      */
-    constexpr static bool
-    set(const std::pair<StoredValue &, const ParamDefault &> &p,
-	const float &value);
-
-   /**
-     * @brief Set a new Stored String value for a parameter
-     */
-    constexpr static bool
-    set(const std::pair<StoredValue &, const ParamDefault &> &p,
-	const StoredString &value);
-
-    /**
-     * @brief Set a new value from string, doing best effort to convert
-     * string to the holded type
-     */
-    constexpr static bool
-    set(const std::pair<StoredValue &, const ParamDefault &> &p,
-	const char* value);
-    /**
-     * @brief Set a new value from StoredValue
-     */
-    constexpr static bool
-    set(const std::pair<StoredValue &, const ParamDefault &> &p,
-	const StoredValue &value);
-
     template <typename T>
     constexpr static T
-    get(const std::pair<StoredValue &, const ParamDefault &> &p);
+    get(const std::pair<StoredValue, const ParamDefault &> &p);
 
-    static void serializeStoredValue(size_t index, StoreSerializeBuffer& buffer);
-    static bool deserializeStoredValue(StoredValue& value, const StoreSerializeBuffer& buffer);
-    static bool deserializeStoredValue(size_t index, const StoreSerializeBuffer& buffer);
-    static etl::span<const uint8_t> deserializeGetName(const StoreSerializeBuffer& buffer);
+    /**
+     * @brief Serialize a parameter into a transient buffer for EEPROM.
+     * @param index Parameter index.
+     * @param buffer Output buffer reused by storage.
+     */
+    static void serializeStoredValue(size_t index, StoreSerializeBuffer &buffer);
 
-    /**  
-     * @brief Populate default values into the parameter list.
+    /**
+     * @brief Deserialize a parameter from a buffer back into ramStore.
+     * @param index Parameter index to overwrite.
+     * @param buffer Input buffer filled by storage backend.
+     * @return true when type and payload are consistent; false otherwise.
+     */
+    static bool deserializeStoredValue(size_t index, const StoreSerializeBuffer &buffer);
+
+    /**
+     * @brief Extract the parameter name slice from a serialized buffer.
+     * @return Span pointing to the null-terminated name (first byte holds length).
+     */
+    static etl::span<const uint8_t> deserializeGetName(const StoreSerializeBuffer &buffer);
+
+    /**
+     * @brief Construct all default values directly into the flat buffer.
      */
     static void populateDefaults();
+
+    /**
+     * @brief Clamp a single parameter against its min/max (no-op for strings/bools).
+     */
     static void enforceMinMax(size_t index);
+
+    /**
+     * @brief Clamp all parameters; used after deserialization.
+     */
     static void enforceMinMax();
-    
-  private:
-    static std::array<StoredValue, params_list_len>
-    storedParamsList; ///< Runtime storage of parameter values
+
+    /// Flat contiguous backing buffer holding every parameter value.
+    alignas(layoutInfo.maxAlign) static inline std::array<std::byte, layoutInfo.totalSize> ramStore{};
   };
 
-  
-  constexpr ssize_t Parameter::findIndex(const frozen::string &key) {
+  // StoredValue definitions
+  inline constexpr ValueKind StoredValue::kind() const {
+    return layoutInfo.entries[paramIndex].kind;
+  }
+
+  inline constexpr std::byte *StoredValue::raw() {
+    return Parameter::ramStore.data() + layoutInfo.entries[paramIndex].offset;
+  }
+
+  inline constexpr const std::byte *StoredValue::raw() const {
+    return Parameter::ramStore.data() + layoutInfo.entries[paramIndex].offset;
+  }
+
+  template <typename T>
+  inline constexpr bool StoredValue::is() const {
+    return kind() == TypeToKind<T>::value;
+  }
+
+  template <typename T>
+  inline constexpr T &StoredValue::get() {
+    chDbgAssert(is<T>(), "invalid tag for storage");
+    return *std::launder(reinterpret_cast<T *>(raw()));
+  }
+
+  template <typename T>
+  inline constexpr const T &StoredValue::get() const {
+    chDbgAssert(is<T>(), "invalid tag for storage");
+    return *std::launder(reinterpret_cast<const T *>(raw()));
+  }
+
+  template <size_t TAG>
+  inline constexpr auto &StoredValue::get() {
+    using T = typename TagToType<TAG>::type;
+    return get<T>();
+  }
+
+  template <size_t TAG>
+  inline constexpr const auto &StoredValue::get() const {
+    using T = typename TagToType<TAG>::type;
+    return get<T>();
+  }
+
+  template <typename Visitor>
+  inline constexpr decltype(auto) StoredValue::visit(Visitor &&vis) {
+    switch (kind()) {
+    case ValueKind::None:
+      return std::forward<Visitor>(vis)(NoValue{});
+    case ValueKind::Int:
+      return std::forward<Visitor>(vis)(get<Integer>());
+    case ValueKind::Real:
+      return std::forward<Visitor>(vis)(get<float>());
+    case ValueKind::Bool:
+      return std::forward<Visitor>(vis)(get<bool>());
+    case ValueKind::Str:
+      return std::forward<Visitor>(vis)(get<StoredString>());
+    }
+    return std::forward<Visitor>(vis)(NoValue{});
+  }
+
+  template <typename Visitor>
+  inline constexpr decltype(auto) StoredValue::visit(Visitor &&vis) const {
+    switch (kind()) {
+    case ValueKind::None:
+      return std::forward<Visitor>(vis)(NoValue{});
+    case ValueKind::Int:
+      return std::forward<Visitor>(vis)(get<Integer>());
+    case ValueKind::Real:
+      return std::forward<Visitor>(vis)(get<float>());
+    case ValueKind::Bool:
+      return std::forward<Visitor>(vis)(get<bool>());
+    case ValueKind::Str:
+      return std::forward<Visitor>(vis)(get<StoredString>());
+    }
+    return std::forward<Visitor>(vis)(NoValue{});
+  }
+
+  // Parameter inline definitions
+  inline constexpr ssize_t Parameter::findIndex(const frozen::string &key) {
     const auto it = frozenParameters.find(key);
     if (it == frozenParameters.end()) {
-      return -1; // Key not found
+      return -1;
     }
     return std::distance(frozenParameters.begin(), it);
   }
   
-  constexpr  const frozen::string& Parameter::findName(const size_t index)  {
+  inline constexpr const frozen::string &Parameter::findName(const size_t index)  {
     return std::next(frozenParameters.begin(), index < params_list_len ? index : 0)->first;
   }
 
-  constexpr std::pair<StoredValue &, const ParamDefault &>
+  inline constexpr std::pair<StoredValue, const ParamDefault &>
   Parameter::find(const ssize_t index) {
     static constexpr ParamDefault empty = {};
     if ((index >= 0) and (index < params_list_len)) {
-      return {storedParamsList[index], std::next(frozenParameters.begin(), index)->second};
+      return {StoredValue(index), std::next(frozenParameters.begin(), index)->second};
     } else {
-      return {storedParamsList[0], empty};
+      return {StoredValue(0), empty};
     }
   }
 
-  constexpr std::pair<StoredValue &, const ParamDefault &>
+  inline constexpr std::pair<StoredValue, const ParamDefault &>
   Parameter::find(const frozen::string key) {
     const auto index = findIndex(key);
     return find(index);
   }
 
-  consteval std::pair<StoredValue &, const ParamDefault &>
+  inline consteval std::pair<StoredValue, const ParamDefault &>
   Parameter::cfind(const frozen::string key) {
     const auto index = cfindIndex(key);
     return find(index);
   }
 
-  constexpr std::pair<StoredValue &, const ParamDefault &>
+  inline constexpr std::pair<StoredValue, const ParamDefault &>
   Parameter::find(const char *key) {
     const auto index = findIndex(frozen::string(key));
     return find(index);
   }
 
   template<typename T>
-  const T& Parameter::get(const char *key)
+  inline const T& Parameter::get(const char *key)
   {
     const auto& [stored, _] = find(key);
-    chDbgAssert(std::holds_alternative<T>(stored),
-		"invalid tag for variant");
-    return std::get<T>(stored);
+    return stored.get<T>();
   }
 
   template<typename T>
-  const T& Parameter::get(const size_t index)
+  inline const T& Parameter::get(const size_t index)
   {
     const auto& [stored, _] = find(index);
-    chDbgAssert(std::holds_alternative<T>(stored),
-		"invalid tag for variant");
-    return std::get<T>(stored);
+    return stored.get<T>();
   }
   
   template<size_t TAG>
-  const auto& Parameter::get(const size_t index)
+  inline const auto& Parameter::get(const size_t index)
   {
     const auto& [stored, _] = find(index);
-    return std::get<TAG>(stored);
+    return stored.get<TAG>();
   }
 
-  constexpr Integer Parameter::clamp(const ParamDefault &deflt,
-				     const Integer &value) {
+  inline constexpr Integer Parameter::clamp(const ParamDefault &deflt,
+                                     const Integer &value) {
     Integer ret = value;
 
     if (std::holds_alternative<Integer>(deflt.min))
@@ -464,8 +665,8 @@ namespace Persistant {
     return ret;
   }
 
-  constexpr float Parameter::clamp(const ParamDefault &deflt,
-				   const float &value) {
+  inline constexpr float Parameter::clamp(const ParamDefault &deflt,
+                                   const float &value) {
     float ret = value;
 
     if (std::holds_alternative<float>(deflt.min))
@@ -475,120 +676,222 @@ namespace Persistant {
     return ret;
   }
 
-  constexpr bool
-  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
-		 const Integer &value) {
-    const auto &[store, deflt] = p;
-    if (not std::holds_alternative<Integer>(store)) {
+  inline constexpr bool
+  Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
+                 const Integer &value) {
+    auto [store, deflt] = p;
+    if (store.kind() != ValueKind::Int) {
       return false;
     }
-    store = clamp(deflt, value);
+    store.get<Integer>() = clamp(deflt, value);
     return true;
   }
 
-  constexpr bool
-  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
-		 const bool &value) {
-    const auto &[store, deflt] = p;
-    if (not std::holds_alternative<bool>(store)) {
+  inline constexpr bool
+  Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
+                 const bool &value) {
+    auto [store, deflt] = p;
+    (void) deflt;
+    if (store.kind() != ValueKind::Bool) {
       return false;
     }
-    store = value;
+    store.get<bool>() = value;
     return true;
   }
 
-  constexpr bool
-  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
-		 const float &value) {
-    const auto &[store, deflt] = p;
-    if (not std::holds_alternative<float>(store)) {
+  inline constexpr bool
+  Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
+                 const float &value) {
+    auto [store, deflt] = p;
+    if (store.kind() != ValueKind::Real) {
       return false;
     }
-    store = clamp(deflt, value);
+    store.get<float>() = clamp(deflt, value);
     return true;
   }
 
-  constexpr bool
-  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
-		 const StoredString &value) {
-    const auto &[store, deflt] = p;
-    if (not std::holds_alternative<StoredString *>(store)) {
+  inline constexpr bool
+  Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
+                 const StoredString &value) {
+    auto [store, deflt] = p;
+    (void) deflt;
+    if (store.kind() != ValueKind::Str) {
       return false;
     }
-    *(std::get<StoredString *>(store)) = value;
+    store.get<StoredString>() = value;
     return true;
   }
 
-  constexpr bool
-  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
-		 const char *value) {
-    const auto &[store, deflt] = p;
-    if (std::holds_alternative<Integer>(store)) {
-      store =  clamp(deflt, atoll(value));
-    } else if (std::holds_alternative<bool>(store)) {
-      store = (*value == '0') or (tolower(*value) == 'f') ? false : true;
-    } else if (std::holds_alternative<float>(store)) {
-      store = clamp(deflt, static_cast<float>(atof(value)));
-    } else if (std::holds_alternative<StoredString *>(store)) {
-      *(std::get<StoredString *>(store)) = value;
-    } else {
+  inline constexpr bool
+  Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
+                 const char *value) {
+    auto [store, deflt] = p;
+    switch (store.kind()) {
+    case ValueKind::Int:
+      store.get<Integer>() = clamp(deflt, atoll(value));
+      break;
+    case ValueKind::Bool:
+      store.get<bool>() = (*value == '0') or (tolower(*value) == 'f') ? false : true;
+      break;
+    case ValueKind::Real:
+      store.get<float>() = clamp(deflt, static_cast<float>(atof(value)));
+      break;
+    case ValueKind::Str:
+      store.get<StoredString>() = value;
+      break;
+    default:
       return false;
     }
     return true;
   }
 
-  constexpr  bool
-  Parameter::set(const std::pair<StoredValue &, const ParamDefault &> &p,
-		 const StoredValue &value)
+  inline constexpr  bool
+  Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
+                 const FrozenDefault &value)
   {
-    auto &[store, deflt] = p;
-    if (store.index() == value.index()) {
-      if (std::holds_alternative<Integer>(store)) {
-	store =  clamp(deflt, std::get<Integer>(value));
-      } else if (std::holds_alternative<float>(store)) {
-	store =  clamp(deflt, std::get<float>(value));
-      } else {
-	store = value;
+    auto [store, deflt] = p;
+    bool ok = true;
+    value.visit([&](const auto& val) {
+      using T = std::decay_t<decltype(val)>;
+      if constexpr (std::is_same_v<T, NoValue>) {
+        ok = store.kind() == ValueKind::None;
+      } else if constexpr (std::is_same_v<T, Integer>) {
+        ok = set(p, val);
+      } else if constexpr (std::is_same_v<T, float>) {
+        ok = set(p, val);
+      } else if constexpr (std::is_same_v<T, bool>) {
+        ok = set(p, val);
+      } else if constexpr (std::is_same_v<T, frozen::string>) {
+        if (store.kind() == ValueKind::Str) {
+          store.get<StoredString>() = val.data();
+        } else {
+          ok = false;
+        }
       }
-      return true;
-    } else {
+    });
+    return ok;
+  }
+
+  inline constexpr bool
+  Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
+                 const StoredValue &value)
+  {
+    auto [store, deflt] = p;
+    if (store.kind() != value.kind()) {
       return false;
     }
+    switch (store.kind()) {
+    case ValueKind::Int:
+      store.get<Integer>() = clamp(deflt, value.get<Integer>());
+      break;
+    case ValueKind::Real:
+      store.get<float>() = clamp(deflt, value.get<float>());
+      break;
+    case ValueKind::Bool:
+      store.get<bool>() = value.get<bool>();
+      break;
+    case ValueKind::Str:
+      store.get<StoredString>() = value.get<StoredString>();
+      break;
+    case ValueKind::None:
+      break;
+    }
+    return true;
   }
 
   
   template <typename T>
-  constexpr T
-  Parameter::get(const std::pair<StoredValue &, const ParamDefault &> &p) {
+  inline constexpr T
+  Parameter::get(const std::pair<StoredValue, const ParamDefault &> &p) {
     const auto &[store, deflt] = p;
-    return std::get<T>(store);
+    (void) deflt;
+    return store.get<T>();
   }
 
-  void toUavcan(const StoredValue& storedValue, uavcan_protocol_param_Value& uavcanValue);
-  void toUavcan(const FrozenDefault& defaultValue, uavcan_protocol_param_Value& uavcanValue);
-  bool fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue);
-  void toUavcan(const NumericValue& numericValue, uavcan_protocol_param_NumericValue& uavcanValue);
-  bool fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue);
+  /**
+   * @brief Convert a StoredValue (runtime value) to a UAVCAN wire representation.
+   * @param storedValue Flat-buffer proxy.
+   * @param uavcanValue Destination UAVCAN union.
+   */
+  void toUavcan(const StoredValue &storedValue, uavcan_protocol_param_Value &uavcanValue);
 
+  /**
+   * @brief Convert a FrozenDefault (compile-time default) to a UAVCAN union.
+   * @param defaultValue Variant of default.
+   * @param uavcanValue Destination UAVCAN union.
+   */
+  void toUavcan(const FrozenDefault &defaultValue, uavcan_protocol_param_Value &uavcanValue);
+
+  /**
+   * @brief Import a UAVCAN union into a StoredValue if the types match.
+   * @return true on success, false on kind mismatch.
+   */
+  bool fromUavcan(const uavcan_protocol_param_Value &uavcanValue, StoredValue &storedValue);
+
+  /**
+   * @brief Convert NumericValue min/max to UAVCAN.
+   */
+  void toUavcan(const NumericValue &numericValue, uavcan_protocol_param_NumericValue &uavcanValue);
+
+  /**
+   * @brief Populate NumericValue from UAVCAN.
+   * @return true when the tag is recognized.
+   */
+  bool fromUavcan(const uavcan_protocol_param_NumericValue &uavcanValue, NumericValue &numericValue);
+
+  /**
+   * @brief Handle a UAVCAN GetSet request and optionally mutate storage.
+   * @param req Incoming request.
+   * @param resp Response filled with current/default/min/max.
+   * @return Pair of (index, StoredValue) when a value was modified, {-1, {}} otherwise.
+   */
   StoreData getSetResponse(const uavcan_protocol_param_GetSetRequest &req,
-			   uavcan_protocol_param_GetSetResponse& resp);
-  
+                           uavcan_protocol_param_GetSetResponse &resp);
+
 } // namespace Persistant
 
-#define PARAM_TYPECGET(type, name)				     \
-  ({								     \
-     constexpr ssize_t idx = Persistant::Parameter::findIndex(name); \
-     static_assert(idx >= 0, name " not found");		     \
-     Persistant::Parameter::get<type>(idx);			     \
+// Provide std::visit/std::get/std::holds_alternative compatibility so existing
+// callers keep working with the lightweight StoredValue proxy.
+namespace std {
+  template <class Visitor>
+  constexpr decltype(auto) visit(Visitor &&vis, Persistant::StoredValue &v) {
+    return v.visit(std::forward<Visitor>(vis));
+  }
+
+  template <class Visitor>
+  constexpr decltype(auto) visit(Visitor &&vis, const Persistant::StoredValue &v) {
+    return v.visit(std::forward<Visitor>(vis));
+  }
+
+  template <class T>
+  constexpr T &get(Persistant::StoredValue &v) {
+    return v.template get<T>();
+  }
+
+  template <class T>
+  constexpr const T &get(const Persistant::StoredValue &v) {
+    return v.template get<T>();
+  }
+
+  template <class T>
+  constexpr bool holds_alternative(const Persistant::StoredValue &v) {
+    return v.template is<T>();
+  }
+} // namespace std
+
+#define PARAM_TYPECGET(type, name)                                     \
+  ({                                                                   \
+     constexpr ssize_t idx = Persistant::Parameter::findIndex(name);   \
+     static_assert(idx >= 0, name " not found");                       \
+     Persistant::Parameter::get<type>(idx);                            \
   })
 
-#define PARAM_CGET(name)					     \
-  ({								     \
-     constexpr ssize_t idx = Persistant::Parameter::findIndex(name); \
-     static_assert(idx >= 0, name " not found");		     \
-     constexpr auto& variant =					     \
-       std::next(frozenParameters.begin(), idx)->second.v;	     \
-     constexpr int tag = variant.index();			     \
-     Persistant::Parameter::get<tag>(idx);			     \
+#define PARAM_CGET(name)                                               \
+  ({                                                                   \
+     constexpr ssize_t idx = Persistant::Parameter::findIndex(name);   \
+     static_assert(idx >= 0, name " not found");                       \
+     constexpr auto &variant =                                         \
+       std::next(Persistant::frozenParameters.begin(), idx)->second.v; \
+     constexpr int tag = variant.index();                              \
+     Persistant::Parameter::get<tag>(idx);                             \
   })
-

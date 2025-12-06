@@ -1,3 +1,11 @@
+/**
+ * @file persistantStorage.cpp
+ * @brief EEPROM/backing-store integration for flat parameter buffer.
+ *
+ * This module wraps `Persistant::Parameter` serialization helpers to persist
+ * parameters into a record-based backing store supplied by the application.
+ * It handles CRC guard, partial restore, and a binary search by parameter name.
+ */
 #include "persistantStorage.hpp"
 
 #include <span>
@@ -22,6 +30,10 @@
 
 namespace {
 
+  /**
+   * @brief Literal to build a byte array from a string at compile time.
+   * @details Used to compare serialized parameter names without allocating.
+   */
   consteval auto operator""_u(const char* str, std::size_t len) {
     std::array<uint8_t, 128> buffer{};  // Change 8 to fit your needs
     std::size_t n = std::min(len, buffer.size()); // Avoid overflow
@@ -32,6 +44,13 @@ namespace {
     return buffer;
   }
   
+  /**
+   * @brief Compare two spans of bytes as C strings.
+   * @param lhs Left-hand byte span.
+   * @param rhs Right-hand byte span.
+   * @param use_min_length When true, only the shortest common prefix is compared.
+   * @return Three-way comparison suitable for binary search.
+   */
   constexpr std::strong_ordering compareStrSpan(
 						etl::span<const uint8_t> lhs, 
 						etl::span<const uint8_t> rhs, 
@@ -65,6 +84,10 @@ namespace {
 }
 
 namespace Persistant {
+  /**
+   * @brief Create a Storage wrapper around an EEPROM-like handle.
+   * @param _handle Backend callbacks; all must be valid.
+   */
   Storage::Storage(const EepromStoreHandle& _handle) : handle(_handle)
   {
     chDbgAssert(handle.writeFn != nullptr, "handle.writeFn is null");
@@ -74,6 +97,12 @@ namespace Persistant {
     
   }
 
+  /**
+   * @brief Populate defaults, attempt full restore, then fall back to partial restore.
+   * @return true when all parameters are restored (or rewritten) successfully.
+   * @details On CRC mismatch or corrupted entries, it rebuilds defaults, partially
+   *          restores what is valid, re-clamps values, erases storage, and stores all.
+   */
   bool Storage::start()
   {
     Parameter::populateDefaults();
@@ -88,6 +117,10 @@ namespace Persistant {
     return restoreStatus;
   }
   
+  /**
+   * @brief Wipe the complete backing store.
+   * @note Guarded by a mutex on ChibiOS targets.
+   */
   bool Storage::eraseAll()
   {
 #ifdef TARGET_ARM_CHIBIOS
@@ -96,11 +129,19 @@ namespace Persistant {
     return handle.eraseFn();
   }
   
+  /**
+   * @brief Write an already-serialized record to backing store.
+   * @param index Record position in storage.
+   * @param lbuffer Serialized contents (name + type + value).
+   */
   bool Storage::store(size_t index, const StoreSerializeBuffer& lbuffer)
   {
     return handle.writeFn(index, buffer.data(), lbuffer.size());
   }
   
+  /**
+   * @brief Serialize and write the parameter at @p index.
+   */
   bool Storage::store(size_t index)
   {
 #ifdef TARGET_ARM_CHIBIOS
@@ -110,6 +151,12 @@ namespace Persistant {
     return store(index, buffer);
   }
  
+  /**
+   * @brief Fetch a raw record from storage into a local buffer.
+   * @param index Record index in EEPROM.
+   * @param lbuffer Buffer that will receive the data; resized on success.
+   * @return true if the backend read succeeds.
+   */
   bool Storage::restore(size_t index, StoreSerializeBuffer& lbuffer)
   {
     size_t size = buffer.capacity();
@@ -123,6 +170,10 @@ namespace Persistant {
   
 
   
+  /**
+   * @brief Read a record by index and apply it to the matching frozen entry.
+   * @return false when read fails or CRC mismatch is detected.
+   */
   bool Storage::restore(size_t index)
   {
 #ifdef TARGET_ARM_CHIBIOS
@@ -160,6 +211,11 @@ namespace Persistant {
     return true;
   }
   
+  /**
+   * @brief Restore a record from a given storage slot into a frozen index.
+   * @param frozenIndex Index in the compile-time map.
+   * @param storeIndex Index in the persisted store.
+   */
   bool Storage::restore(size_t frozenIndex, size_t storeIndex)
   {
     if (restore(storeIndex, buffer) != true) {
@@ -175,6 +231,10 @@ namespace Persistant {
     return true;
   }
   
+  /**
+   * @brief Serialize and write every parameter to storage.
+   * @return Aggregated success flag across all writes.
+   */
   bool Storage::storeAll()
   {
     bool success = true;
@@ -184,6 +244,10 @@ namespace Persistant {
     return success;
   }
 
+  /**
+   * @brief Restore every persisted record.
+   * @return Aggregated success flag; logs failures but continues.
+   */
   bool Storage::restoreAll()
   {
     bool success = true;
@@ -197,12 +261,19 @@ namespace Persistant {
     return success;
   }
 
+  /**
+   * @brief Number of records in backing store.
+   */
   size_t Storage::getLen()
   {
     return  handle.getLen();
   }
   
-// Binary search function (returns index of found string or -1 if not found)
+  /**
+   * @brief Binary search the backing store for a given parameter name.
+   * @param ftarget Frozen name to find.
+   * @return Record index or -1 if not found.
+   */
   ssize_t Storage::binarySearch(const frozen::string& ftarget)
   {
     const std::size_t total_strings = handle.getLen();
@@ -239,6 +310,10 @@ namespace Persistant {
     return -1;  // Not found
 }
   
+ /**
+  * @brief Restore only entries that are present in both the frozen map and storage.
+  * @details Used when a full restore fails; skips missing entries gracefully.
+  */
  void Storage::partialRestore()
  {
    for (size_t idx=0; idx < params_list_len; idx++) {
@@ -256,22 +331,28 @@ namespace Persistant {
    }
  }
   
+  /**
+   * @brief Fetch a parameter directly from storage without touching the store slot.
+   * @param paramName Name of the parameter to look up.
+   * @return StoredValue proxy bound to RAM, or default-constructed on failure.
+   */
   StoredValue Storage::get(const frozen::string& paramName)
   {
-    const ssize_t index = binarySearch(paramName);
-    if (index >= 0) {
-      if (restore(index, buffer) != true) {
-	return {};
-      }
-      StoredValue value;
-      if (Parameter::deserializeStoredValue(value, buffer)) {
-	return value;
-      } else {
-	return {};
-      }
-    } else {
+    const ssize_t frozenIndex = Parameter::findIndex(paramName);
+    if (frozenIndex < 0) {
       return {};
     }
+    const ssize_t storeIndex = binarySearch(paramName);
+    if (storeIndex < 0) {
+      return {};
+    }
+    if (!restore(storeIndex, buffer)) {
+      return {};
+    }
+    if (!Parameter::deserializeStoredValue(static_cast<size_t>(frozenIndex), buffer)) {
+      return {};
+    }
+    return Parameter::find(frozenIndex).first;
   }
 
 #ifdef TARGET_ARM_CHIBIOS

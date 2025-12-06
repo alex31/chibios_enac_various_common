@@ -780,12 +780,8 @@ template<typename MSG_T>
 Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
   uint8_t buffer[MSG_T::cxx_iface::MAX_SIZE];
 
-#if CANARD_ENABLE_CANFD
-  const bool fdFrame = transfer->canfd;
+  const bool fdFrame = isCanfdEnabled();
   const uint16_t len = MSG_T::cxx_iface::encode(&msg, buffer, not fdFrame);
-#else
-  const uint16_t len = MSG_T::cxx_iface::encode(&msg, buffer, true);
-#endif
   CanardTxTransfer broadcast = { .transfer_type = CanardTransferTypeBroadcast,
                                  .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
                                  .data_type_id = MSG_T::cxx_iface::ID,
@@ -794,12 +790,10 @@ Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
                                  .payload = buffer,
                                  .payload_len = len,
 #if CANARD_ENABLE_CANFD
-                                .canfd = fdFrame,
-                                .tao = (not fdFrame) && (nodeId != 0)
-#else
-                                 .tao = nodeId != 0
+				 .canfd = fdFrame,
 #endif
-				};
+				 .tao = (not fdFrame) && (nodeId != 0)
+                              };
   canStatus_t status;
   chMtxLock(&canard_mtx_s);
   const int16_t canardStatus = canardBroadcastObj(&canard, &broadcast);

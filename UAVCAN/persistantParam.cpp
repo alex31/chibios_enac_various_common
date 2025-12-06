@@ -1,5 +1,17 @@
+/**
+ * @file persistantParam.cpp
+ * @brief Runtime helpers for flat-buffer parameter storage: init, clamp, (de)serialize.
+ *
+ * This file binds the constexpr layout from persistantParam.hpp to actual runtime logic:
+ *  - populateDefaults() constructs all defaults in-place into the flat buffer,
+ *  - enforceMinMax() clamps numeric values using ParamDefault ranges,
+ *  - UAVCAN conversion helpers operate on StoredValue proxies,
+ *  - serialization/deserialization uses the same on-wire format as before.
+ */
 #include "persistantParam.hpp"
-#include <bit>  // For std::bit_cast
+#include <cstring>
+#include <algorithm>
+#include <memory>
 
 #if defined(__x86_64__) && defined(__linux__)
 #define TARGET_LINUX_X86_64
@@ -12,199 +24,174 @@
 #error "Unsupported architecture!"
 #endif
 
-
 namespace Persistant {
+  /**
+   * @brief Compute a CRC over the compile-time parameter table.
+   * @return Two's complement CRC32 of `params_list`.
+   * @details Used to detect mismatches between persisted data and the compiled defaults.
+   */
   consteval std::int64_t computeParamsListCRC()
   {
-    std::uint32_t crc = 0xFFFFFFFFu; // initial
+    std::uint32_t crc = 0xFFFFFFFFu;
     for (auto&& entry : params_list) {
       crc = hashParamDefaultEntry(crc, entry);
     }
-    return ~crc; // final XOR
+    return ~crc;
   }
 
-  // does not use heap, custom allocator will use statically
-  // defined memory area
-  struct Overload {
-    void operator()(StoredValue& sv, NoValue n) const {
-      sv = n;
-    }
-    void operator()(StoredValue& sv, Integer i) const {
-      sv = i;
-    }
-    void operator()(StoredValue& sv, bool b) const {
-      sv = b;
-    }
-    void operator()(StoredValue& sv, float f) const {
-      sv = f;
-    }
-    void operator()(StoredValue& sv, const frozen::string& s) const {
-      sv = new StoredString (s.data()); // no heap harmed during this allocation
-    }
-  };
-
-
+  /**
+   * @brief Construct all defaults in-place inside the flat buffer.
+   * @note Strings are built directly into their dedicated slot; CRC param filled afterwards.
+   */
   void Parameter::populateDefaults()
   {
-    size_t index = 0;
-    for (const auto& [_, variant] : frozenParameters) {  
-      variant.v.visit([&](const auto& value) {
-	Overload{}(storedParamsList[index++], value);  
+    for (size_t index = 0; index < params_list_len; index++) {
+      const auto &def = std::next(frozenParameters.begin(), index)->second.v;
+      std::byte *ptr = ramStore.data() + layoutInfo.entries[index].offset;
+
+      def.visit([&](const auto &value) {
+        using T = std::decay_t<decltype(value)>;
+        if constexpr (std::is_same_v<T, NoValue>) {
+          // nothing to construct
+        } else if constexpr (std::is_same_v<T, Integer>) {
+          std::construct_at(reinterpret_cast<Integer *>(ptr), value);
+        } else if constexpr (std::is_same_v<T, float>) {
+          std::construct_at(reinterpret_cast<float *>(ptr), value);
+        } else if constexpr (std::is_same_v<T, bool>) {
+          std::construct_at(reinterpret_cast<bool *>(ptr), value);
+        } else if constexpr (std::is_same_v<T, frozen::string>) {
+          std::construct_at(reinterpret_cast<StoredString *>(ptr), value.data());
+        }
       });
     }
-    static_assert(Persistant::Parameter::findIndex  ("const.parameters.crc32") > 0);
-    const auto& crc32 = Persistant::Parameter::cfind("const.parameters.crc32");
+    static_assert(Persistant::Parameter::findIndex("const.parameters.crc32") > 0);
+    const auto &crc32 = Persistant::Parameter::cfind("const.parameters.crc32");
     set(crc32, computeParamsListCRC());
   }
 
- struct EnforceMinMax {
-   void operator()(StoredValue&, NoValue,  NoValue) const {
-    }
-   void operator()(StoredValue& sv, NoValue,  Integer max) const {
-     sv = std::min(max, std::get<Integer>(sv));
-    }
-   void operator()(StoredValue& sv, NoValue,  float max) const {
-     sv = std::min(max, std::get<float>(sv));
-    }
-   void operator()(StoredValue& sv, Integer min, NoValue) const {
-     sv = std::max(min, std::get<Integer>(sv));
-    }
-   void operator()(StoredValue& sv, float min , NoValue) const {
-      sv = std::max(min, std::get<float>(sv));
-    }
-   void operator()(StoredValue&, float, Integer) const {
-     chDbgAssert(false,  "internal fault");
-    }
-   void operator()(StoredValue&, Integer, float) const {
-     chDbgAssert(false,  "internal fault");
-    }
-   void operator()(StoredValue& sv, Integer min, Integer max) const {
-     sv = std::max(min, std::min(std::get<Integer>(sv), max));
-    }
-   void operator()(StoredValue& sv, float min, float max) const {
-     sv = std::max(min, std::min(std::get<float>(sv), max));
-   }
- };
-
+  /**
+   * @brief Clamp a single parameter against its declared min/max.
+   * @param index Index into `params_list`.
+   * @details No-ops for bool/string/empty kinds; integers and floats are clamped in place.
+   */
   void Parameter::enforceMinMax(size_t index)
   {
-    const auto& variant = std::next(frozenParameters.begin(), index)->second;
-    std::visit([&](const auto& min, const auto& max) {
-      EnforceMinMax{}(storedParamsList[index], min, max);  
-    }, variant.min, variant.max);
+    auto [value, variant] = Parameter::find(index);
+    switch (layoutInfo.entries[index].kind) {
+    case ValueKind::Int: {
+      auto &sv = value.get<Integer>();
+      if (std::holds_alternative<Integer>(variant.min)) {
+        sv = std::max(sv, std::get<Integer>(variant.min));
+      }
+      if (std::holds_alternative<Integer>(variant.max)) {
+        sv = std::min(sv, std::get<Integer>(variant.max));
+      }
+      break;
+    }
+    case ValueKind::Real: {
+      auto &sv = value.get<float>();
+      if (std::holds_alternative<float>(variant.min)) {
+        sv = std::max(sv, std::get<float>(variant.min));
+      }
+      if (std::holds_alternative<float>(variant.max)) {
+        sv = std::min(sv, std::get<float>(variant.max));
+      }
+      break;
+    }
+    default:
+      break;
+    }
   }
 
+  /**
+   * @brief Clamp every parameter; typically called after deserialization.
+   */
   void Parameter::enforceMinMax()
   {
     for (size_t index = 0; index < params_list_len; index++) {
       enforceMinMax(index);
     }
-
-    //   size_t index = 0;
-    // for (const auto& [_, variant] : frozenParameters) {  
-    //   std::visit([&](const auto& min, const auto& max) {
-    // 	EnforceMinMax{}(storedParamsList[index++], min, max);  
-    //   }, variant.min, variant.max);
-    // }
   }
 
   /**
-   * @brief Converts a StoredValue (std::variant) into a UAVCAN Value structure.
-   *
-   * This function takes a `StoredValue`, which is a `std::variant` containing different types,
-   * and converts it into the corresponding `uavcan_protocol_param_Value` structure.
-   *
-   * @param storedValue The `StoredValue` to convert.
-   * @param[out] uavcanValue The resulting UAVCAN structure.
+   * @brief Serialize an in-RAM parameter into a UAVCAN union.
+   * @param storedValue Proxy bound to the flat buffer.
+   * @param uavcanValue Output UAVCAN value.
    */
-  void toUavcan(const StoredValue& storedValue, uavcan_protocol_param_Value& uavcanValue)
+  void toUavcan(const StoredValue &storedValue, uavcan_protocol_param_Value &uavcanValue)
   {
     storedValue.visit([&](const auto& val) {
       using T = std::decay_t<decltype(val)>;
-      
       if constexpr (std::is_same_v<T, NoValue>) {
-	uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
       } else if constexpr (std::is_same_v<T, Integer>) {
-	uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_INTEGER_VALUE;
-	uavcanValue.integer_value = val;
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_INTEGER_VALUE;
+        uavcanValue.integer_value = val;
       } else if constexpr (std::is_same_v<T, float>) {
-	uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_REAL_VALUE;
-	uavcanValue.real_value = val;
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_REAL_VALUE;
+        uavcanValue.real_value = val;
       } else if constexpr (std::is_same_v<T, bool>) {
-	uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_BOOLEAN_VALUE;
-	uavcanValue.boolean_value = val;
-      } else if constexpr (std::is_same_v<T, StoredString*>) {
-	uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_STRING_VALUE;
-	if (val) {
-	  uavcanValue.string_value.len = std::min<uint8_t>(val->size(), 128);
-	  std::memcpy(uavcanValue.string_value.data, val->c_str(), uavcanValue.string_value.len);
-	} else {
-	  uavcanValue.string_value.len = 0;
-	}
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_BOOLEAN_VALUE;
+        uavcanValue.boolean_value = val;
+      } else if constexpr (std::is_same_v<T, StoredString>) {
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_STRING_VALUE;
+        uavcanValue.string_value.len = std::min<uint8_t>(val.size(), 128);
+        std::memcpy(uavcanValue.string_value.data, val.c_str(), uavcanValue.string_value.len);
       }
     });
   }
 
-
-
   /**
-   * @brief Converts a UAVCAN Value structure into a StoredValue (std::variant).
-   *
-   * This function takes a `uavcan_protocol_param_Value` structure and converts it into a `StoredValue`.
-   * If the `StoredValue` is a string, it modifies the existing `StoredString` in place.
-   *
-   * @param uavcanValue The UAVCAN structure to convert.
-   * @param[out] storedValue The resulting `StoredValue`, updated in place.
+   * @brief Deserialize a UAVCAN union into a StoredValue.
+   * @param uavcanValue Incoming wire value.
+   * @param storedValue Destination proxy; must have matching kind.
+   * @return true on success, false on type mismatch.
    */
   bool fromUavcan(const uavcan_protocol_param_Value& uavcanValue, StoredValue& storedValue)
   {
     switch (uavcanValue.union_tag) {
     case UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY:
-      storedValue = NoValue{};
-      break;
+      if (storedValue.kind() == ValueKind::None) {
+        return true;
+      }
+      if (storedValue.kind() == ValueKind::Str) {
+        storedValue.get<StoredString>().clear();
+        return true;
+      }
+      return false;
     case UAVCAN_PROTOCOL_PARAM_VALUE_INTEGER_VALUE:
-      if (std::holds_alternative<Integer>(storedValue)) {
-	storedValue = uavcanValue.integer_value;
-      } else {
-	return false;
+      if (storedValue.kind() == ValueKind::Int) {
+        storedValue.get<Integer>() = uavcanValue.integer_value;
+        return true;
       }
-      break;
+      return false;
     case UAVCAN_PROTOCOL_PARAM_VALUE_REAL_VALUE:
-      if (std::holds_alternative<float>(storedValue)) {
-      storedValue = uavcanValue.real_value;
-      } else {
-	return false;
+      if (storedValue.kind() == ValueKind::Real) {
+        storedValue.get<float>() = uavcanValue.real_value;
+        return true;
       }
-      break;
+      return false;
     case UAVCAN_PROTOCOL_PARAM_VALUE_BOOLEAN_VALUE:
-      if (std::holds_alternative<bool>(storedValue)) {
-	storedValue = static_cast<bool>(uavcanValue.boolean_value);
-      } else {
-	return false;
+      if (storedValue.kind() == ValueKind::Bool) {
+        storedValue.get<bool>() = static_cast<bool>(uavcanValue.boolean_value);
+        return true;
       }
-      break;
+      return false;
     case UAVCAN_PROTOCOL_PARAM_VALUE_STRING_VALUE:
-      if (std::holds_alternative<StoredString*>(storedValue)) {
-        StoredString* strPtr = std::get<StoredString*>(storedValue);
-	if (!strPtr) {
-	  	return false;
-	}
-	strPtr->assign(reinterpret_cast<const char*>(uavcanValue.string_value.data), 
-		       uavcanValue.string_value.len);
-      } else {
-	return false;
+      if (storedValue.kind() == ValueKind::Str) {
+        auto &str = storedValue.get<StoredString>();
+        uint8_t len = std::min<uint8_t>(uavcanValue.string_value.len, str.capacity());
+        str.assign(reinterpret_cast<const char *>(uavcanValue.string_value.data), len);
+        return true;
       }
-      break;
+      return false;
     default:
       return false;
     }
-    return true;
   }
 
   /**
-   * @brief Converts a NumericValue (std::variant) into a UAVCAN NumericValue structure.
-   * @param numericValue The NumericValue to convert.
-   * @param uavcanValue The resulting UAVCAN structure.
+   * @brief Serialize NumericValue (min/max) variant into UAVCAN.
    */
   void toUavcan(const NumericValue& numericValue, uavcan_protocol_param_NumericValue& uavcanValue)
   {
@@ -212,44 +199,46 @@ namespace Persistant {
       using T = std::decay_t<decltype(val)>;
 
       if constexpr (std::is_same_v<T, NoValue>) {
-	uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_EMPTY;
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_EMPTY;
       } else if constexpr (std::is_same_v<T, Integer>) {
-	uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_INTEGER_VALUE;
-	uavcanValue.integer_value = val;
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_INTEGER_VALUE;
+        uavcanValue.integer_value = val;
       } else if constexpr (std::is_same_v<T, float>) {
-	uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_REAL_VALUE;
-	uavcanValue.real_value = val;
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_REAL_VALUE;
+        uavcanValue.real_value = val;
       }
     });
   }
 
+  /**
+   * @brief Serialize a FrozenDefault into UAVCAN representation.
+   */
   void toUavcan(const FrozenDefault& defaultValue, uavcan_protocol_param_Value& uavcanValue)
   {
     defaultValue.visit([&](const auto& val) {
-    using T = std::decay_t<decltype(val)>;
-      
-    if constexpr (std::is_same_v<T, NoValue>) {
-      uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
-    } else if constexpr (std::is_same_v<T, Integer>) {
-      uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_INTEGER_VALUE;
-      uavcanValue.integer_value = val;
-    } else if constexpr (std::is_same_v<T, float>) {
-      uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_REAL_VALUE;
-      uavcanValue.real_value = val;
-    } else if constexpr (std::is_same_v<T, bool>) {
-      uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_BOOLEAN_VALUE;
-      uavcanValue.boolean_value = val;
-    } else if constexpr (std::is_same_v<T, frozen::string>) {
-      uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_STRING_VALUE;
-      uavcanValue.string_value.len = std::min<uint8_t>(val.size(), 128);
-      std::memcpy(uavcanValue.string_value.data, val.data(), uavcanValue.string_value.len);
-    }
-  });
+      using T = std::decay_t<decltype(val)>;
+      if constexpr (std::is_same_v<T, NoValue>) {
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
+      } else if constexpr (std::is_same_v<T, Integer>) {
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_INTEGER_VALUE;
+        uavcanValue.integer_value = val;
+      } else if constexpr (std::is_same_v<T, float>) {
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_REAL_VALUE;
+        uavcanValue.real_value = val;
+      } else if constexpr (std::is_same_v<T, bool>) {
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_BOOLEAN_VALUE;
+        uavcanValue.boolean_value = val;
+      } else if constexpr (std::is_same_v<T, frozen::string>) {
+        uavcanValue.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_STRING_VALUE;
+        uavcanValue.string_value.len = std::min<uint8_t>(val.size(), 128);
+        std::memcpy(uavcanValue.string_value.data, val.data(), uavcanValue.string_value.len);
+      }
+    });
   }
+
   /**
-   * @brief Converts a UAVCAN NumericValue structure into a NumericValue (std::variant).
-   * @param uavcanValue The UAVCAN structure to convert.
-   * @param numericValue The resulting NumericValue.
+   * @brief Deserialize a UAVCAN NumericValue into a NumericValue variant.
+   * @return true when a recognized union tag is received.
    */
   bool fromUavcan(const uavcan_protocol_param_NumericValue& uavcanValue, NumericValue& numericValue)
   {
@@ -264,166 +253,98 @@ namespace Persistant {
       numericValue = uavcanValue.real_value;
       break;
     default:
-      numericValue = NoValue{}; // Fallback to NoValue in case of an invalid type
+      numericValue = NoValue{};
       return false;
     }
     return true;
   }
 
-  /*
-    Get or set a parameter by name or by index.
-    Note that access by index should only be used to retrieve the list of parameters; it is highly
-    discouraged to use it for anything else, because persistent ordering is not guaranteed.
-
-
-    implementors may choose to make parameter set operations be immediately persistent, or can choose
-    to make them temporary, requiring a ExecuteOpcode with OPCODE_SAVE to put into persistent storage
-
-
-    Index of the parameter starting from 0; ignored if name is nonempty.
-    Use index only to retrieve the list of parameters.
-    Parameter ordering must be well defined (e.g. alphabetical, or any other stable ordering),
-    in order for the index access to work.
-
-
-    If set - parameter will be assigned this value, then the new value will be returned.
-    If not set - current parameter value will be returned.
-    Refer to the definition of Value for details.
-
-
-
-
-    Actual parameter value.
-
-    For set requests, it should contain the actual parameter value after the set request was
-    executed. The objective is to let the client know if the value could not be updated, e.g.
-    due to its range violation, etc.
-
-    Empty value (and/or empty name) indicates that there is no such parameter.
-  */
-
+  /**
+   * @brief Handle UAVCAN GetSet: resolve name/index, optionally update, and build response.
+   * @param req Incoming GetSet request.
+   * @param resp Outgoing response (name, current value, defaults, min/max).
+   * @return {-1, {}} when no value updated, otherwise {index, StoredValue after update}.
+   */
   StoreData getSetResponse(const uavcan_protocol_param_GetSetRequest &req,
-			   uavcan_protocol_param_GetSetResponse& resp)
+                           uavcan_protocol_param_GetSetResponse& resp)
   {
-    // request by name
-    StoreData ret = {-1L, {}};
+    StoreData ret = {-1L, StoredValue{}};
     ssize_t index = req.index;
 
     if (req.name.len != 0) {
       memcpy(&resp.name, &req.name, sizeof(req.name));
-      // it's by name let's find the corresponding index
-      // don't know if string is null terminated, so make it
       resp.name.len = req.name.len;
       resp.name.data[std::min<uint16_t>(resp.name.len, sizeof(resp.name.data) -1U)] = 0;
       index = Parameter::findIndex(resp.name.data);
-       // if index is found, indicate it in response
     } else {
-      // request by index
       if ((index >= 0) and (index < params_list_len)) {
-	const auto& paramName =  std::next(frozenParameters.begin(), index)->first;
-	resp.name.len = paramName.size();
-	memcpy(resp.name.data, paramName.data(),
-	       std::min<uint16_t>(sizeof(resp.name.data), resp.name.len + 1U));
+        const auto& paramName =  std::next(frozenParameters.begin(), index)->first;
+        resp.name.len = paramName.size();
+        memcpy(resp.name.data, paramName.data(),
+               std::min<uint16_t>(sizeof(resp.name.data), resp.name.len + 1U));
       }
     }
-    // now we use index either found by name or directly given in message
-    // is it a set_and_request or just request ?
-    if ((index < 0) or (index >= params_list_len))
-      {
-	resp.name.len = req.name.len;
-	memcpy(resp.name.data, req.name.data,
-	       std::min<uint16_t>(sizeof(resp.name.data), resp.name.len));
-	resp.value.union_tag = 
-	  resp.default_value.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
-	resp.max_value.union_tag = 
-	  resp.min_value.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_EMPTY;
-	return ret;
-      }
-    
-    const auto& [stored, deflt] = Parameter::find(index);
+
+    if ((index < 0) or (index >= params_list_len)) {
+      resp.name.len = req.name.len;
+      memcpy(resp.name.data, req.name.data,
+             std::min<uint16_t>(sizeof(resp.name.data), resp.name.len));
+      resp.value.union_tag = 
+        resp.default_value.union_tag = UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY;
+      resp.max_value.union_tag = 
+        resp.min_value.union_tag = UAVCAN_PROTOCOL_PARAM_NUMERICVALUE_EMPTY;
+      return ret;
+    }
+    auto [stored, deflt] = Parameter::find(index);
     if (req.value.union_tag != UAVCAN_PROTOCOL_PARAM_VALUE_EMPTY) {
       fromUavcan(req.value, stored);
       Parameter::enforceMinMax(index);
-      ret = {index, stored}; // responsability to the caller to make the permanent store
+      ret = {index, stored};
     }
-    // fill all fields of response
     toUavcan(stored, resp.value);
     toUavcan(deflt.v, resp.default_value);
     toUavcan(deflt.min, resp.min_value);
     toUavcan(deflt.max, resp.max_value);
-    
     return ret;
   }
 
-
-#include <variant>
-#include <vector>
-#include <cstring>
-
-
-
-
-  /**
-   * @brief Serializes a StoredValue into a byte buffer.
-   * @param index The index of StoredValue to serialize.
-   * @param buffer The output buffer where the serialized data will be stored.
-   */
   void Parameter::serializeStoredValue(size_t index, StoreSerializeBuffer& buffer)
   {
     buffer.clear();
-
-    // store parameter name first
     const frozen::string& paramName = Parameter::findName(index);
-    // store the length of the parameter name
     buffer.push_back(paramName.size() + 1);
-    // then store the name
     buffer.insert(buffer.end(), paramName.begin(),  paramName.end());
     buffer.push_back(0);
-    
-    // then store parameter
     const auto & [value, _] = find(index);
-    uint8_t type_id = static_cast<uint8_t>(value.index()); // Store type index
+    uint8_t type_id = static_cast<uint8_t>(layoutInfo.entries[index].kind);
     buffer.push_back(type_id);
 
     value.visit([&](const auto& val) {
       using T = std::decay_t<decltype(val)>;
       if constexpr (std::is_same_v<T, Integer>) {
-	uint8_t bytes[sizeof(Integer)];
-	std::memcpy(bytes, &val, sizeof(Integer));
-	buffer.insert(buffer.end(), bytes, bytes + sizeof(Integer));
+        uint8_t bytes[sizeof(Integer)];
+        std::memcpy(bytes, &val, sizeof(Integer));
+        buffer.insert(buffer.end(), bytes, bytes + sizeof(Integer));
       } else if constexpr (std::is_same_v<T, float>) {
-	uint8_t bytes[sizeof(float)];
-	std::memcpy(bytes, &val, sizeof(float));
-	buffer.insert(buffer.end(), bytes, bytes + sizeof(float));
+        uint8_t bytes[sizeof(float)];
+        std::memcpy(bytes, &val, sizeof(float));
+        buffer.insert(buffer.end(), bytes, bytes + sizeof(float));
       } else if constexpr (std::is_same_v<T, bool>) {
-	buffer.push_back(static_cast<uint8_t>(val));
-      } else if constexpr (std::is_same_v<T, StoredString*>) {
-	if (val) {
-	  uint8_t len = std::min<uint8_t>(val->size(), val->capacity());
-	  buffer.push_back(len);
-	  buffer.insert(buffer.end(), val->c_str(), val->c_str() + len);
-	} else {
-	  buffer.push_back(0);
-	}
+        buffer.push_back(static_cast<uint8_t>(val));
+      } else if constexpr (std::is_same_v<T, StoredString>) {
+        uint8_t len = std::min<uint8_t>(val.size(), val.capacity());
+        buffer.push_back(len);
+        buffer.insert(buffer.end(), val.c_str(), val.c_str() + len);
       }
-      // NoValue does not require extra storage
     });
   }
 
-  /**
-   * @brief Deserializes a StoredValue from a byte buffer.
-   * @param buffer The input buffer containing serialized data.
-   * @param index The index of output StoredValue that will be reconstructed.
-   */
   etl::span<const uint8_t>
   Parameter::deserializeGetName(const StoreSerializeBuffer& buffer)
   {
     chDbgAssert(!buffer.empty(), "Buffer is empty!");
-    // unstore parameter name first
-    // unstore the length of the parameter name
     const size_t paramNameLen = buffer[0];
     const etl::span<const uint8_t> paramName(std::next(buffer.begin(), 1), paramNameLen);
-
     return paramName;
   }
 
@@ -433,125 +354,48 @@ namespace Persistant {
     if (buffer.empty()) {
       return false;
     }
-    // unstore parameter name first
-    // unstore the length of the parameter name
     const size_t paramNameLen = buffer[0];
     size_t currentIndex = paramNameLen + 1;
-    const auto & [value, _] = find(index);
-    uint8_t type_id = buffer[currentIndex++];
+    const uint8_t type_id = buffer[currentIndex++];
     const uint8_t* data = buffer.data() + currentIndex;
-    
-    switch (type_id) {
-    case 0: // NoValue
-      value = NoValue{};
-      break;
-    case 1: // Integer
-      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(Integer), "buffer size to small");
-      if (std::holds_alternative<Integer>(value)) {
-	// hint the compiler that values are not properly aligned in the serialized store
-	value = std::bit_cast<Integer>(*reinterpret_cast<const std::array<std::byte,
-				       sizeof(Integer)>*>(data));
-      } else {
-	return false;
-      }
-      break;
-    case 2: // float
-      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(float), "buffer size to small");
-      if (std::holds_alternative<float>(value)) {
-	// hint the compiler that values are not properly aligned in the serialized store
-	value = std::bit_cast<float>(*reinterpret_cast<const std::array<std::byte,
-				       sizeof(float)>*>(data));
-      } else {
-	return false;
-      }
-      break;
-    case 3: // bool
-      chDbgAssert(buffer.size() >= 3 + paramNameLen, "buffer size to small");
-       if (std::holds_alternative<bool>(value)) {
-	// hint the compiler that values are not properly aligned in the serialized store
-	 value = std::bit_cast<bool>(*reinterpret_cast<const std::array<std::byte,
-				      sizeof(bool)>*>(data));
-       } else {
-	return false;
-      }
-      break;
-    case 4: // StoredString*
-      if (std::holds_alternative<StoredString*>(value)) {
-	StoredString* strPtr = std::get<StoredString*>(value);
-	if (strPtr) {
-	  uint8_t len = std::min<uint8_t>(data[0], strPtr->capacity());
-	  strPtr->assign(reinterpret_cast<const char*>(data + 1), len);
-	}
-      } else {
-	return false;
-      }
-      break;
-    default:
-      chDbgAssert(false, "Unknown type identifier in serialization!");
-      value = NoValue{};
+    const auto kind = layoutInfo.entries[index].kind;
+    if (type_id != static_cast<uint8_t>(kind)) {
       return false;
     }
-    
+    auto [value, _] = Parameter::find(index);
+
+    switch (kind) {
+    case ValueKind::None:
+      break;
+    case ValueKind::Int: {
+      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(Integer), "buffer size too small");
+      Integer tmp;
+      std::memcpy(&tmp, data, sizeof(Integer));
+      value.get<Integer>() = tmp;
+      break;
+    }
+    case ValueKind::Real: {
+      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(float), "buffer size too small");
+      float tmp;
+      std::memcpy(&tmp, data, sizeof(float));
+      value.get<float>() = tmp;
+      break;
+    }
+    case ValueKind::Bool: {
+      chDbgAssert(buffer.size() >= 3 + paramNameLen, "buffer size too small");
+      bool tmp;
+      std::memcpy(&tmp, data, sizeof(bool));
+      value.get<bool>() = tmp;
+      break;
+    }
+    case ValueKind::Str: {
+      auto &str = value.get<StoredString>();
+      uint8_t len = std::min<uint8_t>(data[0], str.capacity());
+      str.assign(reinterpret_cast<const char*>(data + 1), len);
+      break;
+    }
+    }
     return true;
   }
 
-
-  bool
-  Parameter::deserializeStoredValue(StoredValue& value, const StoreSerializeBuffer& buffer)
-  {
-    if (buffer.empty()) {
-      return false;
-    }
-    // unstore parameter name first
-    // unstore the length of the parameter name
-    const size_t paramNameLen = buffer[0];
-    size_t currentIndex = paramNameLen + 1;
-    uint8_t type_id = buffer[currentIndex++];
-    const uint8_t* data = buffer.data() + currentIndex;
-
-    switch (type_id) {
-    case 0: // NoValue
-      value = NoValue{};
-      break;
-    case 1: // Integer
-      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(Integer), "buffer size to small");
-      // hint the compiler that values are not properly aligned in the serialized store
-      value = std::bit_cast<Integer>(*reinterpret_cast<const std::array<std::byte,
-				     sizeof(Integer)>*>(data));
-      break;
-    case 2: // float
-      chDbgAssert(buffer.size() >= 2 + paramNameLen + sizeof(float), "buffer size to small");
-      // hint the compiler that values are not properly aligned in the serialized store
-      value = std::bit_cast<float>(*reinterpret_cast<const std::array<std::byte,
-				   sizeof(float)>*>(data));
-      break;
-    case 3: // bool
-      chDbgAssert(buffer.size() >= 3 + paramNameLen, "buffer size to small");
-	// hint the compiler that values are not properly aligned in the serialized store
-      value = std::bit_cast<bool>(*reinterpret_cast<const std::array<std::byte,
-				  sizeof(bool)>*>(data));
-      break;
-    case 4: // StoredString*
-      if (std::holds_alternative<StoredString*>(value)) {
-	StoredString* strPtr = std::get<StoredString*>(value);
-	if (strPtr) {
-	  uint8_t len = std::min<uint8_t>(data[1], strPtr->capacity());
-	  strPtr->assign(reinterpret_cast<const char*>(data + 1), len);
-	}
-      } else {
-	return false;
-      }
-      break;
-    default:
-      chDbgAssert(false, "Unknown type identifier in serialization!");
-      value = NoValue{};
-      return false;
-    }
-    
-    return true;
-  }
-
-
-  std::array<StoredValue, params_list_len> Parameter::storedParamsList;
-  //  EepromStoreHandle Parameter::eepromHandle = {};
-}
+} // namespace Persistant
