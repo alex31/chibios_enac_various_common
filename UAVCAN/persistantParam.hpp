@@ -55,12 +55,12 @@ namespace Persistant {
   };
 
   /**
-   * @brief Per-parameter layout info: offset, size and kind.
+   * @brief Per-parameter layout info: byte offset into the flat buffer.
+   * @details Size and kind are derived on the fly from `params_list` defaults;
+   *          only the offset needs to be stored.
    */
   struct ParamLayout {
-    size_t offset{};
-    size_t size{};
-    ValueKind kind{ValueKind::None};
+    uint16_t offset{};
   };
 
   /**
@@ -68,8 +68,8 @@ namespace Persistant {
    */
   struct LayoutInfo {
     std::array<ParamLayout, params_list_len> entries{};
-    size_t totalSize{};
-    size_t maxAlign{};
+    uint16_t totalSize{};
+    uint16_t maxAlign{};
   };
 
   /**
@@ -138,18 +138,18 @@ namespace Persistant {
    */
   inline constexpr LayoutInfo computeLayout() {
     LayoutInfo info{};
-    size_t offset = 0;
-    size_t maxAlign = 1;
+    uint16_t offset = 0;
+    uint16_t maxAlign = 1;
     for (size_t i = 0; i < params_list_len; i++) {
       const ValueKind kind = defaultKind(params_list[i].second.v);
-      const size_t align = kindAlign(kind);
-      const size_t size = kindSize(kind);
+      const uint16_t align = static_cast<uint16_t>(kindAlign(kind));
+      const uint16_t size = static_cast<uint16_t>(kindSize(kind));
       offset = (offset + (align - 1)) & ~(align - 1);
-      info.entries[i] = ParamLayout{offset, size, kind};
+      info.entries[i] = ParamLayout{static_cast<uint16_t>(offset)};
       offset += size;
-      maxAlign = std::max(maxAlign, align);
+      maxAlign = std::max<uint16_t>(maxAlign, align);
     }
-    info.totalSize = offset;
+    info.totalSize = static_cast<uint16_t>(offset);
     info.maxAlign = maxAlign;
     return info;
   }
@@ -518,7 +518,7 @@ namespace Persistant {
 
   // StoredValue definitions
   inline constexpr ValueKind StoredValue::kind() const {
-    return layoutInfo.entries[paramIndex].kind;
+    return defaultKind(std::next(frozenParameters.begin(), paramIndex)->second.v);
   }
 
   inline constexpr std::byte *StoredValue::raw() {

@@ -77,7 +77,8 @@ namespace Persistant {
   void Parameter::enforceMinMax(size_t index)
   {
     auto [value, variant] = Parameter::find(index);
-    switch (layoutInfo.entries[index].kind) {
+    const ValueKind kind = defaultKind(std::next(frozenParameters.begin(), index)->second.v);
+    switch (kind) {
     case ValueKind::Int: {
       auto &sv = value.get<Integer>();
       if (std::holds_alternative<Integer>(variant.min)) {
@@ -316,7 +317,7 @@ namespace Persistant {
     buffer.insert(buffer.end(), paramName.begin(),  paramName.end());
     buffer.push_back(0);
     const auto & [value, _] = find(index);
-    uint8_t type_id = static_cast<uint8_t>(layoutInfo.entries[index].kind);
+    uint8_t type_id = static_cast<uint8_t>(defaultKind(std::next(frozenParameters.begin(), index)->second.v));
     buffer.push_back(type_id);
 
     value.visit([&](const auto& val) {
@@ -358,7 +359,7 @@ namespace Persistant {
     size_t currentIndex = paramNameLen + 1;
     const uint8_t type_id = buffer[currentIndex++];
     const uint8_t* data = buffer.data() + currentIndex;
-    const auto kind = layoutInfo.entries[index].kind;
+    const auto kind = defaultKind(std::next(frozenParameters.begin(), index)->second.v);
     if (type_id != static_cast<uint8_t>(kind)) {
       return false;
     }
