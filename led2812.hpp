@@ -186,14 +186,16 @@ public:
 #else
 	       , const uint8_t channel
 #endif
-	       , const TimerChannel m_timChannel = TimerChannel::C1
+	       , const TimerChannel m_timChannel = TimerChannel::C1, const size_t nbLed = N
 	       );
   LT& operator[](const size_t index) {return leds[index];};
   void emitFrame(void);
   void rotate(int32_t n);
   constexpr static size_t elemSize(void)  {return LT::elemSize();};
-  constexpr static size_t size(void)  {return
-      (sizeof(preamble)+sizeof(leds)+sizeof(end))/elemSize();};
+  constexpr static size_t valuesPerLed(void) {return sizeof(LT)/elemSize();};
+  size_t size(void) const {return
+      2 + (activeLedCount*valuesPerLed()) + 2;};
+  static_assert(sizeof(LT) % elemSize() == 0, "Led2812 size must align with timer element size");
 private:
   void start();
   struct {
@@ -205,6 +207,7 @@ private:
     // const typename LT::timerType end[8] = {0,0,0,0,0,0,0,0};
     const typename LT::timerType end[2] = {0,0};
   };
+  const size_t activeLedCount;
   const LedTiming &ledTiming;
   const TimerChannel timChannel;
   PWMDriver *pwmd;
@@ -240,7 +243,8 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 #else
 	       , const uint8_t channel
 #endif
-	       , const TimerChannel m_timChannel) :
+	       , const TimerChannel m_timChannel, const size_t nbLed) :
+  activeLedCount(std::min(nbLed, N)),
   ledTiming(m_ledTiming), timChannel(m_timChannel), pwmd(m_pwmd)
 {
   pwmCfg = {
@@ -302,6 +306,11 @@ void Led2812Strip<N, LT>::start()
 template <size_t N, typename LT>
 void Led2812Strip<N, LT>::emitFrame(void) 
 {
+  if (activeLedCount < N) {
+    auto *footer = reinterpret_cast<typename LT::timerType *>(leds.data()) + (activeLedCount * valuesPerLed());
+    footer[0] = 0;
+    footer[1] = 0;
+  }
   dmaTransfert(&dmap, &pwmd->tim->CCR[std::to_underlying(timChannel)], (void *) &preamble, size());
   chThdSleepMicroseconds(50);
 }
@@ -309,14 +318,19 @@ void Led2812Strip<N, LT>::emitFrame(void)
 template <size_t N, typename LT>
 void Led2812Strip<N, LT>::rotate(int32_t n) 
 {
-  if (n) {
-    if (n > 0) {
-      n %= N;
-      std::rotate(leds.rbegin(), leds.rbegin()+n, leds.rend());
-    } else {
-      n = -n % N;
-      std::rotate(leds.begin(), leds.begin()+n, leds.end());
-    }
+  if (!n || !activeLedCount) return;
+
+  auto first = leds.begin();
+  auto last = first + activeLedCount;
+
+  if (n > 0) {
+    n %= static_cast<int32_t>(activeLedCount);
+    if (!n) return;
+    std::rotate(first, last - n, last);
+  } else {
+    n = -n % static_cast<int32_t>(activeLedCount);
+    if (!n) return;
+    std::rotate(first, first + n, last);
   }
 }
 
