@@ -279,7 +279,7 @@ namespace Persistant {
      * @warning Asserts if the kind does not match T.
      */
     template <typename T>
-    constexpr T &get();
+    T &get();
 
     /**
      * @brief Const typed view of the payload.
@@ -288,27 +288,27 @@ namespace Persistant {
      * @warning Asserts if the kind does not match T.
      */
     template <typename T>
-    constexpr const T &get() const;
+    const T &get() const;
 
     /**
      * @brief Access by numeric tag (variant-style).
      * @tparam TAG 0..4 corresponding to NoValue/Integer/float/bool/StoredString.
      */
     template <size_t TAG>
-    constexpr auto &get();
+    auto &get();
 
     /**
      * @brief Const access by numeric tag (variant-style).
      * @tparam TAG 0..4 corresponding to NoValue/Integer/float/bool/StoredString.
      */
     template <size_t TAG>
-    constexpr const auto &get() const;
+    const auto &get() const;
 
     /**
      * @brief Assign a new value into the buffer.
      */
     template <typename T>
-    constexpr void set(const T &value) { get<T>() = value; }
+    void set(const T &value) { get<T>() = value; }
 
     /**
      * @brief Apply a visitor over the active payload.
@@ -316,7 +316,7 @@ namespace Persistant {
      * @return Whatever the visitor returns.
      */
     template <typename Visitor>
-    constexpr decltype(auto) visit(Visitor &&vis);
+    decltype(auto) visit(Visitor &&vis);
 
     /**
      * @brief Const-qualified visitor application.
@@ -324,12 +324,12 @@ namespace Persistant {
      * @return Whatever the visitor returns.
      */
     template <typename Visitor>
-    constexpr decltype(auto) visit(Visitor &&vis) const;
+    decltype(auto) visit(Visitor &&vis) const;
 
   private:
     friend class Parameter;
-    constexpr std::byte *raw();
-    constexpr const std::byte *raw() const;
+    std::byte *raw();
+    const std::byte *raw() const;
 
     size_t paramIndex{};
   };
@@ -434,37 +434,37 @@ namespace Persistant {
      * @brief Assign an Integer value (applies clamping).
      * @return true if the storage kind matches.
      */
-    constexpr static bool
+    static bool
     set(const std::pair<StoredValue, const ParamDefault &> &p,
         const Integer &value);
 
     /** @overload Assign a bool. */
-    constexpr static bool
+    static bool
     set(const std::pair<StoredValue, const ParamDefault &> &p,
         const bool &value);
 
     /** @overload Assign a float (applies clamping). */
-    constexpr static bool
+    static bool
     set(const std::pair<StoredValue, const ParamDefault &> &p,
         const float &value);
 
     /** @overload Assign a TinyString (copy into flat buffer slot). */
-    constexpr static bool
+    static bool
     set(const std::pair<StoredValue, const ParamDefault &> &p,
         const StoredString &value);
 
     /** @overload Parse and assign from a textual literal. */
-    constexpr static bool
+    static bool
     set(const std::pair<StoredValue, const ParamDefault &> &p,
         const char *value);
 
     /** @overload Assign from the frozen default variant. */
-    constexpr static bool
+    static bool
     set(const std::pair<StoredValue, const ParamDefault &> &p,
         const FrozenDefault &value);
 
     /** @overload Assign from another StoredValue (same kind only). */
-    constexpr static bool
+    static bool
     set(const std::pair<StoredValue, const ParamDefault &> &p,
         const StoredValue &value);
 
@@ -473,7 +473,7 @@ namespace Persistant {
      * @tparam T Desired return type.
      */
     template <typename T>
-    constexpr static T
+    static T
     get(const std::pair<StoredValue, const ParamDefault &> &p);
 
     /**
@@ -521,11 +521,11 @@ namespace Persistant {
     return defaultKind(std::next(frozenParameters.begin(), paramIndex)->second.v);
   }
 
-  inline constexpr std::byte *StoredValue::raw() {
+  inline std::byte *StoredValue::raw() {
     return Parameter::ramStore.data() + layoutInfo.entries[paramIndex].offset;
   }
 
-  inline constexpr const std::byte *StoredValue::raw() const {
+  inline const std::byte *StoredValue::raw() const {
     return Parameter::ramStore.data() + layoutInfo.entries[paramIndex].offset;
   }
 
@@ -535,31 +535,31 @@ namespace Persistant {
   }
 
   template <typename T>
-  inline constexpr T &StoredValue::get() {
+  inline T &StoredValue::get() {
     chDbgAssert(is<T>(), "invalid tag for storage");
     return *std::launder(reinterpret_cast<T *>(raw()));
   }
 
   template <typename T>
-  inline constexpr const T &StoredValue::get() const {
+  inline const T &StoredValue::get() const {
     chDbgAssert(is<T>(), "invalid tag for storage");
     return *std::launder(reinterpret_cast<const T *>(raw()));
   }
 
   template <size_t TAG>
-  inline constexpr auto &StoredValue::get() {
+  inline auto &StoredValue::get() {
     using T = typename TagToType<TAG>::type;
     return get<T>();
   }
 
   template <size_t TAG>
-  inline constexpr const auto &StoredValue::get() const {
+  inline const auto &StoredValue::get() const {
     using T = typename TagToType<TAG>::type;
     return get<T>();
   }
 
   template <typename Visitor>
-  inline constexpr decltype(auto) StoredValue::visit(Visitor &&vis) {
+  inline decltype(auto) StoredValue::visit(Visitor &&vis) {
     switch (kind()) {
     case ValueKind::None:
       return std::forward<Visitor>(vis)(NoValue{});
@@ -576,7 +576,7 @@ namespace Persistant {
   }
 
   template <typename Visitor>
-  inline constexpr decltype(auto) StoredValue::visit(Visitor &&vis) const {
+  inline decltype(auto) StoredValue::visit(Visitor &&vis) const {
     switch (kind()) {
     case ValueKind::None:
       return std::forward<Visitor>(vis)(NoValue{});
@@ -676,7 +676,7 @@ namespace Persistant {
     return ret;
   }
 
-  inline constexpr bool
+  inline bool
   Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
                  const Integer &value) {
     auto [store, deflt] = p;
@@ -687,7 +687,7 @@ namespace Persistant {
     return true;
   }
 
-  inline constexpr bool
+  inline bool
   Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
                  const bool &value) {
     auto [store, deflt] = p;
@@ -699,7 +699,7 @@ namespace Persistant {
     return true;
   }
 
-  inline constexpr bool
+  inline bool
   Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
                  const float &value) {
     auto [store, deflt] = p;
@@ -710,7 +710,7 @@ namespace Persistant {
     return true;
   }
 
-  inline constexpr bool
+  inline bool
   Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
                  const StoredString &value) {
     auto [store, deflt] = p;
@@ -722,7 +722,7 @@ namespace Persistant {
     return true;
   }
 
-  inline constexpr bool
+  inline bool
   Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
                  const char *value) {
     auto [store, deflt] = p;
@@ -745,7 +745,7 @@ namespace Persistant {
     return true;
   }
 
-  inline constexpr  bool
+  inline bool
   Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
                  const FrozenDefault &value)
   {
@@ -772,7 +772,7 @@ namespace Persistant {
     return ok;
   }
 
-  inline constexpr bool
+  inline bool
   Parameter::set(const std::pair<StoredValue, const ParamDefault &> &p,
                  const StoredValue &value)
   {
@@ -801,7 +801,7 @@ namespace Persistant {
 
   
   template <typename T>
-  inline constexpr T
+  inline T
   Parameter::get(const std::pair<StoredValue, const ParamDefault &> &p) {
     const auto &[store, deflt] = p;
     (void) deflt;
@@ -852,24 +852,25 @@ namespace Persistant {
 
 // Provide std::visit/std::get/std::holds_alternative compatibility so existing
 // callers keep working with the lightweight StoredValue proxy.
+namespace Persistant {
+  template <class Visitor>
+  decltype(auto) visit(Visitor &&vis, Persistant::StoredValue &v) {
+    return v.visit(std::forward<Visitor>(vis));
+  }
+
+  template <class Visitor>
+  decltype(auto) visit(Visitor &&vis, const Persistant::StoredValue &v) {
+    return v.visit(std::forward<Visitor>(vis));
+  }
+} // namespace Persistant
 namespace std {
-  template <class Visitor>
-  constexpr decltype(auto) visit(Visitor &&vis, Persistant::StoredValue &v) {
-    return v.visit(std::forward<Visitor>(vis));
-  }
-
-  template <class Visitor>
-  constexpr decltype(auto) visit(Visitor &&vis, const Persistant::StoredValue &v) {
-    return v.visit(std::forward<Visitor>(vis));
-  }
-
   template <class T>
-  constexpr T &get(Persistant::StoredValue &v) {
+  T &get(Persistant::StoredValue &v) {
     return v.template get<T>();
   }
 
   template <class T>
-  constexpr const T &get(const Persistant::StoredValue &v) {
+  const T &get(const Persistant::StoredValue &v) {
     return v.template get<T>();
   }
 
