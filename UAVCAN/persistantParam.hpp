@@ -959,27 +959,30 @@ namespace std {
   }
 } // namespace std
 
-#define PARAM_TYPECGET(type, name)                                     \
-  ({                                                                   \
-     constexpr ssize_t idx = Persistant::Parameter::findIndex(name);   \
-     static_assert(idx >= 0, name " not found");                       \
-     Persistant::Parameter::get<type>(idx);                            \
-  })
+namespace Persistant {
+template <size_t N>
+struct ParamStringLiteral {
+  consteval ParamStringLiteral(const char (&str)[N]) {
+    std::copy_n(str, N, value);
+  }
+  char value[N];
+};
+} // namespace Persistant
 
-#define PARAM_CGET(name)                                               \
-  ({                                                                   \
-     constexpr ssize_t idx = Persistant::Parameter::findIndex(name);   \
-     static_assert(idx >= 0, name " not found");                       \
-     constexpr auto &variant =                                         \
-       std::next(Persistant::frozenParameters.begin(), idx)->second.v; \
-     constexpr int tag = variant.index();                              \
-     Persistant::Parameter::get<tag>(idx);                             \
-  })
+template <Persistant::ParamStringLiteral Name>
+[[nodiscard]] inline const auto &param_cget() {
+  constexpr ssize_t idx = Persistant::Parameter::findIndex(Name.value);
+  static_assert(idx >= 0, "Parameter not found");
+  constexpr auto &variant =
+      std::next(Persistant::frozenParameters.begin(), idx)->second.v;
+  constexpr int tag = variant.index();
+  return Persistant::Parameter::get<tag>(idx);
+}
 
-#define PARAM_CSET(name, value)                                        \
-  ({                                                                   \
-     constexpr ssize_t idx = Persistant::Parameter::findIndex(name);   \
-     static_assert(idx >= 0, name " not found");                       \
-     Persistant::Parameter::set(Persistant::Parameter::find(idx),      \
-                                (value));                              \
-   })
+template <Persistant::ParamStringLiteral Name, typename T>
+inline bool param_cset(const T &value) {
+  constexpr ssize_t idx = Persistant::Parameter::findIndex(Name.value);
+  static_assert(idx >= 0, "Parameter not found");
+  return Persistant::Parameter::set(Persistant::Parameter::find(idx), value);
+}
+
