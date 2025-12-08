@@ -122,8 +122,7 @@ namespace Persistant {
     case ValueKind::None:
       return 1;
     case ValueKind::Int:
-      // Enforce at least word alignment for 64-bit integers to avoid unaligned
-      // placement-new on platforms where alignof(Integer) is too small.
+      // Keep 64-bit integers 4-byte aligned (natural on 32-bit ARM) to limit padding.
       return alignof(std::uint32_t);
     case ValueKind::Real:
       return alignof(float);
@@ -140,6 +139,7 @@ namespace Persistant {
    * @return LayoutInfo containing per-entry layout and total buffer size.
    */
   inline constexpr LayoutInfo computeLayout();
+  inline constexpr std::array<uint16_t, params_list_len> computePlacementOrder();
 
   template <typename T> struct TypeToKind;
   template <> struct TypeToKind<NoValue> { static constexpr ValueKind value = ValueKind::None; };
@@ -220,14 +220,59 @@ namespace Persistant {
   static_assert(frozenParameters.size() == params_list_len,
                 "params_list and frozen map size mismatch");
 
+  /**
+   * @brief Compute a deterministic placement order that minimizes padding.
+   * @details Sort indices by descending alignment, then descending size, then
+   *          original index for stability. Logical parameter order stays unchanged.
+   */
+  inline constexpr std::array<uint16_t, params_list_len> computePlacementOrder() {
+    std::array<uint16_t, params_list_len> order{};
+    // Start with identity order, then selection-sort in-place by align/size.
+    for (uint16_t i = 0; i < params_list_len; ++i) {
+      order[i] = i;
+    }
+
+    auto kind_at = [](uint16_t idx) {
+      return defaultKind(std::next(frozenParameters.begin(), idx)->second.v);
+    };
+
+    for (size_t i = 0; i < params_list_len; ++i) {
+      size_t best = i;
+      for (size_t j = i + 1; j < params_list_len; ++j) {
+        // Pick the entry with larger alignment, then larger size, then lower
+        // original index to keep ordering stable among equals.
+        const auto kj = kind_at(order[j]);
+        const auto kb = kind_at(order[best]);
+        const size_t alignJ = kindAlign(kj);
+        const size_t alignB = kindAlign(kb);
+        const size_t sizeJ = kindSize(kj);
+        const size_t sizeB = kindSize(kb);
+
+        const bool better =
+            (alignJ > alignB) ||
+            (alignJ == alignB && sizeJ > sizeB) ||
+            (alignJ == alignB && sizeJ == sizeB && order[j] < order[best]);
+        if (better) {
+          best = j;
+        }
+      }
+      if (best != i) {
+        const auto tmp = order[i];
+        order[i] = order[best];
+        order[best] = tmp;
+      }
+    }
+    return order;
+  }
+  inline constexpr auto placementOrder = computePlacementOrder();
   inline constexpr LayoutInfo computeLayout() {
     LayoutInfo info{};
     uint16_t offset = 0;
     uint16_t maxAlign = 1;
 
-    size_t idx = 0;
-    for (auto it = frozenParameters.begin(); it != frozenParameters.end(); ++it, ++idx) {
-      const ValueKind kind = defaultKind(it->second.v);
+    for (size_t orderIndex = 0; orderIndex < params_list_len; ++orderIndex) {
+      const auto idx = placementOrder[orderIndex];
+      const ValueKind kind = defaultKind(std::next(frozenParameters.begin(), idx)->second.v);
       const uint16_t align = static_cast<uint16_t>(kindAlign(kind));
       const uint16_t size = static_cast<uint16_t>(kindSize(kind));
 
@@ -478,6 +523,29 @@ namespace Persistant {
     static bool
     set(const std::pair<StoredValue, const ParamDefault &> &p,
         const StoredValue &value);
+
+    // Convenience setters by key (runtime string), mirror get<T>(key).
+    static bool set(const char *key, const Integer &value) {
+      return set(find(key), value);
+    }
+    static bool set(const char *key, const bool &value) {
+      return set(find(key), value);
+    }
+    static bool set(const char *key, const float &value) {
+      return set(find(key), value);
+    }
+    static bool set(const char *key, const StoredString &value) {
+      return set(find(key), value);
+    }
+    static bool set(const char *key, const char *value) {
+      return set(find(key), value);
+    }
+    static bool set(const char *key, const FrozenDefault &value) {
+      return set(find(key), value);
+    }
+    static bool set(const char *key, const StoredValue &value) {
+      return set(find(key), value);
+    }
 
     /**
      * @brief Copy out the current value with compile-time type.
@@ -907,3 +975,11 @@ namespace std {
      constexpr int tag = variant.index();                              \
      Persistant::Parameter::get<tag>(idx);                             \
   })
+
+#define PARAM_CSET(name, value)                                        \
+  ({                                                                   \
+     constexpr ssize_t idx = Persistant::Parameter::findIndex(name);   \
+     static_assert(idx >= 0, name " not found");                       \
+     Persistant::Parameter::set(Persistant::Parameter::find(idx),      \
+                                (value));                              \
+   })
