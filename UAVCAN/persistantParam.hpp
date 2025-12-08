@@ -26,6 +26,7 @@
 #include "dronecan_msgs.h"
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cstdlib>
 #include <iterator>
 #include <new>
@@ -121,7 +122,9 @@ namespace Persistant {
     case ValueKind::None:
       return 1;
     case ValueKind::Int:
-      return alignof(Integer);
+      // Enforce at least word alignment for 64-bit integers to avoid unaligned
+      // placement-new on platforms where alignof(Integer) is too small.
+      return alignof(std::uint32_t);
     case ValueKind::Real:
       return alignof(float);
     case ValueKind::Bool:
@@ -136,23 +139,7 @@ namespace Persistant {
    * @brief Compute offset/size/kind for every parameter at compile time.
    * @return LayoutInfo containing per-entry layout and total buffer size.
    */
-  inline constexpr LayoutInfo computeLayout() {
-    LayoutInfo info{};
-    uint16_t offset = 0;
-    uint16_t maxAlign = 1;
-    for (size_t i = 0; i < params_list_len; i++) {
-      const ValueKind kind = defaultKind(params_list[i].second.v);
-      const uint16_t align = static_cast<uint16_t>(kindAlign(kind));
-      const uint16_t size = static_cast<uint16_t>(kindSize(kind));
-      offset = (offset + (align - 1)) & ~(align - 1);
-      info.entries[i] = ParamLayout{static_cast<uint16_t>(offset)};
-      offset += size;
-      maxAlign = std::max<uint16_t>(maxAlign, align);
-    }
-    info.totalSize = static_cast<uint16_t>(offset);
-    info.maxAlign = maxAlign;
-    return info;
-  }
+  inline constexpr LayoutInfo computeLayout();
 
   template <typename T> struct TypeToKind;
   template <> struct TypeToKind<NoValue> { static constexpr ValueKind value = ValueKind::None; };
@@ -230,6 +217,30 @@ namespace Persistant {
                 "❌ params_list contains invalid ParamDefault entries!");
 
   inline constexpr const auto frozenParameters = frozen::make_map(params_list);
+  static_assert(frozenParameters.size() == params_list_len,
+                "params_list and frozen map size mismatch");
+
+  inline constexpr LayoutInfo computeLayout() {
+    LayoutInfo info{};
+    uint16_t offset = 0;
+    uint16_t maxAlign = 1;
+
+    size_t idx = 0;
+    for (auto it = frozenParameters.begin(); it != frozenParameters.end(); ++it, ++idx) {
+      const ValueKind kind = defaultKind(it->second.v);
+      const uint16_t align = static_cast<uint16_t>(kindAlign(kind));
+      const uint16_t size = static_cast<uint16_t>(kindSize(kind));
+
+      offset = static_cast<uint16_t>((offset + (align - 1)) & ~(align - 1));
+      info.entries[idx] = ParamLayout{offset};
+      offset = static_cast<uint16_t>(offset + size);
+      maxAlign = std::max<uint16_t>(maxAlign, align);
+    }
+
+    info.totalSize = static_cast<uint16_t>(offset);
+    info.maxAlign = maxAlign;
+    return info;
+  }
   inline constexpr auto layoutInfo = computeLayout();
 
   /**
