@@ -792,7 +792,7 @@ Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
 #if CANARD_ENABLE_CANFD
 				 .canfd = fdFrame,
 #endif
-				 .tao = (not fdFrame) && (nodeId != 0)
+				 .tao = true
                               };
   canStatus_t status;
   chMtxLock(&canard_mtx_s);
@@ -831,7 +831,8 @@ Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const ui
 #if CANARD_ENABLE_CANFD
                                 .canfd = fdFrame,
 #endif
-                               .tao = not fdFrame };
+				.tao = true
+                            };
   canStatus_t status;
   chMtxLock(&canard_mtx_s);
   const int16_t canardStatus = canardRequestOrRespondObj(&canard, dest_id, &request);
@@ -872,7 +873,7 @@ Node::canStatus_t Node::sendResponse(MSG_T& msg, CanardRxTransfer* transfer) {
                                 .payload_len = len,
 #if CANARD_ENABLE_CANFD
                                 .canfd = fdFrame,
-                                .tao = not fdFrame 
+                                .tao = true
 #else
                                 .tao = true
 #endif
