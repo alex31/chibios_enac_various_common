@@ -18,7 +18,7 @@ extern "C" {
    * @brief  kind of errors that can be returned by the driver
    */
   typedef enum  {SBUS_LOST_FRAME, SBUS_FAILSAFE, SBUS_MALFORMED_FRAME,
-		 SBUS_TIMOUT} SBUSError;
+		 SBUS_TIMOUT, SBUS_MALLOC_ERROR} SBUSError;
 
 
   /**
@@ -26,7 +26,7 @@ extern "C" {
    */
   typedef struct {
     /**
-     * @brief   array of  11 bits signed number from
+     * @brief   array of  11 bits unsigned number from
      */
     uint16_t channel[SBUS_NUM_CHANNEL];
     /**

@@ -11,30 +11,18 @@
 #define OUT_SYNC_TIMEOUT (IN_SYNC_TIMEOUT / 2U)
 
 
-static UARTConfig sbusUartConfig =
-/*   { */
-/*     .timeout = 22, */
-/*     .speed = 100000, */
-/* #ifdef USART_CR2_RXINV // UARTv2 */
-/*     .cr1 = USART_CR1_PCE | USART_CR1_M0 | USART_CR1_IDLEIE, // 8 bits + even parity => 9 bits mode */
-/* #else			// UARTv1 */
-/*     .cr1 = USART_CR1_PCE | USART_CR1_M, // 8 bits + even parity => 9 bits mode */
-/* #endif */
-/*     .cr2 = USART_CR2_STOP2_BITS| USART_CR2_RTOEN, */
-/*     .cr3 = 0 */
-/*   }; */
-  {
-    .timeout_cb = nullptr,
-    .timeout = 20,
-    .speed = 100000,
+static UARTConfig sbusUartConfig =  {
+  .timeout_cb = nullptr,
+  .timeout = 20,
+  .speed = 100000,
 #ifdef USART_CR2_RXINV // UARTv2
-    .cr1 = USART_CR1_PCE | USART_CR1_M0 | USART_CR1_RTOIE, // 8 bits + even parity => 9 bits mode
+  .cr1 = USART_CR1_PCE | USART_CR1_M0, // 8 bits + even parity => 9 bits mode
 #else			// UARTv1
-    .cr1 = USART_CR1_PCE | USART_CR1_M, // 8 bits + even parity => 9 bits mode
+  .cr1 = USART_CR1_PCE | USART_CR1_M, // 8 bits + even parity => 9 bits mode
 #endif
-    .cr2 = USART_CR2_STOP2_BITS | USART_CR2_RTOEN,
-    .cr3 = 0
-  };
+  .cr2 = USART_CR2_STOP2_BITS,
+  .cr3 = 0
+};
 
 
 static void receivingLoopThread(void *arg);
@@ -86,7 +74,6 @@ void sbusStopReceive(SBUSDriver *sbusp)
   }
 }
 
-
 static inline void invoqueError(const SBUSConfig *cfg, SBUSError err) {
   if (cfg->errorCb) {
     cfg->errorCb(err);
@@ -95,16 +82,22 @@ static inline void invoqueError(const SBUSConfig *cfg, SBUSError err) {
 
 static void receivingLoopThread (void *arg)
 {
-  SBUSDriver *sbusp = (SBUSDriver *) arg;
+  SBUSDriver	   *sbusp = (SBUSDriver *) arg;
   const SBUSConfig *cfg = sbusp->config;
-  uint8_t  sbusBuffer[SBUS_BUFFLEN];
-  SBUSFrame frame;
+  uint8_t          *sbusBuffer = malloc_dma(SBUS_BUFFLEN);
+  SBUSFrame	   frame;
 
+
+  if (sbusBuffer == nullptr) {
+     cfg->errorCb(SBUS_MALLOC_ERROR);
+     chThdSleep(TIME_INFINITE);
+  }
+  
   while (!chThdShouldTerminateX()) {
-    size_t size = sizeof(sbusBuffer);
+    size_t size = SBUS_BUFFLEN;
     uartReceiveTimeout(cfg->uartd, &size, sbusBuffer, TIME_INFINITE);
 
-    if (size !=  sizeof(sbusBuffer)) {
+    if (size !=  SBUS_BUFFLEN) {
       invoqueError(cfg, SBUS_TIMOUT);
       goto outOfSync;
     }
@@ -130,7 +123,7 @@ static void receivingLoopThread (void *arg)
     }
     
     if (cfg->frameCb) {
-      decodeSbusBuffer (sbusBuffer+1, &frame);
+      decodeSbusBuffer(sbusBuffer+1, &frame);
       cfg->frameCb(&frame);
     }
 
@@ -180,8 +173,7 @@ static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
 
 static void encodeSbusBuffer (const SBUSFrame  *_frm, uint8_t *dest)
 {
-  SBUSFrame  frm = *_frm;
-  uint16_t *chan = frm.channel;
+  const uint16_t * const chan = _frm->channel;
  
   dest[0] = SBUS_START_BYTE;
   dest[1] =   (uint8_t) ((chan[0]   & 0x07FF));
@@ -206,6 +198,6 @@ static void encodeSbusBuffer (const SBUSFrame  *_frm, uint8_t *dest)
   dest[20] =  (uint8_t) ((chan[13]  & 0x07FF) >> 9  | (chan[14] & 0x07FF) << 2);
   dest[21] =  (uint8_t) ((chan[14]  & 0x07FF) >> 6  | (chan[15] & 0x07FF) << 5);
   dest[22] =  (uint8_t) ((chan[15]  & 0x07FF) >> 3);
-  dest[23] = frm.flags;
+  dest[23] = _frm->flags;
   dest[24] = SBUS_END_BYTE;
 }
