@@ -862,7 +862,11 @@ void Node::infoCb(const char* format, ...) {
     va_list ap;
     etl::string<80> s;
     va_start(ap, format);
+#ifdef CHPRINTF_USE_STDLIB
+    const auto len = vsnprintf(s.data(), s.capacity(), format, ap);
+#else
     const auto len = chvsnprintf(s.data(), s.capacity(), format, ap);
+#endif
     va_end(ap);
     s.uninitialized_resize(len);
     config.infoCb(etl::string_view(s));
