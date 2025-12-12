@@ -39,7 +39,7 @@
 #include <ctype.h>
 
 
-#define MAX_FILLER 11
+#define MAX_FILLER 21
 #define FLOAT_PRECISION 100000
 
 #if defined CHPRINTF_USE_STDLIB
@@ -160,6 +160,29 @@ static char *ltoa(char *p, long num, unsigned radix) {
   return long_to_string_with_divisor(p, num, radix, 0);
 }
 
+static char *ulltoa(char *p, unsigned long long num, unsigned radix) {
+  int i;
+  char *q;
+  unsigned long long ll = num;
+
+  q = p + MAX_FILLER;
+  do {
+    i = (int)(ll % radix);
+    i += '0';
+    if (i > '9')
+      i += 'A' - '0' - 10;
+    *--q = i;
+    ll /= radix;
+  } while (ll != 0);
+
+  i = (int)(p + MAX_FILLER - q);
+  do
+    *p++ = *q++;
+  while (--i);
+
+  return p;
+}
+
 
 #if CHPRINTF_USE_FLOAT
 static char *ftoa(char *p, double num, uint32_t precision) {
@@ -202,7 +225,9 @@ static char *ftoa(char *p, double num, uint32_t precision) {
 static int _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, const char *fmt, va_list ap) {
   char *p, *s, c, filler;
   int i, precision, width;
-  bool is_long, left_align, plus_on_float;
+  bool left_align, plus_on_float, precision_specified;
+  typedef enum {LEN_NONE, LEN_LONG, LEN_LONGLONG} length_t;
+  length_t length;
   long l;
 #if CHPRINTF_USE_FLOAT
   int fprec=1000000;
@@ -267,44 +292,54 @@ static int _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, co
       fprec = intPow(10, (*fmt)-'0');
 #endif
     }
-    width = 0;
-    while (TRUE) {
-      c = *fmt++;
-      if (c >= '0' && c <= '9')
-        c -= '0';
-      else if (c == '*')
-        c = va_arg(ap, int);
-      else
-        break;
-      width = width * 10 + c;
-    }
-    precision = 0;
-    if (c == '.') {
-      while (TRUE) {
-        c = *fmt++;
-        if (c >= '0' && c <= '9') {
-          c -= '0';
+	    width = 0;
+	    while (TRUE) {
+	      c = *fmt++;
+	      if (c >= '0' && c <= '9')
+		c -= '0';
+	      else if (c == '*')
+		c = va_arg(ap, int);
+	      else
+		break;
+	      width = width * 10 + c;
+	    }
+	    precision = 0;
+	    precision_specified = FALSE;
+	    if (c == '.') {
+	      precision_specified = TRUE;
+	      while (TRUE) {
+		c = *fmt++;
+		if (c >= '0' && c <= '9') {
+		  c -= '0';
 #if CHPRINTF_USE_FLOAT
-	  fprec = intPow (10, c);
+		  fprec = intPow (10, c);
 #endif
-        } else if (c == '*')
-          c = va_arg(ap, int);
-        else
-          break;
-        precision *= 10;
-        precision += c;
-      }
-    }
-    /* Long modifier.*/
-    if (c == 'l' || c == 'L') {
-      is_long = TRUE;
-      if (*fmt)
-        c = *fmt++;
-    }
-    else
-      is_long = (c >= 'A') && (c <= 'Z');
+		} else if (c == '*')
+		  c = va_arg(ap, int);
+		else
+		  break;
+		precision *= 10;
+		precision += c;
+	      }
+	    }
+	    length = LEN_NONE;
+	    /* Long modifier.*/
+	    if (c == 'l' || c == 'L') {
+	      if (*fmt == 'l') {
+		length = LEN_LONGLONG;
+		fmt++;
+		if (*fmt)
+		  c = *fmt++;
+	      } else {
+		length = LEN_LONG;
+		if (*fmt)
+		  c = *fmt++;
+	      }
+	    }
+	    else
+	      length = (c >= 'A' && c <= 'Z') ? LEN_LONG : LEN_NONE;
 
-    /* Command decoding.*/
+	    /* Command decoding.*/
     switch (c) { 
     case 'n': 
       *(va_arg(ap, int*)) = buffer-bufferStart;
@@ -317,29 +352,44 @@ static int _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, co
       filler = ' ';
       if ((s = va_arg(ap, char *)) == 0)
         s = "(null)";
-      if (precision == 0)
-        precision = 32767;
-      for (p = s; *p && (--precision >= 0); p++)
-        ;
-      break;
-    case 'D':
-    case 'd':
-    case 'I':
-    case 'i':
-      if (is_long)
-        l = va_arg(ap, long);
-      else
-        l = va_arg(ap, int);
-      if (l < 0) {
-        *p++ = '-';
-        l = -l;
+      {
+	const int limit = precision_specified ? ((precision < 0) ? 0 : precision) : 32767;
+	int remaining = limit;
+	for (p = s; (remaining-- != 0) && *p; ++p) {
+	  // no-op, just advance to the end of the bounded span
+	}
       }
-      p = ltoa(p, l, 10);
       break;
+	    case 'D':
+	    case 'd':
+	    case 'I':
+	    case 'i':
+	      if (length == LEN_LONGLONG) {
+		long long ll = va_arg(ap, long long);
+		unsigned long long ull;
+		if (ll < 0) {
+		  *p++ = '-';
+		  ull = (unsigned long long)(-ll);
+		} else {
+		  ull = (unsigned long long) ll;
+		}
+		p = ulltoa(p, ull, 10);
+	      } else {
+		if (length == LEN_LONG)
+		  l = va_arg(ap, long);
+		else
+		  l = va_arg(ap, int);
+		if (l < 0) {
+		  *p++ = '-';
+		  l = -l;
+		}
+		p = ltoa(p, l, 10);
+	      }
+	      break;
 #if CHPRINTF_USE_FLOAT
-    case 'e':
-    case 'f':
-    case 'g':
+	    case 'e':
+	    case 'f':
+	    case 'g':
     case 'E':
     case 'F':
     case 'G':
@@ -365,19 +415,24 @@ static int _chvsnprintf(char *buffer, BaseSequentialStream *chp, size_t size, co
       c = 16;
       goto unsigned_common;
     case 'U':
-    case 'u':
-      c = 10;
-      goto unsigned_common;
-    case 'O':
-    case 'o':
-      c = 8;
+	    case 'u':
+	      c = 10;
+	      goto unsigned_common;
+	    case 'O':
+	    case 'o':
+	      c = 8;
 unsigned_common:
-      if (is_long)
-        l = va_arg(ap, long);
-      else
-        l = va_arg(ap, int);
-      p = ltoa(p, l, c);
-      break;
+	      if (length == LEN_LONGLONG) {
+		unsigned long long ull = va_arg(ap, unsigned long long);
+		p = ulltoa(p, ull, c);
+	      } else {
+		if (length == LEN_LONG)
+		  l = va_arg(ap, long);
+		else
+		  l = va_arg(ap, int);
+		p = ltoa(p, l, c);
+	      }
+	      break;
     default:
       *p++ = c;
       break;
