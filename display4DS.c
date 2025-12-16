@@ -402,8 +402,8 @@ bool fdsPrintStr (FdsDriver *fdsConfig, const char *str)
   bool ret = false;
 
   RET_UNLESS_INIT_BOOL(fdsConfig);
-  strncpy(buffer, str, sizeof(buffer));
-
+  strncpy(buffer, str, sizeof(buffer) -1);
+  buffer[sizeof(buffer) -1] = 0;
   if (buffer[0] == 0)
     return true;
 
