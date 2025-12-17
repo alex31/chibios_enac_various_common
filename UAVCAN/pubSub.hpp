@@ -674,10 +674,6 @@ private:
   canStatus_t canStatus = {};
   bool hasReceiveMsg = false;
 
-  // incrémenté à chaque transfert pour détecter la
-  // perte de paquets.
-  uint8_t transferRequestId = 0, transferBroadcastId = 0;
-
   bool shouldAcceptTransfer(const CanardInstance* ins,
                             uint64_t* out_data_type_signature,
                             uint16_t data_type_id,
@@ -779,13 +775,16 @@ private:
 template<typename MSG_T>
 Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
   uint8_t buffer[MSG_T::cxx_iface::MAX_SIZE];
+  /* transfer_id must be unique for each Subject ID, so we use a static variable
+     within the template function to have one counter per message type. */
+  static uint8_t transfer_id = 0;
 
   const bool fdFrame = isCanfdEnabled();
   const uint16_t len = MSG_T::cxx_iface::encode(&msg, buffer, not fdFrame);
   CanardTxTransfer broadcast = { .transfer_type = CanardTransferTypeBroadcast,
                                  .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
                                  .data_type_id = MSG_T::cxx_iface::ID,
-                                 .inout_transfer_id = &transferBroadcastId,
+                                 .inout_transfer_id = &transfer_id,
                                  .priority = priority,
                                  .payload = buffer,
                                  .payload_len = len,
@@ -819,12 +818,15 @@ Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
 template<typename MSG_T>
 Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id) {
   uint8_t buffer[MSG_T::cxx_iface::REQ_MAX_SIZE];
+  /* transfer_id must be unique for each Service ID, so we use a static variable
+     within the template function to have one counter per service type. */
+  static uint8_t transfer_id = 0;
   const bool fdFrame = isCanfdEnabled();
   const uint16_t len = MSG_T::cxx_iface::req_encode(&msg, buffer, not fdFrame);
   CanardTxTransfer request = { .transfer_type = CanardTransferTypeRequest,
                                .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
                                .data_type_id = MSG_T::cxx_iface::ID,
-                               .inout_transfer_id = &transferRequestId,
+                               .inout_transfer_id = &transfer_id,
                                .priority = priority,
                                .payload = buffer,
                                .payload_len = len,
