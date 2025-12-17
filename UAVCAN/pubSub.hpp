@@ -14,6 +14,7 @@
 #include "etl/map.h"
 #include "etl/string.h"
 #include "etl/string_view.h"
+#include "etl/vector.h"
 #include "stdutil++.hpp"
 #include "stdutil.h"
 #include <array>
@@ -32,6 +33,16 @@
 
 #ifndef UAVNODE_DICTIONARY_SIZE
 #define UAVNODE_DICTIONARY_SIZE 32
+#endif
+
+#ifndef UAVNODE_SERVICE_REQUEST_TRANSFER_ID_TABLE_SIZE
+// Number of (service_id, dest_id) pairs whose transfer-ID counters are tracked.
+// Increase this if you send service requests to many different nodes.
+#define UAVNODE_SERVICE_REQUEST_TRANSFER_ID_TABLE_SIZE 64
+#endif
+
+#if (UAVNODE_SERVICE_REQUEST_TRANSFER_ID_TABLE_SIZE > 255)
+#error "UAVNODE_SERVICE_REQUEST_TRANSFER_ID_TABLE_SIZE must be <= 255"
 #endif
 
 #if (!CANARD_ENABLE_TAO_OPTION)
@@ -674,6 +685,17 @@ private:
   canStatus_t canStatus = {};
   bool hasReceiveMsg = false;
 
+  struct ServiceRequestTransferIdEntry {
+    uint16_t service_id;
+    uint8_t dest_id;
+    uint8_t transfer_id;
+  };
+  etl::vector<ServiceRequestTransferIdEntry, UAVNODE_SERVICE_REQUEST_TRANSFER_ID_TABLE_SIZE>
+    service_request_transfer_ids;
+  uint8_t service_request_transfer_ids_next_evict = 0;
+
+  uint8_t* getServiceRequestTransferIdPtr(uint16_t service_id, uint8_t dest_id);
+
   bool shouldAcceptTransfer(const CanardInstance* ins,
                             uint64_t* out_data_type_signature,
                             uint16_t data_type_id,
@@ -818,15 +840,12 @@ Node::canStatus_t Node::sendBroadcast(MSG_T& msg, const uint8_t priority) {
 template<typename MSG_T>
 Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const uint8_t dest_id) {
   uint8_t buffer[MSG_T::cxx_iface::REQ_MAX_SIZE];
-  /* transfer_id must be unique for each Service ID, so we use a static variable
-     within the template function to have one counter per service type. */
-  static uint8_t transfer_id = 0;
   const bool fdFrame = isCanfdEnabled();
   const uint16_t len = MSG_T::cxx_iface::req_encode(&msg, buffer, not fdFrame);
   CanardTxTransfer request = { .transfer_type = CanardTransferTypeRequest,
                                .data_type_signature = MSG_T::cxx_iface::SIGNATURE,
                                .data_type_id = MSG_T::cxx_iface::ID,
-                               .inout_transfer_id = &transfer_id,
+                               .inout_transfer_id = nullptr,
                                .priority = priority,
                                .payload = buffer,
                                .payload_len = len,
@@ -837,6 +856,10 @@ Node::canStatus_t Node::sendRequest(MSG_T& msg, const uint8_t priority, const ui
                             };
   canStatus_t status;
   chMtxLock(&canard_mtx_s);
+  /* Transfer-ID must be tracked per (service_id, dest_id) to avoid gaps being
+     observed as packet loss by each server. We keep a small per-Node table to
+     minimize memory use versus a full 128-entry array per service type. */
+  request.inout_transfer_id = getServiceRequestTransferIdPtr(request.data_type_id, dest_id);
   const int16_t canardStatus = canardRequestOrRespondObj(&canard, dest_id, &request);
   chMtxUnlock(&canard_mtx_s);
   

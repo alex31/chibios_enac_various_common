@@ -335,6 +335,28 @@ Node::Node(const Config& _config)
   chEvtObjectInit(&canard_tx_not_empty);
 }
 
+uint8_t* Node::getServiceRequestTransferIdPtr(uint16_t service_id, uint8_t dest_id) {
+  for (auto& e : service_request_transfer_ids) {
+    if ((e.service_id == service_id) && (e.dest_id == dest_id)) {
+      return &e.transfer_id;
+    }
+  }
+
+  if (!service_request_transfer_ids.full()) {
+    service_request_transfer_ids.push_back(ServiceRequestTransferIdEntry{ service_id, dest_id, 0 });
+    return &service_request_transfer_ids.back().transfer_id;
+  }
+
+  // Table is full: overwrite entries in a deterministic round-robin sequence.
+  // This minimizes state and CPU, at the cost of resetting transfer-ID when an entry is recycled.
+  const size_t idx = service_request_transfer_ids_next_evict % service_request_transfer_ids.size();
+  service_request_transfer_ids_next_evict =
+    (service_request_transfer_ids_next_evict + 1) % service_request_transfer_ids.size();
+  auto& e = service_request_transfer_ids[idx];
+  e = ServiceRequestTransferIdEntry{ service_id, dest_id, 0 };
+  return &e.transfer_id;
+}
+
 int8_t Node::configureHardwareFilters() {
   int8_t filterIndex = 0;
   static constexpr uint8_t filtersSize =
