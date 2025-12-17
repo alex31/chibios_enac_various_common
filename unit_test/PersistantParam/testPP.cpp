@@ -127,12 +127,11 @@ std::cout << std::endl;
  
  
  std::cout << std::format("noval = {}, float = {}; Persistant::Integer = {}\n"
-			  "tinyString poolSize = {}; storedString = {}\n"
+			  "storedString = {}\n"
 			  "storedValue = {}; frozenEntry = {}\n",
 			  sizeof(Persistant::NoValue),
 			  sizeof(float),
 			  sizeof(Persistant::Integer),
-			  Persistant::getTinyStringMemoryPoolSize(),
 			  sizeof(Persistant::StoredString),
 			  sizeof(Persistant::StoredValue),
 			  sizeof(Persistant::FrozenDefault));

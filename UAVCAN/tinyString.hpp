@@ -5,28 +5,19 @@
  * @brief Minimal fixed-capacity string with a tiny allocator footprint.
  *
  * Designed for MCUs where `etl::string` overhead is too large. The storage is
- * embedded (no heap) and uses a very small static `SimpleMemoryPool` when
- * placement-new is requested by the parameter subsystem.
+ * embedded (no heap).
  *
- * @tparam STO_SIZE Size of the static memory pool backing `operator new`.
  * @tparam STR_SIZE Maximum number of characters (including null terminator).
  */
 
 // Just because etl::string overhead is insane : 40 bytes for each string.
 // Wish I could find a more standard way to have a low overhead string impl.
 
-#include <iostream>
-#include <cstring>  // For memcpy, strcpy, memcmp
-#include <type_traits>
+#include <cstddef>  // std::byte, size_t
+#include <cstdint>  // uint8_t
+#include <cstring>  // std::memcpy, std::memcmp, std::strlen
 
-
-#include <iostream>
-#include <cstring>  // For memcpy, strcpy, memcmp
-#include <cassert>  
-#include <type_traits>
-#include "customAllocator.hpp"
-
-template <size_t STO_SIZE, size_t STR_SIZE>
+template <size_t STR_SIZE>
 class TinyString {
     static_assert(STR_SIZE > 0, "TinyString size must be greater than 0");
 
@@ -34,8 +25,7 @@ class TinyString {
      * @brief Fixed-capacity, POD-friendly string.
      * @details
      *  - Does not allocate dynamically; payload is inline.
-     *  - Provides `operator new` overloads to integrate with the flat parameter store.
-     *  - Keeps the layout trivially copyable so it can live inside a byte buffer.
+     *  - Designed to be constructed in-place inside a flat byte buffer.
      */
 private:
     char data[STR_SIZE]{};
@@ -52,29 +42,7 @@ private:
         std::memcpy(data, str, len);
         data[len] = '\0';
     }
-  static SimpleMemoryPool<STO_SIZE> memPool; 
 public:
-   public:
-    /**
-     * @brief Allocate from the static pool (used by placement-new in the parameter store).
-     * @return Pointer inside the pool or nullptr if exhausted.
-     */
-    static void* operator new(std::size_t size) {
-      //  Safe: Returns nullptr if out of memory
-      return memPool.allocate(size);  
-    }
-
-    /** @brief Placement-new overload; does not touch the pool. */
-    static void* operator new(std::size_t, void* ptr) noexcept {
-      return ptr;
-    }
-    
-    /** @brief Delete should never fire because storage is embedded. */
-    static void operator delete(void*, std::size_t) {
-      assert( 0 && "delete should never be called by TinyString");
-    }
-    static void operator delete(void*, void*) noexcept {}
-
     /** @brief Create an empty string. */
     constexpr TinyString() = default;
 
@@ -170,6 +138,3 @@ public:
         return (len == str_len) && (std::memcmp(data, str, len) == 0);
     }
 };
-
-template <size_t STO_SIZE, size_t STR_SIZE>
-SimpleMemoryPool<STO_SIZE> TinyString<STO_SIZE, STR_SIZE>::memPool;

@@ -41,7 +41,7 @@
 
 namespace Persistant {
   /// Compact in-place string; storage is provided by the flat buffer, not by a pool.
-  using StoredString = TinyString<tinyStrSize, tinyStrSize>;
+  using StoredString = TinyString<tinyStrSize>;
   using StoreSerializeBuffer = etl::vector<uint8_t, 256>;
 
   /**
@@ -985,4 +985,3 @@ inline bool param_cset(const T &value) {
   static_assert(idx >= 0, "Parameter not found");
   return Persistant::Parameter::set(Persistant::Parameter::find(idx), value);
 }
-
