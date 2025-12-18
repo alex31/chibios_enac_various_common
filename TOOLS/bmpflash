@@ -57,13 +57,13 @@ my $gdbPath = which('arm-none-eabi-gdb') // which('gdb-multiarch');
 die "please install arm-none-eabi-gdb or gdb-multiarch" unless defined $gdbPath;
 
 my $bmpdev;
-$options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_h743zi.cfg'
+$options{device} = '| openocd -d1 -c "gdb port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_h743zi.cfg'
     if exists  $options{o743};
-$options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_l4.cfg'
+$options{device} = '| openocd -d1 -c "gdb port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_l4.cfg'
     if exists  $options{o432};
-$options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/stm32f746g-disco.cfg'
+$options{device} = '| openocd -d1 -c "gdb port pipe; log_output /tmp/openocd.log" -f board/stm32f746g-disco.cfg'
     if exists  $options{o746};
-$options{device} = '| openocd -d1 -c "gdb_port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_g4.cfg'
+$options{device} = '| openocd -d1 -c "gdb port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_g4.cfg'
     if exists  $options{og4};
 if (!exists  $options{device}) {
     if (-e BMPDEV) {
