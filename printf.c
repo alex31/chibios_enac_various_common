@@ -147,10 +147,11 @@ static char *long_to_string_with_divisor(char *p,
     l /= radix;
   } while ((ll /= radix) != 0);
 
+  /* GCC 16 analyzer needs this loop form to see q is initialized. */
   i = (int)(p + MAX_FILLER - q);
-  do
+  while (i-- > 0) {
     *p++ = *q++;
-  while (--i);
+  }
 
   return p;
 }
@@ -176,9 +177,9 @@ static char *ulltoa(char *p, unsigned long long num, unsigned radix) {
   } while (ll != 0);
 
   i = (int)(p + MAX_FILLER - q);
-  do
+  while (i-- > 0) {
     *p++ = *q++;
-  while (--i);
+  }
 
   return p;
 }
