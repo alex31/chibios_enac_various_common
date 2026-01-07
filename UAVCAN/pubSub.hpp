@@ -320,7 +320,6 @@ constexpr RegTimings getTimings(uint32_t canClk,
   }
   
 using receivedCbPtr_t = void (*)(CanardInstance* ins, CanardRxTransfer* transfer);
-using flagCbPtr_t = uint8_t (*)();
 using infoCbPtr_t = void (*)(const etl::string_view sv);
 
 /**
@@ -387,13 +386,6 @@ struct Config {
    *
    */
   uavcan_protocol_GetNodeInfoResponse nodeInfo;
-
-  /**
-   * @brief   callback that is called to fill
-   * pkt.software_version.optional_field_flags
-   *
-   */
-  flagCbPtr_t flagCb;
 
   /**
    * @brief   error cb mainly used to return string describing

@@ -817,9 +817,6 @@ void Node::handleNodeInfoRequest(CanardInstance* ins, CanardRxTransfer* transfer
   uavcan_protocol_GetNodeInfoResponse pkt = config.nodeInfo;
   node_status.uptime_sec = getTimestampS();
   pkt.status = node_status;
-  if (config.flagCb != nullptr) {
-    pkt.software_version.optional_field_flags = config.flagCb();
-  }
   static_assert(sizeof(pkt.hardware_version.unique_id) == sizeof(UniqId_t));
   const UAVCAN::UniqId_t& uid = getUniqueID();
   uid.copy(pkt.hardware_version.unique_id);
