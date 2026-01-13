@@ -91,6 +91,11 @@ static uint8_t dataLengthToDlc(uint16_t data_length) {
   return lookup[data_length];
 }
 
+#if CANARD_ALLOCATE_SEM
+  BSEMAPHORE_DECL(canard_sem, FALSE);
+#endif
+  
+ 
 /*===========================================================================*/
 /* Module exported functions.                                                */
 /*===========================================================================*/
@@ -899,4 +904,16 @@ DynNodeIdState* Node::dynNodeIdState = nullptr;
 
 }
 
+#if CANARD_ALLOCATE_SEM
+  void canard_allocate_sem_take(CanardPoolAllocator *)
+  {
+    chBSemWait(&canard_sem);
+  }
+  
+  void canard_allocate_sem_give(CanardPoolAllocator *)
+  {
+    chBSemSignal(&canard_sem);
+  }
+#endif
+ 
 /** @} */
