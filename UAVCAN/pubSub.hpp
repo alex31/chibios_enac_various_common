@@ -507,7 +507,6 @@ struct DynNodeIdState {
  */
 class Node {
 public:
-  enum specificStatusCode_t { SPECIFIC_OK, PS5V_UNDERVOLTAGE, PS5V_OVERVOLTAGE, TEMP_LOW, TEMP_HIGH };
   enum canStatus_t {
     CAN_OK,
     TRANSMIT_RESET,
@@ -543,17 +542,23 @@ public:
 
   /**
    * @brief       set internal node health status
-   * @notes	    can be gathered by other nodes
+   * @notes	  can be gathered by other nodes
    *
    */
   void setStatus(const uavcan_protocol_NodeStatus& status);
-
   /**
    * @brief       set internal node health status mode field
-   * @notes	    can be gathered by other nodes
+   * @notes	  can be gathered by other nodes
    *
    */
+
   void setStatusMode(const uint8_t mode);
+  /**
+   * @brief       set internal node health status specific code field
+   * @notes	  can be gathered by other nodes
+   *
+   */
+  void setSpecificCode(const uint16_t code);
 
   /**
    * @brief       return number of active nodes on the bus

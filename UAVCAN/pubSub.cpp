@@ -332,7 +332,7 @@ Node::Node(const Config& _config)
                  .health = UAVCAN_PROTOCOL_NODESTATUS_HEALTH_OK,
                  .mode = UAVCAN_PROTOCOL_NODESTATUS_MODE_INITIALIZATION,
                  .sub_mode = 0,
-                 .vendor_specific_status_code = SPECIFIC_OK }
+                 .vendor_specific_status_code = 0}
 
 {
   chMtxObjectInit(&canard_mtx_s);
@@ -878,7 +878,10 @@ void Node::setStatus(const uavcan_protocol_NodeStatus& status) {
 void Node::setStatusMode(const uint8_t mode) {
   node_status.mode = mode;
 }
-
+  
+void  Node::setSpecificCode(const uint16_t code) {
+  node_status.vendor_specific_status_code = code;
+}
 
 void Node::infoCb(const char* format, ...) {
 #if CH_DBG_ENABLE_CHECKS
