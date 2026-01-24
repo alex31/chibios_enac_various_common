@@ -115,7 +115,7 @@ msg_t MPL3115A2_getVal  (MPL3115A2Data *baro, float *pressure)
     return status;
   }
   
-  const uint32_t swapVal = (SWAP_ENDIAN32(*rawB<<8)) ;
+  const uint32_t swapVal = (BSWAP32(*rawB<<8)) ;
   *pressure = (float) swapVal / 6400.0f;
   
   return status;

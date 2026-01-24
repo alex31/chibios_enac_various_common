@@ -78,11 +78,24 @@ typedef enum {PWM_NORMAL=0, PWM_COMPLEMENTARY} PwmOutputSide;
   ((uint32_t)((b) & 0xff) << 8)  |  \
    (uint32_t)((a) & 0xff)
   
-#define SWAP_ENDIAN16(x) __builtin_bswap16(x)
+#define BSWAP16(x) __builtin_bswap16(x)
+#define BSWAP32(x) __builtin_bswap32(x)
+#define BSWAP64(x) __builtin_bswap64(x)
 
-#define SWAP_ENDIAN32(x) __builtin_bswap32(x)
-
-#define SWAP_ENDIAN64(x) __builtin_bswap64(x)
+#define BSWAP(x) _Generic((x), \
+  _Bool: (void)sizeof(char[(sizeof(x) == 1) ? -1 : 1]), \
+  char: (void)sizeof(char[(sizeof(x) == 1) ? -1 : 1]), \
+  signed char: (void)sizeof(char[(sizeof(x) == 1) ? -1 : 1]), \
+  unsigned char: (void)sizeof(char[(sizeof(x) == 1) ? -1 : 1]), \
+  short: (short)__builtin_bswap16((uint16_t)(x)), \
+  unsigned short: (unsigned short)__builtin_bswap16((uint16_t)(x)), \
+  int: (int)__builtin_bswap32((uint32_t)(x)), \
+  unsigned int: (unsigned int)__builtin_bswap32((uint32_t)(x)), \
+  long: (long)__builtin_bswap32((uint32_t)(x)), \
+  unsigned long: (unsigned long)__builtin_bswap32((uint32_t)(x)), \
+  long long: (long long)__builtin_bswap64((uint64_t)(x)), \
+  unsigned long long: (unsigned long long)__builtin_bswap64((uint64_t)(x)) \
+)
 
 #define REINTERPRET_CAST(type, val) ({_Static_assert(sizeof(val) <= sizeof(type), \
 						    "sizeof (type) is too small");  \

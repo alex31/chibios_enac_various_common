@@ -29,7 +29,7 @@ msg_t MS5611_init (MS5611Data *baro, I2CDriver *i2cd, const uint8_t i2cAddr)
     baro->dmaTmpBuf1[0] = MS5611_PROM_READ | (promCnt << 1);
     I2C_READ_WRITE (baro->i2cd, baro->i2cAddr, baro->dmaTmpBuf1,
 		    (uint8_t *) &(baro->promCoeffs[promCnt]), sizeof (baro->promCoeffs[0]));
-    baro->promCoeffs[promCnt] = SWAP_ENDIAN16(baro->promCoeffs[promCnt]);
+    baro->promCoeffs[promCnt] = BSWAP16(baro->promCoeffs[promCnt]);
     //    DebugTrace ("prom[%d] = 0x%x", promCnt, baro->promCoeffs[promCnt]);
   }
   i2cReleaseBus(i2cd);

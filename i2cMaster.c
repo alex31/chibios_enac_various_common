@@ -373,10 +373,10 @@ msg_t i2cGetGyro_ITG3200_Val (I2CDriver *i2cd, int16_t  rawBuf[4],
   I2C_READ_WRITE(i2cd, itgAdr, txbuf, (uint8_t *) rawB, sizeof(int16_t)*4);
   i2cReleaseBus(i2cd);
 
-  *temp = (SWAP_ENDIAN16(rawB[0]) +23000) / 280.0f;
-  gyro[0] =  SWAP_ENDIAN16(rawB[1]) / 14.375f;
-  gyro[1] =  SWAP_ENDIAN16(rawB[2]) / 14.375f;
-  gyro[2] =  SWAP_ENDIAN16(rawB[3]) / 14.375f;
+  *temp = (BSWAP16(rawB[0]) +23000) / 280.0f;
+  gyro[0] =  BSWAP16(rawB[1]) / 14.375f;
+  gyro[1] =  BSWAP16(rawB[2]) / 14.375f;
+  gyro[2] =  BSWAP16(rawB[3]) / 14.375f;
 
   return status;
 }
@@ -430,9 +430,9 @@ msg_t i2cGetCompass_HMC5883L_Val (I2CDriver *i2cd, int16_t  rawBuf[3],
   I2C_READ_WRITE(i2cd, hmcAdr, txbuf,(uint8_t *) rawB, (sizeof(int16_t)*3));
   i2cReleaseBus(i2cd);
 
-  mag[0] = SWAP_ENDIAN16(rawB[0]) / 1.37f;
-  mag[2] = SWAP_ENDIAN16(rawB[1]) / 1.37f; // HMC5883L returns values in x,z,y order
-  mag[1] = SWAP_ENDIAN16(rawB[2]) / 1.37f;
+  mag[0] = BSWAP16(rawB[0]) / 1.37f;
+  mag[2] = BSWAP16(rawB[1]) / 1.37f; // HMC5883L returns values in x,z,y order
+  mag[1] = BSWAP16(rawB[2]) / 1.37f;
   return status;
 }
 #endif
@@ -488,7 +488,7 @@ msg_t i2cGetBaro_MPL3115A2_Val (I2CDriver *i2cd, int32_t  *rawBuf, float *pressu
   I2C_READ_WRITE(i2cd, mplAdr, pressureReg, (uint8_t *)rawB, 3);
   i2cReleaseBus(i2cd);
 
-  const uint32_t swapVal = (SWAP_ENDIAN32(*rawB<<8)) ;
+  const uint32_t swapVal = (BSWAP32(*rawB<<8)) ;
   *pressure = (float) swapVal / 6400.0f;
 
   return  MSG_OK;

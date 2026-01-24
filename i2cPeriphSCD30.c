@@ -9,17 +9,17 @@ static const uint8_t SCD30_I2C_ADDRESS = 0x61;
 
 typedef enum __attribute__ ((__packed__)) {
   SCD30_NOT_INITIALIZED = 0x0,
-  SCD30_START_CONTINUOUS = SWAP_ENDIAN16(0x0010), // argument : pressure in mbar or 0 to deactivate altitude compensation
-  SCD30_STOP_CONTINUOUS  = SWAP_ENDIAN16(0x0104), // no argument
-  SCD30_INTERVAL  = SWAP_ENDIAN16(0x4600), // interval in seconds in the range 2 .. 1800
-  SCD30_GET_STATUS = SWAP_ENDIAN16(0x0202), // no argument, read 1 atom
-  SCD30_GET_DATA = SWAP_ENDIAN16(0x0300), // no argument, read 6 atoms
-  SCD30_SELF_CALIBRATION = SWAP_ENDIAN16(0x5306), // arg : 1 to activate, 0 to deactivate
-  SCD30_FORCED_CALIBRATION = SWAP_ENDIAN16(0x5204), // arg : CO2 concentration in ppmm in the range 400 .. 2000
-  SCD30_TEMPERATURE_OFFSET = SWAP_ENDIAN16(0x5403), // arg : temperature offset in 1/100 kelvin
-  SCD30_ALTITUDE_COMPENSATION = SWAP_ENDIAN16(0x5102), // arg : altitude in m
-  SCD30_GET_FIRMWARE_VERSION = SWAP_ENDIAN16(0xD100), // no arg : return FW version
-  SCD30_SOFT_RESET = SWAP_ENDIAN16(0xD304) // arg : altitude in m
+  SCD30_START_CONTINUOUS = BSWAP16(0x0010), // argument : pressure in mbar or 0 to deactivate altitude compensation
+  SCD30_STOP_CONTINUOUS  = BSWAP16(0x0104), // no argument
+  SCD30_INTERVAL  = BSWAP16(0x4600), // interval in seconds in the range 2 .. 1800
+  SCD30_GET_STATUS = BSWAP16(0x0202), // no argument, read 1 atom
+  SCD30_GET_DATA = BSWAP16(0x0300), // no argument, read 6 atoms
+  SCD30_SELF_CALIBRATION = BSWAP16(0x5306), // arg : 1 to activate, 0 to deactivate
+  SCD30_FORCED_CALIBRATION = BSWAP16(0x5204), // arg : CO2 concentration in ppmm in the range 400 .. 2000
+  SCD30_TEMPERATURE_OFFSET = BSWAP16(0x5403), // arg : temperature offset in 1/100 kelvin
+  SCD30_ALTITUDE_COMPENSATION = BSWAP16(0x5102), // arg : altitude in m
+  SCD30_GET_FIRMWARE_VERSION = BSWAP16(0xD100), // no arg : return FW version
+  SCD30_SOFT_RESET = BSWAP16(0xD304) // arg : altitude in m
 }  Scd30Command;
 
 

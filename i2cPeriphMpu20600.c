@@ -209,7 +209,7 @@ msg_t mpu20600_cacheVal ( Mpu20600Data *imu)
   }
   i2cReleaseBus(imu->i2cd);
   for (size_t i=0; i < 7; i++)
-    imu->fifo[0].raw[i] = SWAP_ENDIAN16(imu->fifo[0].raw[i]);
+    imu->fifo[0].raw[i] = BSWAP16(imu->fifo[0].raw[i]);
   
   return MSG_OK; 
 }
@@ -397,7 +397,7 @@ static msg_t readFifo(Mpu20600Data *imu, Mpu20600_Status *mpuStatus)
   }
   I2C_READLEN_REGISTERS(imu->i2cd, imu->slaveAddr, MPU20600_FIFO_COUNT_H,
 			(uint8_t *) &fifoCount, sizeof(fifoCount));
-  fifoCount = SWAP_ENDIAN16(fifoCount);
+  fifoCount = BSWAP16(fifoCount);
   if ((fifoCount == 0) || (fifoCount > 1008)) {
      goto fifoResetAndExit;
   }
@@ -412,7 +412,7 @@ static msg_t readFifo(Mpu20600Data *imu, Mpu20600_Status *mpuStatus)
     for (size_t sampleIdx = 0;
 	 sampleIdx < fifoNbBlocks * sizeof(Mpu20600FifoData) / sizeof(int16_t);
 	 sampleIdx++) {
-      samplesPtr[sampleIdx] = SWAP_ENDIAN16(samplesPtr[sampleIdx]);
+      samplesPtr[sampleIdx] = BSWAP16(samplesPtr[sampleIdx]);
     }
     imu->fifoLen = fifoNbBlocks;
     if (hasOverflown) {

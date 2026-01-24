@@ -105,7 +105,7 @@ class I2cBaroMPL3115A2 : public I2cPeriphBase<_name,
   static const  std::array<float, 1> getValue (void)  {
     const int32_t *rawB = (int32_t *) registerValues.data();
     //const int32_t *rawB = (int32_t *) getRawValues().data();
-    const uint32_t swapVal = (SWAP_ENDIAN32(*rawB<<8)) ;
+    const uint32_t swapVal = (BSWAP32(*rawB<<8)) ;
     return {swapVal/6400.0f};
   }
 
@@ -224,9 +224,9 @@ class I2cCompassHMC5883L : public I2cPeriphBase<_name,
     std::array<float, 3> mag;
     const int16_t *rawB = (int16_t *) registerValues.data();
 
-    mag[0] = SWAP_ENDIAN16(rawB[0]) / 1.37f;
-    mag[2] = SWAP_ENDIAN16(rawB[1]) / 1.37f; // HMC5883L returns values in x,z,y order
-    mag[1] = SWAP_ENDIAN16(rawB[2]) / 1.37f;
+    mag[0] = BSWAP16(rawB[0]) / 1.37f;
+    mag[2] = BSWAP16(rawB[1]) / 1.37f; // HMC5883L returns values in x,z,y order
+    mag[1] = BSWAP16(rawB[2]) / 1.37f;
 
     
     return mag;
