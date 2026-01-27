@@ -5,12 +5,10 @@
   TODO :
 
   DOUBLE BUFFER MODE :
-    ° impl TIMEOUT pour le double buffer mode
+    ° impl TIMEOUT for double buffer mode
 
 ===============================================================
   ° split lld and hardware independant code : hal_stm32_dma et hal_lld_stm32_dma
-
-  ° port to H7,L4+ : dmamux, bdma, mdma
 
   ° allow fifo burst when STM32_DMA_USE_ASYNC_TIMOUT is true by forcing a flush of the fifo : could be
   done disabling stream : should flush fifo and trig full code ISR. full code ISR should re-enable stream
@@ -929,12 +927,12 @@ static void dma_lld_serve_interrupt(DMADriver *dmap, uint32_t flags)
  *
  * @param[in] dmap      pointer to the @p DMADriver object
  */
-void dma_lld_serve_timeout_interrupt(void *arg)
+void dma_lld_serve_timeout_interrupt(struct ch_virtual_timer *vt, void *arg)
 {
   DMADriver *dmap = (DMADriver *) arg;
   if (dmap->config->op_mode != DMA_ONESHOT) {
     chSysLockFromISR();
-    chVTSetI(&dmap->vt, dmap->config->timeout,
+    chVTSetI(vt, dmap->config->timeout,
 	     &dma_lld_serve_timeout_interrupt, (void *) dmap);
     chSysUnlockFromISR();
   }

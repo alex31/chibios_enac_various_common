@@ -578,7 +578,7 @@ bool  dma_lld_start_transfert(DMADriver *dmap, volatile void *periphp, void *mem
 void  dma_lld_stop_transfert(DMADriver *dmap);
 
 #if STM32_DMA_USE_ASYNC_TIMOUT
-void dma_lld_serve_timeout_interrupt(void *arg);
+void dma_lld_serve_timeout_interrupt(struct ch_virtual_timer *tim, void *arg);
 #endif
 
 void* dma_lld_set_next_double_buffer(DMADriver *dmap, void *nextBuffer);

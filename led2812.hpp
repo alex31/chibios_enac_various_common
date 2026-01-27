@@ -274,6 +274,9 @@ Led2812Strip<N, LT>::Led2812Strip(PWMDriver *m_pwmd, const LedTiming &m_ledTimin
 	     .op_mode = DMA_ONESHOT,
 	     .end_cb = NULL,
 	     .error_cb = NULL,
+#if STM32_DMA_USE_ASYNC_TIMOUT
+	     .timeout = TIME_INFINITE,
+#endif
 	     .direction = DMA_DIR_M2P,
 	     .dma_priority = 0,
 	     .irq_priority = 12,
