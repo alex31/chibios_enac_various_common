@@ -546,6 +546,26 @@ void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 static  inline dmastate_t dmaGetState(DMADriver *dmap) {return dmap->state;}
 static  inline size_t dmaGetTransactionCounter(DMADriver *dmap) {return dmaStreamGetTransactionSize(dmap->dmastream);}
 
+#if STM32_DMA_USE_ASYNC_TIMOUT
+/**
+ * @brief   Forces a half-buffer style callback based on current DMA position.
+ * @details Computes bytes since last callback and invokes end_cb accordingly.
+ * @note    Valid only when op_mode == DMA_CONTINUOUS_HALF_BUFFER.
+ *
+ * @api
+ */
+void dmaForceHalfBuffer(DMADriver *dmap);
+
+/**
+ * @brief   Forces a half-buffer style callback based on current DMA position.
+ * @details ISR-safe variant of dmaForceHalfBuffer().
+ * @note    Valid only when op_mode == DMA_CONTINUOUS_HALF_BUFFER.
+ *
+ * @iclass
+ */
+void dmaForceHalfBufferI(DMADriver *dmap);
+#endif
+
 #if  STM32_DMA_USE_DOUBLE_BUFFER
 /**
  * @brief   get double buffer allocation errors counter

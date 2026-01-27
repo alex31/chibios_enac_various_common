@@ -418,6 +418,43 @@ uint8_t dmaGetStreamIndex(DMADriver *dmap)
   return 0xff;
 }
 
+/**
+ * @brief   Forces a half-buffer style callback based on current DMA position.
+ * @details Computes bytes since last callback and invokes end_cb accordingly.
+ * @note    Valid only when op_mode == DMA_CONTINUOUS_HALF_BUFFER.
+ *
+ * @api
+ */
+#if STM32_DMA_USE_ASYNC_TIMOUT
+void dmaForceHalfBuffer(DMADriver *dmap)
+{
+  osalDbgCheck(dmap != NULL);
+
+  osalSysLock();
+  dmaForceHalfBufferI(dmap);
+  osalSysUnlock();
+}
+
+/**
+ * @brief   Forces a half-buffer style callback based on current DMA position.
+ * @details ISR-safe variant of dmaForceHalfBuffer().
+ * @note    Valid only when op_mode == DMA_CONTINUOUS_HALF_BUFFER.
+ *
+ * @iclass
+ */
+void dmaForceHalfBufferI(DMADriver *dmap)
+{
+  osalDbgCheckClassI();
+  osalDbgCheck(dmap != NULL);
+  osalDbgAssert(dmap->state == DMA_ACTIVE, "invalid state");
+  osalDbgAssert(dmap->config->op_mode == DMA_CONTINUOUS_HALF_BUFFER, "invalid op_mode");
+  osalDbgAssert(dmap->config->end_cb != NULL, "end_cb is NULL");
+  osalDbgAssert((dmap->size > 1U) && ((dmap->size & 1U) == 0U), "size must be even");
+
+  async_timout_enabled_call_end_cb(dmap, FROM_TIMOUT_CODE);
+}
+#endif
+
 #if (STM32_DMA_USE_WAIT == TRUE) || defined(__DOXYGEN__)
 
 /**
