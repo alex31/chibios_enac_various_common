@@ -549,21 +549,13 @@ static  inline size_t dmaGetTransactionCounter(DMADriver *dmap) {return dmaStrea
 #if STM32_DMA_USE_ASYNC_TIMOUT
 /**
  * @brief   Forces a half-buffer style callback based on current DMA position.
- * @details Computes bytes since last callback and invokes end_cb accordingly.
+ * @details ISR-context variant. No kernel lock required.
  * @note    Valid only when op_mode == DMA_CONTINUOUS_HALF_BUFFER.
+ * @note    Must be called from ISR context with no kernel lock held.
  *
- * @api
+ * @xclass
  */
-void dmaForceHalfBuffer(DMADriver *dmap);
-
-/**
- * @brief   Forces a half-buffer style callback based on current DMA position.
- * @details ISR-safe variant of dmaForceHalfBuffer().
- * @note    Valid only when op_mode == DMA_CONTINUOUS_HALF_BUFFER.
- *
- * @iclass
- */
-void dmaForceHalfBufferI(DMADriver *dmap);
+void dmaForceHalfBufferFromISR(DMADriver *dmap);
 #endif
 
 #if  STM32_DMA_USE_DOUBLE_BUFFER

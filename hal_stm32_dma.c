@@ -426,26 +426,19 @@ uint8_t dmaGetStreamIndex(DMADriver *dmap)
  * @api
  */
 #if STM32_DMA_USE_ASYNC_TIMOUT
-void dmaForceHalfBuffer(DMADriver *dmap)
-{
-  osalDbgCheck(dmap != NULL);
-
-  osalSysLock();
-  dmaForceHalfBufferI(dmap);
-  osalSysUnlock();
-}
-
 /**
  * @brief   Forces a half-buffer style callback based on current DMA position.
- * @details ISR-safe variant of dmaForceHalfBuffer().
+ * @details ISR-context variant. No kernel lock required.
  * @note    Valid only when op_mode == DMA_CONTINUOUS_HALF_BUFFER.
+ * @note    Must be called from ISR context with no kernel lock held.
  *
- * @iclass
+ * @xclass
  */
-void dmaForceHalfBufferI(DMADriver *dmap)
+void dmaForceHalfBufferFromISR(DMADriver *dmap)
 {
-  osalDbgCheckClassI();
   osalDbgCheck(dmap != NULL);
+  osalDbgAssert(port_is_isr_context(), "not in ISR");
+  osalDbgAssert(!port_is_locked(port_get_lock_status()), "kernel locked");
   osalDbgAssert(dmap->state == DMA_ACTIVE, "invalid state");
   osalDbgAssert(dmap->config->op_mode == DMA_CONTINUOUS_HALF_BUFFER, "invalid op_mode");
   osalDbgAssert(dmap->config->end_cb != NULL, "end_cb is NULL");
