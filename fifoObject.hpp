@@ -190,11 +190,6 @@ void ObjectFifo<T, FIFO_SIZE>::returnObjectI(T& obj)
   chFifoReturnObjectI(&fifo, &obj);
 }
 
-template <typename T, size_t FIFO_SIZE>
-size_t	ObjectFifo<T, FIFO_SIZE>::fifoUsedI() {return chMBGetFreeCountI(&fifo.mbx);}
-
-template <typename T, size_t FIFO_SIZE>
-size_t	ObjectFifo<T, FIFO_SIZE>::fifoFreeI() {return chMBGetUsedCountI(&fifo.mbx);}
 
 /*
 #                  __                     __                     _ 
@@ -209,9 +204,15 @@ size_t	ObjectFifo<T, FIFO_SIZE>::fifoFreeI() {return chMBGetUsedCountI(&fifo.mbx
 
 
 template <typename T, size_t FIFO_SIZE>
+size_t	ObjectFifo<T, FIFO_SIZE>::fifoFreeI() {return chMBGetFreeCountI(&fifo.mbx);}
+
+template <typename T, size_t FIFO_SIZE>
+size_t	ObjectFifo<T, FIFO_SIZE>::fifoUsedI() {return chMBGetUsedCountI(&fifo.mbx);}
+
+template <typename T, size_t FIFO_SIZE>
 size_t	ObjectFifo<T, FIFO_SIZE>::fifoUsed() {
   chSysLock();
-  auto ret = chMBGetUsedCountI(&fifo.mbx);
+  auto ret = fifoUsedI();
   chSysUnlock();
   return ret;
 }
@@ -219,7 +220,7 @@ size_t	ObjectFifo<T, FIFO_SIZE>::fifoUsed() {
 template <typename T, size_t FIFO_SIZE>
 size_t	ObjectFifo<T, FIFO_SIZE>::fifoFree() {
   chSysLock();
-  auto ret = chMBGetFreeCountI(&fifo.mbx);
+  auto ret = fifoFreeI();
   chSysUnlock();
   return ret;
 }
