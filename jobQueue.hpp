@@ -145,12 +145,13 @@ requires std::convertible_to<F, JobQueueCB<T>> &&
          is_type_present<T, MT...>
 JobQueueStatus JobQueue<QSZ, MT...>::submit(F cb, const T& t, sysinterval_t timeout)
 {
-  auto [status, obj]  = fifo.takeObject(timeout);
-  if (status == MSG_OK) {
+  auto obj_opt = fifo.takeObject(timeout);
+  if (obj_opt) {
+    auto &obj = obj_opt->get();
     obj.jfa = std::pair(cb, t);
     fifo.sendObject(obj);
   }
-  return status == MSG_OK ? JobQueueStatus::OK : JobQueueStatus::TIMOUT;
+  return obj_opt ? JobQueueStatus::OK : JobQueueStatus::TIMOUT;
 }
 
 
@@ -161,12 +162,13 @@ requires std::convertible_to<F, JobQueueCB<T>> &&
          is_type_present<T, MT...>
 JobQueueStatus JobQueue<QSZ, MT...>::submitI(F cb, const T& t)
 {
-  auto [status, obj] = fifo.takeObjectI();
-  if (status == MSG_OK) {  
+  auto obj_opt = fifo.takeObjectI();
+  if (obj_opt) {
+    auto &obj = obj_opt->get();
     obj.jfa = std::pair(cb, t);
     fifo.sendObjectI(obj);
   }
-  return status == MSG_OK ? JobQueueStatus::OK : JobQueueStatus::EMPTY;
+  return obj_opt ? JobQueueStatus::OK : JobQueueStatus::EMPTY;
 }
 
 // STATIC Methods
@@ -196,8 +198,9 @@ requires (QSZ != 0)
   
   auto fifo = static_cast<ObjectFifo<Job, QSZ> *>(_fifo);
   while (true) {
-    auto [status, obj]  = fifo->receiveObject();
-    if (status == MSG_OK) {
+    auto obj_opt = fifo->receiveObject();
+    if (obj_opt) {
+      auto &obj = obj_opt->get();
       std::visit([](auto&& fnarg) { // get the active variant function+argument pair
 	auto&& [fn, arg] = fnarg;   // unpack pair
 	fn(arg);                    // invoque callback with arg
