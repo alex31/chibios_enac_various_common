@@ -3,6 +3,8 @@
 #include <ch.h>
 #include <hal.h>
 #include <utility>
+#include <optional>
+#include <functional>
 
 
 enum class FifoPriority {Regular, High};
@@ -10,23 +12,23 @@ enum class FifoPriority {Regular, High};
 template <typename T, size_t FIFO_SIZE>
 class ObjectFifo
 {
-  using RetPair = std::pair<const msg_t, T&>;
+  using OptRef = std::optional<std::reference_wrapper<T>>;
 
   
 public:
   ObjectFifo ();
 
-  RetPair     	takeObject(const sysinterval_t timeout=TIME_INFINITE);
-  RetPair     	takeObjectS(const sysinterval_t timeout=TIME_INFINITE);
-  RetPair     	takeObjectI();
+  OptRef      	takeObject(const sysinterval_t timeout=TIME_INFINITE);
+  OptRef      	takeObjectS(const sysinterval_t timeout=TIME_INFINITE);
+  OptRef      	takeObjectI();
 
   void		sendObject(T& obj, const FifoPriority p = FifoPriority::Regular);
   void   	sendObjectS(T& obj, const FifoPriority p = FifoPriority::Regular);
   void   	sendObjectI(T& obj, const FifoPriority p = FifoPriority::Regular);
 
-  RetPair  	receiveObject(sysinterval_t timeout=TIME_INFINITE);
-  RetPair  	receiveObjectS(sysinterval_t timeout=TIME_INFINITE);
-  RetPair  	receiveObjectI();
+  OptRef  	receiveObject(sysinterval_t timeout=TIME_INFINITE);
+  OptRef  	receiveObjectS(sysinterval_t timeout=TIME_INFINITE);
+  OptRef  	receiveObjectI();
 
   void   	returnObject(T& obj);
   void   	returnObjectI(T& obj);
@@ -55,8 +57,8 @@ template <typename T, size_t FIFO_SIZE>
 ObjectFifo<T, FIFO_SIZE>::ObjectFifo()
 {
   chFifoObjectInit(&fifo, sizeof(T),  FIFO_SIZE, msg_pool, msg_fifo);
-  static_assert(std::is_copy_constructible<T>::value == false,
-		"type T should no be copy constructible to impose return by reference");
+  // static_assert(std::is_copy_constructible<T>::value == false,
+  // 		"type T should no be copy constructible to impose return by reference");
 }
 
 
@@ -69,27 +71,33 @@ ObjectFifo<T, FIFO_SIZE>::ObjectFifo()
 #                 \__|   \__,_| |_|\_\  \___|        
 */
 template <typename T, size_t FIFO_SIZE>
-ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::takeObject(const sysinterval_t timeout)
+ObjectFifo<T, FIFO_SIZE>::OptRef ObjectFifo<T, FIFO_SIZE>::takeObject(const sysinterval_t timeout)
 {
   const auto ptrToObj = static_cast<T *> (chFifoTakeObjectTimeout(&fifo, timeout));
-  const msg_t status = ptrToObj != nullptr ? MSG_OK : MSG_TIMEOUT;
-  return {status, *ptrToObj};
+  if (ptrToObj == nullptr) {
+    return std::nullopt;
+  }
+  return std::ref(*ptrToObj);
 }
 
 template <typename T, size_t FIFO_SIZE>
-ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::takeObjectS(const sysinterval_t timeout)
+ObjectFifo<T, FIFO_SIZE>::OptRef ObjectFifo<T, FIFO_SIZE>::takeObjectS(const sysinterval_t timeout)
 {
   const auto ptrToObj = static_cast<T *> (chFifoTakeObjectTimeoutS(&fifo, timeout));
-  const msg_t status = ptrToObj != nullptr ? MSG_OK : MSG_TIMEOUT;
-  return {status, *ptrToObj};
+  if (ptrToObj == nullptr) {
+    return std::nullopt;
+  }
+  return std::ref(*ptrToObj);
 }
 
 template <typename T, size_t FIFO_SIZE>
-ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::takeObjectI()
+ObjectFifo<T, FIFO_SIZE>::OptRef ObjectFifo<T, FIFO_SIZE>::takeObjectI()
 {
   const auto ptrToObj = static_cast<T *> (chFifoTakeObjectI(&fifo));
-  const msg_t status = ptrToObj != nullptr ? MSG_OK : MSG_TIMEOUT;
-  return {status, *ptrToObj};
+  if (ptrToObj == nullptr) {
+    return std::nullopt;
+  }
+  return std::ref(*ptrToObj);
 }
 
 /*
@@ -140,32 +148,41 @@ void ObjectFifo<T, FIFO_SIZE>::sendObjectI(T& obj, const FifoPriority p)
 #                |_|     \___|  \___|  \___| |_|    \_/    \___|        
 */
 template <typename T, size_t FIFO_SIZE>
-ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::receiveObject(sysinterval_t timeout)
+ObjectFifo<T, FIFO_SIZE>::OptRef ObjectFifo<T, FIFO_SIZE>::receiveObject(sysinterval_t timeout)
 {
   T *ptr = nullptr;
   const msg_t status = chFifoReceiveObjectTimeout(&fifo,
 				    reinterpret_cast<void **>(&ptr),
 				    timeout);
-  return RetPair{status, *ptr};
+  if ((status != MSG_OK) || (ptr == nullptr)) {
+    return std::nullopt;
+  }
+  return std::ref(*ptr);
 }
 
 template <typename T, size_t FIFO_SIZE>
-ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::receiveObjectS(sysinterval_t timeout)
+ObjectFifo<T, FIFO_SIZE>::OptRef ObjectFifo<T, FIFO_SIZE>::receiveObjectS(sysinterval_t timeout)
 {
   T *ptr;
   const msg_t status = chFifoReceiveObjectTimeoutS(&fifo,
 				    reinterpret_cast<void **>(&ptr),
 				    timeout);
-  return RetPair{status, *ptr};
+  if ((status != MSG_OK) || (ptr == nullptr)) {
+    return std::nullopt;
+  }
+  return std::ref(*ptr);
 }
 
 template <typename T, size_t FIFO_SIZE>
-ObjectFifo<T, FIFO_SIZE>::RetPair ObjectFifo<T, FIFO_SIZE>::receiveObjectI()
+ObjectFifo<T, FIFO_SIZE>::OptRef ObjectFifo<T, FIFO_SIZE>::receiveObjectI()
 {
   T *ptr;
   const msg_t status = chFifoReceiveObjectI(&fifo,
 				    reinterpret_cast<void **>(&ptr));
-  return RetPair{status, *ptr};
+  if ((status != MSG_OK) || (ptr == nullptr)) {
+    return std::nullopt;
+  }
+  return std::ref(*ptr);
 }
 
 
