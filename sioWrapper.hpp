@@ -220,6 +220,7 @@ struct DatagramConfig {
   DmaUserConfig rx_dma_cfg;       ///< RX DMA settings.
   DmaUserConfig tx_dma_cfg;       ///< TX DMA settings.
   const SIOConfig *sio_config = nullptr; ///< Optional SIO configuration (copied if provided).
+  bool enable_rx_idle = false; ///< Enable RX idle detection to stop DMA early.
 };
 
 /**
@@ -255,6 +256,8 @@ public:
   bool rxBusy() const;
 
 private:
+  /** @brief SIO idle event callback (ISR). */
+  static void sioIdleCb(SIODriver *siop);
   static void initDmaCfg(DMAConfig &dst, const DmaUserConfig &src, bool is_rx);
 
   DMADriver rx_dma_;         ///< RX DMA driver instance.
@@ -263,6 +266,7 @@ private:
   DMAConfig tx_cfg_storage_; ///< TX DMA config storage.
   const DMAConfig *rx_cfg_;  ///< RX DMA config pointer.
   const DMAConfig *tx_cfg_;  ///< TX DMA config pointer.
+  bool rx_idle_enabled_;    ///< Enable RX idle detection.
 
 protected:
   /** @brief Protected destructor. */
@@ -492,7 +496,8 @@ inline Datagram::Datagram(const Config &cfg)
       rx_cfg_storage_{},
       tx_cfg_storage_{},
       rx_cfg_(nullptr),
-      tx_cfg_(nullptr) {
+      tx_cfg_(nullptr),
+      rx_idle_enabled_(cfg.enable_rx_idle) {
   if (config_ != nullptr) {
     config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
   }
@@ -516,10 +521,20 @@ inline msg_t Datagram::start() {
     sioStop(siop_);
     return HAL_RET_HW_FAILURE;
   }
+
+  if (rx_idle_enabled_) {
+    setCallback(&Datagram::sioIdleCb, this);
+    writeEnableFlagsX(SIO_EV_RXIDLE);
+  }
+
   return HAL_RET_SUCCESS;
 }
 
 inline void Datagram::stop() {
+  if (rx_idle_enabled_) {
+    setCallback(nullptr, nullptr);
+    writeEnableFlagsX(SIO_EV_NONE);
+  }
   dmaStop(&tx_dma_);
   dmaStop(&rx_dma_);
   sioStop(siop_);
@@ -581,6 +596,19 @@ inline bool Datagram::txBusy() const {
 
 inline bool Datagram::rxBusy() const {
   return (dmaGetState(const_cast<DMADriver *>(&rx_dma_)) == DMA_ACTIVE);
+}
+
+inline void Datagram::sioIdleCb(SIODriver *siop) {
+  auto *self = static_cast<Datagram *>(siop->arg);
+  if (self != nullptr) {
+    const sioevents_t ev = sioGetAndClearEventsX(siop);
+    if ((ev & SIO_EV_RXIDLE) != 0U) {
+      if (dmaGetState(&self->rx_dma_) == DMA_ACTIVE) {
+        dmaStopTransfertI(&self->rx_dma_);
+      }
+    }
+  }
+  sioSetEnableFlagsX(siop, SIO_EV_RXIDLE);
 }
 
 inline void Datagram::initDmaCfg(DMAConfig &dst, const DmaUserConfig &src, bool is_rx) {
