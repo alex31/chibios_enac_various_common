@@ -21,7 +21,7 @@ public:
 		BD_9600 = 207
 	};
 
-	Dynamixel(UARTDriver* s): SmartServo(s) {}
+	Dynamixel(SmartServoSio* s, SIOConfig *cfg): SmartServo(s, cfg) {}
 
 	SmartServo::Status setID(uint8_t id, uint8_t newID) override;
 	SmartServo::Status setBaudrate(uint8_t id, uint32_t speed) override;
