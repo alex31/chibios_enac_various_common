@@ -15,10 +15,6 @@
 #include "hal_buffered_sio.h"
 #include "fifoObject.hpp"
 
-#ifndef SIOWRAP_FAST_STM32_RX_PURGE
-#define SIOWRAP_FAST_STM32_RX_PURGE 0
-#endif
-
 /** @brief SIO C++ wrapper namespace. */
 namespace SIO {
 
@@ -154,6 +150,62 @@ struct DmaUserConfig {
 #endif
 };
 
+namespace detail {
+
+template <typename Owner>
+struct DmaCfgWithOwner {
+  DMAConfig cfg{};         ///< Full DMA configuration.
+  Owner *owner = nullptr;  ///< Back-pointer for callbacks.
+};
+
+inline void initDmaConfig(DMAConfig &dst,
+                          const DmaUserConfig &src,
+                          dmacallback_t end_cb,
+                          const bool is_rx,
+                          const dmaopmode_t op_mode) {
+  dst = {};
+  dst.stream = src.stream;
+#if STM32_DMA_SUPPORTS_DMAMUX
+  dst.dmamux = src.dmamux;
+#else
+  dst.channel = src.channel;
+#endif
+  dst.inc_peripheral_addr = false;
+  dst.inc_memory_addr = true;
+  dst.op_mode = op_mode;
+  dst.end_cb = end_cb;
+  dst.error_cb = src.error_cb;
+#if STM32_DMA_USE_ASYNC_TIMOUT
+  dst.timeout = src.timeout;
+#endif
+  dst.direction = is_rx ? DMA_DIR_P2M : DMA_DIR_M2P;
+  dst.dma_priority = src.dma_priority;
+  dst.irq_priority = src.irq_priority;
+  dst.psize = src.psize;
+  dst.msize = src.msize;
+#if __DCACHE_PRESENT
+  dst.activate_dcache_sync = src.activate_dcache_sync;
+#endif
+#if STM32_DMA_ADVANCED
+  dst.pburst = src.pburst;
+  dst.mburst = src.mburst;
+  dst.fifo = src.fifo;
+  dst.periph_inc_size_4 = src.periph_inc_size_4;
+  dst.transfert_end_ctrl_by_periph = src.transfert_end_ctrl_by_periph;
+#endif
+}
+
+template <typename Owner>
+inline Owner *ownerFromDma(DMADriver *dmap) {
+  if ((dmap == nullptr) || (dmap->config == nullptr)) {
+    return nullptr;
+  }
+  const auto *cfg = reinterpret_cast<const DmaCfgWithOwner<Owner> *>(dmap->config);
+  return cfg->owner;
+}
+
+} // namespace detail
+
 /**
  * @brief Buffered SIO wrapper.
  * @note  Best fit for low-throughput links where latency and simple byte-stream
@@ -226,10 +278,8 @@ struct DatagramConfig {
   DmaUserConfig rx_dma_cfg;       ///< RX DMA settings.
   DmaUserConfig tx_dma_cfg;       ///< TX DMA settings.
   const SIOConfig *sio_config = nullptr; ///< Optional SIO configuration (copied if provided).
-  TxCallback txend1_cb = nullptr; ///< End of TX buffer callback (DMA end).
-  void *txend1_user = nullptr;    ///< User context for txend1_cb.
-  TxCallback txend2_cb = nullptr; ///< Physical end of TX callback (TXDONE event).
-  void *txend2_user = nullptr;    ///< User context for txend2_cb.
+  TxCallback txend_cb = nullptr; ///< End of TX buffer callback (DMA end).
+  void *txend_user = nullptr;    ///< User context for txend_cb.
   TxCallback rxend_cb = nullptr;  ///< RX buffer filled callback (DMA end).
   void *rxend_user = nullptr;     ///< User context for rxend_cb.
   bool enable_rx_idle = false; ///< Enable RX idle detection to stop DMA early.
@@ -280,10 +330,7 @@ public:
 
 private:
   /** @brief DMAConfig plus back-pointer to owner. */
-  struct DmaCfgWithOwner {
-    DMAConfig cfg{};           ///< Full DMA configuration.
-    Datagram *owner = nullptr; ///< Back-pointer for callbacks.
-  };
+  using DmaCfgWithOwner = detail::DmaCfgWithOwner<Datagram>;
   static_assert(offsetof(DmaCfgWithOwner, cfg) == 0,
                 "DMAConfig must be the first member of DmaCfgWithOwner for unsafe cast");
 
@@ -293,7 +340,6 @@ private:
   static void dmaTxCb(DMADriver *dmap, void *buffer, const size_t n);
   /** @brief SIO event callback (ISR). */
   static void sioIdleCb(SIODriver *siop);
-  static void initDmaCfg(DmaCfgWithOwner &dst, const DmaUserConfig &src, bool is_rx);
 
   DMADriver rx_dma_;                ///< RX DMA driver instance.
   DMADriver tx_dma_;                ///< TX DMA driver instance.
@@ -302,10 +348,8 @@ private:
   const DMAConfig *rx_cfg_;         ///< RX DMA config pointer.
   const DMAConfig *tx_cfg_;         ///< TX DMA config pointer.
   bool rx_idle_enabled_;            ///< Enable RX idle detection.
-  TxCallback txend1_cb_;            ///< TX end-of-buffer callback.
-  void *txend1_user_;               ///< User context for txend1_cb.
-  TxCallback txend2_cb_;            ///< TX physical end callback.
-  void *txend2_user_;               ///< User context for txend2_cb.
+  TxCallback txend_cb_;            ///< TX end-of-buffer callback.
+  void *txend_user_;               ///< User context for txend_cb.
   TxCallback rxend_cb_;             ///< RX buffer filled callback.
   void *rxend_user_;                ///< User context for rxend_cb.
 
@@ -386,10 +430,7 @@ private:
   static_assert((FD > 0U), "FD must be greater than zero");
 
   /** @brief DMAConfig plus back-pointer to owner. */
-  struct DmaCfgWithOwner {
-    DMAConfig cfg{};           ///< Full DMA configuration.
-    Continuous *owner = nullptr; ///< Back-pointer for callbacks.
-  };
+  using DmaCfgWithOwner = detail::DmaCfgWithOwner<Continuous<DBS, FD>>;
   static_assert(offsetof(DmaCfgWithOwner, cfg) == 0, 
                 "DMAConfig must be the first member of DmaCfgWithOwner for unsafe cast");
 
@@ -433,7 +474,10 @@ protected:
 
 template <size_t N>
 inline Buffered<N>::Buffered(const Config &cfg)
-    : Base(BaseConfig{cfg.driver, cfg.sio_config}) {
+    : Base(BaseConfig{
+          .driver = cfg.driver,
+          .sio_config = cfg.sio_config,
+      }) {
   if (config_ != nullptr) {
     config_storage_.cr3 &= static_cast<uint32_t>(~(USART_CR3_DMAR | USART_CR3_DMAT));
   }
@@ -532,258 +576,12 @@ inline size_t Buffered<N>::readAsync(uint8_t *buffer, size_t n) {
   return bsioAsynchronousRead(&bsiop_, buffer, n);
 }
 
-inline Datagram::Datagram(const Config &cfg)
-    : Base(BaseConfig{cfg.driver, cfg.sio_config}),
-      rx_dma_{},
-      tx_dma_{},
-      rx_cfg_storage_{},
-      tx_cfg_storage_{},
-      rx_cfg_(nullptr),
-      tx_cfg_(nullptr),
-      rx_idle_enabled_(cfg.enable_rx_idle),
-      txend1_cb_(cfg.txend1_cb),
-      txend1_user_(cfg.txend1_user),
-      txend2_cb_(cfg.txend2_cb),
-      txend2_user_(cfg.txend2_user),
-      rxend_cb_(cfg.rxend_cb),
-      rxend_user_(cfg.rxend_user) {
-  if (config_ != nullptr) {
-    config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
-  }
-  initDmaCfg(rx_cfg_storage_, cfg.rx_dma_cfg, true);
-  rx_cfg_storage_.owner = this;
-  rx_cfg_ = &rx_cfg_storage_.cfg;
-  initDmaCfg(tx_cfg_storage_, cfg.tx_dma_cfg, false);
-  tx_cfg_storage_.owner = this;
-  tx_cfg_ = &tx_cfg_storage_.cfg;
-}
-
-inline msg_t Datagram::start() {
-  msg_t msg = sioStart(siop_, config_);
-  if (msg != HAL_RET_SUCCESS) {
-    return msg;
-  }
-
-  dmaObjectInit(&rx_dma_);
-  dmaObjectInit(&tx_dma_);
-  if (!dmaStart(&rx_dma_, rx_cfg_) || !dmaStart(&tx_dma_, tx_cfg_)) {
-    dmaStop(&tx_dma_);
-    dmaStop(&rx_dma_);
-    sioStop(siop_);
-    return HAL_RET_HW_FAILURE;
-  }
-
-  sioevents_t mask = SIO_EV_ALL_ERRORS;
-  if (rx_idle_enabled_) {
-    mask |= SIO_EV_RXIDLE;
-  }
-  if (txend2_cb_ != nullptr) {
-    mask |= SIO_EV_TXDONE;
-  }
-  if (mask != SIO_EV_NONE) {
-    setCallback(&Datagram::sioIdleCb, this);
-    writeEnableFlagsX(mask);
-  }
-
-  return HAL_RET_SUCCESS;
-}
-
-inline void Datagram::stop() {
-  setCallback(nullptr, nullptr);
-  writeEnableFlagsX(SIO_EV_NONE);
-  dmaStop(&tx_dma_);
-  dmaStop(&rx_dma_);
-  sioStop(siop_);
-}
-
-inline void Datagram::setConfig(const SIOConfig &cfg) {
-  config_storage_ = cfg;
-  config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
-  config_ = &config_storage_;
-}
-
-inline size_t Datagram::writeTimeout(const uint8_t *buffer, size_t n, sysinterval_t timeout) {
-  if ((buffer == nullptr) || (n == 0U)) {
-    return 0U;
-  }
-#if STM32_DMA_USE_WAIT == TRUE
-  const msg_t msg = dmaTransfertTimeout(&tx_dma_, &driver().usart->TDR,
-                                        const_cast<uint8_t *>(buffer), n, timeout);
-  if (msg == MSG_OK) {
-    return n;
-  }
-  const size_t remaining = dmaGetTransactionCounter(&tx_dma_);
-  return (remaining > n) ? 0U : (n - remaining);
-#else
-  (void)timeout;
-  return 0U;
-#endif
-}
-
-inline size_t Datagram::write(const uint8_t *buffer, size_t n) {
-  return writeTimeout(buffer, n, TIME_INFINITE);
-}
-
-inline size_t Datagram::readTimeout(uint8_t *buffer, size_t n, sysinterval_t timeout) {
-  if ((buffer == nullptr) || (n == 0U)) {
-    return 0U;
-  }
-
-#if STM32_DMA_USE_WAIT == TRUE
-  const msg_t msg = dmaTransfertTimeout(&rx_dma_, &driver().usart->RDR,
-                                        buffer, n, timeout);
-  if (msg == MSG_OK) {
-    return n;
-  }
-  const size_t remaining = dmaGetTransactionCounter(&rx_dma_);
-  return (remaining > n) ? 0U : (n - remaining);
-#else
-  (void)timeout;
-  return 0U;
-#endif
-}
-
-inline size_t Datagram::read(uint8_t *buffer, size_t n) {
-  return readTimeout(buffer, n, TIME_INFINITE);
-}
-
-inline bool Datagram::writeI(const uint8_t *buffer, size_t n) {
-  osalDbgCheckClassI();
-  osalDbgCheck((buffer != nullptr) && (n > 0U));
-  osalDbgAssert(!txBusy(), "TX DMA busy");
-  if ((buffer == nullptr) || (n == 0U) || txBusy()) {
-    return false;
-  }
-  return dmaStartTransfertI(&tx_dma_, &driver().usart->TDR,
-                            const_cast<uint8_t *>(buffer), n);
-}
-
-inline bool Datagram::readI(uint8_t *buffer, size_t n) {
-  osalDbgCheckClassI();
-  osalDbgCheck((buffer != nullptr) && (n > 0U));
-  osalDbgAssert(!rxBusy(), "RX DMA busy");
-  if ((buffer == nullptr) || (n == 0U) || rxBusy()) {
-    return false;
-  }
-  return dmaStartTransfertI(&rx_dma_, &driver().usart->RDR, buffer, n);
-}
-
-inline bool Datagram::txBusy() const {
-  return (dmaGetState(const_cast<DMADriver *>(&tx_dma_)) == DMA_ACTIVE);
-}
-
-inline bool Datagram::rxBusy() const {
-  return (dmaGetState(const_cast<DMADriver *>(&rx_dma_)) == DMA_ACTIVE);
-}
-
-inline void Datagram::dmaRxCb(DMADriver *dmap, void *buffer, const size_t n) {
-  (void)buffer;
-  (void)n;
-  if ((dmap == nullptr) || (dmap->config == nullptr)) {
-    return;
-  }
-  auto *cfg = reinterpret_cast<const DmaCfgWithOwner *>(dmap->config);
-  auto *self = cfg->owner;
-  if ((self != nullptr) && (self->rxend_cb_ != nullptr)) {
-    self->rxend_cb_(self->rxend_user_);
-  }
-}
-
-inline void Datagram::dmaTxCb(DMADriver *dmap, void *buffer, const size_t n) {
-  (void)buffer;
-  (void)n;
-  if ((dmap == nullptr) || (dmap->config == nullptr)) {
-    return;
-  }
-  auto *cfg = reinterpret_cast<const DmaCfgWithOwner *>(dmap->config);
-  auto *self = cfg->owner;
-  if ((self != nullptr) && (self->txend1_cb_ != nullptr)) {
-    self->txend1_cb_(self->txend1_user_);
-  }
-}
-
-inline void Datagram::sioIdleCb(SIODriver *siop) {
-  auto *self = static_cast<Datagram *>(siop->arg);
-  if (self != nullptr) {
-    const sioevents_t ev = sioGetAndClearEventsX(siop);
-    if (((ev & SIO_EV_RXIDLE) != 0U) && self->rx_idle_enabled_) {
-      if (dmaGetState(&self->rx_dma_) == DMA_ACTIVE) {
-        chSysLockFromISR();
-        dmaStopTransfertI(&self->rx_dma_);
-        chSysUnlockFromISR();
-      }
-    }
-    if ((ev & SIO_EV_ALL_ERRORS) != 0U) {
-      if (dmaGetState(&self->rx_dma_) == DMA_ACTIVE) {
-        chSysLockFromISR();
-        dmaStopTransfertI(&self->rx_dma_);
-        chSysUnlockFromISR();
-      } else {
-#if (SIOWRAP_FAST_STM32_RX_PURGE == 1) && defined(USART_RQR_RXFRQ)
-        // STM32 fast path for stress/perf testing.
-        siop->usart->RQR = USART_RQR_RXFRQ;
-#else
-        // Generic fallback: drain stale bytes through SIO API only.
-        uint8_t sink[16];
-        while (!sioIsRXEmptyX(siop)) {
-          const size_t drained = sioAsyncReadX(siop, sink, sizeof(sink));
-          if (drained == 0U) {
-            break;
-          }
-        }
-#endif
-      }
-    }
-    if (((ev & SIO_EV_TXDONE) != 0U) && (self->txend2_cb_ != nullptr)) {
-      self->txend2_cb_(self->txend2_user_);
-    }
-    sioevents_t mask = SIO_EV_ALL_ERRORS;
-    if (self->rx_idle_enabled_) {
-      mask |= SIO_EV_RXIDLE;
-    }
-    if (self->txend2_cb_ != nullptr) {
-      mask |= SIO_EV_TXDONE;
-    }
-    sioSetEnableFlagsX(siop, mask);
-  }
-}
-
-inline void Datagram::initDmaCfg(DmaCfgWithOwner &dst, const DmaUserConfig &src, bool is_rx) {
-  dst.cfg = {};
-  dst.cfg.stream = src.stream;
-#if STM32_DMA_SUPPORTS_DMAMUX
-  dst.cfg.dmamux = src.dmamux;
-#else
-  dst.cfg.channel = src.channel;
-#endif
-  dst.cfg.inc_peripheral_addr = false;
-  dst.cfg.inc_memory_addr = true;
-  dst.cfg.op_mode = DMA_ONESHOT;
-  dst.cfg.end_cb = is_rx ? &Datagram::dmaRxCb : &Datagram::dmaTxCb;
-  dst.cfg.error_cb = src.error_cb;
-#if STM32_DMA_USE_ASYNC_TIMOUT
-  dst.cfg.timeout = src.timeout;
-#endif
-  dst.cfg.direction = is_rx ? DMA_DIR_P2M : DMA_DIR_M2P;
-  dst.cfg.dma_priority = src.dma_priority;
-  dst.cfg.irq_priority = src.irq_priority;
-  dst.cfg.psize = src.psize;
-  dst.cfg.msize = src.msize;
-#if __DCACHE_PRESENT
-  dst.cfg.activate_dcache_sync = src.activate_dcache_sync;
-#endif
-#if STM32_DMA_ADVANCED
-  dst.cfg.pburst = src.pburst;
-  dst.cfg.mburst = src.mburst;
-  dst.cfg.fifo = src.fifo;
-  dst.cfg.periph_inc_size_4 = src.periph_inc_size_4;
-  dst.cfg.transfert_end_ctrl_by_periph = src.transfert_end_ctrl_by_periph;
-#endif
-}
-
 template <size_t DBS, size_t FD>
 inline Continuous<DBS, FD>::Continuous(const ContinuousConfig &cfg)
-    : Base(BaseConfig{cfg.driver, cfg.sio_config}),
+    : Base(BaseConfig{
+          .driver = cfg.driver,
+          .sio_config = cfg.sio_config,
+      }),
       rx_dma_{},
       tx_dma_{},
       rx_cfg_(nullptr),
@@ -805,43 +603,13 @@ inline Continuous<DBS, FD>::Continuous(const ContinuousConfig &cfg)
     config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
   }
 
-  auto init_dma_cfg = [this](DmaCfgWithOwner &dst, const DmaUserConfig &src, const bool is_rx) {
-    dst.cfg = {};
-    dst.cfg.stream = src.stream;
-#if STM32_DMA_SUPPORTS_DMAMUX
-    dst.cfg.dmamux = src.dmamux;
-#else
-    dst.cfg.channel = src.channel;
-#endif
-    dst.cfg.inc_peripheral_addr = false;
-    dst.cfg.inc_memory_addr = true;
-    dst.cfg.op_mode = is_rx ? DMA_CONTINUOUS_HALF_BUFFER : DMA_ONESHOT;
-    dst.cfg.end_cb = is_rx ? &Continuous::dmaRxCb : &Continuous::dmaTxCb;
-    dst.cfg.error_cb = src.error_cb;
-#if STM32_DMA_USE_ASYNC_TIMOUT
-    dst.cfg.timeout = src.timeout;
-#endif
-    dst.cfg.direction = is_rx ? DMA_DIR_P2M : DMA_DIR_M2P;
-    dst.cfg.dma_priority = src.dma_priority;
-    dst.cfg.irq_priority = src.irq_priority;
-    dst.cfg.psize = src.psize;
-    dst.cfg.msize = src.msize;
-#if __DCACHE_PRESENT
-    dst.cfg.activate_dcache_sync = src.activate_dcache_sync;
-#endif
-#if STM32_DMA_ADVANCED
-    dst.cfg.pburst = src.pburst;
-    dst.cfg.mburst = src.mburst;
-    dst.cfg.fifo = src.fifo;
-    dst.cfg.periph_inc_size_4 = src.periph_inc_size_4;
-    dst.cfg.transfert_end_ctrl_by_periph = src.transfert_end_ctrl_by_periph;
-#endif
-    dst.owner = this;
-  };
-
-  init_dma_cfg(rx_cfg_storage_, cfg.rx_dma_cfg, true);
+  detail::initDmaConfig(rx_cfg_storage_.cfg, cfg.rx_dma_cfg, &Continuous::dmaRxCb,
+                        true, DMA_CONTINUOUS_HALF_BUFFER);
+  rx_cfg_storage_.owner = this;
   rx_cfg_ = &rx_cfg_storage_.cfg;
-  init_dma_cfg(tx_cfg_storage_, cfg.tx_dma_cfg, false);
+  detail::initDmaConfig(tx_cfg_storage_.cfg, cfg.tx_dma_cfg, &Continuous::dmaTxCb,
+                        false, DMA_ONESHOT);
+  tx_cfg_storage_.owner = this;
   tx_cfg_ = &tx_cfg_storage_.cfg;
 }
 
@@ -979,12 +747,7 @@ inline const uint8_t *Continuous<DBS, FD>::rxBuffer() const {
 
 template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::dmaRxCb(DMADriver *dmap, void *buffer, const size_t n) {
-  if (dmap == nullptr || dmap->config == nullptr) {
-    return;
-  }
-
-  auto *cfg = reinterpret_cast<const DmaCfgWithOwner *>(dmap->config);
-  auto *self = cfg->owner;
+  auto *self = detail::ownerFromDma<Continuous<DBS, FD>>(dmap);
   if ((self == nullptr) || (self->rx_cb_ == nullptr)) {
     return;
   }
@@ -1021,12 +784,7 @@ template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::dmaTxCb(DMADriver *dmap, void *buffer, const size_t n) {
   (void)buffer;
   (void)n;
-  if (dmap == nullptr || dmap->config == nullptr) {
-    return;
-  }
-
-  auto *cfg = reinterpret_cast<const DmaCfgWithOwner *>(dmap->config);
-  auto *self = cfg->owner;
+  auto *self = detail::ownerFromDma<Continuous<DBS, FD>>(dmap);
   if ((self != nullptr) && (self->tx_cb_ != nullptr)) {
     self->tx_cb_(self->tx_user_);
   }
