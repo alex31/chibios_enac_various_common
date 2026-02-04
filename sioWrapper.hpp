@@ -115,7 +115,7 @@ struct BufferedConfig {
 using ByteSpan = std::span<const uint8_t>;
 /** @brief RX half-buffer callback (thread context). */
 using RxHalfCallback = void (*)(const ByteSpan &slice, void *user);
-/** @brief TX end callback (ISR context). */
+/** @brief Generic event callback (ISR context). */
 using TxCallback = void (*)(void *user);
 
 /** @brief User-facing reduced DMA configuration. */
@@ -150,8 +150,66 @@ struct DmaUserConfig {
 #endif
 };
 
+namespace detail {
+
+template <typename Owner>
+struct DmaCfgWithOwner {
+  DMAConfig cfg{};         ///< Full DMA configuration.
+  Owner *owner = nullptr;  ///< Back-pointer for callbacks.
+};
+
+inline void initDmaConfig(DMAConfig &dst,
+                          const DmaUserConfig &src,
+                          dmacallback_t end_cb,
+                          const bool is_rx,
+                          const dmaopmode_t op_mode) {
+  dst = {};
+  dst.stream = src.stream;
+#if STM32_DMA_SUPPORTS_DMAMUX
+  dst.dmamux = src.dmamux;
+#else
+  dst.channel = src.channel;
+#endif
+  dst.inc_peripheral_addr = false;
+  dst.inc_memory_addr = true;
+  dst.op_mode = op_mode;
+  dst.end_cb = end_cb;
+  dst.error_cb = src.error_cb;
+#if STM32_DMA_USE_ASYNC_TIMOUT
+  dst.timeout = src.timeout;
+#endif
+  dst.direction = is_rx ? DMA_DIR_P2M : DMA_DIR_M2P;
+  dst.dma_priority = src.dma_priority;
+  dst.irq_priority = src.irq_priority;
+  dst.psize = src.psize;
+  dst.msize = src.msize;
+#if __DCACHE_PRESENT
+  dst.activate_dcache_sync = src.activate_dcache_sync;
+#endif
+#if STM32_DMA_ADVANCED
+  dst.pburst = src.pburst;
+  dst.mburst = src.mburst;
+  dst.fifo = src.fifo;
+  dst.periph_inc_size_4 = src.periph_inc_size_4;
+  dst.transfert_end_ctrl_by_periph = src.transfert_end_ctrl_by_periph;
+#endif
+}
+
+template <typename Owner>
+inline Owner *ownerFromDma(DMADriver *dmap) {
+  if ((dmap == nullptr) || (dmap->config == nullptr)) {
+    return nullptr;
+  }
+  const auto *cfg = reinterpret_cast<const DmaCfgWithOwner<Owner> *>(dmap->config);
+  return cfg->owner;
+}
+
+} // namespace detail
+
 /**
  * @brief Buffered SIO wrapper.
+ * @note  Best fit for low-throughput links where latency and simple byte-stream
+ *        semantics matter more than peak throughput.
  * @tparam N RX/TX buffer size.
  */
 template <size_t N>
@@ -220,13 +278,19 @@ struct DatagramConfig {
   DmaUserConfig rx_dma_cfg;       ///< RX DMA settings.
   DmaUserConfig tx_dma_cfg;       ///< TX DMA settings.
   const SIOConfig *sio_config = nullptr; ///< Optional SIO configuration (copied if provided).
+  TxCallback txend_cb = nullptr; ///< End of TX buffer callback (DMA end).
+  void *txend_user = nullptr;    ///< User context for txend_cb.
+  TxCallback rxend_cb = nullptr;  ///< RX buffer filled callback (DMA end).
+  void *rxend_user = nullptr;     ///< User context for rxend_cb.
   bool enable_rx_idle = false; ///< Enable RX idle detection to stop DMA early.
 };
 
 /**
  * @brief DMA oneshot SIO wrapper (UART-like semantics).
+ * @note  Best fit for framed exchanges requiring explicit read/write operations.
+ *        It can be fast but has per-transaction DMA rearm overhead.
  */
-class Datagram final : public Base {
+class Datagram : public Base {
 public:
   /** @brief Configuration type alias. */
   using Config = DatagramConfig;
@@ -250,23 +314,44 @@ public:
   /** @brief Blocking RX read with infinite timeout. Returns bytes read. */
   size_t read(uint8_t *buffer, size_t n);
 
+  /** @brief Start asynchronous TX DMA (I-class). Returns true if started.
+   *  @note  Caller must ensure DMA is ready; DMA layer asserts on misuse.
+   */
+  bool writeI(const uint8_t *buffer, size_t n);
+  /** @brief Start asynchronous RX DMA (I-class). Returns true if started.
+   *  @note  Caller must ensure DMA is ready; DMA layer asserts on misuse.
+   */
+  bool readI(uint8_t *buffer, size_t n);
+
   /** @brief Check if TX DMA is active. */
   bool txBusy() const;
   /** @brief Check if RX DMA is active. */
   bool rxBusy() const;
 
 private:
-  /** @brief SIO idle event callback (ISR). */
-  static void sioIdleCb(SIODriver *siop);
-  static void initDmaCfg(DMAConfig &dst, const DmaUserConfig &src, bool is_rx);
+  /** @brief DMAConfig plus back-pointer to owner. */
+  using DmaCfgWithOwner = detail::DmaCfgWithOwner<Datagram>;
+  static_assert(offsetof(DmaCfgWithOwner, cfg) == 0,
+                "DMAConfig must be the first member of DmaCfgWithOwner for unsafe cast");
 
-  DMADriver rx_dma_;         ///< RX DMA driver instance.
-  DMADriver tx_dma_;         ///< TX DMA driver instance.
-  DMAConfig rx_cfg_storage_; ///< RX DMA config storage.
-  DMAConfig tx_cfg_storage_; ///< TX DMA config storage.
-  const DMAConfig *rx_cfg_;  ///< RX DMA config pointer.
-  const DMAConfig *tx_cfg_;  ///< TX DMA config pointer.
-  bool rx_idle_enabled_;    ///< Enable RX idle detection.
+  /** @brief RX DMA completion callback (ISR). */
+  static void dmaRxCb(DMADriver *dmap, void *buffer, const size_t n);
+  /** @brief TX DMA completion callback (ISR). */
+  static void dmaTxCb(DMADriver *dmap, void *buffer, const size_t n);
+  /** @brief SIO event callback (ISR). */
+  static void sioIdleCb(SIODriver *siop);
+
+  DMADriver rx_dma_;                ///< RX DMA driver instance.
+  DMADriver tx_dma_;                ///< TX DMA driver instance.
+  DmaCfgWithOwner rx_cfg_storage_;  ///< RX DMA config storage.
+  DmaCfgWithOwner tx_cfg_storage_;  ///< TX DMA config storage.
+  const DMAConfig *rx_cfg_;         ///< RX DMA config pointer.
+  const DMAConfig *tx_cfg_;         ///< TX DMA config pointer.
+  bool rx_idle_enabled_;            ///< Enable RX idle detection.
+  TxCallback txend_cb_;            ///< TX end-of-buffer callback.
+  void *txend_user_;               ///< User context for txend_cb.
+  TxCallback rxend_cb_;             ///< RX buffer filled callback.
+  void *rxend_user_;                ///< User context for rxend_cb.
 
 protected:
   /** @brief Protected destructor. */
@@ -289,6 +374,8 @@ struct ContinuousConfig {
 
 /**
  * @brief Continuous DMA SIO wrapper (RX circular + TX oneshot).
+ * @note  Best fit for sustained high-throughput RX streams because RX DMA stays
+ *        active continuously.
  * @tparam DBS DMA RX buffer size (must be even).
  * @tparam FD  FIFO depth for RX slices.
  */
@@ -343,10 +430,7 @@ private:
   static_assert((FD > 0U), "FD must be greater than zero");
 
   /** @brief DMAConfig plus back-pointer to owner. */
-  struct DmaCfgWithOwner {
-    DMAConfig cfg{};           ///< Full DMA configuration.
-    Continuous *owner = nullptr; ///< Back-pointer for callbacks.
-  };
+  using DmaCfgWithOwner = detail::DmaCfgWithOwner<Continuous<DBS, FD>>;
   static_assert(offsetof(DmaCfgWithOwner, cfg) == 0, 
                 "DMAConfig must be the first member of DmaCfgWithOwner for unsafe cast");
 
@@ -390,7 +474,10 @@ protected:
 
 template <size_t N>
 inline Buffered<N>::Buffered(const Config &cfg)
-    : Base(BaseConfig{cfg.driver, cfg.sio_config}) {
+    : Base(BaseConfig{
+          .driver = cfg.driver,
+          .sio_config = cfg.sio_config,
+      }) {
   if (config_ != nullptr) {
     config_storage_.cr3 &= static_cast<uint32_t>(~(USART_CR3_DMAR | USART_CR3_DMAT));
   }
@@ -489,164 +576,12 @@ inline size_t Buffered<N>::readAsync(uint8_t *buffer, size_t n) {
   return bsioAsynchronousRead(&bsiop_, buffer, n);
 }
 
-inline Datagram::Datagram(const Config &cfg)
-    : Base(BaseConfig{cfg.driver, cfg.sio_config}),
-      rx_dma_{},
-      tx_dma_{},
-      rx_cfg_storage_{},
-      tx_cfg_storage_{},
-      rx_cfg_(nullptr),
-      tx_cfg_(nullptr),
-      rx_idle_enabled_(cfg.enable_rx_idle) {
-  if (config_ != nullptr) {
-    config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
-  }
-  initDmaCfg(rx_cfg_storage_, cfg.rx_dma_cfg, true);
-  rx_cfg_ = &rx_cfg_storage_;
-  initDmaCfg(tx_cfg_storage_, cfg.tx_dma_cfg, false);
-  tx_cfg_ = &tx_cfg_storage_;
-}
-
-inline msg_t Datagram::start() {
-  msg_t msg = sioStart(siop_, config_);
-  if (msg != HAL_RET_SUCCESS) {
-    return msg;
-  }
-
-  dmaObjectInit(&rx_dma_);
-  dmaObjectInit(&tx_dma_);
-  if (!dmaStart(&rx_dma_, rx_cfg_) || !dmaStart(&tx_dma_, tx_cfg_)) {
-    dmaStop(&tx_dma_);
-    dmaStop(&rx_dma_);
-    sioStop(siop_);
-    return HAL_RET_HW_FAILURE;
-  }
-
-  if (rx_idle_enabled_) {
-    setCallback(&Datagram::sioIdleCb, this);
-    writeEnableFlagsX(SIO_EV_RXIDLE);
-  }
-
-  return HAL_RET_SUCCESS;
-}
-
-inline void Datagram::stop() {
-  if (rx_idle_enabled_) {
-    setCallback(nullptr, nullptr);
-    writeEnableFlagsX(SIO_EV_NONE);
-  }
-  dmaStop(&tx_dma_);
-  dmaStop(&rx_dma_);
-  sioStop(siop_);
-}
-
-inline void Datagram::setConfig(const SIOConfig &cfg) {
-  config_storage_ = cfg;
-  config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
-  config_ = &config_storage_;
-}
-
-inline size_t Datagram::writeTimeout(const uint8_t *buffer, size_t n, sysinterval_t timeout) {
-  if ((buffer == nullptr) || (n == 0U)) {
-    return 0U;
-  }
-#if STM32_DMA_USE_WAIT == TRUE
-  const msg_t msg = dmaTransfertTimeout(&tx_dma_, &driver().usart->TDR,
-                                        const_cast<uint8_t *>(buffer), n, timeout);
-  if (msg == MSG_OK) {
-    return n;
-  }
-  const size_t remaining = dmaGetTransactionCounter(&tx_dma_);
-  return (remaining > n) ? 0U : (n - remaining);
-#else
-  (void)timeout;
-  return 0U;
-#endif
-}
-
-inline size_t Datagram::write(const uint8_t *buffer, size_t n) {
-  return writeTimeout(buffer, n, TIME_INFINITE);
-}
-
-inline size_t Datagram::readTimeout(uint8_t *buffer, size_t n, sysinterval_t timeout) {
-  if ((buffer == nullptr) || (n == 0U)) {
-    return 0U;
-  }
-#if STM32_DMA_USE_WAIT == TRUE
-  const msg_t msg = dmaTransfertTimeout(&rx_dma_, &driver().usart->RDR,
-                                        buffer, n, timeout);
-  if (msg == MSG_OK) {
-    return n;
-  }
-  const size_t remaining = dmaGetTransactionCounter(&rx_dma_);
-  return (remaining > n) ? 0U : (n - remaining);
-#else
-  (void)timeout;
-  return 0U;
-#endif
-}
-
-inline size_t Datagram::read(uint8_t *buffer, size_t n) {
-  return readTimeout(buffer, n, TIME_INFINITE);
-}
-
-inline bool Datagram::txBusy() const {
-  return (dmaGetState(const_cast<DMADriver *>(&tx_dma_)) == DMA_ACTIVE);
-}
-
-inline bool Datagram::rxBusy() const {
-  return (dmaGetState(const_cast<DMADriver *>(&rx_dma_)) == DMA_ACTIVE);
-}
-
-inline void Datagram::sioIdleCb(SIODriver *siop) {
-  auto *self = static_cast<Datagram *>(siop->arg);
-  if (self != nullptr) {
-    const sioevents_t ev = sioGetAndClearEventsX(siop);
-    if ((ev & SIO_EV_RXIDLE) != 0U) {
-      if (dmaGetState(&self->rx_dma_) == DMA_ACTIVE) {
-        dmaStopTransfertI(&self->rx_dma_);
-      }
-    }
-  }
-  sioSetEnableFlagsX(siop, SIO_EV_RXIDLE);
-}
-
-inline void Datagram::initDmaCfg(DMAConfig &dst, const DmaUserConfig &src, bool is_rx) {
-  dst = {};
-  dst.stream = src.stream;
-#if STM32_DMA_SUPPORTS_DMAMUX
-  dst.dmamux = src.dmamux;
-#else
-  dst.channel = src.channel;
-#endif
-  dst.inc_peripheral_addr = false;
-  dst.inc_memory_addr = true;
-  dst.op_mode = DMA_ONESHOT;
-  dst.end_cb = nullptr;
-  dst.error_cb = src.error_cb;
-#if STM32_DMA_USE_ASYNC_TIMOUT
-  dst.timeout = src.timeout;
-#endif
-  dst.direction = is_rx ? DMA_DIR_P2M : DMA_DIR_M2P;
-  dst.dma_priority = src.dma_priority;
-  dst.irq_priority = src.irq_priority;
-  dst.psize = src.psize;
-  dst.msize = src.msize;
-#if __DCACHE_PRESENT
-  dst.activate_dcache_sync = src.activate_dcache_sync;
-#endif
-#if STM32_DMA_ADVANCED
-  dst.pburst = src.pburst;
-  dst.mburst = src.mburst;
-  dst.fifo = src.fifo;
-  dst.periph_inc_size_4 = src.periph_inc_size_4;
-  dst.transfert_end_ctrl_by_periph = src.transfert_end_ctrl_by_periph;
-#endif
-}
-
 template <size_t DBS, size_t FD>
 inline Continuous<DBS, FD>::Continuous(const ContinuousConfig &cfg)
-    : Base(BaseConfig{cfg.driver, cfg.sio_config}),
+    : Base(BaseConfig{
+          .driver = cfg.driver,
+          .sio_config = cfg.sio_config,
+      }),
       rx_dma_{},
       tx_dma_{},
       rx_cfg_(nullptr),
@@ -668,43 +603,13 @@ inline Continuous<DBS, FD>::Continuous(const ContinuousConfig &cfg)
     config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
   }
 
-  auto init_dma_cfg = [this](DmaCfgWithOwner &dst, const DmaUserConfig &src, const bool is_rx) {
-    dst.cfg = {};
-    dst.cfg.stream = src.stream;
-#if STM32_DMA_SUPPORTS_DMAMUX
-    dst.cfg.dmamux = src.dmamux;
-#else
-    dst.cfg.channel = src.channel;
-#endif
-    dst.cfg.inc_peripheral_addr = false;
-    dst.cfg.inc_memory_addr = true;
-    dst.cfg.op_mode = is_rx ? DMA_CONTINUOUS_HALF_BUFFER : DMA_ONESHOT;
-    dst.cfg.end_cb = is_rx ? &Continuous::dmaRxCb : &Continuous::dmaTxCb;
-    dst.cfg.error_cb = src.error_cb;
-#if STM32_DMA_USE_ASYNC_TIMOUT
-    dst.cfg.timeout = src.timeout;
-#endif
-    dst.cfg.direction = is_rx ? DMA_DIR_P2M : DMA_DIR_M2P;
-    dst.cfg.dma_priority = src.dma_priority;
-    dst.cfg.irq_priority = src.irq_priority;
-    dst.cfg.psize = src.psize;
-    dst.cfg.msize = src.msize;
-#if __DCACHE_PRESENT
-    dst.cfg.activate_dcache_sync = src.activate_dcache_sync;
-#endif
-#if STM32_DMA_ADVANCED
-    dst.cfg.pburst = src.pburst;
-    dst.cfg.mburst = src.mburst;
-    dst.cfg.fifo = src.fifo;
-    dst.cfg.periph_inc_size_4 = src.periph_inc_size_4;
-    dst.cfg.transfert_end_ctrl_by_periph = src.transfert_end_ctrl_by_periph;
-#endif
-    dst.owner = this;
-  };
-
-  init_dma_cfg(rx_cfg_storage_, cfg.rx_dma_cfg, true);
+  detail::initDmaConfig(rx_cfg_storage_.cfg, cfg.rx_dma_cfg, &Continuous::dmaRxCb,
+                        true, DMA_CONTINUOUS_HALF_BUFFER);
+  rx_cfg_storage_.owner = this;
   rx_cfg_ = &rx_cfg_storage_.cfg;
-  init_dma_cfg(tx_cfg_storage_, cfg.tx_dma_cfg, false);
+  detail::initDmaConfig(tx_cfg_storage_.cfg, cfg.tx_dma_cfg, &Continuous::dmaTxCb,
+                        false, DMA_ONESHOT);
+  tx_cfg_storage_.owner = this;
   tx_cfg_ = &tx_cfg_storage_.cfg;
 }
 
@@ -842,12 +747,7 @@ inline const uint8_t *Continuous<DBS, FD>::rxBuffer() const {
 
 template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::dmaRxCb(DMADriver *dmap, void *buffer, const size_t n) {
-  if (dmap == nullptr || dmap->config == nullptr) {
-    return;
-  }
-
-  auto *cfg = reinterpret_cast<const DmaCfgWithOwner *>(dmap->config);
-  auto *self = cfg->owner;
+  auto *self = detail::ownerFromDma<Continuous<DBS, FD>>(dmap);
   if ((self == nullptr) || (self->rx_cb_ == nullptr)) {
     return;
   }
@@ -884,12 +784,7 @@ template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::dmaTxCb(DMADriver *dmap, void *buffer, const size_t n) {
   (void)buffer;
   (void)n;
-  if (dmap == nullptr || dmap->config == nullptr) {
-    return;
-  }
-
-  auto *cfg = reinterpret_cast<const DmaCfgWithOwner *>(dmap->config);
-  auto *self = cfg->owner;
+  auto *self = detail::ownerFromDma<Continuous<DBS, FD>>(dmap);
   if ((self != nullptr) && (self->tx_cb_ != nullptr)) {
     self->tx_cb_(self->tx_user_);
   }
