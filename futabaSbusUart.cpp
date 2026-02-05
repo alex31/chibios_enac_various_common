@@ -1,6 +1,7 @@
 #include <ch.h>
 #include <hal.h>
 #include <new>
+#include <cstring>
 #include "futabaSbusUart.hpp"
 #include "stdutil.h"
 
@@ -8,216 +9,239 @@
 #define SBUS_END_BYTE   0x00
 #define SBUS_FLAGS_BYTE 23U
 #define SBUS_BUFFLEN 25U
-#define IN_SYNC_TIMEOUT TIME_MS2I(15)
-#define OUT_SYNC_TIMEOUT (IN_SYNC_TIMEOUT / 2U)
 
+namespace {
+  /** @brief  DMA-backed Continuous SIO instance for SBUS. */
+  using SbusSIO = SIO::Continuous<128, 8>;
 
-static SIOConfig sbusSioConfig =  {
-  .baud = 100000,
-  .presc = USART_PRESC1,
+  /** @brief  Wrapper to hold SIO instance and parsing state. */
+  struct SbusSioWrapper {
+    SbusSIO *sio;
+    uint8_t sync_buf[SBUS_BUFFLEN * 2];
+    size_t sync_idx;
+    uint8_t tx_buf[SBUS_BUFFLEN];
+
+    SbusSioWrapper()
+        : sio(nullptr), sync_idx(0) {
+      std::memset(sync_buf, 0, sizeof(sync_buf));
+      std::memset(tx_buf, 0, sizeof(tx_buf));
+    }
+    ~SbusSioWrapper() = delete;
+  };
+
+  static SIOConfig sbusSioConfig = {
+    .baud = 100000,
+    .presc = USART_PRESC1,
 #ifdef USART_CR2_RXINV // UARTv2
-  .cr1 = USART_CR1_PCE | USART_CR1_M0, // 8 bits + even parity => 9 bits mode
+    .cr1 = USART_CR1_PCE | USART_CR1_M0, // 8 bits + even parity => 9 bits mode
 #else			// UARTv1
-  .cr1 = USART_CR1_PCE | USART_CR1_M, // 8 bits + even parity => 9 bits mode
+    .cr1 = USART_CR1_PCE | USART_CR1_M, // 8 bits + even parity => 9 bits mode
 #endif
-  .cr2 = USART_CR2_STOP2_BITS,
-  .cr3 = 0
-};
+    .cr2 = USART_CR2_STOP2_BITS,
+    .cr3 = 0
+  };
 
+  static void decodeSbusBuffer(const uint8_t *src, SBUSFrame *frm);
+  static void encodeSbusBuffer(const SBUSFrame *frm, uint8_t *dest);
 
-static void receivingLoopThread(void *arg);
-static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm);
-static void encodeSbusBuffer (const SBUSFrame  *frm, uint8_t *dest);
+  static inline void invoqueError(const SBUSConfig *cfg, SBUSError err) {
+    if (cfg && cfg->errorCb) {
+      cfg->errorCb(err);
+    }
+  }
 
-void sbusObjectInit(SBUSDriver *sbusp)
-{
-  sbusp->config = NULL;
-  sbusp->wth = NULL;
+  /**
+   * @brief SIO RX callback implementing sliding window SBUS parsing.
+   */
+  void sbusRxCb(const SIO::ByteSpan &slice, void *user) {
+    auto *sbusp = static_cast<SBUSDriver *>(user);
+    auto *wrapper = static_cast<SbusSioWrapper *>(sbusp->sio);
+    const auto *cfg = sbusp->config;
+
+    for (const uint8_t byte : slice) {
+      if (wrapper->sync_idx < sizeof(wrapper->sync_buf)) {
+        wrapper->sync_buf[wrapper->sync_idx++] = byte;
+      } else {
+        wrapper->sync_idx = 0; // Buffer safety reset
+      }
+
+      while (wrapper->sync_idx >= SBUS_BUFFLEN) {
+        if (wrapper->sync_buf[0] == SBUS_START_BYTE) {
+          if (wrapper->sync_buf[SBUS_BUFFLEN - 1] == SBUS_END_BYTE) {
+            // Found a potentially valid frame
+            if ((wrapper->sync_buf[SBUS_FLAGS_BYTE] >> SBUS_FRAME_LOST_BIT) & 0x1) {
+              invoqueError(cfg, SBUS_LOST_FRAME);
+            } else if ((wrapper->sync_buf[SBUS_FLAGS_BYTE] >> SBUS_FAILSAFE_BIT) & 0x1) {
+              invoqueError(cfg, SBUS_FAILSAFE);
+            } else if (cfg->frameCb) {
+              SBUSFrame frame;
+              decodeSbusBuffer(wrapper->sync_buf, &frame);
+              cfg->frameCb(&frame);
+            }
+            // Consume frame
+            std::memmove(wrapper->sync_buf, &wrapper->sync_buf[SBUS_BUFFLEN],
+                         wrapper->sync_idx - SBUS_BUFFLEN);
+            wrapper->sync_idx -= SBUS_BUFFLEN;
+          } else {
+            // Start byte matched but end byte failed. Shift and search again.
+            invoqueError(cfg, SBUS_MALFORMED_FRAME);
+            std::memmove(wrapper->sync_buf, &wrapper->sync_buf[1], wrapper->sync_idx - 1);
+            wrapper->sync_idx -= 1;
+          }
+        } else {
+          // Not at a start byte. Shift and search again.
+          std::memmove(wrapper->sync_buf, &wrapper->sync_buf[1], wrapper->sync_idx - 1);
+          wrapper->sync_idx -= 1;
+        }
+      }
+    }
+  }
+} // namespace
+
+extern "C" {
+
+void sbusObjectInit(SBUSDriver *sbusp) {
+  sbusp->config = nullptr;
   sbusp->sio = nullptr;
+  sbusp->wth = nullptr;
 }
 
-void sbusStart(SBUSDriver *sbusp, const SBUSConfig *configp)
-{
+void sbusStart(SBUSDriver *sbusp, const SBUSConfig *configp) {
   sbusp->config = configp;
   sbusSioConfig.cr2 = USART_CR2_STOP2_BITS;
 #ifndef USART_CR2_RXINV
-  // USARTv1 without level inversion capability
-  // signal must have been inverted by external device
   chDbgAssert(configp->externallyInverted == true,
-	      "signal must have been inverted by external device on UARTv1 device");
+              "signal must have been inverted by external device on UARTv1 device");
 #else
-  if (configp->externallyInverted == false)
+  if (configp->externallyInverted == false) {
     sbusSioConfig.cr2 |= (USART_CR2_RXINV | USART_CR2_TXINV);
+  }
 #endif
+
   if (sbusp->sio == nullptr) {
-    void *mem = malloc_m(sizeof(SIO::Datagram));
-    if (mem == nullptr) {
-      if (configp->errorCb) {
-        configp->errorCb(SBUS_MALLOC_ERROR);
-      }
+    void *mem_wrapper = malloc_m(sizeof(SbusSioWrapper));
+    void *mem_sio = malloc_m(sizeof(SbusSIO));
+    if (mem_wrapper == nullptr || mem_sio == nullptr) {
+      if (mem_wrapper) free_m(mem_wrapper);
+      if (mem_sio) free_m(mem_sio);
+      invoqueError(configp, SBUS_MALLOC_ERROR);
       return;
     }
-    const SIO::DatagramConfig cfg = {
-      *configp->siop,
-      configp->rx_dma_cfg,
-      configp->tx_dma_cfg,
-      &sbusSioConfig
+
+    auto *wrapper = new (mem_wrapper) SbusSioWrapper();
+    const SIO::ContinuousConfig cfg = {
+      .driver = *configp->siop,
+      .rx_dma_cfg = configp->rx_dma_cfg,
+      .tx_dma_cfg = configp->tx_dma_cfg,
+      .sio_config = &sbusSioConfig,
+      .rx_half_cb = sbusRxCb,
+      .rx_user = sbusp,
+      .rx_thread_name = "sbus rx",
+      .rx_thread_prio = NORMALPRIO + 1, // High priority for RC input
+      .rx_thread_wa_size = configp->threadWASize
     };
-    sbusp->sio = new (mem) SIO::Datagram(cfg);
-  } else {
-    sbusp->sio->setConfig(sbusSioConfig);
+    wrapper->sio = new (mem_sio) SbusSIO(cfg);
+    sbusp->sio = wrapper;
   }
-  (void)sbusp->sio->start();
+
+  auto *wrapper = static_cast<SbusSioWrapper *>(sbusp->sio);
+  wrapper->sio->setConfig(sbusSioConfig);
+  (void)wrapper->sio->start();
+  wrapper->sio->stopRx(); // Keep DMA idle until StartReceive is called
 }
 
-void sbusStop(SBUSDriver *sbusp)
-{
+void sbusStop(SBUSDriver *sbusp) {
   if (sbusp->sio != nullptr) {
-    sbusp->sio->stop();
+    auto *wrapper = static_cast<SbusSioWrapper *>(sbusp->sio);
+    wrapper->sio->stop();
+    // Destructor is protected and resources should never be cleared.
   }
-  sbusObjectInit(sbusp);
+  sbusp->wth = nullptr;
 }
 
-void sbusStartReceive(SBUSDriver *sbusp)
-{
-  const SBUSConfig *cfg = sbusp->config;
-  chDbgAssert(sbusp->wth == NULL, "already in active state");
-  sbusp->wth = chThdCreateFromHeap (NULL, cfg->threadWASize, "sbus_receive", 
-				    NORMALPRIO, receivingLoopThread, sbusp);
-}
-
-void sbusStopReceive(SBUSDriver *sbusp)
-{
-  if (sbusp->wth != NULL) {
-    chThdTerminate(sbusp->wth);
-    chThdWait(sbusp->wth);
-    sbusp->wth = NULL;
+void sbusStartReceive(SBUSDriver *sbusp) {
+  if (sbusp->sio != nullptr) {
+    auto *wrapper = static_cast<SbusSioWrapper *>(sbusp->sio);
+    wrapper->sio->startRx();
+    // In Continuous mode, the thread is managed by the SIO wrapper.
+    // We set wth to a non-null value just to satisfy existing logic checks.
+    sbusp->wth = reinterpret_cast<thread_t *>(0xDEADBEEF);
   }
 }
 
-static inline void invoqueError(const SBUSConfig *cfg, SBUSError err) {
-  if (cfg->errorCb) {
-    cfg->errorCb(err);
+void sbusStopReceive(SBUSDriver *sbusp) {
+  if (sbusp->sio != nullptr) {
+    auto *wrapper = static_cast<SbusSioWrapper *>(sbusp->sio);
+    wrapper->sio->stopRx();
+    sbusp->wth = nullptr;
   }
 }
 
-static void receivingLoopThread (void *arg)
-{
-  SBUSDriver	   *sbusp = (SBUSDriver *) arg;
-  const SBUSConfig *cfg = sbusp->config;
-  uint8_t          *sbusBuffer = static_cast<uint8_t *>(malloc_dma(SBUS_BUFFLEN));
-  SBUSFrame	   frame;
-
-
-  if (sbusBuffer == nullptr) {
-     cfg->errorCb(SBUS_MALLOC_ERROR);
-     chThdSleep(TIME_INFINITE);
+void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame) {
+  if (sbusp->sio != nullptr) {
+    auto *wrapper = static_cast<SbusSioWrapper *>(sbusp->sio);
+    encodeSbusBuffer(frame, wrapper->tx_buf);
+    (void)wrapper->sio->writeTimeout(SIO::ByteSpan(wrapper->tx_buf, SBUS_BUFFLEN),
+                                     TIME_INFINITE);
   }
-  
-  while (!chThdShouldTerminateX()) {
-    size_t size = SBUS_BUFFLEN;
-    size = sbusp->sio->readTimeout(sbusBuffer, size, TIME_INFINITE);
-
-    if (size !=  SBUS_BUFFLEN) {
-      invoqueError(cfg, SBUS_TIMOUT);
-      goto outOfSync;
-    }
-    
-    if (sbusBuffer[0] != SBUS_START_BYTE) {
-      invoqueError(cfg, SBUS_MALFORMED_FRAME);
-      goto outOfSync;
-    }
-    
-    if (sbusBuffer[SBUS_BUFFLEN - 1] != SBUS_END_BYTE) {
-      invoqueError(cfg, SBUS_MALFORMED_FRAME);
-      goto outOfSync;
-    }
-    
-    if ((sbusBuffer[SBUS_FLAGS_BYTE] >> SBUS_FRAME_LOST_BIT) & 0x1) {
-      invoqueError(cfg, SBUS_LOST_FRAME);
-      continue;
-    }
-    
-    if ((sbusBuffer[SBUS_FLAGS_BYTE] >> SBUS_FAILSAFE_BIT) & 0x1) {
-      invoqueError(cfg, SBUS_FAILSAFE);
-      continue;
-    }
-    
-    if (cfg->frameCb) {
-      decodeSbusBuffer(sbusBuffer+1, &frame);
-      cfg->frameCb(&frame);
-    }
-
-    continue;
-    
-  outOfSync :
-    chThdSleepMilliseconds(1);
-  }
-  
-  chThdExit(0);
 }
 
-// not reentrant
-void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame)
-{
-  static uint8_t IN_DMA_SECTION_NOINIT(sbusBuffer[SBUS_BUFFLEN]);
-  encodeSbusBuffer(frame, sbusBuffer);
-  (void)sbusp->sio->writeTimeout(sbusBuffer, SBUS_BUFFLEN, TIME_INFINITE);
-}
+} // extern "C"
 
+namespace {
 
-static void decodeSbusBuffer (const uint8_t *src, SBUSFrame  *frm)
-{
+static void decodeSbusBuffer(const uint8_t *src, SBUSFrame *frm) {
   uint16_t *dst = frm->channel;
-  // decode sbus data
-  dst[0]  = ((src[0]    ) | (src[1]<<8))                  & 0x07FF;
-  dst[1]  = ((src[1]>>3 ) | (src[2]<<5))                  & 0x07FF;
-  dst[2]  = ((src[2]>>6 ) | (src[3]<<2)  | (src[4]<<10))  & 0x07FF;
-  dst[3]  = ((src[4]>>1 ) | (src[5]<<7))                  & 0x07FF;
-  dst[4]  = ((src[5]>>4 ) | (src[6]<<4))                  & 0x07FF;
-  dst[5]  = ((src[6]>>7 ) | (src[7]<<1 ) | (src[8]<<9))   & 0x07FF;
-  dst[6]  = ((src[8]>>2 ) | (src[9]<<6))                  & 0x07FF;
-  dst[7]  = ((src[9]>>5)  | (src[10]<<3))                 & 0x07FF;
-  dst[8]  = ((src[11]   ) | (src[12]<<8))                 & 0x07FF;
-  dst[9]  = ((src[12]>>3) | (src[13]<<5))                 & 0x07FF;
-  dst[10] = ((src[13]>>6) | (src[14]<<2) | (src[15]<<10)) & 0x07FF;
-  dst[11] = ((src[15]>>1) | (src[16]<<7))                 & 0x07FF;
-  dst[12] = ((src[16]>>4) | (src[17]<<4))                 & 0x07FF;
-  dst[13] = ((src[17]>>7) | (src[18]<<1) | (src[19]<<9))  & 0x07FF;
-  dst[14] = ((src[19]>>2) | (src[20]<<6))                 & 0x07FF;
-  dst[15] = ((src[20]>>5) | (src[21]<<3))                 & 0x07FF;
+  // src points to the full 25-byte buffer starting with 0x0F
+  // Data starts at src[1]
+  dst[0]  = ((src[1]    ) | (src[2]<<8))                  & 0x07FF;
+  dst[1]  = ((src[2]>>3 ) | (src[3]<<5))                  & 0x07FF;
+  dst[2]  = ((src[3]>>6 ) | (src[4]<<2)  | (src[5]<<10))  & 0x07FF;
+  dst[3]  = ((src[5]>>1 ) | (src[6]<<7))                  & 0x07FF;
+  dst[4]  = ((src[6]>>4 ) | (src[7]<<4))                  & 0x07FF;
+  dst[5]  = ((src[7]>>7 ) | (src[8]<<1 ) | (src[9]<<9))   & 0x07FF;
+  dst[6]  = ((src[9]>>2 ) | (src[10]<<6))                 & 0x07FF;
+  dst[7]  = ((src[10]>>5) | (src[11]<<3))                 & 0x07FF;
+  dst[8]  = ((src[12]   ) | (src[13]<<8))                 & 0x07FF;
+  dst[9]  = ((src[13]>>3) | (src[14]<<5))                 & 0x07FF;
+  dst[10] = ((src[14]>>6) | (src[15]<<2) | (src[16]<<10)) & 0x07FF;
+  dst[11] = ((src[16]>>1) | (src[17]<<7))                 & 0x07FF;
+  dst[12] = ((src[17]>>4) | (src[18]<<4))                 & 0x07FF;
+  dst[13] = ((src[18]>>7) | (src[19]<<1) | (src[20]<<9))  & 0x07FF;
+  dst[14] = ((src[20]>>2) | (src[21]<<6))                 & 0x07FF;
+  dst[15] = ((src[21]>>5) | (src[22]<<3))                 & 0x07FF;
 
   frm->flags = src[SBUS_FLAGS_BYTE];
 }
 
+static void encodeSbusBuffer(const SBUSFrame *_frm, uint8_t *dest) {
+  const uint16_t *const chan = _frm->channel;
 
-static void encodeSbusBuffer (const SBUSFrame  *_frm, uint8_t *dest)
-{
-  const uint16_t * const chan = _frm->channel;
- 
   dest[0] = SBUS_START_BYTE;
-  dest[1] =   (uint8_t) ((chan[0]   & 0x07FF));
-  dest[2] =   (uint8_t) ((chan[0]   & 0x07FF) >> 8  | (chan[1]  & 0x07FF) << 3);
-  dest[3] =   (uint8_t) ((chan[1]   & 0x07FF) >> 5  | (chan[2]  & 0x07FF) << 6);
-  dest[4] =   (uint8_t) ((chan[2]   & 0x07FF) >> 2);
-  dest[5] =   (uint8_t) ((chan[2]   & 0x07FF) >> 10 | (chan[3]  & 0x07FF) << 1);
-  dest[6] =   (uint8_t) ((chan[3]   & 0x07FF) >> 7  | (chan[4]  & 0x07FF) << 4);
-  dest[7] =   (uint8_t) ((chan[4]   & 0x07FF) >> 4  | (chan[5]  & 0x07FF) << 7);
-  dest[8] =   (uint8_t) ((chan[5]   & 0x07FF) >> 1);
-  dest[9] =   (uint8_t) ((chan[5]   & 0x07FF) >> 9  | (chan[6]  & 0x07FF) << 2);
-  dest[10] =  (uint8_t) ((chan[6]   & 0x07FF) >> 6  | (chan[7]  & 0x07FF) << 5);
-  dest[11] =  (uint8_t) ((chan[7]   & 0x07FF) >> 3);
-  dest[12] =  (uint8_t) ((chan[8]   & 0x07FF));
-  dest[13] =  (uint8_t) ((chan[8]   & 0x07FF) >> 8  | (chan[9]  & 0x07FF) << 3);
-  dest[14] =  (uint8_t) ((chan[9]   & 0x07FF) >> 5  | (chan[10] & 0x07FF) << 6);
-  dest[15] =  (uint8_t) ((chan[10]  & 0x07FF) >> 2);
-  dest[16] =  (uint8_t) ((chan[10]  & 0x07FF) >> 10 | (chan[11] & 0x07FF) << 1);
-  dest[17] =  (uint8_t) ((chan[11]  & 0x07FF) >> 7  | (chan[12] & 0x07FF) << 4);
-  dest[18] =  (uint8_t) ((chan[12]  & 0x07FF) >> 4  | (chan[13] & 0x07FF) << 7);
-  dest[19] =  (uint8_t) ((chan[13]  & 0x07FF) >> 1);
-  dest[20] =  (uint8_t) ((chan[13]  & 0x07FF) >> 9  | (chan[14] & 0x07FF) << 2);
-  dest[21] =  (uint8_t) ((chan[14]  & 0x07FF) >> 6  | (chan[15] & 0x07FF) << 5);
-  dest[22] =  (uint8_t) ((chan[15]  & 0x07FF) >> 3);
+  dest[1] = (uint8_t)((chan[0] & 0x07FF));
+  dest[2] = (uint8_t)((chan[0] & 0x07FF) >> 8 | (chan[1] & 0x07FF) << 3);
+  dest[3] = (uint8_t)((chan[1] & 0x07FF) >> 5 | (chan[2] & 0x07FF) << 6);
+  dest[4] = (uint8_t)((chan[2] & 0x07FF) >> 2);
+  dest[5] = (uint8_t)((chan[2] & 0x07FF) >> 10 | (chan[3] & 0x07FF) << 1);
+  dest[6] = (uint8_t)((chan[3] & 0x07FF) >> 7 | (chan[4] & 0x07FF) << 4);
+  dest[7] = (uint8_t)((chan[4] & 0x07FF) >> 4 | (chan[5] & 0x07FF) << 7);
+  dest[8] = (uint8_t)((chan[5] & 0x07FF) >> 1);
+  dest[9] = (uint8_t)((chan[5] & 0x07FF) >> 9 | (chan[6] & 0x07FF) << 2);
+  dest[10] = (uint8_t)((chan[6] & 0x07FF) >> 6 | (chan[7] & 0x07FF) << 5);
+  dest[11] = (uint8_t)((chan[7] & 0x07FF) >> 3);
+  dest[12] = (uint8_t)((chan[8] & 0x07FF));
+  dest[13] = (uint8_t)((chan[8] & 0x07FF) >> 8 | (chan[9] & 0x07FF) << 3);
+  dest[14] = (uint8_t)((chan[9] & 0x07FF) >> 5 | (chan[10] & 0x07FF) << 6);
+  dest[15] = (uint8_t)((chan[10] & 0x07FF) >> 2);
+  dest[16] = (uint8_t)((chan[10] & 0x07FF) >> 10 | (chan[11] & 0x07FF) << 1);
+  dest[17] = (uint8_t)((chan[11] & 0x07FF) >> 7 | (chan[12] & 0x07FF) << 4);
+  dest[18] = (uint8_t)((chan[12] & 0x07FF) >> 4 | (chan[13] & 0x07FF) << 7);
+  dest[19] = (uint8_t)((chan[13] & 0x07FF) >> 1);
+  dest[20] = (uint8_t)((chan[13] & 0x07FF) >> 9 | (chan[14] & 0x07FF) << 2);
+  dest[21] = (uint8_t)((chan[14] & 0x07FF) >> 6 | (chan[15] & 0x07FF) << 5);
+  dest[22] = (uint8_t)((chan[15] & 0x07FF) >> 3);
   dest[23] = _frm->flags;
   dest[24] = SBUS_END_BYTE;
 }
+
+} // namespace
