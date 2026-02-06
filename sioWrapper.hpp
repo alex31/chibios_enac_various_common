@@ -49,6 +49,8 @@ public:
   void acquireBus();
   /** @brief Release the SIO bus mutex. */
   void releaseBus();
+  /** @brief ISR-context callback signature for user-selected SIO events. */
+  using EventCallbackI = void (*)(sioevents_t events, void *user);
 
 protected:
   /** @brief Protected virtual destructor (no public delete). */
@@ -102,6 +104,18 @@ protected:
   SIOConfig config_storage_{}; ///< Local copy of SIOConfig when provided.
   const SIOConfig *config_;  ///< Pointer to config_storage_ or nullptr.
   mutex_t bus_mutex_;        ///< Bus mutex for caller-managed exclusion.
+
+  /** @brief Configure user event dispatch mask and callback (ISR context). */
+  void configureEventDispatch(sioevents_t mask, EventCallbackI cb, void *user);
+  /** @brief Get currently configured user event mask. */
+  sioevents_t configuredEventMask() const;
+  /** @brief Dispatch selected events to the user callback (ISR context). */
+  void dispatchConfiguredEventsI(sioevents_t events) const;
+
+private:
+  sioevents_t event_mask_ = SIO_EV_NONE; ///< User-selected events to report.
+  EventCallbackI event_cb_ = nullptr;    ///< User callback for selected events.
+  void *event_user_ = nullptr;           ///< User callback context.
 };
 
 
@@ -115,8 +129,10 @@ struct BufferedConfig {
 using ByteSpan = std::span<const uint8_t>;
 /** @brief RX half-buffer callback (thread context). */
 using RxHalfCallback = void (*)(const ByteSpan &slice, void *user);
-/** @brief Generic event callback (ISR context). */
+/** @brief Generic callback used by TX/RX DMA completion hooks. */
 using TxCallback = void (*)(void *user);
+/** @brief ISR-context callback used for selected SIO events. */
+using EventCallbackI = Base::EventCallbackI;
 
 /** @brief User-facing reduced DMA configuration. */
 struct DmaUserConfig {
@@ -370,6 +386,10 @@ struct ContinuousConfig {
   const char *rx_thread_name = "sio-rx"; ///< RX worker thread name.
   tprio_t rx_thread_prio = NORMALPRIO;   ///< RX worker thread priority.
   size_t rx_thread_wa_size = THD_WORKING_AREA_SIZE(512); ///< RX worker stack size.
+  bool enable_rx_idle = true;     ///< Enable RX-idle flush support.
+  sioevents_t event_mask = SIO_EV_NONE; ///< Additional SIO events to report (except RXIDLE).
+  EventCallbackI event_cb = nullptr; ///< ISR-context callback for selected SIO events.
+  void *event_user = nullptr;     ///< User context for event_cb.
 };
 
 /**
@@ -400,6 +420,8 @@ public:
   msg_t start() override;
   /** @brief Stop DMA, driver, and worker thread. */
   void stop() override;
+  /** @brief Update SIO config while preserving DMA request bits. */
+  void setConfig(const SIOConfig &cfg);
 
   /** @brief Set RX callback and context. */
   void setRxCallback(RxHalfCallback cb, void *user);
@@ -462,6 +484,7 @@ private:
   const char *rx_thread_name_;      ///< RX worker thread name.
   tprio_t rx_thread_prio_;          ///< RX worker thread priority.
   size_t rx_thread_wa_size_;        ///< RX worker stack size.
+  bool rx_idle_enabled_;            ///< Enable RXIDLE-triggered DMA flush.
   thread_t *rx_thread_;             ///< RX worker thread handle.
   size_t rx_dropped_;               ///< Dropped RX slices count.
   ObjectFifo<RxItem, FD> rx_fifo_;  ///< RX FIFO storage.
@@ -595,6 +618,7 @@ inline Continuous<DBS, FD>::Continuous(const ContinuousConfig &cfg)
       rx_thread_name_(cfg.rx_thread_name),
       rx_thread_prio_(cfg.rx_thread_prio),
       rx_thread_wa_size_(cfg.rx_thread_wa_size),
+      rx_idle_enabled_(cfg.enable_rx_idle),
       rx_thread_(nullptr),
       rx_dropped_(0U),
       rx_fifo_() {
@@ -611,6 +635,10 @@ inline Continuous<DBS, FD>::Continuous(const ContinuousConfig &cfg)
                         false, DMA_ONESHOT);
   tx_cfg_storage_.owner = this;
   tx_cfg_ = &tx_cfg_storage_.cfg;
+
+  // RXIDLE is managed separately by enable_rx_idle.
+  configureEventDispatch(cfg.event_mask & static_cast<sioevents_t>(~SIO_EV_RXIDLE),
+                         cfg.event_cb, cfg.event_user);
 }
 
 template <size_t DBS, size_t FD>
@@ -630,8 +658,17 @@ inline msg_t Continuous<DBS, FD>::start() {
     return HAL_RET_HW_FAILURE;
   }
 
-  setCallback(&Continuous::sioIdleCb, this);
-  writeEnableFlagsX(SIO_EV_RXIDLE);
+  sioevents_t ev_mask = configuredEventMask();
+  if (rx_idle_enabled_) {
+    ev_mask |= SIO_EV_RXIDLE;
+  }
+  if (ev_mask != SIO_EV_NONE) {
+    setCallback(&Continuous::sioIdleCb, this);
+    writeEnableFlagsX(ev_mask);
+  } else {
+    setCallback(nullptr, nullptr);
+    writeEnableFlagsX(SIO_EV_NONE);
+  }
 
   startRx();
 
@@ -679,6 +716,13 @@ template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::setRxCallback(RxHalfCallback cb, void *user) {
   rx_cb_ = cb;
   rx_user_ = user;
+}
+
+template <size_t DBS, size_t FD>
+inline void Continuous<DBS, FD>::setConfig(const SIOConfig &cfg) {
+  config_storage_ = cfg;
+  config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
+  config_ = &config_storage_;
 }
 
 template <size_t DBS, size_t FD>
@@ -793,17 +837,25 @@ inline void Continuous<DBS, FD>::dmaTxCb(DMADriver *dmap, void *buffer, const si
 template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::sioIdleCb(SIODriver *siop) {
   auto *self = static_cast<Continuous *>(siop->arg);
+  sioevents_t rearm_mask = SIO_EV_NONE;
   if (self != nullptr) {
-    //osalDbgAssert((ev & ~SIO_EV_RXIDLE) == 0U, "unexpected SIO events cleared");
     sioevents_t ev = sioGetAndClearEventsX(siop);
-    if ((ev & SIO_EV_RXIDLE) && 
-	(dmaGetState(&self->rx_dma_) == DMA_ACTIVE)) {
+    if (((ev & SIO_EV_RXIDLE) != 0U) &&
+        self->rx_idle_enabled_ &&
+        (dmaGetState(&self->rx_dma_) == DMA_ACTIVE)) {
 #if STM32_DMA_USE_ASYNC_TIMOUT
       dmaForceHalfBufferFromISR(&self->rx_dma_);
 #endif
     }
+
+    self->dispatchConfiguredEventsI(ev);
+
+    rearm_mask = self->configuredEventMask();
+    if (self->rx_idle_enabled_) {
+      rearm_mask |= SIO_EV_RXIDLE;
+    }
   }
-  sioSetEnableFlagsX(siop, SIO_EV_RXIDLE);
+  sioSetEnableFlagsX(siop, rearm_mask);
 }
 
 template <size_t DBS, size_t FD>

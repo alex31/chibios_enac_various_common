@@ -34,6 +34,26 @@ void Base::setConfig(const SIOConfig &cfg) {
   config_ = &config_storage_;
 }
 
+void Base::configureEventDispatch(sioevents_t mask, EventCallbackI cb, void *user) {
+  event_mask_ = (cb != nullptr) ? mask : SIO_EV_NONE;
+  event_cb_ = cb;
+  event_user_ = user;
+}
+
+sioevents_t Base::configuredEventMask() const {
+  return event_mask_;
+}
+
+void Base::dispatchConfiguredEventsI(sioevents_t events) const {
+  if ((event_cb_ == nullptr) || (events == SIO_EV_NONE)) {
+    return;
+  }
+  const sioevents_t selected = events & event_mask_;
+  if (selected != SIO_EV_NONE) {
+    event_cb_(selected, event_user_);
+  }
+}
+
 void Base::setCallback(siocb_t cb, void *arg) {
   siop_->arg = arg;
   sioSetCallbackX(siop_, cb);
