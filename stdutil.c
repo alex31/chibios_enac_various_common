@@ -120,11 +120,11 @@ size_t initHeap (void)
   size_t size;
   chHeapObjectInit(&ccmHeap, (void *) ccmHeapBuffer, sizeof (ccmHeapBuffer));
   chHeapStatus(&ccmHeap, &size, NULL);
-#endif
 #if    defined(DMA_HEAP_SIZE) && (DMA_HEAP_SIZE > 0)
   chHeapObjectInit(&ccmDmaHeap, (void *) ccmDmaHeapBuffer, sizeof (ccmDmaHeapBuffer));
 #endif
   return size;
+#endif
 }
 
 size_t getHeapFree (void)
