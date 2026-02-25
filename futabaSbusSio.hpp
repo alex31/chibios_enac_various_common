@@ -155,7 +155,9 @@ extern "C" {
    * @param[in]  sbusp     pointer to a @p SBUSDriver structure
    * @note       the TX pin of the usart must be configured in board.cfg
    */
+#if defined(ENABLE_SBUS_FRAME_GENERATION) && ENABLE_SBUS_FRAME_GENERATION
   void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame);
+#endif
 
 #ifdef __cplusplus
 }

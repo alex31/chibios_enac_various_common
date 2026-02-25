@@ -2,7 +2,7 @@
 #include <hal.h>
 #include <new>
 #include <cstring>
-#include "futabaSbusUart.hpp"
+#include "futabaSbusSio.hpp"
 #include "stdutil.h"
 
 #define SBUS_START_BYTE 0x0f
@@ -14,17 +14,27 @@ namespace {
   /** @brief  DMA-backed Continuous SIO instance for SBUS. */
   using SbusSIO = SIO::Continuous<128, 8>;
 
+#if defined(ENABLE_SBUS_FRAME_GENERATION) && ENABLE_SBUS_FRAME_GENERATION
+#define SBUS_FRAME_GENERATION_ENABLED 1
+#else
+#define SBUS_FRAME_GENERATION_ENABLED 0
+#endif
+
   /** @brief  Wrapper to hold SIO instance and parsing state. */
   struct SbusSioWrapper {
     SbusSIO *sio;
     uint8_t sync_buf[SBUS_BUFFLEN * 2];
     size_t sync_idx;
+#if SBUS_FRAME_GENERATION_ENABLED
     uint8_t tx_buf[SBUS_BUFFLEN];
+#endif
 
     SbusSioWrapper()
         : sio(nullptr), sync_idx(0) {
       std::memset(sync_buf, 0, sizeof(sync_buf));
+#if SBUS_FRAME_GENERATION_ENABLED
       std::memset(tx_buf, 0, sizeof(tx_buf));
+#endif
     }
     ~SbusSioWrapper() = delete;
   };
@@ -42,7 +52,9 @@ namespace {
   };
 
   static void decodeSbusBuffer(const uint8_t *src, SBUSFrame *frm);
+#if SBUS_FRAME_GENERATION_ENABLED
   static void encodeSbusBuffer(const SBUSFrame *frm, uint8_t *dest);
+#endif
 
   static inline void invoqueError(const SBUSConfig *cfg, SBUSError err) {
     if (cfg && cfg->errorCb) {
@@ -119,28 +131,32 @@ void sbusStart(SBUSDriver *sbusp, const SBUSConfig *configp) {
 #endif
 
   if (sbusp->sio == nullptr) {
-    void *mem_wrapper = malloc_m(sizeof(SbusSioWrapper));
-    void *mem_sio = malloc_m(sizeof(SbusSIO));
-    if (mem_wrapper == nullptr || mem_sio == nullptr) {
-      if (mem_wrapper) free_m(mem_wrapper);
-      if (mem_sio) free_m(mem_sio);
+    auto *wrapper = new SbusSioWrapper();
+    if (!wrapper) {
       invoqueError(configp, SBUS_MALLOC_ERROR);
       return;
     }
-
-    auto *wrapper = new (mem_wrapper) SbusSioWrapper();
     const SIO::ContinuousConfig cfg = {
       .driver = *configp->siop,
       .rx_dma_cfg = configp->rx_dma_cfg,
+#if SBUS_FRAME_GENERATION_ENABLED
       .tx_dma_cfg = configp->tx_dma_cfg,
-      .sio_config = &sbusSioConfig,
+#else
+      .tx_dma_cfg = {},
+#endif
+      .sio_config = sbusSioConfig,
       .rx_half_cb = sbusRxCb,
       .rx_user = sbusp,
       .rx_thread_name = "sbus rx",
       .rx_thread_prio = NORMALPRIO + 1, // High priority for RC input
       .rx_thread_wa_size = configp->threadWASize
     };
-    wrapper->sio = new (mem_sio) SbusSIO(cfg);
+    wrapper->sio = new SbusSIO(cfg);
+    if (wrapper->sio == nullptr) {
+      free_m(wrapper);
+      invoqueError(configp, SBUS_MALLOC_ERROR);
+      return;
+    }
     sbusp->sio = wrapper;
   }
 
@@ -177,6 +193,7 @@ void sbusStopReceive(SBUSDriver *sbusp) {
   }
 }
 
+#if SBUS_FRAME_GENERATION_ENABLED
 void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame) {
   if (sbusp->sio != nullptr) {
     auto *wrapper = static_cast<SbusSioWrapper *>(sbusp->sio);
@@ -185,6 +202,7 @@ void sbusSend(SBUSDriver *sbusp, const SBUSFrame *frame) {
                                      TIME_INFINITE);
   }
 }
+#endif
 
 } // extern "C"
 
@@ -214,6 +232,7 @@ static void decodeSbusBuffer(const uint8_t *src, SBUSFrame *frm) {
   frm->flags = src[SBUS_FLAGS_BYTE];
 }
 
+#if SBUS_FRAME_GENERATION_ENABLED
 static void encodeSbusBuffer(const SBUSFrame *_frm, uint8_t *dest) {
   const uint16_t *const chan = _frm->channel;
 
@@ -243,5 +262,8 @@ static void encodeSbusBuffer(const SBUSFrame *_frm, uint8_t *dest) {
   dest[23] = _frm->flags;
   dest[24] = SBUS_END_BYTE;
 }
+#endif
 
 } // namespace
+
+#undef SBUS_FRAME_GENERATION_ENABLED
