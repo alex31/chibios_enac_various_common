@@ -316,45 +316,123 @@ F7
 
  */
 
+  /*
+     - Definite silent-overlap risk (same ORIGIN, different MEMORY names):
+      - F7 ETH script: DATA_RAM=ram1, but STD_SECTION/.ram0 and FAST_SECTION/.ram0 can overlap because ram0 and ram1 both start at 0x20010000.
+      - Evidence: STM32F746xG_ETH.ld (/home/alex/DEV/STM32/CHIBIOS/ChibiOS_21.11_stable/os/common/startup/ARMCMx/compilers/GCC/ld/STM32F746xG_ETH.ld:37),
+        STM32F746xG_ETH.ld (/home/alex/DEV/STM32/CHIBIOS/ChibiOS_21.11_stable/os/common/startup/ARMCMx/compilers/GCC/ld/STM32F746xG_ETH.ld:82)
+  - G4 is inherently mixed in ChibiOS scripts:
+      - ram0/ram1/ram2 often share 0x20000000, but DATA_RAM is not consistent (ram0 on G491, ram2 on G474).
+      - Evidence: STM32G491xE.ld (/home/alex/DEV/STM32/CHIBIOS/ChibiOS_21.11_stable/os/common/startup/ARMCMx/compilers/GCC/ld/STM32G491xE.ld:30),
+        STM32G491xE.ld (/home/alex/DEV/STM32/CHIBIOS/ChibiOS_21.11_stable/os/common/startup/ARMCMx/compilers/GCC/ld/STM32G491xE.ld:75), STM32G474xE.ld (/
+        home/alex/DEV/STM32/CHIBIOS/ChibiOS_21.11_stable/os/common/startup/ARMCMx/compilers/GCC/ld/STM32G474xE.ld:30), STM32G474xE.ld (/home/alex/DEV/STM32/
+        CHIBIOS/ChibiOS_21.11_stable/os/common/startup/ARMCMx/compilers/GCC/ld/STM32G474xE.ld:75)
+  - F3/F4 FAST_SECTION=.ram4 can be invalid on many parts (ram4 length = 0), which is a latent config trap.
+      - Evidence: STM32F401xE.ld (/home/alex/DEV/STM32/CHIBIOS/ChibiOS_21.11_stable/os/common/startup/ARMCMx/compilers/GCC/ld/STM32F401xE.ld:34)
+  - H7 mismatch:
+      - stdutil.h uses AXIDMA_SECTION ".ram0nc" for H7, but stock H7 linker scripts define NOCACHE_RAM aliases, not a ram0nc memory region.
+      - Evidence: stdutil.h (/home/alex/DEV/STM32/CHIBIOS/COMMON/various/stdutil.h:351), STM32H723xG_ITCM64k_AXI_NC.ld (/home/alex/DEV/STM32/CHIBIOS/
+        ChibiOS_21.11_stable/os/common/startup/ARMCMx/compilers/GCC/ld/STM32H723xG_ITCM64k_AXI_NC.ld:100)
+
+
+   */
 
 #if defined STM32F4XX
-#define STD_SECTION ".ram0" 
-#define FAST_SECTION ".ram4" 
-#define DMA_SECTION ".ram0"    
+#ifndef STD_SECTION
+#define STD_SECTION ".ram0"
+#endif
+#ifndef FAST_SECTION
+#define FAST_SECTION ".ram4"
+#endif
+#ifndef DMA_SECTION
+#define DMA_SECTION ".ram0"
+#endif
+#ifndef BCKP_SECTION
 #define BCKP_SECTION ".ram5"
+#endif
+#ifndef SDMMC_SECTION
 #define SDMMC_SECTION DMA_SECTION
+#endif
 #elif  defined STM32F7XX
-#define STD_SECTION ".ram0" 
-#define FAST_SECTION ".ram0" 
-#define DMA_SECTION ".ram3"    
+#ifndef STD_SECTION
+#define STD_SECTION ".ram0"
+#endif
+#ifndef FAST_SECTION
+#define FAST_SECTION ".ram0"
+#endif
+#ifndef DMA_SECTION
+#define DMA_SECTION ".ram3"
+#endif
+#ifndef BCKP_SECTION
 #define BCKP_SECTION ".ram5"
+#endif
+#ifndef SDMMC_SECTION
 #define SDMMC_SECTION DMA_SECTION
+#endif
 #elif (defined (STM32L422xx) || defined (STM32L431xx) || defined (STM32L432xx) || \
        defined (STM32L433xx) || defined (STM32L442xx) || defined (STM32L443xx))
-#define STD_SECTION ".ram0" 
-#define FAST_SECTION ".ram0" 
-#define DMA_SECTION ".ram0"    
+#ifndef STD_SECTION
+#define STD_SECTION ".ram0"
+#endif
+#ifndef FAST_SECTION
+#define FAST_SECTION ".ram0"
+#endif
+#ifndef DMA_SECTION
+#define DMA_SECTION ".ram0"
+#endif
 #elif  (defined (STM32L471xx) || defined (STM32L475xx) || defined (STM32L476xx) || \
 	defined (STM32L485xx) || defined (STM32L486xx))
-#define STD_SECTION ".ram0" 
-#define FAST_SECTION ".ram4" 
-#define DMA_SECTION ".ram0"    
+#ifndef STD_SECTION
+#define STD_SECTION ".ram0"
+#endif
+#ifndef FAST_SECTION
+#define FAST_SECTION ".ram4"
+#endif
+#ifndef DMA_SECTION
+#define DMA_SECTION ".ram0"
+#endif
 #elif  defined STM32F3XX
-#define STD_SECTION ".ram0" 
-#define FAST_SECTION ".ram4" 
-#define DMA_SECTION ".ram0"    
+#ifndef STD_SECTION
+#define STD_SECTION ".ram0"
+#endif
+#ifndef FAST_SECTION
+#define FAST_SECTION ".ram4"
+#endif
+#ifndef DMA_SECTION
+#define DMA_SECTION ".ram0"
+#endif
 #elif  defined STM32H7XX
-#define STD_SECTION ".ram0" 
-#define FAST_SECTION ".ram5" 
-#define DMA_SECTION ".ram3"    
-#define BDMA_SECTION ".ram4"    
+#ifndef STD_SECTION
+#define STD_SECTION ".ram0"
+#endif
+#ifndef FAST_SECTION
+#define FAST_SECTION ".ram5"
+#endif
+#ifndef DMA_SECTION
+#define DMA_SECTION ".ram3"
+#endif
+#ifndef BDMA_SECTION
+#define BDMA_SECTION ".ram4"
+#endif
+#ifndef AXIDMA_SECTION
 #define AXIDMA_SECTION ".ram0nc"
+#endif
+#ifndef SDMMC_SECTION
 #define SDMMC_SECTION AXIDMA_SECTION
+#endif
 #elif  defined STM32G4XX
-#define STD_SECTION ".ram0" 
-#define FAST_SECTION ".ram4" 
-#define DMA_SECTION ".ram1"    
+#ifndef STD_SECTION
+#define STD_SECTION ".ram2"
+#endif
+#ifndef FAST_SECTION
+#define FAST_SECTION ".ram4"
+#endif
+#ifndef DMA_SECTION
+#define DMA_SECTION ".ram2"
+#endif
+#ifndef BCKP_SECTION
 #define BCKP_SECTION ".ram5"
+#endif
 #else
 #error "section defined only for STM32F3, STM32F4, STM32F7, STM32L4, STM32H7 and STM32G4XX"
 #endif
