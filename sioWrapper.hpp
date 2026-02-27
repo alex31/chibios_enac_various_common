@@ -896,7 +896,7 @@ inline const uint8_t *Continuous<DBS, FD>::rxBuffer() const {
 template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::dmaRxCb(DMADriver *dmap, void *buffer, const size_t n) {
   auto *self = detail::ownerFromDma<Continuous<DBS, FD>>(dmap);
-  if ((self == nullptr) || (self->rx_cb_ == nullptr)) {
+  if (self == nullptr) {
     return;
   }
 
