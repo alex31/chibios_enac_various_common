@@ -276,9 +276,12 @@ STS3032::StateVector STS3032::readStates (uint8_t id)
   
   if(read(&rec) == SmartServo::Status::OK) {
     StateInRam *sir = reinterpret_cast<StateInRam *>(rec.data);
+    // Present load encodes direction in bit10 and magnitude in bits[9:0].
+    // Keep only magnitude so reported load is symmetric for both directions.
+    const uint16_t loadMagnitude = static_cast<uint16_t>(sir->load & 0x03FFU);
     vec = {
       .position = remap<0.0f, 4095.0f, -1.0f, 1.0f>(sir->pos), 
-      .load = remap<0.0f, 10'000.f, 0.0f, 1.0f>(sir->load),
+      .load = remap<0.0f, 1023.0f, 0.0f, 1.0f>(loadMagnitude),
       .voltage = sir->voltage / 10.0f,
       .current = sir->current * 6.5e-3f,
       .speed = sir->speed,

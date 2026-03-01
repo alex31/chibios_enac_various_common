@@ -10,10 +10,40 @@ namespace {
   void set_chk(servo_msg_t* msg, uint8_t chk) {
     *((uint8_t*)msg + msg->len + 3) = chk;
   }
+
+  void purge_rx_flags_and_fifo(USART_TypeDef *u) {
+    // Drop any pending RX byte (notably local TX echo in half-duplex).
+    u->RQR = USART_RQR_RXFRQ;
+    u->ICR = USART_ICR_IDLECF | USART_ICR_ORECF | USART_ICR_NECF |
+             USART_ICR_FECF | USART_ICR_PECF;
+  }
+
+  bool wait_tx_complete(USART_TypeDef *u, sysinterval_t timeout) {
+    const systime_t start = chVTGetSystemTimeX();
+    while ((u->ISR & USART_ISR_TC) == 0U) {
+      if (chTimeDiffX(start, chVTGetSystemTimeX()) >= timeout) {
+        return false;
+      }
+    }
+    return true;
+  }
   
   void send_msg(SmartServo::SmartServoSio* sio, servo_msg_t* msg) {
+    SIODriver &siod = sio->rawDriver();
+    USART_TypeDef *u = siod.usart;
+    const uint32_t cr1_saved = u->CR1;
+
+    // In half-duplex, disable RX during TX to prevent local echo from
+    // polluting the next status frame.
+    u->CR1 = cr1_saved & ~USART_CR1_RE;
+    purge_rx_flags_and_fifo(u);
+
     size_t len = msg->len + 4U;
     (void)sio->writeTimeout(reinterpret_cast<uint8_t *>(msg), len, TIME_INFINITE);
+
+    (void)wait_tx_complete(u, TIME_MS2I(2));
+    purge_rx_flags_and_fifo(u);
+    u->CR1 = cr1_saved;
   }
   
   class ScopedPriorityElevator {
@@ -96,6 +126,7 @@ RESET	0 ou quelques options selon modèle
  */
 SmartServo::Status SmartServo::ping(uint8_t id)
 {
+  MutexGuard txlock(transactionMtx);
   servo_msg.STX = 0xFFFF;
   servo_msg.id = id;
   servo_msg.len = 2;
@@ -108,6 +139,7 @@ SmartServo::Status SmartServo::ping(uint8_t id)
 }
 
 SmartServo::Status SmartServo::read(record_t *record) {
+  MutexGuard txlock(transactionMtx);
   servo_msg.STX = 0xFFFF;
   servo_msg.id = record->id;
   servo_msg.len = 2U + 2U;
@@ -125,6 +157,7 @@ SmartServo::Status SmartServo::read(record_t *record) {
 }
 
 SmartServo::Status SmartServo::write(record_t *record, bool is_reg_write) {
+  MutexGuard txlock(transactionMtx);
   servo_msg.STX = 0xFFFF;
   servo_msg.id = record->id;
   servo_msg.len = record->len + 3U;
@@ -144,6 +177,7 @@ SmartServo::Status SmartServo::write(record_t *record, bool is_reg_write) {
 }
 
 SmartServo::Status SmartServo::action(uint8_t id) {
+  MutexGuard txlock(transactionMtx);
   servo_msg.STX = 0xFFFF;
   servo_msg.id = id;
   servo_msg.len = 2;
@@ -157,6 +191,7 @@ SmartServo::Status SmartServo::action(uint8_t id) {
 }
 
 SmartServo::Status SmartServo::reset(uint8_t id) {
+  MutexGuard txlock(transactionMtx);
   if(id == BROADCAST_ID) {
     // Broadcast ID cannot be use for reset.
     return Status::INVALID_PARAMS;
@@ -222,6 +257,7 @@ SmartServo::Status SmartServo::detectBaudrate(std::initializer_list<uint32_t> ba
 
 
 SmartServo::Status SmartServo::sync_write(record_t *records, size_t nb_records) {
+  MutexGuard txlock(transactionMtx);
   if(nb_records < 1) {
     return Status::INVALID_PARAMS;
   }

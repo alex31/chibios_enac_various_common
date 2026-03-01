@@ -82,6 +82,7 @@ public:
     // struct and type definition outside 
     chDbgAssert(used == false, "this is singleton class, static dma_buff cannot be shared");
     used = true;
+    chMtxObjectInit(&transactionMtx);
   }
   virtual ~SmartServo() = default;
   void init();
@@ -179,6 +180,7 @@ private:
 
   SmartServoSio* sio;
   SIOConfig *sio_cfg;
+  mutex_t transactionMtx;
 
 
   static servo_msg_t servo_msg;
