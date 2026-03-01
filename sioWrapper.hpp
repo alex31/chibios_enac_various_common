@@ -44,6 +44,10 @@ public:
   virtual void stop() = 0;
   /** @brief Update the stored configuration (caller must restart if needed). */
   void setConfig(const SIOConfig &cfg);
+  /** @brief Access the wrapped low-level SIODriver. */
+  SIODriver &rawDriver();
+  /** @brief Access the wrapped low-level SIODriver (const). */
+  const SIODriver &rawDriver() const;
 
   /** @brief Acquire the SIO bus mutex (caller-managed mutual exclusion). */
   void acquireBus();

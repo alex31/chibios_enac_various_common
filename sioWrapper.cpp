@@ -29,6 +29,14 @@ void Base::setConfig(const SIOConfig &cfg) {
   config_ = cfg;
 }
 
+SIODriver &Base::rawDriver() {
+  return *siop_;
+}
+
+const SIODriver &Base::rawDriver() const {
+  return *siop_;
+}
+
 void Base::configureEventDispatch(sioevents_t mask, EventCallbackI cb, void *user) {
   event_mask_ = (cb != nullptr) ? mask : SIO_EV_NONE;
   event_cb_ = cb;
