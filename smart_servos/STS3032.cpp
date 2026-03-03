@@ -3,6 +3,20 @@
 #include <cstring>
 #include "stdutil++.hpp"
 
+#ifndef STS3032_DEBUG_SPEED_TELEMETRY
+#define STS3032_DEBUG_SPEED_TELEMETRY 0
+#endif
+
+namespace {
+  // STS current speed uses sign-magnitude coding:
+  // bit15 = direction, bits[14:0] = magnitude (step/s).
+  int16_t decodeSignedSpeedFromRaw(uint16_t rawSpeed) {
+    const int32_t magnitude = static_cast<int32_t>(rawSpeed & 0x7FFFU);
+    const int32_t signedSpeed = (rawSpeed & 0x8000U) ? -magnitude : magnitude;
+    return static_cast<int16_t>(signedSpeed);
+  }
+}
+
 
 
 SmartServo::Status STS3032::writeRegisterEPROM(uint8_t id, uint8_t reg, uint8_t value)
@@ -279,12 +293,16 @@ STS3032::StateVector STS3032::readStates (uint8_t id)
     // Present load encodes direction in bit10 and magnitude in bits[9:0].
     // Keep only magnitude so reported load is symmetric for both directions.
     const uint16_t loadMagnitude = static_cast<uint16_t>(sir->load & 0x03FFU);
+    const uint16_t rawSpeed = sir->speed;
+    const int16_t signedSpeed = decodeSignedSpeedFromRaw(rawSpeed);
+
+
     vec = {
       .position = remap<0.0f, 4095.0f, -1.0f, 1.0f>(sir->pos), 
       .load = remap<0.0f, 1023.0f, 0.0f, 1.0f>(loadMagnitude),
       .voltage = sir->voltage / 10.0f,
       .current = sir->current * 6.5e-3f,
-      .speed = sir->speed,
+      .speed = signedSpeed,
       .status = sir->servoStatus,
       .temperature = sir->temperature,
       .moving = sir->moving ? true : false
