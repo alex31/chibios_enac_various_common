@@ -4,12 +4,8 @@ namespace SIO {
 
 Base::Base(const BaseConfig &cfg)
     : siop_(&cfg.driver),
-      config_(nullptr),
+      config_(cfg.sio_config),
       bus_mutex_{} {
-  if (cfg.sio_config != nullptr) {
-    config_storage_ = *cfg.sio_config;
-    config_ = &config_storage_;
-  }
   chMtxObjectInit(&bus_mutex_);
 }
 
@@ -19,7 +15,7 @@ SIODriver &Base::driver() { return *siop_; }
 
 const SIODriver &Base::driver() const { return *siop_; }
 
-const SIOConfig *Base::config() const { return config_; }
+const SIOConfig &Base::config() const { return config_; }
 
 void Base::acquireBus() {
   chMtxLock(&bus_mutex_);
@@ -30,8 +26,35 @@ void Base::releaseBus() {
 }
 
 void Base::setConfig(const SIOConfig &cfg) {
-  config_storage_ = cfg;
-  config_ = &config_storage_;
+  config_ = cfg;
+}
+
+SIODriver &Base::rawDriver() {
+  return *siop_;
+}
+
+const SIODriver &Base::rawDriver() const {
+  return *siop_;
+}
+
+void Base::configureEventDispatch(sioevents_t mask, EventCallbackI cb, void *user) {
+  event_mask_ = (cb != nullptr) ? mask : SIO_EV_NONE;
+  event_cb_ = cb;
+  event_user_ = user;
+}
+
+sioevents_t Base::configuredEventMask() const {
+  return event_mask_;
+}
+
+void Base::dispatchConfiguredEventsI(sioevents_t events) const {
+  if ((event_cb_ == nullptr) || (events == SIO_EV_NONE)) {
+    return;
+  }
+  const sioevents_t selected = events & event_mask_;
+  if (selected != SIO_EV_NONE) {
+    event_cb_(selected, event_user_);
+  }
 }
 
 void Base::setCallback(siocb_t cb, void *arg) {
@@ -99,6 +122,7 @@ msg_t Base::synchronizeTXEnd(sysinterval_t timeout) {
   return sioSynchronizeTXEnd(siop_, timeout);
 }
 
+#if STM32_DMA_USE_ASYNC_TIMOUT
 Datagram::Datagram(const Config &cfg)
     : Base(BaseConfig{
           .driver = cfg.driver,
@@ -115,9 +139,7 @@ Datagram::Datagram(const Config &cfg)
       txend_user_(cfg.txend_user),
       rxend_cb_(cfg.rxend_cb),
       rxend_user_(cfg.rxend_user) {
-  if (config_ != nullptr) {
-    config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
-  }
+  config_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
   detail::initDmaConfig(rx_cfg_storage_.cfg, cfg.rx_dma_cfg, &Datagram::dmaRxCb,
                         true, DMA_ONESHOT);
   rx_cfg_storage_.owner = this;
@@ -127,9 +149,10 @@ Datagram::Datagram(const Config &cfg)
   tx_cfg_storage_.owner = this;
   tx_cfg_ = &tx_cfg_storage_.cfg;
 }
+#endif
 
 msg_t Datagram::start() {
-  msg_t msg = sioStart(siop_, config_);
+  msg_t msg = sioStart(siop_, &config_);
   if (msg != HAL_RET_SUCCESS) {
     return msg;
   }
@@ -164,9 +187,8 @@ void Datagram::stop() {
 }
 
 void Datagram::setConfig(const SIOConfig &cfg) {
-  config_storage_ = cfg;
-  config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
-  config_ = &config_storage_;
+  config_ = cfg;
+  config_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
 }
 
 size_t Datagram::writeTimeout(const uint8_t *buffer, size_t n, sysinterval_t timeout) {

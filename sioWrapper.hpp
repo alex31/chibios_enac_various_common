@@ -8,26 +8,26 @@
 #include <cstdint>
 #include <cstring>
 #include <span>
+#include <algorithm>
 
 #include <ch.h>
 #include <hal.h>
 #include "hal_stm32_dma.h"
 #include "hal_buffered_sio.h"
 #include "fifoObject.hpp"
-
 /** @brief SIO C++ wrapper namespace. */
 namespace SIO {
 
 /** @brief Configuration for SIO::Base. */
 struct BaseConfig {
   SIODriver &driver;              ///< Low-level SIO driver.
-  const SIOConfig *sio_config = nullptr; ///< Optional SIO configuration (copied if provided).
+  const SIOConfig &sio_config;    ///< Mandatory SIO configuration (copied).
 };
 
 /** @brief Common SIO wrapper base class (non-copyable). */
 class Base {
 public:
-  /** @brief Construct base with driver and optional config. */
+  /** @brief Construct base with driver and mandatory config. */
   explicit Base(const BaseConfig &cfg);
   /** @brief Copy disabled. */
   Base(const Base &) = delete;
@@ -44,11 +44,17 @@ public:
   virtual void stop() = 0;
   /** @brief Update the stored configuration (caller must restart if needed). */
   void setConfig(const SIOConfig &cfg);
+  /** @brief Access the wrapped low-level SIODriver. */
+  SIODriver &rawDriver();
+  /** @brief Access the wrapped low-level SIODriver (const). */
+  const SIODriver &rawDriver() const;
 
   /** @brief Acquire the SIO bus mutex (caller-managed mutual exclusion). */
   void acquireBus();
   /** @brief Release the SIO bus mutex. */
   void releaseBus();
+  /** @brief ISR-context callback signature for user-selected SIO events. */
+  using EventCallbackI = void (*)(sioevents_t events, void *user);
 
 protected:
   /** @brief Protected virtual destructor (no public delete). */
@@ -58,8 +64,8 @@ protected:
   SIODriver &driver();
   /** @brief Access the wrapped driver (const). */
   const SIODriver &driver() const;
-  /** @brief Access the copied SIOConfig pointer (or nullptr). */
-  const SIOConfig *config() const;
+  /** @brief Access the copied SIOConfig. */
+  const SIOConfig &config() const;
 
   /** @brief Install driver callback and argument. */
   void setCallback(siocb_t cb, void *arg = nullptr);
@@ -99,30 +105,45 @@ protected:
   msg_t synchronizeTXEnd(sysinterval_t timeout = TIME_INFINITE);
 
   SIODriver *siop_;          ///< Wrapped driver pointer.
-  SIOConfig config_storage_{}; ///< Local copy of SIOConfig when provided.
-  const SIOConfig *config_;  ///< Pointer to config_storage_ or nullptr.
+  SIOConfig config_{};       ///< Local copy of mandatory SIO configuration.
   mutex_t bus_mutex_;        ///< Bus mutex for caller-managed exclusion.
+
+  /** @brief Configure user event dispatch mask and callback (ISR context). */
+  void configureEventDispatch(sioevents_t mask, EventCallbackI cb, void *user);
+  /** @brief Get currently configured user event mask. */
+  sioevents_t configuredEventMask() const;
+  /** @brief Dispatch selected events to the user callback (ISR context). */
+  void dispatchConfiguredEventsI(sioevents_t events) const;
+
+private:
+  sioevents_t event_mask_ = SIO_EV_NONE; ///< User-selected events to report.
+  EventCallbackI event_cb_ = nullptr;    ///< User callback for selected events.
+  void *event_user_ = nullptr;           ///< User callback context.
 };
 
 
 /** @brief Configuration for SIO::Buffered. */
 struct BufferedConfig {
   SIODriver &driver;              ///< Low-level SIO driver.
-  const SIOConfig *sio_config = nullptr; ///< Optional SIO configuration (copied if provided).
+  const SIOConfig &sio_config;    ///< Mandatory SIO configuration.
 };
 
 /** @brief Read-only byte view used for RX/TX spans. */
 using ByteSpan = std::span<const uint8_t>;
 /** @brief RX half-buffer callback (thread context). */
 using RxHalfCallback = void (*)(const ByteSpan &slice, void *user);
-/** @brief Generic event callback (ISR context). */
+/** @brief Generic callback used by TX/RX DMA completion hooks. */
 using TxCallback = void (*)(void *user);
+/** @brief ISR-context callback used for selected SIO events. */
+using EventCallbackI = Base::EventCallbackI;
 
 /** @brief User-facing reduced DMA configuration. */
 struct DmaUserConfig {
-  uint32_t stream; ///< DMA stream identifier.
+  dmaerrorcallback_t error_cb = nullptr; ///< Optional DMA error callback.
+  sysinterval_t timeout = TIME_INFINITE; ///< Optional DMA timeout.
+  uint8_t stream = STM32_DMA_STREAM_ID_ANY; ///< DMA stream identifier.
 #if STM32_DMA_SUPPORTS_DMAMUX
-  uint32_t dmamux; ///< DMAMUX request identifier.
+  uint8_t dmamux; ///< DMAMUX request identifier.
 #else
 #if STM32_DMA_SUPPORTS_CSELR
   uint8_t channel; ///< DMA channel selection.
@@ -134,13 +155,6 @@ struct DmaUserConfig {
   uint8_t dma_priority = 0;  ///< DMA priority.
   uint8_t psize = 1;         ///< Peripheral access size.
   uint8_t msize = 1;         ///< Memory access size.
-  dmaerrorcallback_t error_cb = nullptr; ///< Optional DMA error callback.
-#if STM32_DMA_USE_ASYNC_TIMOUT
-  sysinterval_t timeout = TIME_INFINITE; ///< Optional DMA timeout.
-#endif
-#if __DCACHE_PRESENT
-  bool activate_dcache_sync = false; ///< Enable D-cache sync on transfer.
-#endif
 #if STM32_DMA_ADVANCED
   uint8_t pburst = 0; ///< Peripheral burst size.
   uint8_t mburst = 0; ///< Memory burst size.
@@ -148,9 +162,15 @@ struct DmaUserConfig {
   bool periph_inc_size_4 = false; ///< Peripheral increment by 4 bytes.
   bool transfert_end_ctrl_by_periph = false; ///< Peripheral flow controller.
 #endif
+#if __DCACHE_PRESENT
+  bool activate_dcache_sync = false; ///< Enable D-cache sync on transfer.
+#endif
 };
 
 namespace detail {
+
+template <size_t>
+inline constexpr bool always_false_v = false;
 
 template <typename Owner>
 struct DmaCfgWithOwner {
@@ -277,7 +297,7 @@ struct DatagramConfig {
   SIODriver &driver;              ///< Low-level SIO driver.
   DmaUserConfig rx_dma_cfg;       ///< RX DMA settings.
   DmaUserConfig tx_dma_cfg;       ///< TX DMA settings.
-  const SIOConfig *sio_config = nullptr; ///< Optional SIO configuration (copied if provided).
+  const SIOConfig &sio_config;    ///< Mandatory SIO configuration.
   TxCallback txend_cb = nullptr; ///< End of TX buffer callback (DMA end).
   void *txend_user = nullptr;    ///< User context for txend_cb.
   TxCallback rxend_cb = nullptr;  ///< RX buffer filled callback (DMA end).
@@ -295,7 +315,11 @@ public:
   /** @brief Configuration type alias. */
   using Config = DatagramConfig;
   /** @brief Construct datagram wrapper with config. */
+#if STM32_DMA_USE_ASYNC_TIMOUT
   explicit Datagram(const Config &cfg);
+#else
+  explicit Datagram(const Config &cfg) = delete;
+#endif
 
   /** @brief Start SIO + DMA. */
   msg_t start() override;
@@ -364,12 +388,16 @@ struct ContinuousConfig {
   SIODriver &driver;              ///< Low-level SIO driver.
   DmaUserConfig rx_dma_cfg;       ///< User RX DMA settings.
   DmaUserConfig tx_dma_cfg;       ///< User TX DMA settings.
-  const SIOConfig *sio_config = nullptr; ///< Optional SIO configuration (copied if provided).
+  const SIOConfig &sio_config;    ///< Mandatory SIO configuration.
   RxHalfCallback rx_half_cb = nullptr; ///< RX half-buffer callback (thread context).
   void *rx_user = nullptr;        ///< User context for RX callback.
   const char *rx_thread_name = "sio-rx"; ///< RX worker thread name.
   tprio_t rx_thread_prio = NORMALPRIO;   ///< RX worker thread priority.
   size_t rx_thread_wa_size = THD_WORKING_AREA_SIZE(512); ///< RX worker stack size.
+  bool enable_rx_idle = true;     ///< Enable RX-idle flush support.
+  sioevents_t event_mask = SIO_EV_NONE; ///< Additional SIO events to report (except RXIDLE).
+  EventCallbackI event_cb = nullptr; ///< ISR-context callback for selected SIO events.
+  void *event_user = nullptr;     ///< User context for event_cb.
 };
 
 /**
@@ -393,6 +421,15 @@ public:
   using Slice = ByteSpan;
   /** @brief RX callback type alias. */
   using RxHalfCallback = SIO::RxHalfCallback;
+  /** @brief Zero-copy RX lease descriptor (valid until releaseRx). */
+  struct RxLease {
+    const uint8_t *data = nullptr;
+    size_t len = 0U;
+
+  private:
+    friend class Continuous<DBS, FD>;
+    void *cookie = nullptr;
+  };
   /** @brief Construct continuous wrapper with config. */
   explicit Continuous(const ContinuousConfig &cfg);
 
@@ -400,9 +437,19 @@ public:
   msg_t start() override;
   /** @brief Stop DMA, driver, and worker thread. */
   void stop() override;
+  /** @brief Update SIO config while preserving DMA request bits. */
+  void setConfig(const SIOConfig &cfg);
 
   /** @brief Set RX callback and context. */
   void setRxCallback(RxHalfCallback cb, void *user);
+  /** @brief Receive one queued RX slice without copy; release with releaseRx(). */
+  bool receiveRx(RxLease &lease, sysinterval_t timeout = TIME_INFINITE);
+  /** @brief Release a previously acquired RX lease. */
+  void releaseRx(RxLease &lease);
+  /** @brief Read bytes into dst with timeout; returns copied bytes. */
+  size_t readTimeout(std::span<uint8_t> dst, sysinterval_t timeout = TIME_INFINITE);
+  /** @brief Read bytes into dst, waiting indefinitely for first byte. */
+  size_t read(std::span<uint8_t> dst);
 
   /** @brief Start continuous RX DMA. */
   void startRx();
@@ -462,9 +509,12 @@ private:
   const char *rx_thread_name_;      ///< RX worker thread name.
   tprio_t rx_thread_prio_;          ///< RX worker thread priority.
   size_t rx_thread_wa_size_;        ///< RX worker stack size.
+  bool rx_idle_enabled_;            ///< Enable RXIDLE-triggered DMA flush.
   thread_t *rx_thread_;             ///< RX worker thread handle.
   size_t rx_dropped_;               ///< Dropped RX slices count.
   ObjectFifo<RxItem, FD> rx_fifo_;  ///< RX FIFO storage.
+  RxItem *rx_read_item_;            ///< Current partially consumed RX slot (pull API).
+  size_t rx_read_offset_;           ///< Offset in current pull slot.
   alignas(4) uint8_t sio_rxbuf_[DBS]; ///< RX DMA buffer.
 
 protected:
@@ -478,9 +528,7 @@ inline Buffered<N>::Buffered(const Config &cfg)
           .driver = cfg.driver,
           .sio_config = cfg.sio_config,
       }) {
-  if (config_ != nullptr) {
-    config_storage_.cr3 &= static_cast<uint32_t>(~(USART_CR3_DMAR | USART_CR3_DMAT));
-  }
+  config_.cr3 &= static_cast<uint32_t>(~(USART_CR3_DMAR | USART_CR3_DMAT));
   bsioObjectInit(&bsiop_, &cfg.driver,
                  sio_rxbuf_, sizeof(sio_rxbuf_),
                  sio_txbuf_, sizeof(sio_txbuf_));
@@ -488,7 +536,7 @@ inline Buffered<N>::Buffered(const Config &cfg)
 
 template <size_t N>
 inline msg_t Buffered<N>::start() {
-  return bsioStart(&bsiop_, config_);
+  return bsioStart(&bsiop_, &config_);
 }
 
 template <size_t N>
@@ -595,13 +643,18 @@ inline Continuous<DBS, FD>::Continuous(const ContinuousConfig &cfg)
       rx_thread_name_(cfg.rx_thread_name),
       rx_thread_prio_(cfg.rx_thread_prio),
       rx_thread_wa_size_(cfg.rx_thread_wa_size),
+      rx_idle_enabled_(cfg.enable_rx_idle),
       rx_thread_(nullptr),
       rx_dropped_(0U),
-      rx_fifo_() {
+      rx_fifo_(),
+      rx_read_item_(nullptr),
+      rx_read_offset_(0U) {
+#if !STM32_DMA_USE_ASYNC_TIMOUT
+  static_assert(detail::always_false_v<DBS>,
+                "SIO::Continuous requires STM32_DMA_USE_ASYNC_TIMOUT");
+#endif
 
-  if (config_ != nullptr) {
-    config_storage_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
-  }
+  config_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
 
   detail::initDmaConfig(rx_cfg_storage_.cfg, cfg.rx_dma_cfg, &Continuous::dmaRxCb,
                         true, DMA_CONTINUOUS_HALF_BUFFER);
@@ -611,11 +664,15 @@ inline Continuous<DBS, FD>::Continuous(const ContinuousConfig &cfg)
                         false, DMA_ONESHOT);
   tx_cfg_storage_.owner = this;
   tx_cfg_ = &tx_cfg_storage_.cfg;
+
+  // RXIDLE is managed separately by enable_rx_idle.
+  configureEventDispatch(cfg.event_mask & static_cast<sioevents_t>(~SIO_EV_RXIDLE),
+                         cfg.event_cb, cfg.event_user);
 }
 
 template <size_t DBS, size_t FD>
 inline msg_t Continuous<DBS, FD>::start() {
-  msg_t msg = sioStart(siop_, config_);
+  msg_t msg = sioStart(siop_, &config_);
   if (msg != HAL_RET_SUCCESS) {
     return msg;
   }
@@ -630,12 +687,21 @@ inline msg_t Continuous<DBS, FD>::start() {
     return HAL_RET_HW_FAILURE;
   }
 
-  setCallback(&Continuous::sioIdleCb, this);
-  writeEnableFlagsX(SIO_EV_RXIDLE);
+  sioevents_t ev_mask = configuredEventMask();
+  if (rx_idle_enabled_) {
+    ev_mask |= SIO_EV_RXIDLE;
+  }
+  if (ev_mask != SIO_EV_NONE) {
+    setCallback(&Continuous::sioIdleCb, this);
+    writeEnableFlagsX(ev_mask);
+  } else {
+    setCallback(nullptr, nullptr);
+    writeEnableFlagsX(SIO_EV_NONE);
+  }
 
   startRx();
 
-  if (rx_thread_ == nullptr) {
+  if ((rx_cb_ != nullptr) && (rx_thread_ == nullptr)) {
     rx_thread_ = chThdCreateFromHeap(nullptr,
                                      rx_thread_wa_size_,
                                      rx_thread_name_,
@@ -657,6 +723,11 @@ inline msg_t Continuous<DBS, FD>::start() {
 
 template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::stop() {
+  if (rx_read_item_ != nullptr) {
+    rx_fifo_.returnObject(*rx_read_item_);
+    rx_read_item_ = nullptr;
+    rx_read_offset_ = 0U;
+  }
   stopRx();
   dmaStop(&tx_dma_);
   dmaStop(&rx_dma_);
@@ -679,6 +750,87 @@ template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::setRxCallback(RxHalfCallback cb, void *user) {
   rx_cb_ = cb;
   rx_user_ = user;
+}
+
+template <size_t DBS, size_t FD>
+inline bool Continuous<DBS, FD>::receiveRx(RxLease &lease, sysinterval_t timeout) {
+  if ((rx_cb_ != nullptr) || (lease.cookie != nullptr) || (rx_read_item_ != nullptr)) {
+    return false;
+  }
+  auto slotOpt = rx_fifo_.receiveObject(timeout);
+  if (!slotOpt) {
+    return false;
+  }
+  auto &slot = slotOpt->get();
+  lease.data = slot.data;
+  lease.len = slot.len;
+  lease.cookie = &slot;
+  return true;
+}
+
+template <size_t DBS, size_t FD>
+inline void Continuous<DBS, FD>::releaseRx(RxLease &lease) {
+  if (lease.cookie == nullptr) {
+    return;
+  }
+  auto *slot = static_cast<RxItem *>(lease.cookie);
+  rx_fifo_.returnObject(*slot);
+  lease.data = nullptr;
+  lease.len = 0U;
+  lease.cookie = nullptr;
+}
+
+template <size_t DBS, size_t FD>
+inline size_t Continuous<DBS, FD>::readTimeout(std::span<uint8_t> dst, sysinterval_t timeout) {
+  if ((rx_cb_ != nullptr) || dst.empty()) {
+    return 0U;
+  }
+
+  size_t copied = 0U;
+  while (copied < dst.size()) {
+    if (rx_read_item_ == nullptr) {
+      const sysinterval_t wait = (copied == 0U) ? timeout : TIME_IMMEDIATE;
+      auto slotOpt = rx_fifo_.receiveObject(wait);
+      if (!slotOpt) {
+        break;
+      }
+      rx_read_item_ = &slotOpt->get();
+      rx_read_offset_ = 0U;
+    }
+
+    auto &slot = *rx_read_item_;
+    if (rx_read_offset_ >= slot.len) {
+      rx_fifo_.returnObject(slot);
+      rx_read_item_ = nullptr;
+      rx_read_offset_ = 0U;
+      continue;
+    }
+
+    const size_t available = slot.len - rx_read_offset_;
+    const size_t to_copy = std::min(available, dst.size() - copied);
+    std::memcpy(dst.data() + copied, slot.data + rx_read_offset_, to_copy);
+    copied += to_copy;
+    rx_read_offset_ += to_copy;
+
+    if (rx_read_offset_ == slot.len) {
+      rx_fifo_.returnObject(slot);
+      rx_read_item_ = nullptr;
+      rx_read_offset_ = 0U;
+    }
+  }
+
+  return copied;
+}
+
+template <size_t DBS, size_t FD>
+inline size_t Continuous<DBS, FD>::read(std::span<uint8_t> dst) {
+  return readTimeout(dst, TIME_INFINITE);
+}
+
+template <size_t DBS, size_t FD>
+inline void Continuous<DBS, FD>::setConfig(const SIOConfig &cfg) {
+  config_ = cfg;
+  config_.cr3 |= (USART_CR3_DMAR | USART_CR3_DMAT);
 }
 
 template <size_t DBS, size_t FD>
@@ -748,7 +900,7 @@ inline const uint8_t *Continuous<DBS, FD>::rxBuffer() const {
 template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::dmaRxCb(DMADriver *dmap, void *buffer, const size_t n) {
   auto *self = detail::ownerFromDma<Continuous<DBS, FD>>(dmap);
-  if ((self == nullptr) || (self->rx_cb_ == nullptr)) {
+  if (self == nullptr) {
     return;
   }
 
@@ -793,17 +945,25 @@ inline void Continuous<DBS, FD>::dmaTxCb(DMADriver *dmap, void *buffer, const si
 template <size_t DBS, size_t FD>
 inline void Continuous<DBS, FD>::sioIdleCb(SIODriver *siop) {
   auto *self = static_cast<Continuous *>(siop->arg);
+  sioevents_t rearm_mask = SIO_EV_NONE;
   if (self != nullptr) {
-    //osalDbgAssert((ev & ~SIO_EV_RXIDLE) == 0U, "unexpected SIO events cleared");
     sioevents_t ev = sioGetAndClearEventsX(siop);
-    if ((ev & SIO_EV_RXIDLE) && 
-	(dmaGetState(&self->rx_dma_) == DMA_ACTIVE)) {
+    if (((ev & SIO_EV_RXIDLE) != 0U) &&
+        self->rx_idle_enabled_ &&
+        (dmaGetState(&self->rx_dma_) == DMA_ACTIVE)) {
 #if STM32_DMA_USE_ASYNC_TIMOUT
       dmaForceHalfBufferFromISR(&self->rx_dma_);
 #endif
     }
+
+    self->dispatchConfiguredEventsI(ev);
+
+    rearm_mask = self->configuredEventMask();
+    if (self->rx_idle_enabled_) {
+      rearm_mask |= SIO_EV_RXIDLE;
+    }
   }
-  sioSetEnableFlagsX(siop, SIO_EV_RXIDLE);
+  sioSetEnableFlagsX(siop, rearm_mask);
 }
 
 template <size_t DBS, size_t FD>

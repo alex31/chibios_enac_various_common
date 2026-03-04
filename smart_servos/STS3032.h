@@ -21,13 +21,13 @@ public:
     float    load = {}; // [0 ..1]
     float    voltage = {}; // volts
     float    current = {}; // amp
-    uint16_t speed = {};  // step/s
+    int16_t  speed = {};  // step/s, signed (direction from protocol sign bit)
     uint16_t status = STATUS_TIMEOUT;
     uint8_t  temperature = {};
     bool     moving = {};   
   };
 
-  STS3032(UARTDriver* s): SmartServo(s) {}
+  STS3032(SmartServoSio* s, SIOConfig *cfg): SmartServo(s, cfg) {}
 
   SmartServo::Status setBaudrate(uint8_t id, uint32_t speed) override;
     

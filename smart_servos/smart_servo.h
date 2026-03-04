@@ -1,6 +1,7 @@
 #pragma once
 #include <ch.h>
 #include <hal.h>
+#include "sioWrapper.hpp"
 #include "stdutil++.hpp"
 #include <etl/span.h>
 
@@ -71,13 +72,17 @@ public:
 	ALREADY_IN_USE		= 1<<12
     };
 
-  SmartServo(UARTDriver* s): response_level(RL_NORMAL), uartd(s){
+  using SmartServoSio = SIO::Datagram;
+
+  SmartServo(SmartServoSio* s, SIOConfig *cfg)
+      : response_level(RL_NORMAL), sio(s), sio_cfg(cfg) {
     static bool used = false;
     // if we went several servobus on several USART then we should go
     // for refactorisation : template<UARTDriver&> SmartServo and derived class, keeping
     // struct and type definition outside 
     chDbgAssert(used == false, "this is singleton class, static dma_buff cannot be shared");
     used = true;
+    chMtxObjectInit(&transactionMtx);
   }
   virtual ~SmartServo() = default;
   void init();
@@ -173,7 +178,9 @@ private:
 
 
 
-  UARTDriver* uartd;
+  SmartServoSio* sio;
+  SIOConfig *sio_cfg;
+  mutex_t transactionMtx;
 
 
   static servo_msg_t servo_msg;

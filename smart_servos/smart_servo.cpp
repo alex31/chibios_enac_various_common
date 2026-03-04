@@ -10,26 +10,42 @@ namespace {
   void set_chk(servo_msg_t* msg, uint8_t chk) {
     *((uint8_t*)msg + msg->len + 3) = chk;
   }
-  
-  void send_msg(UARTDriver* uartd, servo_msg_t* msg) {
-    size_t len = msg->len + 4U;
-    uartSendFullTimeout(uartd, &len, (uint8_t*)msg, TIME_INFINITE);
+
+  void purge_rx_flags_and_fifo(USART_TypeDef *u) {
+    // Drop any pending RX byte (notably local TX echo in half-duplex).
+    u->RQR = USART_RQR_RXFRQ;
+    u->ICR = USART_ICR_IDLECF | USART_ICR_ORECF | USART_ICR_NECF |
+             USART_ICR_FECF | USART_ICR_PECF;
+  }
+
+  bool wait_tx_complete(USART_TypeDef *u, sysinterval_t timeout) {
+    const systime_t start = chVTGetSystemTimeX();
+    while ((u->ISR & USART_ISR_TC) == 0U) {
+      if (chTimeDiffX(start, chVTGetSystemTimeX()) >= timeout) {
+        return false;
+      }
+    }
+    return true;
   }
   
-  UARTConfig uartConf = {
-    .txend1_cb =nullptr,
-    .txend2_cb = nullptr,
-    .rxend_cb = nullptr,
-    .rxchar_cb = nullptr,
-    .rxerr_cb = nullptr,
-    .timeout_cb = nullptr,
-    .timeout = 0,
-    .speed = 250'000,
-    .cr1 = 0,
-    .cr2 = USART_CR2_STOP1_BITS,
-    .cr3 = USART_CR3_HDSEL
-  };
+  void send_msg(SmartServo::SmartServoSio* sio, servo_msg_t* msg) {
+    SIODriver &siod = sio->rawDriver();
+    USART_TypeDef *u = siod.usart;
+    const uint32_t cr1_saved = u->CR1;
 
+    // In half-duplex, disable RX during TX to prevent local echo from
+    // polluting the next status frame.
+    u->CR1 = cr1_saved & ~USART_CR1_RE;
+    purge_rx_flags_and_fifo(u);
+
+    size_t len = msg->len + 4U;
+    (void)sio->writeTimeout(reinterpret_cast<uint8_t *>(msg), len, TIME_INFINITE);
+
+    (void)wait_tx_complete(u, TIME_MS2I(2));
+    purge_rx_flags_and_fifo(u);
+    u->CR1 = cr1_saved;
+  }
+  
   class ScopedPriorityElevator {
   public:
     explicit ScopedPriorityElevator(tprio_t new_prio) {
@@ -55,9 +71,8 @@ SmartServo::Status SmartServo::readStatus(size_t paramlen)
 {
   paramlen += 6U;
   size_t n = paramlen;
-  uartReceiveTimeout(uartd, &n,
-		     reinterpret_cast<uint8_t *>(&servo_status),
-		     TIME_US2I(600 + (paramlen * 40U)));
+  n = sio->readTimeout(reinterpret_cast<uint8_t *>(&servo_status), n,
+		       TIME_US2I(600 + (paramlen * 40U)));
 
   if (n != paramlen) {
     //    DebugTrace("uartRec %u bytes instead of %u", n, paramlen);
@@ -80,19 +95,26 @@ SmartServo::Status SmartServo::readStatus(size_t paramlen)
 
 void SmartServo::init()
 {
-  uartStart(uartd, &uartConf);
+  if (sio_cfg != nullptr) {
+    sio->setConfig(*sio_cfg);
+  }
+  (void)sio->start();
 }
 
 uint32_t SmartServo::getSerialBaudrate()
 {
-  return uartConf.speed;
+  return sio_cfg ? sio_cfg->baud : 0U;
 }
 
 void SmartServo::setSerialBaudrate(uint32_t baudrate)
 {
-  uartStop(uartd);
-  uartConf.speed = baudrate;
-  uartStart(uartd, &uartConf);
+  if (sio_cfg == nullptr) {
+    return;
+  }
+  sio->stop();
+  sio_cfg->baud = baudrate;
+  sio->setConfig(*sio_cfg);
+  (void)sio->start();
 }
 /*
 PING	0
@@ -104,6 +126,7 @@ RESET	0 ou quelques options selon modèle
  */
 SmartServo::Status SmartServo::ping(uint8_t id)
 {
+  MutexGuard txlock(transactionMtx);
   servo_msg.STX = 0xFFFF;
   servo_msg.id = id;
   servo_msg.len = 2;
@@ -111,11 +134,12 @@ SmartServo::Status SmartServo::ping(uint8_t id)
   set_chk(&servo_msg, compute_chk(&servo_msg));
 
   ScopedPriorityElevator guard(HIGHPRIO); // avoid context change
-  send_msg(uartd, &servo_msg);
+  send_msg(sio, &servo_msg);
   return  readStatus(0U);
 }
 
 SmartServo::Status SmartServo::read(record_t *record) {
+  MutexGuard txlock(transactionMtx);
   servo_msg.STX = 0xFFFF;
   servo_msg.id = record->id;
   servo_msg.len = 2U + 2U;
@@ -125,7 +149,7 @@ SmartServo::Status SmartServo::read(record_t *record) {
   set_chk(&servo_msg, compute_chk(&servo_msg));
 
   ScopedPriorityElevator guard(HIGHPRIO); // avoid context change
-  send_msg(uartd, &servo_msg);
+  send_msg(sio, &servo_msg);
   SmartServo::Status status = readStatus(record->len);
   memcpy(&record->data, servo_status.params_and_crc, record->len);
 
@@ -133,6 +157,7 @@ SmartServo::Status SmartServo::read(record_t *record) {
 }
 
 SmartServo::Status SmartServo::write(record_t *record, bool is_reg_write) {
+  MutexGuard txlock(transactionMtx);
   servo_msg.STX = 0xFFFF;
   servo_msg.id = record->id;
   servo_msg.len = record->len + 3U;
@@ -146,12 +171,13 @@ SmartServo::Status SmartServo::write(record_t *record, bool is_reg_write) {
   set_chk(&servo_msg, compute_chk(&servo_msg));
 
   ScopedPriorityElevator guard(HIGHPRIO); // avoid context change
-  send_msg(uartd, &servo_msg);
+  send_msg(sio, &servo_msg);
 
   return record->id != BROADCAST_ID && response_level == RL_NORMAL ? readStatus(0): Status::OK;
 }
 
 SmartServo::Status SmartServo::action(uint8_t id) {
+  MutexGuard txlock(transactionMtx);
   servo_msg.STX = 0xFFFF;
   servo_msg.id = id;
   servo_msg.len = 2;
@@ -159,12 +185,13 @@ SmartServo::Status SmartServo::action(uint8_t id) {
   set_chk(&servo_msg, compute_chk(&servo_msg));
 
   ScopedPriorityElevator guard(HIGHPRIO); // avoid context change
-  send_msg(uartd, &servo_msg);
+  send_msg(sio, &servo_msg);
   
   return id != BROADCAST_ID && response_level == RL_NORMAL ? readStatus(0): Status::OK;
 }
 
 SmartServo::Status SmartServo::reset(uint8_t id) {
+  MutexGuard txlock(transactionMtx);
   if(id == BROADCAST_ID) {
     // Broadcast ID cannot be use for reset.
     return Status::INVALID_PARAMS;
@@ -177,7 +204,7 @@ SmartServo::Status SmartServo::reset(uint8_t id) {
   set_chk(&servo_msg, compute_chk(&servo_msg));
 
   ScopedPriorityElevator guard(HIGHPRIO); // avoid context change
-  send_msg(uartd, &servo_msg);
+  send_msg(sio, &servo_msg);
 
   return response_level == RL_NORMAL ? readStatus(0): Status::OK;
 }
@@ -230,6 +257,7 @@ SmartServo::Status SmartServo::detectBaudrate(std::initializer_list<uint32_t> ba
 
 
 SmartServo::Status SmartServo::sync_write(record_t *records, size_t nb_records) {
+  MutexGuard txlock(transactionMtx);
   if(nb_records < 1) {
     return Status::INVALID_PARAMS;
   }
@@ -262,7 +290,7 @@ SmartServo::Status SmartServo::sync_write(record_t *records, size_t nb_records) 
 
   set_chk(&servo_msg, compute_chk(&servo_msg));
 
-  send_msg(uartd, &servo_msg);
+  send_msg(sio, &servo_msg);
 
   // do the servos answer with status packet ???
   return Status::OK;
