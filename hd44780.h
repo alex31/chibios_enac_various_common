@@ -66,6 +66,14 @@
 #define HD44780_USE_DIMMABLE_BACKLIGHT               TRUE
 #endif
 
+/**
+ * @brief   Delay applied after long LCD instructions before polling busy.
+ * @note    Intended for CLEAR_DISPLAY and RETURN_HOME only.
+ */
+#if !defined(HD44780_LONG_INSTR_DELAY_US) || defined(__DOXYGEN__)
+#define HD44780_LONG_INSTR_DELAY_US                  1600U
+#endif
+
 
 
 /*===========================================================================*/
@@ -118,6 +126,31 @@ typedef struct {
    */
   ioline_t D[LINE_DATA_LEN];
 } hd44780_pins_t;
+
+/**
+ * @brief  Optional GPT-driven transaction engine configuration.
+ *
+ * @details
+ * When @p gptd is provided, the public HD44780 API remains synchronous for
+ * callers but the low level bus transaction is no longer executed as a long
+ * polling loop in thread context. Instead, the caller prepares a transaction,
+ * suspends once, then a one-shot GPT callback advances a finite state machine
+ * until the LCD transfer is complete and the caller thread is resumed.
+ *
+ * This keeps the high level API simple while avoiding millisecond-scale busy
+ * waits for slow instructions such as @p CLEAR_DISPLAY and
+ * @p RETURN_HOME.
+ *
+ * @note   The GPT must be dedicated to the LCD driver instance.
+ */
+typedef struct {
+  /** @brief Dedicated GPT instance used to clock the internal FSM. */
+  GPTDriver *gptd;
+  /** @brief GPT input clock used to derive one-shot delays. */
+  gptfreq_t frequency;
+  /** @brief Delay, in microseconds, used between short FSM phases. */
+  uint32_t step_delay_us;
+} hd44780_gptcfg_t;
 
 /**
  * @brief  HD44780 cursor control
@@ -185,6 +218,11 @@ typedef struct {
    * @brief  HD44780 PIN-map
    */
   hd44780_pins_t const *pinmap;
+  /**
+   * @brief  Optional timer used to drive the register-write FSM.
+   * @note   If @p gptd is NULL then the legacy polled implementation is used.
+   */
+  hd44780_gptcfg_t gpt;
 #if HD44780_USE_DIMMABLE_BACKLIGHT
   /**
    * @brief  PWM driver for back-light managing
@@ -210,6 +248,19 @@ typedef struct {
 
 /**
  * @brief   Structure representing an HD44780 driver.
+ *
+ * @details
+ * In legacy mode the driver behaves like a conventional polled HD44780
+ * implementation and the fields below the public configuration pointer are
+ * mostly unused. In GPT mode the same object also carries the transient state
+ * of one in-flight LCD transaction.
+ *
+ * The intended reading model is:
+ * - public calls stay synchronous
+ * - only one transaction can be active at a time
+ * - the caller thread sleeps once on @p waiter
+ * - the GPT callback advances the bus FSM until completion
+ * - the caller is resumed exactly once at the end
  */
 typedef struct {
   /**
@@ -227,6 +278,47 @@ typedef struct {
    * @brief Current configuration data.
    */
   const HD44780Config    *config;
+  /**
+   * @brief Suspended caller waiting for the current transaction completion.
+   */
+  thread_reference_t     waiter;
+  /**
+   * @brief One-shot delay used for short bus phases such as the E pulse.
+   */
+  gptcnt_t               short_delay_ticks;
+  /**
+   * @brief One-shot delay used before polling the busy flag after long commands.
+   */
+  gptcnt_t               long_delay_ticks;
+  /**
+   * @brief Current phase of the internal GPT-driven transaction FSM.
+   */
+  uint8_t                tx_state;
+  /**
+   * @brief Register selector latched for the current transaction.
+   */
+  uint8_t                tx_reg;
+  /**
+   * @brief Byte currently being transferred to the LCD controller.
+   */
+  uint8_t                tx_value;
+  /**
+   * @brief Last busy-flag sample read from DB7.
+   */
+  bool                   tx_busy_sample;
+  /**
+   * @brief Selects the meaning of a successful busy poll.
+   *
+   * @details
+   * When @p false, a clear busy flag means "the controller can accept the next
+   * write". When @p true, it means "the long instruction already written has
+   * completed and the suspended caller may be resumed".
+   */
+  bool                   tx_poll_after_write;
+  /**
+   * @brief Runtime GPT configuration owned by the driver object.
+   */
+  GPTConfig              gptcfg;
 } HD44780Driver;
 
 /*===========================================================================*/

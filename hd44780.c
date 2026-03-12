@@ -108,6 +108,330 @@ HD44780Driver HD44780D1;
 /*===========================================================================*/
 
 /**
+ * @brief   Internal transaction phases for the GPT-driven HD44780 engine.
+ *
+ * @details
+ * The public API intentionally remains synchronous even when the driver is
+ * configured with a GPT. The apparent contradiction is resolved by splitting
+ * a register write into short hardware phases:
+ * - pre-write busy polling
+ * - high-nibble pulse
+ * - low-nibble pulse in 4-bit mode
+ * - optional long-command delay
+ * - final busy polling for long commands
+ *
+ * The caller thread prepares the transaction, suspends once, and is resumed
+ * only when the state machine reaches a terminal condition. Every transition
+ * below is executed from the GPT callback in I-class context.
+ *
+ * This is more intricate than a classic polled HD44780 routine, but it buys
+ * back CPU time on RTOS systems because millisecond-scale waits are no longer
+ * spent spinning in a worker thread.
+ */
+typedef enum {
+  /** @brief No transaction in progress. */
+  HD44780_TX_IDLE = 0,
+  /** @brief DB7 is sampled while E is high on the first busy-read nibble. */
+  HD44780_TX_WAIT_BUSY_SAMPLE_HIGH,
+#if HD44780_USE_4_BIT_MODE
+  /** @brief Issues the dummy second pulse required by a 4-bit read cycle. */
+  HD44780_TX_WAIT_BUSY_PULSE_LOW_RISE,
+  /** @brief Completes the dummy second pulse of a 4-bit read cycle. */
+  HD44780_TX_WAIT_BUSY_PULSE_LOW_FALL,
+#endif
+  /** @brief Restarts busy polling while the controller is still busy. */
+  HD44780_TX_WAIT_BUSY_RETRY_RISE,
+  /** @brief Drives the bus with the high nibble and raises E. */
+  HD44780_TX_WRITE_SETUP_HIGH,
+  /** @brief Completes the high-nibble E pulse. */
+  HD44780_TX_WRITE_PULSE_HIGH_FALL,
+#if HD44780_USE_4_BIT_MODE
+  /** @brief Drives the low nibble and raises E. */
+  HD44780_TX_WRITE_SETUP_LOW,
+  /** @brief Completes the low-nibble E pulse. */
+  HD44780_TX_WRITE_PULSE_LOW_FALL,
+#endif
+  /** @brief Waits for the nominal execution time of a long LCD instruction. */
+  HD44780_TX_LONG_DELAY
+} hd44780_tx_state_t;
+
+static bool hd44780IsBusy(HD44780Driver *lcdp);
+
+static bool hd44780IsLongInstruction(uint8_t reg, uint8_t value) {
+  return (reg == HD44780_INSTRUCTION_R) &&
+         ((value == HD44780_CLEAR_DISPLAY) || (value == HD44780_RETURN_HOME));
+}
+
+static bool hd44780UseGPT(const HD44780Driver *lcdp) {
+  return (lcdp->config != NULL) && (lcdp->config->gpt.gptd != NULL);
+}
+
+static inline HD44780Driver *hd44780GetDriverByGPT(GPTDriver *gptp) {
+  return (HD44780Driver *)((uint8_t *)gptp->config - offsetof(HD44780Driver, gptcfg));
+}
+
+static void hd44780SetDataInput(HD44780Driver *lcdp) {
+  for (unsigned ii = 0; ii < LINE_DATA_LEN; ii++) {
+    palSetLineMode(lcdp->config->pinmap->D[ii], PAL_MODE_INPUT);
+  }
+}
+
+static void hd44780SetDataOutput(HD44780Driver *lcdp) {
+  for (unsigned ii = 0; ii < LINE_DATA_LEN; ii++) {
+    palSetLineMode(lcdp->config->pinmap->D[ii],
+                   PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+  }
+}
+
+static void hd44780WriteBusValue(HD44780Driver *lcdp, uint8_t value) {
+  for (unsigned ii = 0; ii < LINE_DATA_LEN; ii++) {
+    if (value & (1U << ii)) {
+      palSetLine(lcdp->config->pinmap->D[ii]);
+    } else {
+      palClearLine(lcdp->config->pinmap->D[ii]);
+    }
+  }
+}
+
+static void hd44780ArmTimerI(HD44780Driver *lcdp, gptcnt_t ticks) {
+  gptStartOneShotI(lcdp->config->gpt.gptd, ticks);
+}
+
+/**
+ * @brief   Completes the current transaction and wakes the suspended caller.
+ *
+ * @details
+ * This helper is the single exit point of the GPT-driven path. Centralizing
+ * the cleanup here avoids leaving stale FSM state behind when a transaction
+ * terminates through different branches.
+ *
+ * @param[in] lcdp      pointer to the driver object
+ * @param[in] msg       wake-up code returned to the suspended caller
+ *
+ * @iclass
+ */
+static void hd44780ResumeWaiterI(HD44780Driver *lcdp, msg_t msg) {
+  lcdp->tx_state = HD44780_TX_IDLE;
+  lcdp->tx_poll_after_write = false;
+  osalThreadResumeI(&lcdp->waiter, msg);
+}
+
+/**
+ * @brief   Starts a busy-flag read cycle.
+ *
+ * @details
+ * The meaning of a future "busy == false" sample depends on
+ * @p tx_poll_after_write:
+ * - @p false means the controller is ready to accept the next write
+ * - @p true means a previously emitted long instruction has completed
+ *
+ * Keeping both use cases in the same read path avoids duplicating the
+ * HD44780 4-bit read handshake, while still allowing the callback to make the
+ * correct decision when DB7 finally drops.
+ *
+ * @param[in] lcdp      pointer to the driver object
+ *
+ * @iclass
+ */
+static void hd44780StartBusyPollingI(HD44780Driver *lcdp) {
+  hd44780SetDataInput(lcdp);
+  palSetLine(lcdp->config->pinmap->RW);
+  palClearLine(lcdp->config->pinmap->RS);
+  palSetLine(lcdp->config->pinmap->E);
+  lcdp->tx_state = HD44780_TX_WAIT_BUSY_SAMPLE_HIGH;
+  hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+}
+
+static void hd44780StartWriteHighI(HD44780Driver *lcdp) {
+  hd44780SetDataOutput(lcdp);
+  palClearLine(lcdp->config->pinmap->RW);
+  palWriteLine(lcdp->config->pinmap->RS, lcdp->tx_reg);
+#if HD44780_USE_4_BIT_MODE
+  hd44780WriteBusValue(lcdp, lcdp->tx_value >> 4);
+#else
+  hd44780WriteBusValue(lcdp, lcdp->tx_value);
+#endif
+  palSetLine(lcdp->config->pinmap->E);
+  lcdp->tx_state = HD44780_TX_WRITE_PULSE_HIGH_FALL;
+  hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+}
+
+#if HD44780_USE_4_BIT_MODE
+static void hd44780StartWriteLowI(HD44780Driver *lcdp) {
+  hd44780WriteBusValue(lcdp, lcdp->tx_value);
+  palSetLine(lcdp->config->pinmap->E);
+  lcdp->tx_state = HD44780_TX_WRITE_PULSE_LOW_FALL;
+  hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+}
+#endif
+
+static void hd44780GptCb(GPTDriver *gptp) {
+  HD44780Driver *lcdp = hd44780GetDriverByGPT(gptp);
+
+  /*
+   * Lions-book version:
+   * the callback does one small piece of bus work, decides what the next
+   * piece is, rearms the one-shot timer if needed, and leaves. There is no
+   * polling loop here by design. The "loop" is encoded in the succession of
+   * states and timer expirations.
+   */
+  osalSysLockFromISR();
+
+  switch ((hd44780_tx_state_t)lcdp->tx_state) {
+  case HD44780_TX_WAIT_BUSY_SAMPLE_HIGH:
+    lcdp->tx_busy_sample =
+      (palReadLine(lcdp->config->pinmap->D[LINE_DATA_LEN - 1]) == PAL_HIGH);
+    palClearLine(lcdp->config->pinmap->E);
+#if HD44780_USE_4_BIT_MODE
+    lcdp->tx_state = HD44780_TX_WAIT_BUSY_PULSE_LOW_RISE;
+    hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+#else
+    if (lcdp->tx_busy_sample) {
+      lcdp->tx_state = HD44780_TX_WAIT_BUSY_RETRY_RISE;
+      hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+    } else {
+      if (lcdp->tx_poll_after_write) {
+        hd44780ResumeWaiterI(lcdp, MSG_OK);
+      } else {
+        lcdp->tx_state = HD44780_TX_WRITE_SETUP_HIGH;
+        hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+      }
+    }
+#endif
+    break;
+
+#if HD44780_USE_4_BIT_MODE
+  case HD44780_TX_WAIT_BUSY_PULSE_LOW_RISE:
+    palSetLine(lcdp->config->pinmap->E);
+    lcdp->tx_state = HD44780_TX_WAIT_BUSY_PULSE_LOW_FALL;
+    hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+    break;
+
+  case HD44780_TX_WAIT_BUSY_PULSE_LOW_FALL:
+    palClearLine(lcdp->config->pinmap->E);
+    if (lcdp->tx_busy_sample) {
+      lcdp->tx_state = HD44780_TX_WAIT_BUSY_RETRY_RISE;
+      hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+    } else {
+      if (lcdp->tx_poll_after_write) {
+        hd44780ResumeWaiterI(lcdp, MSG_OK);
+      } else {
+        lcdp->tx_state = HD44780_TX_WRITE_SETUP_HIGH;
+        hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+      }
+    }
+    break;
+#endif
+
+  case HD44780_TX_WAIT_BUSY_RETRY_RISE:
+    hd44780StartBusyPollingI(lcdp);
+    break;
+
+  case HD44780_TX_WRITE_SETUP_HIGH:
+    hd44780StartWriteHighI(lcdp);
+    break;
+
+  case HD44780_TX_WRITE_PULSE_HIGH_FALL:
+    palClearLine(lcdp->config->pinmap->E);
+#if HD44780_USE_4_BIT_MODE
+    lcdp->tx_state = HD44780_TX_WRITE_SETUP_LOW;
+    hd44780ArmTimerI(lcdp, lcdp->short_delay_ticks);
+#else
+    if (hd44780IsLongInstruction(lcdp->tx_reg, lcdp->tx_value)) {
+      lcdp->tx_state = HD44780_TX_LONG_DELAY;
+      hd44780ArmTimerI(lcdp, lcdp->long_delay_ticks);
+    } else {
+      hd44780ResumeWaiterI(lcdp, MSG_OK);
+    }
+#endif
+    break;
+
+#if HD44780_USE_4_BIT_MODE
+  case HD44780_TX_WRITE_SETUP_LOW:
+    hd44780StartWriteLowI(lcdp);
+    break;
+
+  case HD44780_TX_WRITE_PULSE_LOW_FALL:
+    palClearLine(lcdp->config->pinmap->E);
+    if (hd44780IsLongInstruction(lcdp->tx_reg, lcdp->tx_value)) {
+      lcdp->tx_state = HD44780_TX_LONG_DELAY;
+      hd44780ArmTimerI(lcdp, lcdp->long_delay_ticks);
+    } else {
+      hd44780ResumeWaiterI(lcdp, MSG_OK);
+    }
+    break;
+#endif
+
+  case HD44780_TX_LONG_DELAY:
+    lcdp->tx_poll_after_write = true;
+    hd44780StartBusyPollingI(lcdp);
+    break;
+
+  case HD44780_TX_IDLE:
+  default:
+    hd44780ResumeWaiterI(lcdp, MSG_RESET);
+    break;
+  }
+
+  osalSysUnlockFromISR();
+}
+
+static void hd44780WriteRegisterPolled(HD44780Driver *lcdp, uint8_t reg, uint8_t value){
+
+  unsigned ii;
+
+  while (hd44780IsBusy(lcdp))
+    ;
+
+  /* Configuring Data PINs as Output Push Pull. */
+  hd44780SetDataOutput(lcdp);
+
+  palClearLine(lcdp->config->pinmap->RW);
+  palWriteLine(lcdp->config->pinmap->RS, reg);
+
+#if HD44780_USE_4_BIT_MODE
+  for(ii = 0; ii < LINE_DATA_LEN; ii++) {
+    if(value & (1 << (ii + 4)))
+      palSetLine(lcdp->config->pinmap->D[ii]);
+    else
+      palClearLine(lcdp->config->pinmap->D[ii]);
+  }
+  palSetLine(lcdp->config->pinmap->E);
+  HD44780_ENABLE_PIN_DELAY();
+  palClearLine(lcdp->config->pinmap->E);
+  HD44780_ENABLE_PIN_DELAY();
+
+  for(ii = 0; ii < LINE_DATA_LEN; ii++) {
+    if(value & (1 << ii))
+      palSetLine(lcdp->config->pinmap->D[ii]);
+    else
+      palClearLine(lcdp->config->pinmap->D[ii]);
+  }
+  palSetLine(lcdp->config->pinmap->E);
+  HD44780_ENABLE_PIN_DELAY();
+  palClearLine(lcdp->config->pinmap->E);
+  HD44780_ENABLE_PIN_DELAY();
+#else
+  for(ii = 0; ii < LINE_DATA_LEN; ii++){
+      if(value & (1 << ii))
+        palSetLine(lcdp->config->pinmap->D[ii]);
+      else
+        palClearLine(lcdp->config->pinmap->D[ii]);
+  }
+  palSetLine(lcdp->config->pinmap->E);
+  HD44780_ENABLE_PIN_DELAY();
+  palClearLine(lcdp->config->pinmap->E);
+  HD44780_ENABLE_PIN_DELAY();
+#endif
+
+  if (hd44780IsLongInstruction(reg, value)) {
+    osalThreadSleepMicroseconds(HD44780_LONG_INSTR_DELAY_US);
+    while (hd44780IsBusy(lcdp))
+      ;
+  }
+}
+
+/**
  * @brief   Get the busy flag
  *
  * @param[in] hd44780p          HD44780 driver
@@ -147,6 +471,19 @@ static bool hd44780IsBusy(HD44780Driver *lcdp) {
 /**
  * @brief   Write a data into a register for the lcd
  *
+ * @details
+ * In GPT mode this routine is still synchronous from the caller point of
+ * view, but the actual bus transaction is delegated to the callback-driven
+ * FSM. The call sequence is:
+ * - reject reentry if another transaction is active
+ * - latch the target register and byte
+ * - start pre-write busy polling
+ * - suspend the caller thread once
+ * - resume when the FSM reaches completion
+ *
+ * The caller therefore pays one suspend/resume pair per transaction instead
+ * of spending the whole LCD execution time in active polling.
+ *
  * @param[in] lcdp          HD44780 driver
  * @param[in] reg           Register id
  * @param[in] value         Writing value
@@ -154,54 +491,22 @@ static bool hd44780IsBusy(HD44780Driver *lcdp) {
  * @notapi
  */
 static void hd44780WriteRegister(HD44780Driver *lcdp, uint8_t reg, uint8_t value){
-
-  unsigned ii;
-
-  while (hd44780IsBusy(lcdp))
-    ;
-
-  /* Configuring Data PINs as Output Push Pull. */
-  for(ii = 0; ii < LINE_DATA_LEN; ii++)
-    palSetLineMode(lcdp->config->pinmap->D[ii], PAL_MODE_OUTPUT_PUSHPULL |
-                   PAL_STM32_OSPEED_HIGHEST);
-
-  palClearLine(lcdp->config->pinmap->RW);
-  palWriteLine(lcdp->config->pinmap->RS, reg);
-
-#if HD44780_USE_4_BIT_MODE
-  for(ii = 0; ii < LINE_DATA_LEN; ii++) {
-    if(value & (1 << (ii + 4)))
-      palSetLine(lcdp->config->pinmap->D[ii]);
-    else
-      palClearLine(lcdp->config->pinmap->D[ii]);
+  if (!hd44780UseGPT(lcdp)) {
+    hd44780WriteRegisterPolled(lcdp, reg, value);
+    return;
   }
-  palSetLine(lcdp->config->pinmap->E);
-  HD44780_ENABLE_PIN_DELAY();
-  palClearLine(lcdp->config->pinmap->E);
-  HD44780_ENABLE_PIN_DELAY();
 
-  for(ii = 0; ii < LINE_DATA_LEN; ii++) {
-    if(value & (1 << ii))
-      palSetLine(lcdp->config->pinmap->D[ii]);
-    else
-      palClearLine(lcdp->config->pinmap->D[ii]);
-  }
-  palSetLine(lcdp->config->pinmap->E);
-  HD44780_ENABLE_PIN_DELAY();
-  palClearLine(lcdp->config->pinmap->E);
-  HD44780_ENABLE_PIN_DELAY();
-#else
-  for(ii = 0; ii < LINE_DATA_LEN; ii++){
-      if(value & (1 << ii))
-        palSetLine(lcdp->config->pinmap->D[ii]);
-      else
-        palClearLine(lcdp->config->pinmap->D[ii]);
-  }
-  palSetLine(lcdp->config->pinmap->E);
-  HD44780_ENABLE_PIN_DELAY();
-  palClearLine(lcdp->config->pinmap->E);
-  HD44780_ENABLE_PIN_DELAY();
-#endif
+  osalDbgAssert(lcdp->tx_state == HD44780_TX_IDLE, "hd44780 transaction reentry");
+
+  lcdp->tx_reg = reg;
+  lcdp->tx_value = value;
+  lcdp->tx_busy_sample = false;
+  lcdp->tx_poll_after_write = false;
+
+  osalSysLock();
+  hd44780StartBusyPollingI(lcdp);
+  (void) osalThreadSuspendS(&lcdp->waiter);
+  osalSysUnlock();
 }
 
 /**
@@ -286,6 +591,14 @@ void hd44780ObjectInit(HD44780Driver *lcdp){
   lcdp->config = NULL;
   lcdp->backlight = 0;
   lcdp->contrast = 0;
+  lcdp->waiter = NULL;
+  lcdp->short_delay_ticks = 0;
+  lcdp->long_delay_ticks = 0;
+  lcdp->tx_state = HD44780_TX_IDLE;
+  lcdp->tx_reg = 0;
+  lcdp->tx_value = 0;
+  lcdp->tx_busy_sample = false;
+  lcdp->tx_poll_after_write = false;
 }
 
 /**
@@ -308,6 +621,23 @@ void hd44780Start(HD44780Driver *lcdp, const HD44780Config *config) {
 #if HD44780_USE_DIMMABLE_BACKLIGHT
   lcdp->contrast = lcdp->config->contrast;
 #endif
+  if (hd44780UseGPT(lcdp)) {
+    osalDbgAssert(lcdp->config->gpt.frequency >= 1000000U,
+                  "hd44780 gpt frequency must be >= 1MHz");
+    osalDbgAssert(lcdp->config->gpt.step_delay_us > 0U,
+                  "hd44780 gpt step delay must be > 0");
+    lcdp->gptcfg = (GPTConfig) {
+      .frequency = lcdp->config->gpt.frequency,
+      .callback = hd44780GptCb,
+      .cr2 = 0U,
+      .dier = 0U
+    };
+    lcdp->short_delay_ticks = (gptcnt_t)US2RTC(lcdp->config->gpt.frequency,
+                                               lcdp->config->gpt.step_delay_us);
+    lcdp->long_delay_ticks = (gptcnt_t)US2RTC(lcdp->config->gpt.frequency,
+                                              HD44780_LONG_INSTR_DELAY_US);
+    gptStart(lcdp->config->gpt.gptd, &lcdp->gptcfg);
+  }
   /* Initializing HD44780 by instructions. */
   hd44780InitByIstructions(lcdp);
 
@@ -346,6 +676,12 @@ void hd44780Stop(HD44780Driver *lcdp) {
 #else
   palClearLine(lcdp->config->pinmap->A);
 #endif
+  if (hd44780UseGPT(lcdp)) {
+    gptStopTimer(lcdp->config->gpt.gptd);
+    gptStop(lcdp->config->gpt.gptd);
+    lcdp->waiter = NULL;
+    lcdp->tx_state = HD44780_TX_IDLE;
+  }
   lcdp->backlight = 0;
   lcdp->contrast = 0;
   hd44780WriteRegister(lcdp, HD44780_INSTRUCTION_R, HD44780_DC);
