@@ -184,12 +184,37 @@ static void hd44780SetDataOutput(HD44780Driver *lcdp) {
 }
 
 static void hd44780WriteBusValue(HD44780Driver *lcdp, uint8_t value) {
+  ioportid_t ports[LINE_DATA_LEN];
+  ioportmask_t set_masks[LINE_DATA_LEN] = {0};
+  ioportmask_t clear_masks[LINE_DATA_LEN] = {0};
+  unsigned port_count = 0;
+
+  /* Aggregate all data-bit updates per GPIO port so each port sees one BSRR
+   * write per nibble instead of one set/clear operation per LCD data line. */
   for (unsigned ii = 0; ii < LINE_DATA_LEN; ii++) {
-    if (value & (1U << ii)) {
-      palSetLine(lcdp->config->pinmap->D[ii]);
-    } else {
-      palClearLine(lcdp->config->pinmap->D[ii]);
+    const ioline_t line = lcdp->config->pinmap->D[ii];
+    const ioportid_t port = PAL_PORT(line);
+    const ioportmask_t bit = (ioportmask_t)(1U << PAL_PAD(line));
+    unsigned port_index = 0;
+
+    while (port_index < port_count && ports[port_index] != port) {
+      port_index++;
     }
+
+    if (port_index == port_count) {
+      ports[port_count] = port;
+      port_count++;
+    }
+
+    if (value & (1U << ii)) {
+      set_masks[port_index] |= bit;
+    } else {
+      clear_masks[port_index] |= bit;
+    }
+  }
+
+  for (unsigned ii = 0; ii < port_count; ii++) {
+    ports[ii]->BSRR.W = (uint32_t)set_masks[ii] | ((uint32_t)clear_masks[ii] << 16U);
   }
 }
 
@@ -377,9 +402,6 @@ static void hd44780GptCb(GPTDriver *gptp) {
 }
 
 static void hd44780WriteRegisterPolled(HD44780Driver *lcdp, uint8_t reg, uint8_t value){
-
-  unsigned ii;
-
   while (hd44780IsBusy(lcdp))
     ;
 
@@ -390,34 +412,19 @@ static void hd44780WriteRegisterPolled(HD44780Driver *lcdp, uint8_t reg, uint8_t
   palWriteLine(lcdp->config->pinmap->RS, reg);
 
 #if HD44780_USE_4_BIT_MODE
-  for(ii = 0; ii < LINE_DATA_LEN; ii++) {
-    if(value & (1 << (ii + 4)))
-      palSetLine(lcdp->config->pinmap->D[ii]);
-    else
-      palClearLine(lcdp->config->pinmap->D[ii]);
-  }
+  hd44780WriteBusValue(lcdp, value >> 4);
   palSetLine(lcdp->config->pinmap->E);
   HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
   HD44780_ENABLE_PIN_DELAY();
 
-  for(ii = 0; ii < LINE_DATA_LEN; ii++) {
-    if(value & (1 << ii))
-      palSetLine(lcdp->config->pinmap->D[ii]);
-    else
-      palClearLine(lcdp->config->pinmap->D[ii]);
-  }
+  hd44780WriteBusValue(lcdp, value);
   palSetLine(lcdp->config->pinmap->E);
   HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
   HD44780_ENABLE_PIN_DELAY();
 #else
-  for(ii = 0; ii < LINE_DATA_LEN; ii++){
-      if(value & (1 << ii))
-        palSetLine(lcdp->config->pinmap->D[ii]);
-      else
-        palClearLine(lcdp->config->pinmap->D[ii]);
-  }
+  hd44780WriteBusValue(lcdp, value);
   palSetLine(lcdp->config->pinmap->E);
   HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
@@ -526,14 +533,13 @@ static void hd44780InitByIstructions(HD44780Driver *lcdp) {
   for(ii = 0; ii < LINE_DATA_LEN; ii++) {
     palSetLineMode(lcdp->config->pinmap->D[ii], PAL_MODE_OUTPUT_PUSHPULL |
                    PAL_STM32_OSPEED_HIGHEST);
-    palClearLine(lcdp->config->pinmap->D[ii]);
   }
+  hd44780WriteBusValue(lcdp, 0U);
 
   palClearLine(lcdp->config->pinmap->E);
   palClearLine(lcdp->config->pinmap->RW);
   palClearLine(lcdp->config->pinmap->RS);
-  palSetLine(lcdp->config->pinmap->D[LINE_DATA_LEN - 3]);
-  palSetLine(lcdp->config->pinmap->D[LINE_DATA_LEN - 4]);
+  hd44780WriteBusValue(lcdp, 0x03U);
 
   palSetLine(lcdp->config->pinmap->E);
   HD44780_ENABLE_PIN_DELAY();
@@ -550,8 +556,7 @@ static void hd44780InitByIstructions(HD44780Driver *lcdp) {
   palClearLine(lcdp->config->pinmap->E);
 
 #if HD44780_USE_4_BIT_MODE
-  palSetLine(lcdp->config->pinmap->D[LINE_DATA_LEN - 3]);
-  palClearLine(lcdp->config->pinmap->D[LINE_DATA_LEN - 4]);
+  hd44780WriteBusValue(lcdp, 0x02U);
   palSetLine(lcdp->config->pinmap->E);
   HD44780_ENABLE_PIN_DELAY();
   palClearLine(lcdp->config->pinmap->E);
