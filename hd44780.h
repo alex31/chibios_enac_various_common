@@ -316,6 +316,22 @@ typedef struct {
    */
   bool                   tx_poll_after_write;
   /**
+   * @brief Number of distinct GPIO ports used by the LCD data bus.
+   */
+  uint8_t                data_port_count;
+  /**
+   * @brief Distinct GPIO ports participating in LCD data transfers.
+   */
+  ioportid_t             data_ports[LINE_DATA_LEN];
+  /**
+   * @brief Per-data-line GPIO bit mask.
+   */
+  ioportmask_t           data_bits[LINE_DATA_LEN];
+  /**
+   * @brief Per-data-line index into @p data_ports.
+   */
+  uint8_t                data_port_index[LINE_DATA_LEN];
+  /**
    * @brief Runtime GPT configuration owned by the driver object.
    */
   GPTConfig              gptcfg;

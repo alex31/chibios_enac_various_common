@@ -183,28 +183,39 @@ static void hd44780SetDataOutput(HD44780Driver *lcdp) {
   }
 }
 
-static void hd44780WriteBusValue(HD44780Driver *lcdp, uint8_t value) {
-  ioportid_t ports[LINE_DATA_LEN];
-  ioportmask_t set_masks[LINE_DATA_LEN] = {0};
-  ioportmask_t clear_masks[LINE_DATA_LEN] = {0};
-  unsigned port_count = 0;
+static void hd44780BuildDataMap(HD44780Driver *lcdp) {
+  lcdp->data_port_count = 0U;
 
-  /* Aggregate all data-bit updates per GPIO port so each port sees one BSRR
-   * write per nibble instead of one set/clear operation per LCD data line. */
   for (unsigned ii = 0; ii < LINE_DATA_LEN; ii++) {
     const ioline_t line = lcdp->config->pinmap->D[ii];
     const ioportid_t port = PAL_PORT(line);
     const ioportmask_t bit = (ioportmask_t)(1U << PAL_PAD(line));
-    unsigned port_index = 0;
+    uint8_t port_index = 0U;
 
-    while (port_index < port_count && ports[port_index] != port) {
+    while (port_index < lcdp->data_port_count &&
+           lcdp->data_ports[port_index] != port) {
       port_index++;
     }
 
-    if (port_index == port_count) {
-      ports[port_count] = port;
-      port_count++;
+    if (port_index == lcdp->data_port_count) {
+      lcdp->data_ports[port_index] = port;
+      lcdp->data_port_count++;
     }
+
+    lcdp->data_bits[ii] = bit;
+    lcdp->data_port_index[ii] = port_index;
+  }
+}
+
+static void hd44780WriteBusValue(HD44780Driver *lcdp, uint8_t value) {
+  ioportmask_t set_masks[LINE_DATA_LEN] = {0};
+  ioportmask_t clear_masks[LINE_DATA_LEN] = {0};
+
+  /* Aggregate all data-bit updates per GPIO port so each port sees one BSRR
+   * write per nibble instead of one set/clear operation per LCD data line. */
+  for (unsigned ii = 0; ii < LINE_DATA_LEN; ii++) {
+    const uint8_t port_index = lcdp->data_port_index[ii];
+    const ioportmask_t bit = lcdp->data_bits[ii];
 
     if (value & (1U << ii)) {
       set_masks[port_index] |= bit;
@@ -213,8 +224,9 @@ static void hd44780WriteBusValue(HD44780Driver *lcdp, uint8_t value) {
     }
   }
 
-  for (unsigned ii = 0; ii < port_count; ii++) {
-    ports[ii]->BSRR.W = (uint32_t)set_masks[ii] | ((uint32_t)clear_masks[ii] << 16U);
+  for (unsigned ii = 0; ii < lcdp->data_port_count; ii++) {
+    lcdp->data_ports[ii]->BSRR.W =
+      (uint32_t)set_masks[ii] | ((uint32_t)clear_masks[ii] << 16U);
   }
 }
 
@@ -604,6 +616,12 @@ void hd44780ObjectInit(HD44780Driver *lcdp){
   lcdp->tx_value = 0;
   lcdp->tx_busy_sample = false;
   lcdp->tx_poll_after_write = false;
+  lcdp->data_port_count = 0U;
+  for (unsigned ii = 0; ii < LINE_DATA_LEN; ii++) {
+    lcdp->data_ports[ii] = NULL;
+    lcdp->data_bits[ii] = 0U;
+    lcdp->data_port_index[ii] = 0U;
+  }
 }
 
 /**
@@ -623,6 +641,7 @@ void hd44780Start(HD44780Driver *lcdp, const HD44780Config *config) {
 
   lcdp->config = config;
   lcdp->backlight = lcdp->config->backlight;
+  hd44780BuildDataMap(lcdp);
 #if HD44780_USE_DIMMABLE_BACKLIGHT
   lcdp->contrast = lcdp->config->contrast;
 #endif
