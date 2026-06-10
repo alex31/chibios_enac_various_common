@@ -7,6 +7,9 @@
 #include "display4DS.h"
 #include "display4DS_ll.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstack-usage="
+
 
 #define QDS_ACK 0x6
 
@@ -1192,3 +1195,5 @@ static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t
 #endif
 
 #include "display4DS_ll.c"
+
+#pragma GCC diagnostic pop
