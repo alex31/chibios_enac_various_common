@@ -245,27 +245,24 @@ msg_t  sdp3xFetch(Sdp3xDriver *sdpp, const Sdp3xRequest request)
   i2cReleaseBus(sdpp->i2cp);
 #endif
   
-  bool crcOk = true;
-  
-  switch (len) {
-  case 9:
-    crcOk |= atomCheck(&meas.scale);
-    const int16_t scale =  meas.scale.data[1] | meas.scale.data[0] << 8;
-    sdpp->scale = scale;
-    /* FALLTHRU */
-  case 6:
-    crcOk |= atomCheck(&meas.temp);
-    const int16_t temp = meas.temp.data[1] | meas.temp.data[0] << 8;
-    sdpp->temp = temp / SDP3X_TEMP_SCALE;
-    /* FALLTHRU */
-  case 3:
-    crcOk |= atomCheck(&meas.press);
-    const int16_t pressOrFlow = meas.press.data[1] | meas.press.data[0] << 8;
-    sdpp->pressure = pressOrFlow / sdpp->scale;
-  }
-  
+  const bool crcOk = atomCheck(&meas.press) &&
+                     ((len < 6) || atomCheck(&meas.temp)) &&
+                     ((len < 9) || atomCheck(&meas.scale));
   if (!crcOk)
     return MSG_RESET;
+
+  if (len >= 9) {
+    const int16_t scale =  meas.scale.data[1] | meas.scale.data[0] << 8;
+    sdpp->scale = scale;
+  }
+
+  if (len >= 6) {
+    const int16_t temp = meas.temp.data[1] | meas.temp.data[0] << 8;
+    sdpp->temp = temp / SDP3X_TEMP_SCALE;
+  }
+
+  const int16_t pressOrFlow = meas.press.data[1] | meas.press.data[0] << 8;
+  sdpp->pressure = pressOrFlow / sdpp->scale;
   
   return MSG_OK;
 }
@@ -387,4 +384,3 @@ static bool atomCheck(const Sdp3xDataAtom *atom)
 {
   return crc8_poly31_calc(atom->data, sizeof(atom->data)) == atom->crc;
 }
-

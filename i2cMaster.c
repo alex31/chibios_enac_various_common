@@ -1055,6 +1055,7 @@ msg_t i2cMasterWriteBit (I2CDriver *i2cd, const uint8_t slaveAdr,  const uint8_t
   return MSG_OK;
 }
 
+#if defined(__DCACHE_PRESENT) && __DCACHE_PRESENT != 0
 
 static inline msg_t i2cMasterCacheReceiveTimeout 	(I2CDriver *  	i2cp, i2caddr_t  	addr,
 							 uint8_t *  	rxbuf, size_t  	rxbytes,
@@ -1076,3 +1077,22 @@ static inline msg_t i2cMasterCacheTransmitTimeout	(I2CDriver *i2cp, i2caddr_t ad
     cacheBufferInvalidate(rxbuf, rxbytes);
   return status;
 }
+
+#else
+
+static inline msg_t i2cMasterCacheReceiveTimeout 	(I2CDriver *  	i2cp, i2caddr_t  	addr,
+							 uint8_t *  	rxbuf, size_t  	rxbytes,
+							 sysinterval_t  timeout)
+{
+  return i2cMasterReceiveTimeout(i2cp, addr, rxbuf, rxbytes, timeout);
+}
+
+static inline msg_t i2cMasterCacheTransmitTimeout	(I2CDriver *i2cp, i2caddr_t addr,
+							 const uint8_t *txbuf, size_t txbytes,
+							 uint8_t *rxbuf, size_t	rxbytes,
+							 sysinterval_t timeout)
+{
+  return i2cMasterTransmitTimeout(i2cp, addr, txbuf, txbytes, rxbuf, rxbytes, timeout);
+}
+
+#endif

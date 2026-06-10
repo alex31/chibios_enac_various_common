@@ -85,6 +85,8 @@ typedef enum __attribute__ ((__packed__)) {
     SDP3X_READ_PRODUCT_ID1 = BSWAP16(0x367C),
     SDP3X_READ_PRODUCT_ID2 = BSWAP16(0xE102),
     }  Sdp3xCommand;
+
+_Static_assert(sizeof(Sdp3xCommand) == 2, "invalid enum Sdp3xCommand size");
 /** @} */
 
 /**
@@ -347,5 +349,4 @@ static inline float  sdp3xGetTemp(Sdp3xDriver *sdpp) {
 static inline float  sdp3xGetScale(Sdp3xDriver *sdpp) {
   return sdpp->scale;
 }
-
 
