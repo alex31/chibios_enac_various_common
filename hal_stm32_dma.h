@@ -54,6 +54,10 @@ extern "C" {
 #define STM32_DMA_USE_DOUBLE_BUFFER               FALSE
 #endif
 
+#if !defined(STM32_DMA_USE_ASYNC_TIMOUT) || defined(__DOXYGEN__)
+#define STM32_DMA_USE_ASYNC_TIMOUT                FALSE
+#endif
+
 
 /**
  * @brief Enables the @p dmaAcquireBus() and @p dmaReleaseBus() APIs.
