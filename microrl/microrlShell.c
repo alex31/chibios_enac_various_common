@@ -363,7 +363,7 @@ The device ID is:
   chprintf(lchp, "Release:     Minimum size : -Os\r\n");
 # else
 #   ifdef __FAST_MATH__
-  chprintf(lchp, "Release:     Optimised: -Ofastr\r\n");
+  chprintf(lchp, "Release:     Optimised: -Ofast\r\n");
 #   else
   chprintf(lchp, "Release:     Optimised: -O[g,1,2,3]\r\n");
 #   endif
