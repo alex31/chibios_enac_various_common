@@ -57,6 +57,7 @@ my $gdbPath = which('arm-none-eabi-gdb') // which('gdb-multiarch');
 die "please install arm-none-eabi-gdb or gdb-multiarch" unless defined $gdbPath;
 
 my $bmpdev;
+my $bmpdevResetOnAttach;
 $options{device} = '| openocd -d1 -c "gdb port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_h743zi.cfg'
     if exists  $options{o743};
 $options{device} = '| openocd -d1 -c "gdb port pipe; log_output /tmp/openocd.log" -f board/st_nucleo_l4.cfg'
@@ -88,6 +89,8 @@ if (!exists  $options{device}) {
     } 
 } else {
     $bmpdev = $options{device};
+    $bmpdevResetOnAttach = $bmpdev . ' -c "stm32g4x.cpu configure -event gdb-attach { reset halt }"'
+        if exists  $options{og4};
     if ($bmpdev =~ /\/dev/) {
 	if (! -e $bmpdev) {
 	    die sprintf ("device %s not found ".
@@ -171,15 +174,16 @@ EOL
     set mem inaccessible-by-default off
     monitor version
 EOL
+    my $flashdev = $bmpdevResetOnAttach // $bmpdev;
     
     $gdbEraseFlash = <<EOL;
-    target extended-remote $bmpdev
+    target extended-remote $flashdev
     monitor version
     monitor erase
 EOL
 	
 	$gdbInitDebug = <<EOL;
-        target extended-remote $bmpdev
+        target extended-remote $flashdev
 	set pagination off
 	monitor version
 	set mem inaccessible-by-default off
@@ -189,13 +193,13 @@ EOL
 EOL
 	
     $gdbInitFlash = <<EOL;
-        target extended-remote $bmpdev 
+        target extended-remote $flashdev
 	load
 	kill
 EOL
 
     $gdbInitRun = <<EOL;
-    target extended-remote $bmpdev
+    target extended-remote $flashdev
     monitor reset
     disconnect
     quit
