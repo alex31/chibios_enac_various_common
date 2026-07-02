@@ -18,6 +18,9 @@
  * @file    hal_stm32_dma.h
  * @brief   STM32 DMA subsystem driver header.
  *
+ * @details
+ * ChibiOS-like helper driver wrapping STM32 DMA stream allocation, DMAMUX
+ * selection, one-shot transfers and optional circular callbacks.
  */
 
 #pragma once
@@ -28,6 +31,41 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @defgroup STM32_DMA_HELPER STM32 DMA Helper Driver
+ * @brief    ChibiOS-like DMA stream wrapper used by project-local drivers.
+ *
+ * @details
+ * This module provides a small driver object around STM32 DMA streams. A user
+ * allocates a @ref DMADriver object, initializes it with @ref dmaObjectInit(),
+ * starts it with a @ref DMAConfig using @ref dmaStart(), then submits transfers
+ * with @ref dmaStartTransfert() or @ref dmaTransfert().
+ *
+ * The API is intentionally close to ChibiOS driver conventions but it is not a
+ * replacement for the official ChibiOS STM32 DMA allocator. It is used by
+ * low-level local drivers such as the frame DAC and FMAC FIR drivers when they
+ * need an explicit one-shot or circular DMA transaction.
+ *
+ * Common one-shot sequence:
+ * - create a static @ref DMADriver object;
+ * - call @ref dmaObjectInit();
+ * - fill @ref DMAConfig with stream/DMAMUX, direction, data widths and
+ *   callbacks;
+ * - call @ref dmaStart();
+ * - call @ref dmaStartTransfert();
+ * - wait for the callback or use @ref dmaTransfert() when the synchronous API
+ *   is enabled;
+ * - call @ref dmaStopTransfert() and @ref dmaStop() when the stream is no
+ *   longer needed.
+ *
+ * @warning
+ * Function names keep the historical spelling "Transfert" for API
+ * compatibility.
+ *
+ * @api
+ * @{
+ */
 
 /**
  * @brief   Enables synchronous APIs.
@@ -117,14 +155,18 @@ typedef enum {
   DMA_DIR_M2M            /**< MEMORY to MEMORY      */
 } dmadirection_t;
 
-  /**
- * @brief   DMA transfert memory mode
+/**
+ * @brief   DMA transfer operating mode.
+ *
+ * @details
+ * @ref DMA_ONESHOT completes after one buffer. Circular modes keep the stream
+ * running and invoke callbacks as buffer regions become available.
  */
 typedef enum {
-  DMA_ONESHOT = 1,			/**< One transert then stop  */
-  DMA_CONTINUOUS_HALF_BUFFER,       /**< Continuous mode to/from the same buffer */
+  DMA_ONESHOT = 1,             /**< One transfer then stop. */
+  DMA_CONTINUOUS_HALF_BUFFER,  /**< Circular transfer on one buffer. */
 #if  STM32_DMA_USE_DOUBLE_BUFFER
-  DMA_CONTINUOUS_DOUBLE_BUFFER     /**< Continuous mode to/from differents buffers */
+  DMA_CONTINUOUS_DOUBLE_BUFFER /**< Circular transfer over callback-provided buffers. */
 #endif
 } dmaopmode_t;
 
@@ -140,6 +182,10 @@ typedef struct DMADriver DMADriver;
  *                      callback
  * @param[in] buffer    pointer to the most recent dma data
  * @param[in] n         number of buffer rows available starting from @p buffer
+ *
+ * @note
+ * The callback is called from ISR context by the low-level DMA interrupt
+ * handler. Use ChibiOS ISR-safe primitives and keep the callback short.
  */
 typedef void (*dmacallback_t)(DMADriver *dmap, void *buffer, const size_t n);
 
@@ -150,6 +196,9 @@ typedef void (*dmacallback_t)(DMADriver *dmap, void *buffer, const size_t n);
  *                      callback
  * @param[in] n         number of buffer rows needed in the returned buffer pointer
  * @return              pointer to the next to be used dma buffer 
+ *
+ * @note
+ * Used only by @ref DMA_CONTINUOUS_DOUBLE_BUFFER.
  */
 typedef void * (*dmanextcallback_t)(DMADriver *dmap, const size_t n);
 
@@ -160,6 +209,9 @@ typedef void * (*dmanextcallback_t)(DMADriver *dmap, const size_t n);
  * @param[in] dmap      pointer to the @p DMADriver object triggering the
  *                      callback
  * @param[in] err       DMA error code
+ *
+ * @note
+ * The callback is called from ISR context.
  */
 typedef void (*dmaerrorcallback_t)(DMADriver *dmap, dmaerrormask_t err);
 
@@ -282,18 +334,34 @@ static inline void _dma_isr_error_code(DMADriver *dmap, dmaerrormask_t err);
  * @brief   DMA stream configuration structure.
  * @details This implementation-dependent structure describes a DMA
  *          operation.
- * @note    The use of this configuration structure requires knowledge of
- *          STM32 DMA registers interface, please refer to the STM32
- *          reference manual for details.
+ *
+ * The most common project configuration for a peripheral transfer is:
+ * - @c stream set to @c STM32_DMA_STREAM_ID_ANY or to a fixed stream;
+ * - @c dmamux or @c channel set to the peripheral request;
+ * - @c inc_peripheral_addr set to @p false;
+ * - @c inc_memory_addr set to @p true;
+ * - @c op_mode set to @ref DMA_ONESHOT;
+ * - @c direction set to @ref DMA_DIR_M2P or @ref DMA_DIR_P2M;
+ * - @c psize and @c msize set to the peripheral and memory access width in
+ *   bytes.
+ *
+ * @note
+ * This structure still exposes STM32-specific fields. Refer to the MCU
+ * reference manual for stream/request availability and to the low-level driver
+ * assertions for alignment constraints.
  */
 typedef struct  {
   /**
-   * @brief   stream associated with transaction
-   * @note    use STM32_DMA_STREAM_ID macro
+   * @brief   Stream associated with transaction.
+   * @note    Use @c STM32_DMA_STREAM_ID() or @c STM32_DMA_STREAM_ID_ANY.
    */
   uint32_t		stream;
 #if STM32_DMA_SUPPORTS_DMAMUX
-  uint32_t		dmamux; // 4 bytes wide for mdma use
+  /**
+   * @brief   DMAMUX request selector.
+   * @note    Four bytes wide for compatibility with MDMA-related code.
+   */
+  uint32_t		dmamux;
 #else
 #if    STM32_DMA_SUPPORTS_CSELR
   /**
@@ -309,25 +377,27 @@ typedef struct  {
 #  endif
 #endif
   /**
-   * @brief   Enable increment of peripheral address after each transfert
+   * @brief   Enables peripheral address increment after each transfer item.
    */
   bool			inc_peripheral_addr;
 
 
   /**
-   * @brief   Enable increment of memory address after each transfert
+   * @brief   Enables memory address increment after each transfer item.
    */
   bool			inc_memory_addr;
 
 
   /**
-   * @brief   one shot, or circular half buffer, or circular double buffers
+   * @brief   One-shot, circular half-buffer or circular double-buffer mode.
    */
   dmaopmode_t op_mode;
 
 
   /**
    * @brief   Callback function associated to the stream or @p NULL.
+   * @details Called on transfer completion in one-shot mode, and on each
+   *          half/full region in circular half-buffer mode.
    */
   dmacallback_t         end_cb;
 
@@ -353,30 +423,30 @@ typedef struct  {
 
 
   /**
-   * @brief   DMA transaction direction
+   * @brief   DMA transaction direction.
    */
   dmadirection_t	direction;
 
 
   /**
-   * @brief   DMA priority (0 .. 3) lowest to highest
+   * @brief   DMA priority, 0 lowest to 3 highest on STM32 DMA v1/v2.
    */
   uint8_t		dma_priority;
 
   /**
-   * @brief   DMA IRQ priority (3 .. 15) highest to lowest
+   * @brief   DMA IRQ priority using ChibiOS/NVIC priority numbering.
    */
   uint8_t		irq_priority;
 
   /**
-   * @brief   DMA peripheral data granurality in bytes (1,2,4)
+   * @brief   DMA peripheral data granularity in bytes, normally 1, 2 or 4.
    */
-  uint8_t		psize; // 1,2,4
+  uint8_t		psize;
 
   /**
-   * @brief   DMA memory data granurality in bytes (1,2,4)
+   * @brief   DMA memory data granularity in bytes, normally 1, 2 or 4.
    */
-  uint8_t		msize; // 1,2,4
+  uint8_t		msize;
 #if __DCACHE_PRESENT
   /**
    * @brief   DMA memory is in a cached section and need to be flushed
@@ -390,29 +460,29 @@ typedef struct  {
 #define STM32_DMA_FIFO_SIZE 16 // hardware specification for dma V2
 
   /**
-   * @brief   DMA peripheral burst size
+   * @brief   DMA peripheral burst size.
    */
-  uint8_t		pburst; // 0(burst disabled), 4, 8, 16
+  uint8_t		pburst; /**< 0 disables bursts, otherwise 4, 8 or 16. */
 
   /**
-   * @brief   DMA memory burst size
+   * @brief   DMA memory burst size.
    */
-  uint8_t		mburst; // 0(burst disabled), 4, 8, 16
+  uint8_t		mburst; /**< 0 disables bursts, otherwise 4, 8 or 16. */
 
   /**
-   * @brief   DMA fifo level trigger
+   * @brief   DMA FIFO level trigger.
    */
-  uint8_t		fifo;   // 0(fifo disabled), 1, 2, 3, 4 : 25, 50, 75, 100%
+  uint8_t		fifo;   /**< 0 disabled, 1..4 means 25, 50, 75, 100%. */
 
   /**
-   * @brief   DMA enable 4 bytes increment independantly of psize
+   * @brief   Enables 4-byte peripheral increments independently from @c psize.
    */
-  bool			periph_inc_size_4; // PINCOS bit
+  bool			periph_inc_size_4;
 
   /**
-   * @brief   DMA enable peripheral as flow controller
+   * @brief   Enables peripheral flow controller mode.
    */
-  bool			transfert_end_ctrl_by_periph; // PFCTRL bit
+  bool			transfert_end_ctrl_by_periph;
 #endif
 #if STM32_DMA_DRIVER_USER_DATA_FIELD
   void *user_data;
@@ -422,6 +492,12 @@ typedef struct  {
 
 /**
  * @brief   Structure representing a DMA driver.
+ *
+ * @details
+ * Applications normally allocate this object statically and pass its address to
+ * every DMA API call. Its public fields are kept visible because this helper is
+ * close to the STM32 low-level layer, but application code should treat them as
+ * driver-owned state after @ref dmaObjectInit().
  */
 struct DMADriver {
   /**
@@ -516,38 +592,211 @@ struct DMADriver {
 
 
 
-void  dmaObjectInit(DMADriver *dmap);
-bool  dmaStart(DMADriver *dmap, const DMAConfig *cfg);
-bool  dmaReloadConf(DMADriver *dmap, const DMAConfig *cfg);
-void  dmaStop(DMADriver *dmap);
+/**
+ * @brief   Initializes a DMA driver object.
+ *
+ * @param[out] dmap  Driver object.
+ *
+ * @post
+ * The driver is in @ref DMA_STOP.
+ *
+ * @api
+ */
+void dmaObjectInit(DMADriver *dmap);
+
+/**
+ * @brief   Allocates/configures a DMA stream and puts the driver in ready state.
+ *
+ * @param[in,out] dmap  Driver object.
+ * @param[in] cfg       DMA configuration, kept referenced by the driver.
+ * @retval true         Configuration accepted.
+ * @retval false        Stream allocation or configuration failed.
+ *
+ * @pre
+ * @p dmap must be in @ref DMA_STOP or @ref DMA_READY.
+ *
+ * @note
+ * The configuration object must remain valid until @ref dmaStop().
+ *
+ * @api
+ */
+bool dmaStart(DMADriver *dmap, const DMAConfig *cfg);
+
+/**
+ * @brief   Reloads the DMA stream configuration without reallocating it.
+ *
+ * @param[in,out] dmap  Driver object in @ref DMA_READY.
+ * @param[in] cfg       New DMA configuration.
+ * @retval true         Configuration accepted.
+ * @retval false        Configuration failed.
+ *
+ * @api
+ */
+bool dmaReloadConf(DMADriver *dmap, const DMAConfig *cfg);
+
+/**
+ * @brief   Releases the DMA stream.
+ *
+ * @param[in,out] dmap  Driver object.
+ *
+ * @pre
+ * No transfer must be active. Stop it first with @ref dmaStopTransfert() when
+ * needed.
+ *
+ * @post
+ * The driver is in @ref DMA_STOP.
+ *
+ * @api
+ */
+void dmaStop(DMADriver *dmap);
 
 #if STM32_DMA_USE_WAIT == TRUE
+/**
+ * @brief   Starts one synchronous one-shot DMA transfer with timeout.
+ *
+ * @param[in,out] dmap   Driver object configured for @ref DMA_ONESHOT.
+ * @param[in,out] periphp Peripheral register address.
+ * @param[in,out] mem0p  Memory buffer address.
+ * @param[in] size       Number of transfer items.
+ * @param[in] timeout    ChibiOS timeout.
+ * @retval MSG_OK        Transfer completed.
+ * @retval MSG_RESET     Transfer was stopped or failed.
+ * @retval MSG_TIMEOUT   Timeout expired before completion.
+ *
+ * @api
+ */
 msg_t dmaTransfertTimeout(DMADriver *dmap, volatile void *periphp, void * mem0p, const size_t size,
 		   sysinterval_t timeout);
-// helper
+
+/**
+ * @brief   Starts one synchronous one-shot DMA transfer without timeout.
+ *
+ * @param[in,out] dmap   Driver object configured for @ref DMA_ONESHOT.
+ * @param[in,out] periphp Peripheral register address.
+ * @param[in,out] mem0p  Memory buffer address.
+ * @param[in] size       Number of transfer items.
+ * @retval MSG_OK        Transfer completed.
+ * @retval MSG_RESET     Transfer was stopped or failed.
+ *
+ * @api
+ */
 static inline msg_t dmaTransfert(DMADriver *dmap, volatile void *periphp, void * mem0p, const size_t size)
 {
   return dmaTransfertTimeout(dmap, periphp, mem0p, size, TIME_INFINITE);
 }
 #endif
 #if STM32_DMA_USE_MUTUAL_EXCLUSION == TRUE
+/**
+ * @brief   Acquires the optional DMA driver mutex.
+ * @param[in,out] dmap  Driver object.
+ * @api
+ */
 void dmaAcquireBus(DMADriver *dmap);
+
+/**
+ * @brief   Releases the optional DMA driver mutex.
+ * @param[in,out] dmap  Driver object.
+ * @api
+ */
 void dmaReleaseBus(DMADriver *dmap);
 #endif
-bool  dmaStartTransfert(DMADriver *dmap, volatile void *periphp, void * mem0p,
-			const size_t size);
-void  dmaStopTransfert(DMADriver *dmap);
 
-bool  dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p,
-			 const size_t size);
-void  dmaStopTransfertI(DMADriver *dmap);
+/**
+ * @brief   Starts an asynchronous DMA transfer.
+ *
+ * @param[in,out] dmap   Driver object in @ref DMA_READY, @ref DMA_COMPLETE or
+ *                       @ref DMA_ERROR.
+ * @param[in,out] periphp Peripheral register address.
+ * @param[in,out] mem0p  Memory buffer address.
+ * @param[in] size       Number of transfer items.
+ * @retval true          Transfer started.
+ * @retval false         Low-level start failed.
+ *
+ * @note
+ * Address alignment must match @c psize and @c msize. Circular half-buffer mode
+ * requires an even @p size unless @p size is 1.
+ *
+ * @api
+ */
+bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp, void * mem0p,
+                       const size_t size);
+
+/**
+ * @brief   Stops an asynchronous DMA transfer.
+ *
+ * @param[in,out] dmap  Driver object.
+ *
+ * @post
+ * The driver is back in @ref DMA_READY.
+ *
+ * @api
+ */
+void dmaStopTransfert(DMADriver *dmap);
+
+/**
+ * @brief   Starts an asynchronous DMA transfer from ISR/locked context.
+ *
+ * @param[in,out] dmap   Driver object.
+ * @param[in,out] periphp Peripheral register address.
+ * @param[in,out] mem0p  Memory buffer address.
+ * @param[in] size       Number of transfer items.
+ * @retval true          Transfer started.
+ * @retval false         Low-level start failed.
+ *
+ * @iclass
+ */
+bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp, void *mem0p,
+                        const size_t size);
+
+/**
+ * @brief   Stops an asynchronous DMA transfer from ISR/locked context.
+ *
+ * @param[in,out] dmap  Driver object.
+ *
+ * @iclass
+ */
+void dmaStopTransfertI(DMADriver *dmap);
+
+/**
+ * @brief   Returns the STM32 DMA stream index allocated to the driver.
+ *
+ * @param[in] dmap  Driver object.
+ * @return          Stream index, or 0xff when no matching stream is found.
+ *
+ * @api
+ */
 uint8_t dmaGetStreamIndex(DMADriver *dmap);
 #if defined DMA_request_TypeDef && defined DMA_Stream_TypeDef
+/**
+ * @brief   Builds a DMA register image for an already configured stream.
+ *
+ * @param[in] dmap        Driver object.
+ * @param[in,out] periphp Peripheral register address.
+ * @param[in,out] mem0p   Memory buffer address.
+ * @param[in] size        Number of transfer items.
+ * @param[out] registers  Destination register image.
+ *
+ * @iclass
+ */
 void  dmaGetRegisters(DMADriver *dmap, volatile void *periphp, void *mem0p,
 		      const size_t size,
 		      DMA_Stream_TypeDef *registers);
 #endif  
+
+/**
+ * @brief   Returns the current DMA driver state.
+ * @param[in] dmap  Driver object.
+ * @return          Driver state.
+ * @api
+ */
 static  inline dmastate_t dmaGetState(DMADriver *dmap) {return dmap->state;}
+
+/**
+ * @brief   Returns the hardware residual transfer counter.
+ * @param[in] dmap  Driver object.
+ * @return          Remaining transfer items according to the DMA stream.
+ * @api
+ */
 static  inline size_t dmaGetTransactionCounter(DMADriver *dmap) {return dmaStreamGetTransactionSize(dmap->dmastream);}
 
 #if STM32_DMA_USE_ASYNC_TIMOUT
@@ -582,7 +831,9 @@ static  inline dmastate_t dmaGetNextErrors(DMADriver *dmap) {return dmap->next_c
 static  inline void dmaClearNextErrors(DMADriver *dmap) {dmap->next_cb_errors = 0U;}
 #endif
 
-// low level driver
+/** @} */
+
+/* Low level driver entry points. Not application APIs. */
 
 bool  dma_lld_start(DMADriver *dmap, bool allocate_stream);
 void  dma_lld_stop(DMADriver *dmap);

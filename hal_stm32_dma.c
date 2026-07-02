@@ -1,3 +1,14 @@
+/**
+ * @file    hal_stm32_dma.c
+ * @brief   STM32 DMA helper driver implementation.
+ * @ingroup STM32_DMA_HELPER
+ *
+ * @details
+ * Implements the portable part of the helper driver and the STM32 low-level
+ * stream programming used by project drivers. Public functions follow the
+ * ChibiOS state-machine style; low-level functions below the separator are
+ * internal to this helper.
+ */
 #include "hal_stm32_dma.h"
 #include <string.h>
 
@@ -40,6 +51,13 @@ static inline uint32_t getFCR_FS(const DMADriver *dmap) {
 }
 #endif
 
+/**
+ * @brief   Initializes a DMA driver object.
+ *
+ * @param[out] dmap  Driver object.
+ *
+ * @api
+ */
 void dmaObjectInit(DMADriver *dmap)
 {
   osalDbgCheck(dmap != NULL);
@@ -68,9 +86,12 @@ void dmaObjectInit(DMADriver *dmap)
 
 /**
  * @brief   Configures and activates the DMA peripheral.
+ * @details Allocates and configures a DMA stream using the supplied
+ *          @ref DMAConfig. The stream is ready for a later
+ *          @ref dmaStartTransfert() call.
  *
  * @param[in] dmap      pointer to the @p DMADriver object
- * @param[in] config    pointer to the @p DMAConfig object.
+ * @param[in] cfg       pointer to the @p DMAConfig object.
  * @return              The operation result.
  * @retval true         dma driver is OK
  * @retval false        incoherencies has been found in config
@@ -100,10 +121,12 @@ bool dmaStart(DMADriver *dmap, const DMAConfig *cfg)
 }
 
 /**
- * @brief   Configures and activates the DMA peripheral.
+ * @brief   Reloads the DMA peripheral configuration.
+ * @details Reuses the already allocated stream and applies a new
+ *          @ref DMAConfig while the driver is ready.
  *
  * @param[in] dmap      pointer to the @p DMADriver object
- * @param[in] config    pointer to the @p DMAConfig object.
+ * @param[in] cfg       pointer to the @p DMAConfig object.
  * @return              The operation result.
  * @retval true         dma driver is OK
  * @retval false        incoherencies has been found in config
@@ -157,7 +180,9 @@ void dmaStop(DMADriver *dmap)
 
 /**
  * @brief   Starts a DMA transaction.
- * @details Starts one or many asynchronous dma transaction(s) depending on continuous field
+ * @details Starts one asynchronous DMA transaction. The selected
+ *          @ref DMAConfig::op_mode decides whether the transaction is finite
+ *          or circular.
  * @post    The callbacks associated to the DMA config will be invoked
  *          on buffer fill and error events, and timeout events in case
  *          STM32_DMA_USE_ASYNC_TIMOUT == TRUE
@@ -182,7 +207,7 @@ bool dmaStartTransfert(DMADriver *dmap, volatile void *periphp,  void * mem0p, c
 
 /**
  * @brief   Starts a DMA transaction.
- * @details Starts one or many asynchronous dma transaction(s) depending on continuous field
+ * @details ISR/locked-context variant of @ref dmaStartTransfert().
  * @post    The callbacks associated to the DMA config will be invoked
  *          on buffer fill and error events, and timeout events in case
  *          STM32_DMA_USE_ASYNC_TIMOUT == TRUE
@@ -284,17 +309,16 @@ bool dmaStartTransfertI(DMADriver *dmap, volatile void *periphp,  void *  mem0p,
 }
 
 /**
- * @brief   copy the dma register to memory.
- * @details mainly used to preapare mdma linked list chained 
- *          transferts
+ * @brief   Copies the DMA register image to memory.
+ * @details Mainly used to prepare MDMA linked-list chained transfers.
  *
  * @param[in]      dmap      pointer to the @p DMADriver object
  * @param[in,out]  periphp   pointer to a @p peripheral register address
  * @param[in,out]  mem0p     pointer to the data buffer
  * @param[in]      size      buffer size. The buffer size
  *                           must be one or an even number.
- * @param[out]     registers pointer to structure representing 
-                             a DMA stream set of registers
+ * @param[out]     registers pointer to a structure representing a DMA stream
+ *                          register set
  *
  * @iclass
  */
@@ -466,7 +490,7 @@ void dmaForceHalfBufferFromISR(DMADriver *dmap)
  * @return              The operation result.
  * @retval MSG_OK       Transaction finished.
  * @retval MSG_RESET    The transaction has been stopped using
- *                      @p dmaStopTransaction() or @p dmaStopTransactionI(),
+ *                      @p dmaStopTransfert() or @p dmaStopTransfertI(),
  *                      the result buffer may contain incorrect data.
  * @retval MSG_TIMEOUT  The transaction has been stopped because of hardware
  *                      error or timeout limit reach
