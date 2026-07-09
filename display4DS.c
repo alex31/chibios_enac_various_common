@@ -1181,7 +1181,12 @@ static msg_t uartWaitReadTimeout(UARTDriver *serial, size_t *size, sysinterval_t
   osalSysLock();
   if (serial->rxstate != UART_RX_ACTIVE) {
     osalSysUnlock();
-    return MSG_RESET;
+    /*
+     * RX can complete before the caller starts waiting: fdsTransmitBuffer()
+     * arms RX, sends TX, then waits for RX. Short display answers may already
+     * be in the response buffer, with rxstate back to UART_RX_IDLE.
+     */
+    return MSG_OK;
   }
 					
   msg = osalThreadSuspendTimeoutS(&serial->threadrx, rTimout);
