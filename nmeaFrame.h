@@ -36,6 +36,7 @@ typedef struct  {
   uint8_t   currentChksm;
   uint8_t   writeIndex;
   NmeaState   state;
+  systime_t lastTimeCall;
 }  NmeaStateMachine ;
 
 
@@ -236,4 +237,3 @@ main (...)
 
 
 #endif // __NMEA_FRAME
-

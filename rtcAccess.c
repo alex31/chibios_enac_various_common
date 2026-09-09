@@ -5,7 +5,6 @@
 
 static uint32_t weekDay (void);
 static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const uint32_t year);
-static bool isInDTSPeriod (void);
 
 
 static RtcChangedCB callback = NULL;
@@ -150,27 +149,16 @@ void setWeekDay (uint32_t val)
 uint32_t getHour (void)
 {
   RTCDateTime rtctime;
-  uint32_t tv_msec;
-  struct tm utime;
-   rtcGetTime (&RTCD1, &rtctime);
-  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
-
-  mktime(&utime);
-  
-  return (utime.tm_hour+getDstOffset()) % 24;
+  rtcGetTime (&RTCD1, &rtctime);
+  return (rtctime.millisecond / 3600000U +
+          getDstOffsetFromDateTime(&rtctime)) % 24U;
 }
 
   uint32_t getUtcHour (void)
 {
   RTCDateTime rtctime;
-  uint32_t tv_msec;
-  struct tm utime;
-   rtcGetTime (&RTCD1, &rtctime);
-  rtcConvertDateTimeToStructTm (&rtctime, &utime, &tv_msec);
-
-  mktime(&utime);
-  
-  return utime.tm_hour;
+  rtcGetTime (&RTCD1, &rtctime);
+  return rtctime.millisecond / 3600000U;
 }
 uint32_t getMinute (void)
 {
@@ -323,38 +311,32 @@ static uint32_t weekDayOfDate (const uint32_t day, const uint32_t month, const u
   
 uint32_t getDstOffset (void)
 {
-  return isInDTSPeriod() ? 2 : 1;
+  RTCDateTime rtctime;
+  rtcGetTime (&RTCD1, &rtctime);
+  return getDstOffsetFromDateTime(&rtctime);
 }
 
-static bool isInDTSPeriod (void)
+uint32_t getDstOffsetFromDateTime (const RTCDateTime *rtctime)
 {
   const  uint32_t startMonth=3;
   const  uint32_t endMonth=10;
-  const uint32_t day = getMonthDay();
-  const uint32_t month = getMonth();
-  const uint32_t year = getYear();
-  static uint32_t lastSundayOfMonth=0;
+  const uint32_t day = rtctime->day;
+  const uint32_t month = rtctime->month;
+  const uint32_t year = rtctime->year + RTC_BASE_YEAR;
 
   
   if ((month < startMonth) || (month > endMonth))
-    return false;
+    return 1;
 
   if ((month > startMonth) && (month < endMonth))
-      return true;
+      return 2;
 
-  if (lastSundayOfMonth==0) {
-    for (uint32_t d=31; d>=24; d--) {
-      if (weekDayOfDate (d, month, year) == 0) {
-	lastSundayOfMonth=d;
-	break;
-      }
-    }
-  }
+  const uint32_t lastSundayOfMonth = 31U - weekDayOfDate(31U, month, year);
 
   if (month == startMonth) 
-    return day >= lastSundayOfMonth;
+    return day >= lastSundayOfMonth ? 2 : 1;
   else
-    return day < lastSundayOfMonth;
+    return day < lastSundayOfMonth ? 2 : 1;
 }
 
 

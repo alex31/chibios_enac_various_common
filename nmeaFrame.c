@@ -20,6 +20,7 @@ void initStateMachine (NmeaStateMachine *sm)
 {
   sm->receivedChksm1 = sm->receivedChksm2 = sm->currentChksm = sm->writeIndex = 0;
   sm->state = NS_WAIT_BEGIN;
+  sm->lastTimeCall = chVTGetSystemTimeX();
 }
 
 static bool verifyChecksum (NmeaStateMachine *sm)
@@ -44,11 +45,9 @@ static bool verifyChecksum (NmeaStateMachine *sm)
 void feedNmea (const NmeaBinder *nbs, NmeaStateMachine *sm, 
 	       const void * const  userData, char c, ErrorCallback error_cb)
 {
-  static uint32_t lastTimeCall = 0;
-
-  const uint32_t timeNow = chVTGetSystemTimeX();
-  const uint32_t deltaT = timeNow - lastTimeCall;
-  lastTimeCall = timeNow;
+  const systime_t timeNow = chVTGetSystemTimeX();
+  const sysinterval_t deltaT = chTimeDiffX(sm->lastTimeCall, timeNow);
+  sm->lastTimeCall = timeNow;
   (void) nbs;
   
 
@@ -56,6 +55,7 @@ void feedNmea (const NmeaBinder *nbs, NmeaStateMachine *sm,
   case NS_WAIT_BEGIN :
     if (c == '$') {
       initStateMachine (sm);
+      sm->lastTimeCall = timeNow;
       sm->state = NS_WAIT_CHKSUM;
       sm->buffer[sm->writeIndex++] = c;
     }
@@ -173,4 +173,3 @@ static int32_t parseNMEA (const NmeaBinder *nbs, const void * const  userData,
    
   return sep;
 }
-
