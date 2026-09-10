@@ -130,18 +130,19 @@ bool txt_charWidth(const FdsDriver *fds, char car, uint16_t *width) {
     uint16_t cmd;
     char car;
   } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .car = __builtin_bswap16(car)};
+  command1 = {.cmd = cmds[fds->deviceType], .car = car};
 
   struct {
     uint8_t ack;
     uint16_t width;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (width != NULL) *width = __builtin_bswap16(response.width);
+  if (stus && (response.ack == QDS_ACK) && (width != NULL))
+    *width = __builtin_bswap16(response.width);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -158,18 +159,19 @@ bool txt_charHeight(const FdsDriver *fds, char car, uint16_t *height) {
     uint16_t cmd;
     char car;
   } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .car = __builtin_bswap16(car)};
+  command1 = {.cmd = cmds[fds->deviceType], .car = car};
 
   struct {
     uint8_t ack;
     uint16_t height;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (height != NULL) *height = __builtin_bswap16(response.height);
+  if (stus && (response.ack == QDS_ACK) && (height != NULL))
+    *height = __builtin_bswap16(response.height);
 
   return stus && (response.ack == QDS_ACK);
 }
