@@ -1,3 +1,11 @@
+/*
+ * Automatically generated file. DO NOT EDIT.
+ *
+ * Manual changes will be overwritten on regeneration.
+ * Edit TOOLS/gen4DSysLib.pl and/or "TOOLS/fonctions 4dsystem SPE.csv",
+ * then regenerate these files.
+ */
+
 #pragma once
 #include <ch.h>
 #include <hal.h>

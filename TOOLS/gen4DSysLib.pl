@@ -222,6 +222,19 @@ sub openSourceFiles($)
     open(my $implFh, ">", $implName) or die "cannot open > $implName: $!";
 
 
+    my $generatedNotice = <<'EOL';
+/*
+ * Automatically generated file. DO NOT EDIT.
+ *
+ * Manual changes will be overwritten on regeneration.
+ * Edit TOOLS/gen4DSysLib.pl and/or "TOOLS/fonctions 4dsystem SPE.csv",
+ * then regenerate these files.
+ */
+
+EOL
+    print $headerFh $generatedNotice;
+    print $implFh $generatedNotice;
+
     print $headerFh <<EOL;
 #pragma once
 #include <ch.h>
@@ -236,10 +249,6 @@ EOL
 
     print $implFh "#include \"$baseHeaderName\"\n\n";
     print $implFh <<EOL;
-/*
-    This code has been generated from API description
-    All hand modifications will be lost at next generation 
-*/
 static bool gfx_polyxxx(const FdsDriver *fds, uint16_t cmd, uint16_t n, const uint16_t vx[], const uint16_t vy[], uint16_t color)
 {
  struct {
