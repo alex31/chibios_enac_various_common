@@ -36,6 +36,7 @@ sub codeGenAvailability($$);
 sub getParamOut($); # take entryref, return an array of arrayref of tripplet (type, name, arrayNum)
 sub getParamIn($); # take entryref, return an array of arrayref of tripplet (type, name, arrayNum)
 sub getProtoParam($$); # take tripplet (type, name, arrayNum) ref, P_IN or P_OUT, return string, 
+sub getWireValue($$); # take parameter ref and value expression, return wire conversion
 sub checkForErr();
 
 
@@ -389,8 +390,9 @@ EOL
 	      $structState = ST_CLOSE;
 	      $currSD .= "}  __attribute__ ((__packed__)) $structName = {";
 	      $currSD .= " .cmd = cmds[fds->deviceType],\n" if $structName eq "command1";
-	      $currSD .= join(",\n  ", map(".$_->[P_VAR] = __builtin_bswap16($_->[P_VAR]) ", @regular));
+	      $currSD .= join(",\n  ", map(".$_->[P_VAR] = " . getWireValue($_, $_->[P_VAR]), @regular));
 	      $currSD .= "};\n";
+	      @regular = ();
 	      $structName++;
 	  }
 	  $currTransmit .= "	                NULL, 0)  != 0;\n";
@@ -413,15 +415,15 @@ EOL
   if ($structState == ST_OPEN) {
       $currSD .= "}  __attribute__ ((__packed__)) $structName = {";
       $currSD .= " .cmd = cmds[fds->deviceType],\n" if $structName eq "command1";
-      $currSD .= join(",\n  ", map(".$_->[P_VAR] = __builtin_bswap16($_->[P_VAR]) ", @regular));
+      $currSD .= join(",\n  ", map(".$_->[P_VAR] = " . getWireValue($_, $_->[P_VAR]), @regular));
       $currSD .= "};\n";
   }
   if (not $giveBackString) {
+      my $responseSize = 'sizeof(response)';
       if ($fixSize ne '0') {
-	  $currTransmit .= "(uint8_t *) &response, sizeof(response) - (fds->deviceType == FDS_GOLDELOX ?  $fixSize  : 0)) != 0;\n";
-      } else {
-	  $currTransmit .= "(uint8_t *) &response, sizeof(response)) != 0;\n";
+	  $responseSize = "(sizeof(response) - (fds->deviceType == FDS_GOLDELOX ? $fixSize : 0))";
       }
+      $currTransmit .= "(uint8_t *) &response, $responseSize) == $responseSize;\n";
   } else {
       my $varLenName = "(*$gpo[1]->[P_VAR])";
       $currTransmit .= <<EOL;
@@ -480,7 +482,7 @@ EOL
 
   struct {
   $outDecl
-  } __attribute__ ((__packed__)) response;
+  } __attribute__ ((__packed__)) response = {0};
   $check
 EOL
       }
@@ -496,7 +498,8 @@ EOL
   if ((scalar(@outP) > 1) and  (not $giveBackString)) {
       my @paramOut = getParamOut($fnEntryRef);
       say $fh "if (fds->deviceType != FDS_GOLDELOX) {\n"  if ($fixSize ne '0');
-      say $fh join(";\n  ", map("  if ($_->[P_VAR] != NULL) \n       *$_->[P_VAR] = __builtin_bswap16(response.$_->[P_VAR]);",
+      say $fh join(";\n  ", map("  if (stus && (response.ack == QDS_ACK) && ($_->[P_VAR] != NULL)) \n       *$_->[P_VAR] = " .
+				getWireValue($_, "response.$_->[P_VAR]") . ";",
 				grep($_->[P_VAR] ne 'ack', @paramOut)));
       say $fh '';
       say $fh "}\n" if ($fixSize ne '0');
@@ -873,6 +876,14 @@ sub getParamOut($)
 	push(@retArr, [$type, $paramDesc, $num, $opt]);
     }
     return @retArr;
+}
+
+sub getWireValue($$)
+{
+    my ($paramRef, $value) = @_;
+    # Only 16-bit fields have a byte order; byte-sized values pass through.
+    return "__builtin_bswap16($value)" if $paramRef->[P_TYPE] =~ /^\s*u?int16_t\s*$/;
+    return $value;
 }
 
 sub getProtoParam($$) # take tripplet (type, name, arrayNum) ref, P_IN or P_OUT, return string, 

@@ -43,18 +43,18 @@ bool txt_moveCursor(const FdsDriver *fds, uint16_t line, uint16_t column) {
     uint16_t cmd;
     uint16_t line;
     uint16_t column;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .line = __builtin_bswap16(line),
-              .column = __builtin_bswap16(column)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .line = __builtin_bswap16(line),
+                                          .column = __builtin_bswap16(column)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -70,16 +70,16 @@ bool txt_putCh(const FdsDriver *fds, uint16_t car) {
   struct {
     uint16_t cmd;
     uint16_t car;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .car = __builtin_bswap16(car)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .car = __builtin_bswap16(car)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -101,18 +101,21 @@ bool txt_putStr(const FdsDriver *fds, const char *cstr, uint16_t *length) {
   struct {
     uint8_t ack;
     uint16_t length;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)cstr, strlen(cstr) + 1,
              (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*length) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*length) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*length) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (length != NULL) *length = __builtin_bswap16(response.length);
+    if (stus && (response.ack == QDS_ACK) && (length != NULL))
+      *length = __builtin_bswap16(response.length);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -129,8 +132,8 @@ bool txt_charWidth(const FdsDriver *fds, char car, uint16_t *width) {
   struct {
     uint16_t cmd;
     char car;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .car = car};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .car = car};
 
   struct {
     uint8_t ack;
@@ -158,8 +161,8 @@ bool txt_charHeight(const FdsDriver *fds, char car, uint16_t *height) {
   struct {
     uint16_t cmd;
     char car;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .car = car};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .car = car};
 
   struct {
     uint8_t ack;
@@ -193,16 +196,19 @@ bool txt_fgColour(const FdsDriver *fds, uint16_t colour, uint16_t *oldCol) {
   struct {
     uint8_t ack;
     uint16_t oldCol;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldCol != NULL) *oldCol = __builtin_bswap16(response.oldCol);
+    if (stus && (response.ack == QDS_ACK) && (oldCol != NULL))
+      *oldCol = __builtin_bswap16(response.oldCol);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -225,16 +231,19 @@ bool txt_bgColour(const FdsDriver *fds, uint16_t colour, uint16_t *oldCol) {
   struct {
     uint8_t ack;
     uint16_t oldCol;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldCol != NULL) *oldCol = __builtin_bswap16(response.oldCol);
+    if (stus && (response.ack == QDS_ACK) && (oldCol != NULL))
+      *oldCol = __builtin_bswap16(response.oldCol);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -251,22 +260,25 @@ bool txt_fontID(const FdsDriver *fds, uint16_t id, uint16_t *oldFont) {
   struct {
     uint16_t cmd;
     uint16_t id;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .id = __builtin_bswap16(id)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .id = __builtin_bswap16(id)};
 
   struct {
     uint8_t ack;
     uint16_t oldFont;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldFont) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldFont) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldFont) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldFont != NULL) *oldFont = __builtin_bswap16(response.oldFont);
+    if (stus && (response.ack == QDS_ACK) && (oldFont != NULL))
+      *oldFont = __builtin_bswap16(response.oldFont);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -284,23 +296,26 @@ bool txt_widthMult(const FdsDriver *fds, uint16_t wMultiplier,
   struct {
     uint16_t cmd;
     uint16_t wMultiplier;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .wMultiplier = __builtin_bswap16(wMultiplier)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .wMultiplier = __builtin_bswap16(wMultiplier)};
 
   struct {
     uint8_t ack;
     uint16_t oldMul;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldMul) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldMul) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldMul) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldMul != NULL) *oldMul = __builtin_bswap16(response.oldMul);
+    if (stus && (response.ack == QDS_ACK) && (oldMul != NULL))
+      *oldMul = __builtin_bswap16(response.oldMul);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -318,23 +333,26 @@ bool txt_heightMult(const FdsDriver *fds, uint16_t hMultiplier,
   struct {
     uint16_t cmd;
     uint16_t hMultiplier;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .hMultiplier = __builtin_bswap16(hMultiplier)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .hMultiplier = __builtin_bswap16(hMultiplier)};
 
   struct {
     uint8_t ack;
     uint16_t oldMul;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldMul) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldMul) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldMul) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldMul != NULL) *oldMul = __builtin_bswap16(response.oldMul);
+    if (stus && (response.ack == QDS_ACK) && (oldMul != NULL))
+      *oldMul = __builtin_bswap16(response.oldMul);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -351,22 +369,25 @@ bool txt_xgap(const FdsDriver *fds, uint16_t xGap, uint16_t *oldGap) {
   struct {
     uint16_t cmd;
     uint16_t xGap;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .xGap = __builtin_bswap16(xGap)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .xGap = __builtin_bswap16(xGap)};
 
   struct {
     uint8_t ack;
     uint16_t oldGap;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldGap) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldGap) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldGap) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldGap != NULL) *oldGap = __builtin_bswap16(response.oldGap);
+    if (stus && (response.ack == QDS_ACK) && (oldGap != NULL))
+      *oldGap = __builtin_bswap16(response.oldGap);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -383,22 +404,25 @@ bool txt_ygap(const FdsDriver *fds, uint16_t yGap, uint16_t *oldGap) {
   struct {
     uint16_t cmd;
     uint16_t yGap;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .yGap = __builtin_bswap16(yGap)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .yGap = __builtin_bswap16(yGap)};
 
   struct {
     uint8_t ack;
     uint16_t oldGap;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldGap) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldGap) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldGap) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldGap != NULL) *oldGap = __builtin_bswap16(response.oldGap);
+    if (stus && (response.ack == QDS_ACK) && (oldGap != NULL))
+      *oldGap = __builtin_bswap16(response.oldGap);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -415,22 +439,25 @@ bool txt_bold(const FdsDriver *fds, uint16_t mode, uint16_t *oldBold) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
     uint16_t oldBold;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldBold) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldBold) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldBold) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldBold != NULL) *oldBold = __builtin_bswap16(response.oldBold);
+    if (stus && (response.ack == QDS_ACK) && (oldBold != NULL))
+      *oldBold = __builtin_bswap16(response.oldBold);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -447,22 +474,25 @@ bool txt_inverse(const FdsDriver *fds, uint16_t mode, uint16_t *oldInv) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
     uint16_t oldInv;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldInv) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldInv) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldInv) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldInv != NULL) *oldInv = __builtin_bswap16(response.oldInv);
+    if (stus && (response.ack == QDS_ACK) && (oldInv != NULL))
+      *oldInv = __builtin_bswap16(response.oldInv);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -479,22 +509,25 @@ bool txt_italic(const FdsDriver *fds, uint16_t mode, uint16_t *oldItal) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
     uint16_t oldItal;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldItal) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldItal) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldItal) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldItal != NULL) *oldItal = __builtin_bswap16(response.oldItal);
+    if (stus && (response.ack == QDS_ACK) && (oldItal != NULL))
+      *oldItal = __builtin_bswap16(response.oldItal);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -511,22 +544,25 @@ bool txt_opacity(const FdsDriver *fds, uint16_t mode, uint16_t *oldOpa) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
     uint16_t oldOpa;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldOpa) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldOpa) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldOpa) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldOpa != NULL) *oldOpa = __builtin_bswap16(response.oldOpa);
+    if (stus && (response.ack == QDS_ACK) && (oldOpa != NULL))
+      *oldOpa = __builtin_bswap16(response.oldOpa);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -543,22 +579,25 @@ bool txt_underline(const FdsDriver *fds, uint16_t mode, uint16_t *oldUnder) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
     uint16_t oldUnder;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
-  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
-                           sizeof(command1), (uint8_t *)&response,
-                           sizeof(response) - (fds->deviceType == FDS_GOLDELOX
-                                                   ? sizeof(*oldUnder)
-                                                   : 0)) != 0;
+  stus = fdsTransmitBuffer(
+             fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+             sizeof(command1), (uint8_t *)&response,
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldUnder) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldUnder) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldUnder != NULL) *oldUnder = __builtin_bswap16(response.oldUnder);
+    if (stus && (response.ack == QDS_ACK) && (oldUnder != NULL))
+      *oldUnder = __builtin_bswap16(response.oldUnder);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -582,16 +621,19 @@ bool txt_attributes(const FdsDriver *fds, uint16_t bitfield,
   struct {
     uint8_t ack;
     uint16_t oldAttr;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldAttr) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldAttr) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldAttr) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldAttr != NULL) *oldAttr = __builtin_bswap16(response.oldAttr);
+    if (stus && (response.ack == QDS_ACK) && (oldAttr != NULL))
+      *oldAttr = __builtin_bswap16(response.oldAttr);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -609,19 +651,19 @@ bool txt_set(const FdsDriver *fds, uint16_t function, uint16_t value) {
     uint16_t cmd;
     uint16_t function;
     uint16_t value;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .function = __builtin_bswap16(function),
-              .value = __builtin_bswap16(value)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .function = __builtin_bswap16(function),
+      .value = __builtin_bswap16(value)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function txt_set unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -637,20 +679,21 @@ bool txt_wrap(const FdsDriver *fds, uint16_t xpos, uint16_t *oldWrap) {
   struct {
     uint16_t cmd;
     uint16_t xpos;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .xpos = __builtin_bswap16(xpos)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .xpos = __builtin_bswap16(xpos)};
 
   struct {
     uint8_t ack;
     uint16_t oldWrap;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function txt_wrap unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (oldWrap != NULL) *oldWrap = __builtin_bswap16(response.oldWrap);
+  if (stus && (response.ack == QDS_ACK) && (oldWrap != NULL))
+    *oldWrap = __builtin_bswap16(response.oldWrap);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -671,11 +714,11 @@ bool gfx_cls(const FdsDriver *fds) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -693,18 +736,18 @@ bool gfx_changeColour(const FdsDriver *fds, uint16_t oldColour,
     uint16_t cmd;
     uint16_t oldColour;
     uint16_t newColour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .oldColour = __builtin_bswap16(oldColour),
-              .newColour = __builtin_bswap16(newColour)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .oldColour = __builtin_bswap16(oldColour),
+      .newColour = __builtin_bswap16(newColour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -724,20 +767,20 @@ bool gfx_circle(const FdsDriver *fds, uint16_t x, uint16_t y, uint16_t radius,
     uint16_t y;
     uint16_t radius;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .radius = __builtin_bswap16(radius),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x = __builtin_bswap16(x),
+                                          .y = __builtin_bswap16(y),
+                                          .radius = __builtin_bswap16(radius),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -757,20 +800,20 @@ bool gfx_circleFilled(const FdsDriver *fds, uint16_t x, uint16_t y,
     uint16_t y;
     uint16_t radius;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .radius = __builtin_bswap16(radius),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x = __builtin_bswap16(x),
+                                          .y = __builtin_bswap16(y),
+                                          .radius = __builtin_bswap16(radius),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -791,21 +834,21 @@ bool gfx_line(const FdsDriver *fds, uint16_t x1, uint16_t y1, uint16_t x2,
     uint16_t x2;
     uint16_t y2;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x1 = __builtin_bswap16(x1),
-              .y1 = __builtin_bswap16(y1),
-              .x2 = __builtin_bswap16(x2),
-              .y2 = __builtin_bswap16(y2),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x1 = __builtin_bswap16(x1),
+                                          .y1 = __builtin_bswap16(y1),
+                                          .x2 = __builtin_bswap16(x2),
+                                          .y2 = __builtin_bswap16(y2),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -826,21 +869,21 @@ bool gfx_rectangle(const FdsDriver *fds, uint16_t tlx, uint16_t tly,
     uint16_t brx;
     uint16_t bry;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .tlx = __builtin_bswap16(tlx),
-              .tly = __builtin_bswap16(tly),
-              .brx = __builtin_bswap16(brx),
-              .bry = __builtin_bswap16(bry),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .tlx = __builtin_bswap16(tlx),
+                                          .tly = __builtin_bswap16(tly),
+                                          .brx = __builtin_bswap16(brx),
+                                          .bry = __builtin_bswap16(bry),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -861,21 +904,21 @@ bool gfx_rectangleFilled(const FdsDriver *fds, uint16_t tlx, uint16_t tly,
     uint16_t brx;
     uint16_t bry;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .tlx = __builtin_bswap16(tlx),
-              .tly = __builtin_bswap16(tly),
-              .brx = __builtin_bswap16(brx),
-              .bry = __builtin_bswap16(bry),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .tlx = __builtin_bswap16(tlx),
+                                          .tly = __builtin_bswap16(tly),
+                                          .brx = __builtin_bswap16(brx),
+                                          .bry = __builtin_bswap16(bry),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -929,23 +972,23 @@ bool gfx_triangle(const FdsDriver *fds, uint16_t x1, uint16_t y1, uint16_t x2,
     uint16_t x3;
     uint16_t y3;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x1 = __builtin_bswap16(x1),
-              .y1 = __builtin_bswap16(y1),
-              .x2 = __builtin_bswap16(x2),
-              .y2 = __builtin_bswap16(y2),
-              .x3 = __builtin_bswap16(x3),
-              .y3 = __builtin_bswap16(y3),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x1 = __builtin_bswap16(x1),
+                                          .y1 = __builtin_bswap16(y1),
+                                          .x2 = __builtin_bswap16(x2),
+                                          .y2 = __builtin_bswap16(y2),
+                                          .x3 = __builtin_bswap16(x3),
+                                          .y3 = __builtin_bswap16(y3),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -969,24 +1012,24 @@ bool gfx_triangleFilled(const FdsDriver *fds, uint16_t x1, uint16_t y1,
     uint16_t x3;
     uint16_t y3;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x1 = __builtin_bswap16(x1),
-              .y1 = __builtin_bswap16(y1),
-              .x2 = __builtin_bswap16(x2),
-              .y2 = __builtin_bswap16(y2),
-              .x3 = __builtin_bswap16(x3),
-              .y3 = __builtin_bswap16(y3),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x1 = __builtin_bswap16(x1),
+                                          .y1 = __builtin_bswap16(y1),
+                                          .x2 = __builtin_bswap16(x2),
+                                          .y2 = __builtin_bswap16(y2),
+                                          .x3 = __builtin_bswap16(x3),
+                                          .y3 = __builtin_bswap16(y3),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_triangleFilled unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1004,24 +1047,26 @@ bool gfx_orbit(const FdsDriver *fds, uint16_t angle, uint16_t distance,
     uint16_t cmd;
     uint16_t angle;
     uint16_t distance;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .angle = __builtin_bswap16(angle),
-              .distance = __builtin_bswap16(distance)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .angle = __builtin_bswap16(angle),
+      .distance = __builtin_bswap16(distance)};
 
   struct {
     uint8_t ack;
     uint16_t Xdist;
     uint16_t Ydist;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (Xdist != NULL) *Xdist = __builtin_bswap16(response.Xdist);
+  if (stus && (response.ack == QDS_ACK) && (Xdist != NULL))
+    *Xdist = __builtin_bswap16(response.Xdist);
   ;
-  if (Ydist != NULL) *Ydist = __builtin_bswap16(response.Ydist);
+  if (stus && (response.ack == QDS_ACK) && (Ydist != NULL))
+    *Ydist = __builtin_bswap16(response.Ydist);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1040,19 +1085,19 @@ bool gfx_putPixel(const FdsDriver *fds, uint16_t x, uint16_t y,
     uint16_t x;
     uint16_t y;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x = __builtin_bswap16(x),
+                                          .y = __builtin_bswap16(y),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1077,13 +1122,14 @@ bool gfx_getPixel(const FdsDriver *fds, uint16_t x, uint16_t y,
   struct {
     uint8_t ack;
     uint16_t colour;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (colour != NULL) *colour = __builtin_bswap16(response.colour);
+  if (stus && (response.ack == QDS_ACK) && (colour != NULL))
+    *colour = __builtin_bswap16(response.colour);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1106,11 +1152,11 @@ bool gfx_moveTo(const FdsDriver *fds, uint16_t x, uint16_t y) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1133,11 +1179,11 @@ bool gfx_lineTo(const FdsDriver *fds, uint16_t x, uint16_t y) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1153,16 +1199,16 @@ bool gfx_clipping(const FdsDriver *fds, uint16_t mode) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1190,11 +1236,11 @@ bool gfx_clipWindow(const FdsDriver *fds, uint16_t tlx, uint16_t tly,
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1215,11 +1261,11 @@ bool gfx_setClipRegion(const FdsDriver *fds) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1240,22 +1286,22 @@ bool gfx_ellipse(const FdsDriver *fds, uint16_t x, uint16_t y, uint16_t xrad,
     uint16_t xrad;
     uint16_t yrad;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .xrad = __builtin_bswap16(xrad),
-              .yrad = __builtin_bswap16(yrad),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x = __builtin_bswap16(x),
+                                          .y = __builtin_bswap16(y),
+                                          .xrad = __builtin_bswap16(xrad),
+                                          .yrad = __builtin_bswap16(yrad),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_ellipse unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1276,22 +1322,22 @@ bool gfx_ellipseFilled(const FdsDriver *fds, uint16_t x, uint16_t y,
     uint16_t xrad;
     uint16_t yrad;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .xrad = __builtin_bswap16(xrad),
-              .yrad = __builtin_bswap16(yrad),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x = __builtin_bswap16(x),
+                                          .y = __builtin_bswap16(y),
+                                          .xrad = __builtin_bswap16(xrad),
+                                          .yrad = __builtin_bswap16(yrad),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_ellipseFilled unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1316,27 +1362,27 @@ bool gfx_button(const FdsDriver *fds, uint16_t state, uint16_t x, uint16_t y,
     uint16_t font;
     uint16_t txtWidth;
     uint16_t txtHeight;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .state = __builtin_bswap16(state),
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .buttoncolour = __builtin_bswap16(buttoncolour),
-              .txtcolour = __builtin_bswap16(txtcolour),
-              .font = __builtin_bswap16(font),
-              .txtWidth = __builtin_bswap16(txtWidth),
-              .txtHeight = __builtin_bswap16(txtHeight)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .state = __builtin_bswap16(state),
+      .x = __builtin_bswap16(x),
+      .y = __builtin_bswap16(y),
+      .buttoncolour = __builtin_bswap16(buttoncolour),
+      .txtcolour = __builtin_bswap16(txtcolour),
+      .font = __builtin_bswap16(font),
+      .txtWidth = __builtin_bswap16(txtWidth),
+      .txtHeight = __builtin_bswap16(txtHeight)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_button unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)cstr,
                            strlen(cstr) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1358,23 +1404,23 @@ bool gfx_panel(const FdsDriver *fds, uint16_t state, uint16_t x, uint16_t y,
     uint16_t width;
     uint16_t height;
     uint16_t colour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .state = __builtin_bswap16(state),
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .width = __builtin_bswap16(width),
-              .height = __builtin_bswap16(height),
-              .colour = __builtin_bswap16(colour)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .state = __builtin_bswap16(state),
+                                          .x = __builtin_bswap16(x),
+                                          .y = __builtin_bswap16(y),
+                                          .width = __builtin_bswap16(width),
+                                          .height = __builtin_bswap16(height),
+                                          .colour = __builtin_bswap16(colour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_panel unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1411,12 +1457,12 @@ bool gfx_slider(const FdsDriver *fds, uint16_t mode, uint16_t tlx, uint16_t tly,
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_slider unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1439,23 +1485,23 @@ bool gfx_screenCopyPaste(const FdsDriver *fds, uint16_t xs, uint16_t ys,
     uint16_t yd;
     uint16_t width;
     uint16_t height;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .xs = __builtin_bswap16(xs),
-              .ys = __builtin_bswap16(ys),
-              .xd = __builtin_bswap16(xd),
-              .yd = __builtin_bswap16(yd),
-              .width = __builtin_bswap16(width),
-              .height = __builtin_bswap16(height)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .xs = __builtin_bswap16(xs),
+                                          .ys = __builtin_bswap16(ys),
+                                          .xd = __builtin_bswap16(xd),
+                                          .yd = __builtin_bswap16(yd),
+                                          .width = __builtin_bswap16(width),
+                                          .height = __builtin_bswap16(height)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_screenCopyPaste unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1471,20 +1517,21 @@ bool gfx_bevelShadow(const FdsDriver *fds, uint16_t value, uint16_t *oldBevel) {
   struct {
     uint16_t cmd;
     uint16_t value;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .value = __builtin_bswap16(value)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .value = __builtin_bswap16(value)};
 
   struct {
     uint8_t ack;
     uint16_t oldBevel;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_bevelShadow unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (oldBevel != NULL) *oldBevel = __builtin_bswap16(response.oldBevel);
+  if (stus && (response.ack == QDS_ACK) && (oldBevel != NULL))
+    *oldBevel = __builtin_bswap16(response.oldBevel);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1500,20 +1547,21 @@ bool gfx_bevelWidth(const FdsDriver *fds, uint16_t value, uint16_t *oldWidth) {
   struct {
     uint16_t cmd;
     uint16_t value;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .value = __builtin_bswap16(value)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .value = __builtin_bswap16(value)};
 
   struct {
     uint8_t ack;
     uint16_t oldWidth;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_bevelWidth unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (oldWidth != NULL) *oldWidth = __builtin_bswap16(response.oldWidth);
+  if (stus && (response.ack == QDS_ACK) && (oldWidth != NULL))
+    *oldWidth = __builtin_bswap16(response.oldWidth);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1535,16 +1583,19 @@ bool gfx_bgCcolour(const FdsDriver *fds, uint16_t colour, uint16_t *oldCol) {
   struct {
     uint8_t ack;
     uint16_t oldCol;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldCol != NULL) *oldCol = __builtin_bswap16(response.oldCol);
+    if (stus && (response.ack == QDS_ACK) && (oldCol != NULL))
+      *oldCol = __builtin_bswap16(response.oldCol);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -1568,16 +1619,19 @@ bool gfx_outlineColour(const FdsDriver *fds, uint16_t colour,
   struct {
     uint8_t ack;
     uint16_t oldCol;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldCol) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldCol != NULL) *oldCol = __builtin_bswap16(response.oldCol);
+    if (stus && (response.ack == QDS_ACK) && (oldCol != NULL))
+      *oldCol = __builtin_bswap16(response.oldCol);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -1601,16 +1655,18 @@ bool gfx_contrast(const FdsDriver *fds, uint16_t contrast,
   struct {
     uint8_t ack;
     uint16_t oldContrast;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
-  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
-                           sizeof(command1), (uint8_t *)&response,
-                           sizeof(response) - (fds->deviceType == FDS_GOLDELOX
-                                                   ? sizeof(*oldContrast)
-                                                   : 0)) != 0;
+  stus = fdsTransmitBuffer(
+             fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+             sizeof(command1), (uint8_t *)&response,
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldContrast) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldContrast) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldContrast != NULL)
+    if (stus && (response.ack == QDS_ACK) && (oldContrast != NULL))
       *oldContrast = __builtin_bswap16(response.oldContrast);
   }
 
@@ -1635,16 +1691,19 @@ bool gfx_frameDelay(const FdsDriver *fds, uint16_t delayMsec,
   struct {
     uint8_t ack;
     uint16_t oldDelay;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
-  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
-                           sizeof(command1), (uint8_t *)&response,
-                           sizeof(response) - (fds->deviceType == FDS_GOLDELOX
-                                                   ? sizeof(*oldDelay)
-                                                   : 0)) != 0;
+  stus = fdsTransmitBuffer(
+             fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+             sizeof(command1), (uint8_t *)&response,
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldDelay) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldDelay) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldDelay != NULL) *oldDelay = __builtin_bswap16(response.oldDelay);
+    if (stus && (response.ack == QDS_ACK) && (oldDelay != NULL))
+      *oldDelay = __builtin_bswap16(response.oldDelay);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -1668,16 +1727,18 @@ bool gfx_linePattern(const FdsDriver *fds, uint16_t pattern,
   struct {
     uint8_t ack;
     uint16_t oldPattern;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
-  stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
-                           sizeof(command1), (uint8_t *)&response,
-                           sizeof(response) - (fds->deviceType == FDS_GOLDELOX
-                                                   ? sizeof(*oldPattern)
-                                                   : 0)) != 0;
+  stus = fdsTransmitBuffer(
+             fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
+             sizeof(command1), (uint8_t *)&response,
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldPattern) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldPattern) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldPattern != NULL)
+    if (stus && (response.ack == QDS_ACK) && (oldPattern != NULL))
       *oldPattern = __builtin_bswap16(response.oldPattern);
   }
 
@@ -1695,22 +1756,25 @@ bool gfx_screenMode(const FdsDriver *fds, uint16_t mode, uint16_t *oldMode) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
     uint16_t oldMode;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(
              fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
              sizeof(command1), (uint8_t *)&response,
-             sizeof(response) -
-                 (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldMode) : 0)) != 0;
+             (sizeof(response) -
+              (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldMode) : 0))) ==
+         (sizeof(response) -
+          (fds->deviceType == FDS_GOLDELOX ? sizeof(*oldMode) : 0));
 
   if (fds->deviceType != FDS_GOLDELOX) {
-    if (oldMode != NULL) *oldMode = __builtin_bswap16(response.oldMode);
+    if (stus && (response.ack == QDS_ACK) && (oldMode != NULL))
+      *oldMode = __builtin_bswap16(response.oldMode);
   }
 
   return stus && (response.ack == QDS_ACK);
@@ -1727,20 +1791,21 @@ bool gfx_transparency(const FdsDriver *fds, uint16_t mode, uint16_t *oldMode) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
     uint16_t oldMode;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_transparency unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (oldMode != NULL) *oldMode = __builtin_bswap16(response.oldMode);
+  if (stus && (response.ack == QDS_ACK) && (oldMode != NULL))
+    *oldMode = __builtin_bswap16(response.oldMode);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1763,14 +1828,15 @@ bool gfx_transparentColour(const FdsDriver *fds, uint16_t colour,
   struct {
     uint8_t ack;
     uint16_t oldColor;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_transparentColour unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (oldColor != NULL) *oldColor = __builtin_bswap16(response.oldColor);
+  if (stus && (response.ack == QDS_ACK) && (oldColor != NULL))
+    *oldColor = __builtin_bswap16(response.oldColor);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1787,18 +1853,18 @@ bool gfx_set(const FdsDriver *fds, uint16_t function, uint16_t value) {
     uint16_t cmd;
     uint16_t function;
     uint16_t value;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .function = __builtin_bswap16(function),
-              .value = __builtin_bswap16(value)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .function = __builtin_bswap16(function),
+      .value = __builtin_bswap16(value)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1814,20 +1880,21 @@ bool gfx_get(const FdsDriver *fds, uint16_t mode, uint16_t *value) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_get unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1850,12 +1917,12 @@ bool gfx_scale(const FdsDriver *fds, uint16_t handle, uint16_t param) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_scale unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1883,27 +1950,27 @@ bool gfx_pannel2(const FdsDriver *fds, uint16_t options, uint16_t x, uint16_t y,
     uint16_t maincolour;
     uint16_t shadowcolour;
     uint16_t fcolour;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .options = __builtin_bswap16(options),
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .width = __builtin_bswap16(width),
-              .height = __builtin_bswap16(height),
-              .width1 = __builtin_bswap16(width1),
-              .width2 = __builtin_bswap16(width2),
-              .maincolour = __builtin_bswap16(maincolour),
-              .shadowcolour = __builtin_bswap16(shadowcolour),
-              .fcolour = __builtin_bswap16(fcolour)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .options = __builtin_bswap16(options),
+      .x = __builtin_bswap16(x),
+      .y = __builtin_bswap16(y),
+      .width = __builtin_bswap16(width),
+      .height = __builtin_bswap16(height),
+      .width1 = __builtin_bswap16(width1),
+      .width2 = __builtin_bswap16(width2),
+      .maincolour = __builtin_bswap16(maincolour),
+      .shadowcolour = __builtin_bswap16(shadowcolour),
+      .fcolour = __builtin_bswap16(fcolour)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_pannel2 unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1922,20 +1989,20 @@ bool gfx_button4(const FdsDriver *fds, uint16_t value, uint16_t handle,
     uint16_t value;
     uint16_t handle;
     uint16_t params;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .value = __builtin_bswap16(value),
-              .handle = __builtin_bswap16(handle),
-              .params = __builtin_bswap16(params)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .value = __builtin_bswap16(value),
+                                          .handle = __builtin_bswap16(handle),
+                                          .params = __builtin_bswap16(params)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_button4 unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1954,20 +2021,20 @@ bool gfx_switch(const FdsDriver *fds, uint16_t value, uint16_t handle,
     uint16_t value;
     uint16_t handle;
     uint16_t params;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .value = __builtin_bswap16(value),
-              .handle = __builtin_bswap16(handle),
-              .params = __builtin_bswap16(params)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .value = __builtin_bswap16(value),
+                                          .handle = __builtin_bswap16(handle),
+                                          .params = __builtin_bswap16(params)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_switch unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -1986,20 +2053,20 @@ bool gfx_slider5(const FdsDriver *fds, uint16_t value, uint16_t handle,
     uint16_t value;
     uint16_t handle;
     uint16_t params;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .value = __builtin_bswap16(value),
-              .handle = __builtin_bswap16(handle),
-              .params = __builtin_bswap16(params)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .value = __builtin_bswap16(value),
+                                          .handle = __builtin_bswap16(handle),
+                                          .params = __builtin_bswap16(params)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_slider5 unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2018,20 +2085,20 @@ bool gfx_dial(const FdsDriver *fds, uint16_t value, uint16_t handle,
     uint16_t value;
     uint16_t handle;
     uint16_t params;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .value = __builtin_bswap16(value),
-              .handle = __builtin_bswap16(handle),
-              .params = __builtin_bswap16(params)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .value = __builtin_bswap16(value),
+                                          .handle = __builtin_bswap16(handle),
+                                          .params = __builtin_bswap16(params)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_dial unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2050,20 +2117,20 @@ bool gfx_led(const FdsDriver *fds, uint16_t value, uint16_t handle,
     uint16_t value;
     uint16_t handle;
     uint16_t params;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .value = __builtin_bswap16(value),
-              .handle = __builtin_bswap16(handle),
-              .params = __builtin_bswap16(params)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .value = __builtin_bswap16(value),
+                                          .handle = __builtin_bswap16(handle),
+                                          .params = __builtin_bswap16(params)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_led unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2082,20 +2149,20 @@ bool gfx_gauge(const FdsDriver *fds, uint16_t value, uint16_t handle,
     uint16_t value;
     uint16_t handle;
     uint16_t params;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .value = __builtin_bswap16(value),
-              .handle = __builtin_bswap16(handle),
-              .params = __builtin_bswap16(params)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .value = __builtin_bswap16(value),
+                                          .handle = __builtin_bswap16(handle),
+                                          .params = __builtin_bswap16(params)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_gauge unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2114,20 +2181,20 @@ bool gfx_angularMeter(const FdsDriver *fds, uint16_t value, uint16_t handle,
     uint16_t value;
     uint16_t handle;
     uint16_t params;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .value = __builtin_bswap16(value),
-              .handle = __builtin_bswap16(handle),
-              .params = __builtin_bswap16(params)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .value = __builtin_bswap16(value),
+                                          .handle = __builtin_bswap16(handle),
+                                          .params = __builtin_bswap16(params)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_angularMeter unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2150,23 +2217,23 @@ bool gfx_ledGigit(const FdsDriver *fds, uint16_t x, uint16_t y,
     uint16_t onColour;
     uint16_t offColour;
     uint16_t value;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .digitSize = __builtin_bswap16(digitSize),
-              .onColour = __builtin_bswap16(onColour),
-              .offColour = __builtin_bswap16(offColour),
-              .value = __builtin_bswap16(value)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .x = __builtin_bswap16(x),
+      .y = __builtin_bswap16(y),
+      .digitSize = __builtin_bswap16(digitSize),
+      .onColour = __builtin_bswap16(onColour),
+      .offColour = __builtin_bswap16(offColour),
+      .value = __builtin_bswap16(value)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_ledGigit unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2185,20 +2252,20 @@ bool gfx_ledDigits(const FdsDriver *fds, uint16_t value, uint16_t handle,
     uint16_t value;
     uint16_t handle;
     uint16_t params;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .value = __builtin_bswap16(value),
-              .handle = __builtin_bswap16(handle),
-              .params = __builtin_bswap16(params)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .value = __builtin_bswap16(value),
+                                          .handle = __builtin_bswap16(handle),
+                                          .params = __builtin_bswap16(params)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function gfx_ledDigits unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2220,13 +2287,14 @@ bool media_init(const FdsDriver *fds, uint16_t *value) {
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2243,18 +2311,18 @@ bool media_setAdd(const FdsDriver *fds, uint16_t hiAddr, uint16_t loAddr) {
     uint16_t cmd;
     uint16_t hiAddr;
     uint16_t loAddr;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .hiAddr = __builtin_bswap16(hiAddr),
-              .loAddr = __builtin_bswap16(loAddr)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .hiAddr = __builtin_bswap16(hiAddr),
+                                          .loAddr = __builtin_bswap16(loAddr)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2271,18 +2339,18 @@ bool media_setSector(const FdsDriver *fds, uint16_t hiAddr, uint16_t loAddr) {
     uint16_t cmd;
     uint16_t hiAddr;
     uint16_t loAddr;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .hiAddr = __builtin_bswap16(hiAddr),
-              .loAddr = __builtin_bswap16(loAddr)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .hiAddr = __builtin_bswap16(hiAddr),
+                                          .loAddr = __builtin_bswap16(loAddr)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2304,13 +2372,14 @@ bool media_readByte(const FdsDriver *fds, uint16_t *value) {
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2332,13 +2401,14 @@ bool media_readWord(const FdsDriver *fds, uint16_t *value) {
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2354,19 +2424,20 @@ bool media_writeByte(const FdsDriver *fds, uint16_t s, uint16_t *status) {
   struct {
     uint16_t cmd;
     uint16_t s;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .s = __builtin_bswap16(s)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .s = __builtin_bswap16(s)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2382,19 +2453,20 @@ bool media_writeWord(const FdsDriver *fds, uint16_t value, uint16_t *status) {
   struct {
     uint16_t cmd;
     uint16_t value;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .value = __builtin_bswap16(value)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .value = __builtin_bswap16(value)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2416,13 +2488,14 @@ bool media_flush(const FdsDriver *fds, uint16_t *status) {
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2445,11 +2518,11 @@ bool media_image(const FdsDriver *fds, uint16_t x, uint16_t y) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2472,11 +2545,11 @@ bool media_video(const FdsDriver *fds, uint16_t x, uint16_t y) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2495,19 +2568,19 @@ bool media_videoFrame(const FdsDriver *fds, uint16_t x, uint16_t y,
     uint16_t x;
     uint16_t y;
     int16_t frameNumber;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .frameNumber = __builtin_bswap16(frameNumber)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .x = __builtin_bswap16(x),
+      .y = __builtin_bswap16(y),
+      .frameNumber = __builtin_bswap16(frameNumber)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2529,14 +2602,15 @@ bool misc_peekB(const FdsDriver *fds, uint16_t eveReg, uint16_t *value) {
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_peekB  unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2559,12 +2633,12 @@ bool misc_pokeB(const FdsDriver *fds, uint16_t eveReg, uint16_t value) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_pokeB  unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2586,14 +2660,15 @@ bool misc_peekW(const FdsDriver *fds, uint16_t eveReg, uint16_t *value) {
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_peekW  unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2616,12 +2691,12 @@ bool misc_pokeW(const FdsDriver *fds, uint16_t eveReg, uint16_t value) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_pokeW unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2643,14 +2718,15 @@ bool misc_peekM(const FdsDriver *fds, uint16_t address, uint16_t *value) {
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_peekM  unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2667,19 +2743,19 @@ bool misc_pokeM(const FdsDriver *fds, uint16_t address, uint16_t value) {
     uint16_t cmd;
     uint16_t address;
     uint16_t value;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .address = __builtin_bswap16(address),
-              .value = __builtin_bswap16(value)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .address = __builtin_bswap16(address),
+                                          .value = __builtin_bswap16(value)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_pokeM unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2701,14 +2777,15 @@ bool misc_joystick(const FdsDriver *fds, uint16_t *value) {
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_joystick unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2725,19 +2802,19 @@ bool misc_beep(const FdsDriver *fds, uint16_t note, uint16_t duration_ms) {
     uint16_t cmd;
     uint16_t note;
     uint16_t duration_ms;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .note = __builtin_bswap16(note),
-              .duration_ms = __builtin_bswap16(duration_ms)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .note = __builtin_bswap16(note),
+      .duration_ms = __builtin_bswap16(duration_ms)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_beep unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2753,8 +2830,8 @@ bool misc_setbaudWait(const FdsDriver *fds, int16_t index) {
   struct {
     uint16_t cmd;
     int16_t index;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .index = __builtin_bswap16(index)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .index = __builtin_bswap16(index)};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) == 0;
@@ -2772,21 +2849,22 @@ bool sys_sleep(const FdsDriver *fds, uint16_t duration_s, uint16_t *duration) {
   struct {
     uint16_t cmd;
     uint16_t duration_s;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .duration_s = __builtin_bswap16(duration_s)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .duration_s = __builtin_bswap16(duration_s)};
 
   struct {
     uint8_t ack;
     uint16_t duration;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function sys_sleep unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (duration != NULL) *duration = __builtin_bswap16(response.duration);
+  if (stus && (response.ack == QDS_ACK) && (duration != NULL))
+    *duration = __builtin_bswap16(response.duration);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2808,14 +2886,15 @@ bool sys_memFree(const FdsDriver *fds, uint16_t handle, uint16_t *status) {
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function sys_memFree unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2837,14 +2916,15 @@ bool sys_memHeap(const FdsDriver *fds, uint16_t *avail) {
   struct {
     uint8_t ack;
     uint16_t avail;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function sys_memHeap unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (avail != NULL) *avail = __builtin_bswap16(response.avail);
+  if (stus && (response.ack == QDS_ACK) && (avail != NULL))
+    *avail = __builtin_bswap16(response.avail);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2901,13 +2981,14 @@ bool sys_getVersion(const FdsDriver *fds, uint16_t *version) {
   struct {
     uint8_t ack;
     uint16_t version;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (version != NULL) *version = __builtin_bswap16(response.version);
+  if (stus && (response.ack == QDS_ACK) && (version != NULL))
+    *version = __builtin_bswap16(response.version);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2929,13 +3010,14 @@ bool sys_getPmmC(const FdsDriver *fds, uint16_t *version) {
   struct {
     uint8_t ack;
     uint16_t version;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (version != NULL) *version = __builtin_bswap16(response.version);
+  if (stus && (response.ack == QDS_ACK) && (version != NULL))
+    *version = __builtin_bswap16(response.version);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2956,13 +3038,13 @@ bool misc_screenSaverTimeout(const FdsDriver *fds, uint16_t timout_ms) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(
       command1.cmd != CMD_NOT_IMPL,
       "function misc_screenSaverTimeout unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -2978,17 +3060,17 @@ bool misc_screenSaverSpeed(const FdsDriver *fds, uint16_t speed) {
   struct {
     uint16_t cmd;
     uint16_t speed;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .speed = __builtin_bswap16(speed)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .speed = __builtin_bswap16(speed)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_screenSaverSpeed unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3004,17 +3086,17 @@ bool misc_screenSaverMode(const FdsDriver *fds, uint16_t mode) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function misc_screenSaverMode unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3042,12 +3124,12 @@ bool touch_detectRegion(const FdsDriver *fds, uint16_t tlx, uint16_t tly,
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function touch_detectRegion unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3063,17 +3145,17 @@ bool touch_set(const FdsDriver *fds, uint16_t mode) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function touch_set unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3089,20 +3171,21 @@ bool touch_get(const FdsDriver *fds, uint16_t mode, uint16_t *value) {
   struct {
     uint16_t cmd;
     uint16_t mode;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .mode = __builtin_bswap16(mode)};
 
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function touch_get unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3124,14 +3207,15 @@ bool file_error(const FdsDriver *fds, uint16_t *errno) {
   struct {
     uint8_t ack;
     uint16_t errno;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_error unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (errno != NULL) *errno = __builtin_bswap16(response.errno);
+  if (stus && (response.ack == QDS_ACK) && (errno != NULL))
+    *errno = __builtin_bswap16(response.errno);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3153,16 +3237,17 @@ bool file_count(const FdsDriver *fds, const char *filename, uint16_t *count) {
   struct {
     uint8_t ack;
     uint16_t count;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_count unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)filename,
                            strlen(filename) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (count != NULL) *count = __builtin_bswap16(response.count);
+  if (stus && (response.ack == QDS_ACK) && (count != NULL))
+    *count = __builtin_bswap16(response.count);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3184,16 +3269,17 @@ bool file_dir(const FdsDriver *fds, const char *filename, uint16_t *count) {
   struct {
     uint8_t ack;
     uint16_t count;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_dir unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)filename,
                            strlen(filename) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (count != NULL) *count = __builtin_bswap16(response.count);
+  if (stus && (response.ack == QDS_ACK) && (count != NULL))
+    *count = __builtin_bswap16(response.count);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3216,16 +3302,17 @@ bool file_findFirst(const FdsDriver *fds, const char *filename,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_findFirst unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)filename,
                            strlen(filename) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3286,14 +3373,15 @@ bool file_findNext(const FdsDriver *fds, uint16_t *status) {
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_findNext unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3351,16 +3439,17 @@ bool file_exists(const FdsDriver *fds, const char *filename, uint16_t *status) {
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_exists unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)filename,
                            strlen(filename) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3381,12 +3470,12 @@ bool file_open(const FdsDriver *fds, const char *filename, char mode,
   };
   struct {
     char mode;
-  } __attribute__((__packed__)) command2 = {.mode = __builtin_bswap16(mode)};
+  } __attribute__((__packed__)) command2 = {.mode = mode};
 
   struct {
     uint8_t ack;
     uint16_t handle;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_open unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
@@ -3395,9 +3484,10 @@ bool file_open(const FdsDriver *fds, const char *filename, char mode,
                            strlen(filename) + 1, NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command2,
                            sizeof(command2), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (handle != NULL) *handle = __builtin_bswap16(response.handle);
+  if (stus && (response.ack == QDS_ACK) && (handle != NULL))
+    *handle = __builtin_bswap16(response.handle);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3419,14 +3509,15 @@ bool file_close(const FdsDriver *fds, uint16_t handle, uint16_t *status) {
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_close unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3444,10 +3535,10 @@ bool file_read(const FdsDriver *fds, uint16_t size, uint16_t handle,
     uint16_t cmd;
     uint16_t size;
     uint16_t handle;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .size = __builtin_bswap16(size),
-              .handle = __builtin_bswap16(handle)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .size = __builtin_bswap16(size),
+                                          .handle = __builtin_bswap16(handle)};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)str, 3) == 3;
@@ -3484,23 +3575,24 @@ bool file_seek(const FdsDriver *fds, uint16_t handle, uint16_t hiWord,
     uint16_t handle;
     uint16_t hiWord;
     uint16_t loWord;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .handle = __builtin_bswap16(handle),
-              .hiWord = __builtin_bswap16(hiWord),
-              .loWord = __builtin_bswap16(loWord)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .handle = __builtin_bswap16(handle),
+                                          .hiWord = __builtin_bswap16(hiWord),
+                                          .loWord = __builtin_bswap16(loWord)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_seek unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3520,24 +3612,25 @@ bool file_index(const FdsDriver *fds, uint16_t handle, uint16_t hiWord,
     uint16_t hiWord;
     uint16_t loWord;
     uint16_t recordNum;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .handle = __builtin_bswap16(handle),
-              .hiWord = __builtin_bswap16(hiWord),
-              .loWord = __builtin_bswap16(loWord),
-              .recordNum = __builtin_bswap16(recordNum)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .handle = __builtin_bswap16(handle),
+      .hiWord = __builtin_bswap16(hiWord),
+      .loWord = __builtin_bswap16(loWord),
+      .recordNum = __builtin_bswap16(recordNum)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_index unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3562,18 +3655,21 @@ bool file_tell(const FdsDriver *fds, uint16_t handle, uint16_t *status,
     uint16_t status;
     uint16_t hiWord;
     uint16_t loWord;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_tell unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
   ;
-  if (hiWord != NULL) *hiWord = __builtin_bswap16(response.hiWord);
+  if (stus && (response.ack == QDS_ACK) && (hiWord != NULL))
+    *hiWord = __builtin_bswap16(response.hiWord);
   ;
-  if (loWord != NULL) *loWord = __builtin_bswap16(response.loWord);
+  if (stus && (response.ack == QDS_ACK) && (loWord != NULL))
+    *loWord = __builtin_bswap16(response.loWord);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3590,13 +3686,13 @@ bool file_write(const FdsDriver *fds, uint16_t size, const uint8_t *source,
   struct {
     uint16_t cmd;
     uint16_t size;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .size = __builtin_bswap16(size)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .size = __builtin_bswap16(size)};
 
   struct {
     uint16_t handle;
-  } __attribute__((__packed__))
-  command2 = {.handle = __builtin_bswap16(handle)};
+  }
+  __attribute__((__packed__)) command2 = {.handle = __builtin_bswap16(handle)};
 
   struct {
     uint8_t ack;
@@ -3636,18 +3732,21 @@ bool file_size(const FdsDriver *fds, uint16_t handle, uint16_t *status,
     uint16_t status;
     uint16_t hiWord;
     uint16_t loWord;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_size unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
   ;
-  if (hiWord != NULL) *hiWord = __builtin_bswap16(response.hiWord);
+  if (stus && (response.ack == QDS_ACK) && (hiWord != NULL))
+    *hiWord = __builtin_bswap16(response.hiWord);
   ;
-  if (loWord != NULL) *loWord = __builtin_bswap16(response.loWord);
+  if (stus && (response.ack == QDS_ACK) && (loWord != NULL))
+    *loWord = __builtin_bswap16(response.loWord);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3666,23 +3765,24 @@ bool file_image(const FdsDriver *fds, uint16_t x, uint16_t y, uint16_t handle,
     uint16_t x;
     uint16_t y;
     uint16_t handle;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .handle = __builtin_bswap16(handle)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x = __builtin_bswap16(x),
+                                          .y = __builtin_bswap16(y),
+                                          .handle = __builtin_bswap16(handle)};
 
   struct {
     uint8_t ack;
     uint16_t errno;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_image unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (errno != NULL) *errno = __builtin_bswap16(response.errno);
+  if (stus && (response.ack == QDS_ACK) && (errno != NULL))
+    *errno = __builtin_bswap16(response.errno);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3704,25 +3804,26 @@ bool file_screenCapture(const FdsDriver *fds, uint16_t x, uint16_t y,
     uint16_t width;
     uint16_t height;
     uint16_t handle;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .width = __builtin_bswap16(width),
-              .height = __builtin_bswap16(height),
-              .handle = __builtin_bswap16(handle)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x = __builtin_bswap16(x),
+                                          .y = __builtin_bswap16(y),
+                                          .width = __builtin_bswap16(width),
+                                          .height = __builtin_bswap16(height),
+                                          .handle = __builtin_bswap16(handle)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_screenCapture unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3740,22 +3841,23 @@ bool file_putC(const FdsDriver *fds, uint16_t car, uint16_t handle,
     uint16_t cmd;
     uint16_t car;
     uint16_t handle;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .car = __builtin_bswap16(car),
-              .handle = __builtin_bswap16(handle)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .car = __builtin_bswap16(car),
+                                          .handle = __builtin_bswap16(handle)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_putC unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3777,14 +3879,15 @@ bool file_getC(const FdsDriver *fds, uint16_t handle, uint16_t *car) {
   struct {
     uint8_t ack;
     uint16_t car;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_getC unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (car != NULL) *car = __builtin_bswap16(response.car);
+  if (stus && (response.ack == QDS_ACK) && (car != NULL))
+    *car = __builtin_bswap16(response.car);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3802,22 +3905,23 @@ bool file_putW(const FdsDriver *fds, uint16_t word, uint16_t handle,
     uint16_t cmd;
     uint16_t word;
     uint16_t handle;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .word = __builtin_bswap16(word),
-              .handle = __builtin_bswap16(handle)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .word = __builtin_bswap16(word),
+                                          .handle = __builtin_bswap16(handle)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_putW unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3839,14 +3943,15 @@ bool file_getW(const FdsDriver *fds, uint16_t handle, uint16_t *word) {
   struct {
     uint8_t ack;
     uint16_t word;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_getW unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (word != NULL) *word = __builtin_bswap16(response.word);
+  if (stus && (response.ack == QDS_ACK) && (word != NULL))
+    *word = __builtin_bswap16(response.word);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3868,16 +3973,17 @@ bool file_putS(const FdsDriver *fds, const char *cstr, uint16_t *count) {
   struct {
     uint8_t ack;
     uint16_t count;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_putS unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)cstr,
                            strlen(cstr) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (count != NULL) *count = __builtin_bswap16(response.count);
+  if (stus && (response.ack == QDS_ACK) && (count != NULL))
+    *count = __builtin_bswap16(response.count);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3895,10 +4001,10 @@ bool file_getS(const FdsDriver *fds, uint16_t size, uint16_t handle,
     uint16_t cmd;
     uint16_t size;
     uint16_t handle;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .size = __builtin_bswap16(size),
-              .handle = __builtin_bswap16(handle)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .size = __builtin_bswap16(size),
+                                          .handle = __builtin_bswap16(handle)};
 
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)str, 3) == 3;
@@ -3938,16 +4044,17 @@ bool file_erase(const FdsDriver *fds, const char *filename, uint16_t *status) {
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_erase unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)filename,
                            strlen(filename) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3969,14 +4076,15 @@ bool file_rewind(const FdsDriver *fds, uint16_t handle, uint16_t *status) {
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_rewind unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -3999,16 +4107,17 @@ bool file_loadFunction(const FdsDriver *fds, const char *filename,
   struct {
     uint8_t ack;
     uint16_t pointer;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_loadFunction unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)filename,
                            strlen(filename) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (pointer != NULL) *pointer = __builtin_bswap16(response.pointer);
+  if (stus && (response.ack == QDS_ACK) && (pointer != NULL))
+    *pointer = __builtin_bswap16(response.pointer);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4147,7 +4256,7 @@ bool file_loadImageControl(const FdsDriver *fds, const char *filename1,
   struct {
     uint8_t ack;
     uint16_t handle;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_loadImageControl unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
@@ -4158,9 +4267,10 @@ bool file_loadImageControl(const FdsDriver *fds, const char *filename1,
                            strlen(filename2) + 1, NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command2,
                            sizeof(command2), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (handle != NULL) *handle = __builtin_bswap16(response.handle);
+  if (stus && (response.ack == QDS_ACK) && (handle != NULL))
+    *handle = __builtin_bswap16(response.handle);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4182,14 +4292,15 @@ bool file_mount(const FdsDriver *fds, uint16_t *status) {
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_mount unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4210,12 +4321,12 @@ bool file_unmount(const FdsDriver *fds) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_unmount unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4238,16 +4349,17 @@ bool file_playWAV(const FdsDriver *fds, const char *filename,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_playWAV unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)filename,
                            strlen(filename) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4270,16 +4382,17 @@ bool file_writeString(const FdsDriver *fds, uint16_t handle, const char *cstr,
   struct {
     uint8_t ack;
     uint16_t pointer;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function file_writeString unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), NULL, 0) != 0;
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)cstr,
                            strlen(cstr) + 1, (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (pointer != NULL) *pointer = __builtin_bswap16(response.pointer);
+  if (stus && (response.ack == QDS_ACK) && (pointer != NULL))
+    *pointer = __builtin_bswap16(response.pointer);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4295,17 +4408,17 @@ bool snd_volume(const FdsDriver *fds, uint16_t level) {
   struct {
     uint16_t cmd;
     uint16_t level;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .level = __builtin_bswap16(level)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .level = __builtin_bswap16(level)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function snd_volume unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4321,20 +4434,21 @@ bool snd_pitch(const FdsDriver *fds, uint16_t rate, uint16_t *oldRate) {
   struct {
     uint16_t cmd;
     uint16_t rate;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .rate = __builtin_bswap16(rate)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .rate = __builtin_bswap16(rate)};
 
   struct {
     uint8_t ack;
     uint16_t oldRate;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function snd_pitch unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (oldRate != NULL) *oldRate = __builtin_bswap16(response.oldRate);
+  if (stus && (response.ack == QDS_ACK) && (oldRate != NULL))
+    *oldRate = __builtin_bswap16(response.oldRate);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4350,18 +4464,18 @@ bool snd_bufSize(const FdsDriver *fds, uint16_t bufferSize) {
   struct {
     uint16_t cmd;
     uint16_t bufferSize;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .bufferSize = __builtin_bswap16(bufferSize)};
+  } __attribute__((__packed__)) command1 = {
+      .cmd = cmds[fds->deviceType],
+      .bufferSize = __builtin_bswap16(bufferSize)};
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function snd_bufSize unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4382,12 +4496,12 @@ bool snd_stop(const FdsDriver *fds) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function snd_stop unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4408,12 +4522,12 @@ bool snd_pause(const FdsDriver *fds) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function snd_pause unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4434,12 +4548,12 @@ bool snd_continue(const FdsDriver *fds) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function snd_continue unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4461,14 +4575,15 @@ bool snd_playing(const FdsDriver *fds, uint16_t *togo) {
   struct {
     uint8_t ack;
     uint16_t togo;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function snd_playing unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (togo != NULL) *togo = __builtin_bswap16(response.togo);
+  if (stus && (response.ack == QDS_ACK) && (togo != NULL))
+    *togo = __builtin_bswap16(response.togo);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4497,14 +4612,15 @@ bool img_setPosition(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_setPosition unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4529,14 +4645,15 @@ bool img_enable(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_enable  unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4561,14 +4678,15 @@ bool img_disable(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_disable unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4593,14 +4711,15 @@ bool img_darken(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_darken unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4625,14 +4744,15 @@ bool img_lighten(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_lighten unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4661,14 +4781,15 @@ bool img_setWord(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_setWord unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4687,23 +4808,24 @@ bool img_getWord(const FdsDriver *fds, uint16_t handle, int16_t index,
     uint16_t handle;
     int16_t index;
     uint16_t offset;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .handle = __builtin_bswap16(handle),
-              .index = __builtin_bswap16(index),
-              .offset = __builtin_bswap16(offset)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .handle = __builtin_bswap16(handle),
+                                          .index = __builtin_bswap16(index),
+                                          .offset = __builtin_bswap16(offset)};
 
   struct {
     uint8_t ack;
     uint16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_getWord unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4728,14 +4850,15 @@ bool img_show(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_show unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4762,14 +4885,15 @@ bool img_setAttributes(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_setAttributes unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4796,14 +4920,15 @@ bool img_clearAttributes(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_clearAttributes unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4828,14 +4953,15 @@ bool img_touched(const FdsDriver *fds, uint16_t handle, int16_t index,
   struct {
     uint8_t ack;
     int16_t value;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function img_touched unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (value != NULL) *value = __builtin_bswap16(response.value);
+  if (stus && (response.ack == QDS_ACK) && (value != NULL))
+    *value = __builtin_bswap16(response.value);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4855,12 +4981,12 @@ bool img_blitComtoDisplay(const FdsDriver *fds, uint16_t x, uint16_t y,
     uint16_t y;
     uint16_t width;
     uint16_t height;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType],
-              .x = __builtin_bswap16(x),
-              .y = __builtin_bswap16(y),
-              .width = __builtin_bswap16(width),
-              .height = __builtin_bswap16(height)};
+  }
+  __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                          .x = __builtin_bswap16(x),
+                                          .y = __builtin_bswap16(y),
+                                          .width = __builtin_bswap16(width),
+                                          .height = __builtin_bswap16(height)};
 
   struct {
     uint8_t ack;
@@ -4894,14 +5020,15 @@ bool bus_in(const FdsDriver *fds, uint16_t *busState) {
   struct {
     uint8_t ack;
     uint16_t busState;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function bus_in unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (busState != NULL) *busState = __builtin_bswap16(response.busState);
+  if (stus && (response.ack == QDS_ACK) && (busState != NULL))
+    *busState = __builtin_bswap16(response.busState);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4922,12 +5049,12 @@ bool bus_out(const FdsDriver *fds, uint16_t busState) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function bus_out unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4949,14 +5076,15 @@ bool bus_read(const FdsDriver *fds, uint16_t *busState) {
   struct {
     uint8_t ack;
     uint16_t busState;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function bus_read unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (busState != NULL) *busState = __builtin_bswap16(response.busState);
+  if (stus && (response.ack == QDS_ACK) && (busState != NULL))
+    *busState = __builtin_bswap16(response.busState);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -4977,12 +5105,12 @@ bool bus_set(const FdsDriver *fds, uint16_t dirMask) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function bus_set unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -5003,12 +5131,12 @@ bool bus_write(const FdsDriver *fds, uint16_t bitfield) {
 
   struct {
     uint8_t ack;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function bus_write unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -5024,20 +5152,21 @@ bool pin_hi(const FdsDriver *fds, uint16_t pin, uint16_t *status) {
   struct {
     uint16_t cmd;
     uint16_t pin;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .pin = __builtin_bswap16(pin)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .pin = __builtin_bswap16(pin)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function pin_hi unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -5053,20 +5182,21 @@ bool pin_lo(const FdsDriver *fds, uint16_t pin, uint16_t *status) {
   struct {
     uint16_t cmd;
     uint16_t pin;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .pin = __builtin_bswap16(pin)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .pin = __builtin_bswap16(pin)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function pin_lo unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -5082,20 +5212,21 @@ bool pin_read(const FdsDriver *fds, uint16_t pin, uint16_t *status) {
   struct {
     uint16_t cmd;
     uint16_t pin;
-  } __attribute__((__packed__))
-  command1 = {.cmd = cmds[fds->deviceType], .pin = __builtin_bswap16(pin)};
+  } __attribute__((__packed__)) command1 = {.cmd = cmds[fds->deviceType],
+                                            .pin = __builtin_bswap16(pin)};
 
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function pin_read unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -5120,14 +5251,15 @@ bool pin_set_picaso(const FdsDriver *fds, uint16_t mode, uint16_t pin,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function pin_set_picaso unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
@@ -5152,14 +5284,15 @@ bool pin_set_diablo(const FdsDriver *fds, uint16_t mode, uint16_t pin,
   struct {
     uint8_t ack;
     uint16_t status;
-  } __attribute__((__packed__)) response;
+  } __attribute__((__packed__)) response = {0};
   osalDbgAssert(command1.cmd != CMD_NOT_IMPL,
                 "function pin_set_diablo unimplemented for this screen");
   stus = fdsTransmitBuffer(fds, __FUNCTION__, __LINE__, (uint8_t *)&command1,
                            sizeof(command1), (uint8_t *)&response,
-                           sizeof(response)) != 0;
+                           sizeof(response)) == sizeof(response);
 
-  if (status != NULL) *status = __builtin_bswap16(response.status);
+  if (stus && (response.ack == QDS_ACK) && (status != NULL))
+    *status = __builtin_bswap16(response.status);
 
   return stus && (response.ack == QDS_ACK);
 }
