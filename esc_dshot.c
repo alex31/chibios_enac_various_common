@@ -245,9 +245,6 @@ void     dshotStop(DSHOTDriver *driver)
  */
 static void dshotRestart(DSHOTDriver *driver)
 {
-  const bool dmaOk = dmaStart(&driver->dmap, &driver->dma_conf);
-  chDbgAssert(dmaOk == true, "dshot dma start error");
-
   pwmStart(driver->config->pwmp, &driver->pwm_conf);
   driver->config->pwmp->tim->DCR = DCR_DBL | DCR_DBA(driver->config->pwmp); // enable bloc register DMA transaction
   pwmChangePeriod(driver->config->pwmp, DSHOT_PWM_PERIOD);
@@ -386,16 +383,15 @@ void dshotSendFrame(DSHOTDriver *driver)
       setDshotPacketTlm(&driver->dshotMotors.dp[index], true);
       chMBPostTimeout(&driver->mb, index, TIME_IMMEDIATE);
     }
-#if  DSHOT_BIDIR
-    dshotRpmResetCaptureBuffer(&driver->rpm_capture);
-#endif
     buildDshotDmaBuffer(driver);
     dmaTransfert(&driver->dmap,
 		 &driver->config->pwmp->tim->DMAR,
 		 driver->config->dma_command, DSHOT_DMA_BUFFER_SIZE * DSHOT_CHANNELS);
     
 #if DSHOT_BIDIR
-    dshotStop(driver);
+    // Keep the TX DMA stream allocated between bidirectional frames.
+    pwmStop(driver->config->pwmp);
+    dmaStopTransfert(&driver->dmap);
     dshotRpmCatchErps(&driver->rpm_capture);
     processBidirErpm(driver);
     dshotRestart(driver);
