@@ -697,7 +697,7 @@ static noreturn void dshotTlmRec (void *arg)
     const uint32_t idx = escIdx;
     const bool success =
       (sdReadTimeout(driver->config->tlm_sd, tlm.frame.rawData, sizeof(DshotTelemetryFrame),
-                     TIME_MS2I(1000)) == sizeof(DshotTelemetryFrame));
+                     TIME_MS2I(100)) == sizeof(DshotTelemetryFrame));
     if (!success ||
         (calculateCrc8(tlm.frame.rawData, sizeof(tlm.frame.rawData)) != tlm.frame.crc8)) {
       // empty buffer to resync
