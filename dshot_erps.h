@@ -20,7 +20,7 @@ extern "C" {
 
 typedef enum  {
   EDT_STATUS_ALERT = 1<<7, EDT_STATUS_WARNING = 1<<6, EDT_STATUS_ERROR = 1<<5,
-  EDT_STATUS_MAX_STRESS_MASK=0b111<1
+  EDT_STATUS_MAX_STRESS_MASK=0x0F
   }  EdtStatus;
   
   

@@ -475,7 +475,7 @@ DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
     [8] 1000 mmmm mmmm - Debug frame 1 not associated with any specific value, can be used to debug ESC firmware
     [10] 1010 mmmm mmmm - Debug frame 2 not associated with any specific value, can be used to debug ESC firmware
     [12] 1100 mmmm mmmm - Stress level frame [0, 1, ..., 255] (since v2.0.0)
-    [14] 1110 mmmm mmmm - Status frame: Bit[7] = alert event, Bit[6] = warning event, Bit[5] = error event, Bit[3-1] - Max. stress level [0-15] (since v2.0.0)
+    [14] 1110 mmmm mmmm - Status frame: Bit[7] = alert event, Bit[6] = warning event, Bit[5] = error event, Bit[3-0] - Max. stress level [0-15] (since v2.0.0)
 
  */
 #if DSHOT_BIDIR && DSHOT_BIDIR_EXTENTED_TELEMETRY
