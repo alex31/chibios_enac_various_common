@@ -50,3 +50,19 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Independent dependency checkout.
+/CMSIS-DSP/
+
+# Local build products and compiler experiments.
+__pycache__/
+*.py[cod]
+.gdb_history
+/unit_test/PersistantParam/testPP
+/tmp_dshot_div.s
+/tmp_dshot_div2.s
+
+# Local empty placeholders and editor artifact.
+/.codex
+/serialName
+/microrl/microrlShell.c:366
