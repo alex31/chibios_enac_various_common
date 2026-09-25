@@ -1,0 +1,152 @@
+# Bidirectional DShot Optimization To-Do
+
+This document outlines the two-step strategy for upgrading the current synchronous, HAL-heavy Bidirectional DShot implementation to a highly efficient, low-latency, asynchronous architecture similar to ArduPilot.
+
+## Strategic Implementation Order
+1. **Phase 1 (Registers):** Replace `pwmStop`/`pwmStart` with direct Timer register manipulation. Keep the RTOS thread-blocking architecture for now to isolate the variables. Test on both STM32H7 and STM32G4.
+2. **Phase 2 (Asynchronous):** Once Phase 1 is verified, move the turnaround logic into a DMA Transfer Complete (TC) ISR and stop blocking the RTOS thread.
+3. **Phase 3 (Optimization):** Upgrade the `processErpsDmaBuffer` telemetry decoding function to use the branchless math approach for reduced CPU cycle overhead.
+
+---
+
+## Phase 1: Timer Direction Change via Register Twiddling
+Currently, switching the timer pins from PWM Output (TX) to Input Capture (RX) relies on full ChibiOS HAL teardowns (`pwmStop`, `dmaStop`) and restarts (`pwmStart`). This involves slow clock (RCC) recalculations and GPIO matrix resets.
+
+The goal is to leave the Timer running continuously and flip the channels from Output to Input strictly by modifying the Timer registers (`CCER`, `CCMR1/2`, `DIER`).
+
+### 1. The Breakdown (Turnaround Start)
+When the DShot TX DMA completes, you must immediately disconnect the output compares before changing the channel modes. Do this by clearing the Capture/Compare Enable Register (`CCER`) and the Capture/Compare Mode Registers (`CCMR1/2`).
+
+```c
+// Example: TIMx is the target timer
+TIMx->CCER = 0;
+TIMx->CCMR1 = 0;
+TIMx->CCMR2 = 0;
+```
+
+### 2. The Switch (Output to Input Capture)
+To change a channel (e.g., Channel 1) to Input Capture, you must follow a strict sequence to avoid hardware locks:
+
+*   **Step A: Disable the Channel** (Already done above, `CCER_CC1E` must be 0).
+*   **Step B: Configure `CCMR1`**
+    *   Set the channel as input mapped to TI1 (`TIM_CCMR1_CC1S_0`).
+    *   Apply an input filter if necessary (`TIM_CCMR1_IC1F`).
+    *   Clear the prescaler (`TIM_CCMR1_IC1PSC`).
+*   **Step C: Enable Capture in `CCER`**
+    *   Configure it to capture on both rising and falling edges (`TIM_CCER_CC1P | TIM_CCER_CC1NP`).
+    *   Re-enable the channel (`TIM_CCER_CC1E`).
+
+**Example for Channel 1:**
+```c
+const uint32_t CCMR1_FILT = TIM_CCMR1_IC1F_1; // Example: 4 samples filter
+
+// Modify CCMR1: Set as Input, configure filter
+MODIFY_REG(TIMx->CCMR1,
+           (TIM_CCMR1_CC1S | TIM_CCMR1_IC1F | TIM_CCMR1_IC1PSC),
+           (TIM_CCMR1_CC1S_0 | CCMR1_FILT));
+
+// Modify CCER: Set Both Edges and Enable Capture
+MODIFY_REG(TIMx->CCER,
+           (TIM_CCER_CC1P | TIM_CCER_CC1NP | TIM_CCER_CC1E),
+           (TIM_CCER_CC1P | TIM_CCER_CC1NP | TIM_CCER_CC1E));
+```
+
+*(Repeat the logic for Channels 2, 3, and 4 targeting the correct bits in `CCMR1`, `CCMR2`, and `CCER`)*
+
+### 3. The DMA Request Source (`DIER`)
+When switching modes, you must ensure the Timer triggers the correct DMA stream.
+*   **TX Phase:** Driven by Timer Update (`TIM_DIER_UDE`).
+*   **RX Phase:** Driven by Timer Capture (`TIM_DIER_CCxDE`).
+
+*(Note: If using DMAMUX on G4/H7 to share 1 DMA channel, you will swap the DMAMUX request source here instead of toggling multiple `DIER` bits).*
+
+### 4. Reverting to Output (Start of Next Cycle)
+At the end of the DShot cycle, revert the registers back to PWM Output mode before sending the next command.
+
+---
+
+## Phase 2: Going Asynchronous via DMA ISR
+Currently, the execution relies on `chThdSuspendS` and `chThdResumeI`, making the critical ~30µs turnaround phase vulnerable to RTOS jitter.
+
+The goal is to execute the register twiddling (Phase 1) inside a hardware interrupt, completely decoupling it from the ChibiOS scheduler.
+
+### 1. Register the DMA Transfer Complete (TC) Callback
+Instead of calling `dmaTransfert` (which blocks the thread), call `dmaStartTransfert` and ensure a callback is mapped to the DMA Transfer Complete interrupt for the TX stream.
+
+### 2. The Turnaround ISR
+When the TX DMA finishes blasting the DShot packet, the DMA TC ISR fires immediately. Inside this ISR:
+1. Stop the TX DMA stream.
+2. Execute the Phase 1 register twiddling to flip the Timer to Input Capture.
+3. Flush/Invalidate the CPU Data Cache for the RX buffers (critical on H7).
+4. Start the RX DMA stream(s).
+5. (Optional) Start a hardware timer (GPT) for the RX timeout.
+
+Because this happens in an ISR, the turnaround is deterministic and happens in < 2µs, guaranteeing you will never miss the first telemetry edge from the ESC.
+
+### 3. The RX Complete ISR
+When the RX DMA stream finishes (or the GPT timeout fires):
+1. The RX DMA TC ISR fires.
+2. Stop the RX DMA stream.
+3. Process the ERPM buffer.
+4. Revert the Timer registers back to PWM Output mode.
+5. Optionally, post an event flag or semaphore to notify a low-priority thread that fresh RPM data is available.
+
+By fully implementing Phase 2, the CPU is completely freed during the ~100µs DShot exchange, and latency/jitter is mathematically eliminated.
+
+---
+
+## Phase 3: Branchless NRZI Telemetry Decoding
+The current implementation of `processErpsDmaBuffer` tracks the signal state (high/low) using conditional branches (`if (bit)` and `switch`). While logically sound, branches interrupt the CPU pipeline. 
+
+Because Bidirectional DShot uses **NRZI encoding** (where a pulse edge represents a `1` bit and no edge represents a `0` bit), the distance between edges directly corresponds to the number of leading zeroes followed by a `1`.
+
+This property allows the data to be decoded mathematically without any branches or state variables.
+
+### The Mathematical Approach
+1. **Calculate the delta:** Find the time difference between the current edge and the previous edge.
+2. **Determine the length:** Divide the delta by the nominal bit duration to determine how many bit-periods passed since the last edge. For example, a length of 3 means two `0` bits passed, followed by a `1` bit (the edge).
+3. **Shift and Bitwise OR:** Shift the current output value left by the length, and then insert a `1` at the correct position.
+
+### Example Implementation
+Replace the `if`/`switch` loop in `processErpsDmaBuffer` with a branchless loop similar to the following:
+
+```c
+// Instead of tracking 'bit' state and using a switch:
+uint32_t value = 0;
+uint32_t bits = 0;
+uint_fast16_t prec = capture[0];
+
+for (size_t i = 1U; i < dmaLen; i++) {
+    const uint_fast16_t diff = capture[i] - prec;
+    prec = capture[i];
+    
+    // Prevent shifting past 21 bits (the DShot telemetry frame length)
+    if (bits >= 21U) {
+        break;
+    }
+    
+    // Calculate how many bits elapsed between edges
+    // ERPS_BIT1_DUTY is equivalent to the IC sample period per bit
+    uint32_t len = (diff + (ERPS_BIT1_DUTY / 2U)) / ERPS_BIT1_DUTY;
+
+    // Branchless NRZI reconstruction
+    value <<= len;
+    value |= 1U << (len - 1U);
+    
+    bits += len;
+}
+
+// Handle the final trailing bits if the DMA capture ended during a steady state
+if (bits < 21U) {
+    uint32_t len = 21U - bits;
+    value <<= len;
+    // No trailing edge means trailing zeroes, so we do not OR a '1' bit here
+    bits += len;
+}
+
+// At this point, 'value' contains the full 21-bit raw NRZI decoded frame.
+// You can then proceed with your existing checksum validation or lookup-table decoding.
+```
+
+### Benefits
+By replacing conditional branching with pure arithmetic (`shift`, `OR`, `add`), you keep the CPU's instruction pipeline completely full. This reduces the time spent decoding the telemetry packets for all 4 channels, leaving more CPU cycles available for your control loops and filters.

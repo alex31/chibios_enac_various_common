@@ -1,0 +1,85 @@
+# TODO: High-Performance HD44780 Driver Refactoring
+
+This document outlines the strategy for optimizing the HD44780 driver for maximum 
+CPU and RTOS efficiency while maintaining hardware busy-flag safety.
+
+---
+
+## 1. Data Structure Updates (hd44780.h)
+Modify `HD44780Driver` to include the following fields:
+- `thread_reference_t trp`: For the EXTI-based thread suspend/resume mechanism.
+- `bool fast_path`: Flag indicating if data pins are contiguous and on the same port.
+- `ioportid_t data_port`: The GPIO port used for data (e.g., GPIOA, GPIOB).
+- `uint32_t data_mask`: Bitmask of the data pins on the port.
+- `uint8_t data_offset`: The bit-shift required to align a nibble/byte to the pins.
+- `mutex_t lock`: For thread-safe multi-threaded access.
+
+---
+
+## 2. Fast-Path Optimization (CPU Efficiency)
+### Detection Logic (hd44780Start)
+1. Iterate through `config->pinmap->D[0..N]`.
+2. Verify all pins share the same `PAL_PORT`.
+3. Check if the pins are contiguous (e.g., Pin 4, 5, 6, 7).
+4. If true, calculate `data_offset` (index of D[0]) and `data_mask`.
+5. Set `fast_path = true`.
+
+### Implementation (hd44780WriteRegister)
+- **Fast Path:** Use a single port write.
+  - `data_port->BSRR = (data_mask << 16) | (value << data_offset);` (for STM32).
+- **Slow Path:** Fall back to the existing `for` loop bit-banging if pins are scattered.
+
+---
+
+## 3. EXTI "Zero-Polling" (RTOS Efficiency)
+### Target Commands
+Use EXTI primarily for long-duration commands:
+- `HD44780_CLEAR_DISPLAY` (~1.6ms)
+- `HD44780_RETURN_HOME` (~1.6ms)
+
+### The EXTI Workflow
+1. **Setup:** In `hd44780Start`, register a callback on the DB7 pin (`D[LINE_DATA_LEN-1]`) 
+   using `palSetLineCallback`.
+2. **ISR Implementation:**
+   ```c
+   static void hd44780_exti_cb(void *arg) {
+     HD44780Driver *lcdp = (HD44780Driver *)arg;
+     chSysLockFromISR();
+     chThdResumeI(&lcdp->trp, MSG_OK);
+     chSysUnlockFromISR();
+   }
+   ```
+3. **Wait Logic (hd44780WaitNotBusyEXTI):**
+   - Set RS=0, RW=1, DB7=Input.
+   - Set E=1 (LCD begins driving the bus).
+   - If DB7 is already LOW, exit immediately.
+   - `palEnableLineEvent(db7, PAL_EVENT_MODE_FALLING_EDGE)`.
+   - `chSysLock(); chThdSuspendS(&lcdp->trp); chSysUnlock();`
+   - Upon wake-up: Set E=0, disable EXTI event.
+   - **Crucial for 4-bit mode:** Pulse E one more time to clock out the second nibble.
+
+---
+
+## 4. Polling Refactor (CPU Efficiency)
+For short commands (~40-100us), use an optimized polling loop:
+1. Switch data pins to **Input mode ONCE** before the `while` loop.
+2. Inside the loop, only toggle **E** and read the pin.
+3. Switch back to **Output mode ONCE** after the loop.
+4. *Rationale:* Eliminates thousands of redundant `palSetLineMode` calls.
+
+---
+
+## 5. RTOS Integrity (Safety)
+1. **Thread Safety:** Wrap all public API calls in `osalMutexLock` / `osalMutexUnlock`.
+2. **5V Tolerance:** Ensure DB7 is connected to a 5V-tolerant pin on the MCU 
+   before enabling the "E=1" long-hold EXTI mode.
+3. **Race Condition Prevention:** Always check the Busy Flag *immediately before* 
+   suspending the thread to handle cases where the operation finished before 
+   the EXTI was armed.
+
+---
+
+## 6. Implementation Stages
+1. **Stage 1:** Add Mutex and Fast-Path detection in `hd44780Start`.
+2. **Stage 2:** Refactor `hd44780IsBusy` to minimize pin mode switching.
+3. **Stage 3:** Implement `hd44780WaitNotBusyEXTI` and integrate into `ClearDisplay`.
