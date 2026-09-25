@@ -123,15 +123,36 @@ typedef struct {
 }  __attribute__ ((__packed__)) DshotTelemetryFrame ;
 
 
+/** Fields tracked independently; legacy serial telemetry supplies the first five. */
+typedef enum {
+  DSHOT_TELEM_TEMP, DSHOT_TELEM_VOLTAGE, DSHOT_TELEM_CURRENT,
+  DSHOT_TELEM_CONSUMPTION, DSHOT_TELEM_RPM, DSHOT_TELEM_STRESS,
+  DSHOT_TELEM_STATUS, DSHOT_TELEM_FIELD_COUNT
+} DshotTelemetryField;
+
+// EDT measurements may arrive only once per second. Allow missed updates.
+#ifndef DSHOT_TELEMETRY_TIMEOUT_MS
+#define DSHOT_TELEMETRY_TIMEOUT_MS 3000U
+#endif
+
 /**
- * @brief   telemetry with timestamp
+ * @brief   telemetry with per-field freshness metadata (not part of the wire frame)
  */
 typedef struct {
   DshotTelemetryFrame frame; // fields shared by serial telemetry and EDT
   uint8_t  stress; // EDT additionnal field
   uint8_t  status; // EDT additionnal field
   systime_t	      ts; // timestamp of last succesfull received frame
+  uint8_t valid_mask;   // received fields not expired by dshotGetTelemetry
+  uint8_t updated_mask; // fields in the last decoded EDT/serial telemetry update
+  systime_t updated_at[DSHOT_TELEM_FIELD_COUNT];
 }  DshotTelemetry ;
+
+/** Test a field in a snapshot returned by dshotGetTelemetry. Zero is valid data. */
+static inline bool dshotTelemetryIsValid(const DshotTelemetry *tlm, DshotTelemetryField field)
+{
+  return (tlm->valid_mask & (1U << field)) != 0U;
+}
 
   
 typedef union {

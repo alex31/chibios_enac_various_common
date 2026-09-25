@@ -197,6 +197,12 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   const bool dmaOk = dmaStart(&driver->dmap, &driver->dma_conf);
   chDbgAssert(dmaOk == true, "dshot dma start error");
 
+  // Initialize the cache and its locks before the telemetry thread can use them.
+  for (size_t j = 0; j < DSHOT_CHANNELS; ++j) {
+    driver->dshotMotors.dt[j] = (DshotTelemetry){0};
+    chMtxObjectInit(&driver->dshotMotors.tlmMtx[j]);
+  }
+
   if (driver->config->tlm_sd) {
     sdStart(driver->config->tlm_sd, &tlmcfg);
     chThdCreateStatic(driver->waDshotTlmRec, sizeof(driver->waDshotTlmRec), NORMALPRIO,
@@ -210,7 +216,6 @@ void dshotStart(DSHOTDriver *driver, const DSHOTConfig *config)
   for (size_t j=0; j<DSHOT_CHANNELS; j++) {
     pwmEnableChannel(driver->config->pwmp, j, 0);
     driver->dshotMotors.dp[j] =  makeDshotPacket(0,0);
-    chMtxObjectInit(&driver->dshotMotors.tlmMtx[j]);
   }
   driver->dshotMotors.onGoingQry = false;
   driver->dshotMotors.currentTlmQry = 0U;
@@ -460,9 +465,16 @@ uint32_t dshotGetTelemetryFrameCount(const DSHOTDriver *driver)
  */
 DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
 {
-  chDbgAssert(index <= DSHOT_CHANNELS, "dshot index error");
+  chDbgAssert(index < DSHOT_CHANNELS, "dshot index error");
   chMtxLock(&driver->dshotMotors.tlmMtx[index]);
-  const DshotTelemetry tlm = driver->dshotMotors.dt[index];
+  DshotTelemetry *cached = &driver->dshotMotors.dt[index];
+  const systime_t now = chVTGetSystemTimeX();
+  for (unsigned field = 0; field < DSHOT_TELEM_FIELD_COUNT; ++field) {
+    if (chTimeDiffX(cached->updated_at[field], now) >= TIME_MS2I(DSHOT_TELEMETRY_TIMEOUT_MS)) {
+      cached->valid_mask &= ~(1U << field);
+    }
+  }
+  const DshotTelemetry tlm = *cached;
   chMtxUnlock(&driver->dshotMotors.tlmMtx[index]);
   return tlm;
 }
@@ -481,25 +493,31 @@ DshotTelemetry dshotGetTelemetry(DSHOTDriver *driver, const uint32_t index)
 #if DSHOT_BIDIR && DSHOT_BIDIR_EXTENTED_TELEMETRY
 static void updateTelemetryFromBidirEdt(const DshotErps *erps, DshotTelemetry *tlm)
 {
+  DshotTelemetryField field;
+  tlm->updated_mask = 0;
   switch(DshotErpsEdtType(erps)) {
   case EDT_TEMP:
-    tlm->frame.temp = DshotErpsEdtTempCentigrade(erps); break;
-    
+    tlm->frame.temp = DshotErpsEdtTempCentigrade(erps);
+    field = DSHOT_TELEM_TEMP; break;
   case EDT_VOLT:
-    tlm->frame.voltage = DshotErpsEdtCentiVolts(erps); break;
-    
+    tlm->frame.voltage = DshotErpsEdtCentiVolts(erps);
+    field = DSHOT_TELEM_VOLTAGE; break;
   case EDT_CURRENT:
-    tlm->frame.current = DshotErpsEdtCurrentAmp(erps) * 100U; break;
-
+    tlm->frame.current = DshotErpsEdtCurrentAmp(erps) * 100U;
+    field = DSHOT_TELEM_CURRENT; break;
   case EDT_STRESS:
-   tlm->stress = DshotErpsEdtStress(erps); break;
-
+    tlm->stress = DshotErpsEdtStress(erps);
+    field = DSHOT_TELEM_STRESS; break;
   case EDT_STATUS:
-    tlm->status = DshotErpsEdtStatus(erps);break;
-    
-  default: {};
+    tlm->status = DshotErpsEdtStatus(erps);
+    field = DSHOT_TELEM_STATUS; break;
+  default:
+    return; // Ignored debug frames do not refresh any measurement.
   }
+  tlm->updated_mask = 1U << field;
+  tlm->valid_mask |= tlm->updated_mask;
   tlm->ts = chVTGetSystemTimeX();
+  tlm->updated_at[field] = tlm->ts;
 }
 #endif
 
@@ -522,8 +540,10 @@ uint32_t dshotGetEperiod(DSHOTDriver *driver, const uint32_t index)
 #if DSHOT_BIDIR_EXTENTED_TELEMETRY
      if (DshotErpsIsEdt(&driver->erps)) {
        if (driver->config->tlm_sd == NULL) {
-	 DshotTelemetry *tlm = &driver->dshotMotors.dt[index];
-	 updateTelemetryFromBidirEdt(&driver->erps, tlm);
+         chMtxLock(&driver->dshotMotors.tlmMtx[index]);
+         DshotTelemetry *tlm = &driver->dshotMotors.dt[index];
+         updateTelemetryFromBidirEdt(&driver->erps, tlm);
+         chMtxUnlock(&driver->dshotMotors.tlmMtx[index]);
        }
        return DSHOT_BIDIR_TLM_EDT;
      }
@@ -551,8 +571,10 @@ uint32_t dshotGetRpm(DSHOTDriver *driver, const uint32_t index)
 #if DSHOT_BIDIR_EXTENTED_TELEMETRY
      if (DshotErpsIsEdt(&driver->erps)) {
        if (driver->config->tlm_sd == NULL) {
-	 DshotTelemetry *tlm = &driver->dshotMotors.dt[index];
-	 updateTelemetryFromBidirEdt(&driver->erps, tlm);
+         chMtxLock(&driver->dshotMotors.tlmMtx[index]);
+         DshotTelemetry *tlm = &driver->dshotMotors.dt[index];
+         updateTelemetryFromBidirEdt(&driver->erps, tlm);
+         chMtxUnlock(&driver->dshotMotors.tlmMtx[index]);
        }
        return DSHOT_BIDIR_TLM_EDT;
      }
@@ -687,7 +709,6 @@ static void processBidirErpm(DSHOTDriver *driver)
 static noreturn void dshotTlmRec (void *arg)
 {
   DSHOTDriver *driver = (DSHOTDriver *) arg;
-  DshotTelemetry tlm;
   
   msg_t escIdx = 0;
 
@@ -695,6 +716,7 @@ static noreturn void dshotTlmRec (void *arg)
   while (true) {
     chMBFetchTimeout(&driver->mb,  &escIdx, TIME_INFINITE);
     const uint32_t idx = escIdx;
+    DshotTelemetry tlm = {0};
     const bool success =
       (sdReadTimeout(driver->config->tlm_sd, tlm.frame.rawData, sizeof(DshotTelemetryFrame),
                      TIME_MS2I(100)) == sizeof(DshotTelemetryFrame));
@@ -702,10 +724,12 @@ static noreturn void dshotTlmRec (void *arg)
         (calculateCrc8(tlm.frame.rawData, sizeof(tlm.frame.rawData)) != tlm.frame.crc8)) {
       // empty buffer to resync
       while (sdGetTimeout(driver->config->tlm_sd, TIME_IMMEDIATE) >= 0) {};
-      memset(tlm.frame.rawData, 0U, sizeof(DshotTelemetry));
       // count errors
       if (success)
 	driver->crc_errors++;
+      // Preserve the last good sample and its age on a failed query.
+      driver->dshotMotors.onGoingQry = false;
+      continue;
     } else {
       // big-endian to little-endian conversion
       tlm.frame.voltage = __builtin_bswap16(tlm.frame.voltage);
@@ -713,6 +737,10 @@ static noreturn void dshotTlmRec (void *arg)
       tlm.frame.consumption = __builtin_bswap16(tlm.frame.consumption);
       tlm.frame.rpm = __builtin_bswap16(tlm.frame.rpm);
       tlm.ts = chVTGetSystemTimeX();
+      tlm.valid_mask = tlm.updated_mask = (1U << DSHOT_TELEM_STRESS) - 1U;
+      for (unsigned field = 0; field < DSHOT_TELEM_STRESS; ++field) {
+        tlm.updated_at[field] = tlm.ts;
+      }
       driver->tlm_frame_nb++;
     }
     
