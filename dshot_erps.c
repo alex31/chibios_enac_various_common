@@ -79,14 +79,19 @@ uint32_t DshotErpsGetEperiod(const DshotErps *derpsp)
  * @brief   calculate and return rpm
  *
  * @param[in] derpsp    pointer to the @p DshotErps object
- * @return    rotational speed in RPM
+ * @return    electrical RPM, or UINT32_MAX for an invalid zero period
  * @note      involve a division, which is a cpu cycle hog, If you can
               use getEperiod instead, it will be less calculus intensive
  * @api
  */
 uint32_t DshotErpsGetRpm(const DshotErps *derpsp)
 {
-  return ((uint32_t) 60e6f) / DshotErpsGetEperiod(derpsp);
+  // 0xfff is the bidirectional DShot encoding for a stopped motor.
+  if ((derpsp->ep.rawFrame >> 4U) == 0xfffU) {
+    return 0U;
+  }
+  const uint32_t eperiod = DshotErpsGetEperiod(derpsp);
+  return eperiod != 0U ? 60000000U / eperiod : UINT32_MAX;
 }
 
 /**

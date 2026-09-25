@@ -388,43 +388,35 @@ static void stopCapture(DshotRpmCapture *drcp)
 static uint32_t processErpsDmaBuffer(const uint16_t *capture, size_t dmaLen)
 {
   static const size_t frameLen = 20U;
+  // A short capture cannot hold a GCR frame; never read unwritten DMA data.
+  if ((dmaLen < 8U) || (dmaLen > DSHOT_DMA_DATA_LEN + DSHOT_DMA_EXTRADATA_LEN)) {
+    return 0;
+  }
   uint32_t erpsVal = 0;
   uint_fast8_t bit = 0x0;
   uint_fast8_t bitIndex = 0;
   uint_fast16_t prec = capture[0];
   
   for (size_t i = 1U; i < dmaLen; i++) {
-    const uint_fast16_t len = capture[i] - prec;
+    const uint16_t len = capture[i] - prec;
     prec = capture[i];
 
     // GRC encoding garanties that there can be no more than 3 consecutives bits at the same level
     // made some test to replace division by multiplication + shift without any speed gain
-    const uint_fast8_t nbConsecutives = (len + (ERPS_BIT1_DUTY / 2U)) / ERPS_BIT1_DUTY;
-    if (bit) {
-      switch(nbConsecutives) {
-      case 1U:	erpsVal |= (0b001 << (frameLen - bitIndex)); break;
-      case 2U:	erpsVal |= (0b011 << (frameLen - bitIndex - 1U)); break;
-      default:  erpsVal |= (0b111 << (frameLen - bitIndex - 2U)); break;
-      }
+    const uint32_t nbConsecutives = (len + (ERPS_BIT1_DUTY / 2U)) / ERPS_BIT1_DUTY;
+    if ((nbConsecutives == 0U) || (nbConsecutives > 3U) ||
+        (bitIndex + nbConsecutives > frameLen + 1U)) {
+      return 0;
     }
+    // Append signal levels, preserving the raw-frame format used by dshot_erps.
+    erpsVal = (erpsVal << nbConsecutives) |
+              (((1U << nbConsecutives) - 1U) & bit);
     bit = ~bit; // flip bit
     bitIndex += nbConsecutives;
   }
-  // there can be several high bits hidden in the trailing high level signal
-  for (size_t j=bitIndex; j <= frameLen; j++) 
-    erpsVal |= (1U << (frameLen - j));
-  
-  // alternative implementation for the trailing high level signal
-  // slower on M4
-  /* switch(frameLen - bitIndex) { */
-  /* case 0U: erpsVal |= 0b001; break; */
-  /* case 1U: erpsVal |= 0b011; break; */
-  /* case 2U: erpsVal |= 0b111; break; */
-  /* default: erpsVal |= 0b1111; break; */
-  /* } */
-  
-  //  DebugTrace("bit index = %u; erpsVal = 0x%lx", bitIndex, erpsVal);
-  return erpsVal;
+  // Complete the final high level without walking the remaining bits.
+  const uint32_t trailing = frameLen + 1U - bitIndex;
+  return (erpsVal << trailing) | ((1U << trailing) - 1U);
 }
 
 /**
